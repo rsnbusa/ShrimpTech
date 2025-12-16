@@ -1,0 +1,58 @@
+
+            <!--  Main Ids, mesh and Node id for mqtt. Subnode for Mesh internals -->
+        <label for="meshid" style="color:rgb(2, 0, 0);font-size:25px">MeshId&nbsp;</label>
+        <input name="meshid" type="text" style="margin-top:10px;width: 100px;;font-size:15px" id="meshid" value="%d" %s></input>
+        <label for="nodeid" style="color:rgb(2, 0, 0);font-size:25px">&nbsp;NodeId&nbsp;</label>
+        <input name="nodeid" type="text" style="margin-top:10px;width: 40px;;font-size:15px" id="nodeid" value="%d" %s></input>
+        <label for="subn" style="color:rgb(2, 0, 0);font-size:25px">&nbsp;SubNode&nbsp;</label>
+        <input name="subn" type="text" style="margin-top:10px;width: 80px;;font-size:15px" id="subn" value="%d" %s ></input>
+        <br><br>
+
+        <label for="mqtts" style="color:rgb(13, 13, 135);font-size:25px">Server&nbsp;</label>
+        <input name="mqtts" type="text" style="margin-top:10px;width: 300px;;font-size:15px" id="mqtts" value="%s" %s></input>
+        <label for="mqttu" style="color:rgb(13, 13, 135);font-size:25px">&nbsp;User&nbsp;</label>
+        <input name="mqttu" type="text" style="margin-top:10px;width: 100px;;font-size:15px" id="mqttu" value="%s" %s></input>
+        <label for="mqttp" style="color:rgb(13, 13, 135);font-size:25px">&nbsp;Pasw&nbsp;</label>
+        <input name="mqttp" type="text" style="margin-top:10px;width: 100px;;font-size:15px" id="mqttp" value="%s" %s ></input>
+        <br><br>
+ 
+        <!-- Provinicia y sector para Mqtt Topic -->
+        <label for="slot" style="color:rgb(192, 42, 42)"> Slot</label>
+        <input name="slot" type="text" style="width: 40px;" id="slot" value="%d" %s></input>
+        <label for="prov" style="color:rgb(42, 72, 192)"> Prov</label>
+        <input name="prov" type="text" style="width: 20px;" id="prov" value="%d" %s ></input>
+        <label for="cant" style="color:rgb(42, 72, 192)">Canton</label>
+        <input name="cant" type="text" style="width: 20px;" id="cant" value="%d" %s ></input>
+        <label for="parro" style="color:rgb(42, 72, 192)">Parro</label>
+        <input name="parro" type="text" style="width: 20px;" id="parro" value="%d" %s></input>
+        <label for="codp" style="color:rgb(42, 72, 192)">CodPostal</label>
+        <input name="codp" type="text" style="width: 60px;" id="copd" value="%d" %s></input>
+        <br><br>
+
+        <!-- Medter id, beats per kw and Starty kw reading -->
+        <label for="m1" style="color:rgb(192, 140, 42);margin-left:110px">MeterId</label>
+        <label for="m1" style="color:rgb(192, 140, 42);margin-left:90px">BPK</label>
+        <label for="m1" style="color:rgb(192, 140, 42);margin-left:30px">Start</label>
+        <label for="m1" style="color:rgb(192, 140, 42);margin-left:30px">kWh</label>
+        <label for="m1" style="color:rgb(192, 140, 42);margin-left:20px">Pre</label><br>
+
+       1 <input name="m1" type="text" style="width: 200px;" id="m1" value="%s" %s></input>
+        <input name="b1" type="text" style="width: 40px;" id="b1" value="%d"  %s></input>
+        <input name="s1" type="text" style="width: 60px;" id="s1" value="%d" %s></input>
+        <input name ="k1" type="text" style="width: 60px;" id="k1" value="%d" disabled></input>
+        <input name ="p1" type="text" style="width: 10px;" id="p1" value="%d" ></input>
+        <br>
+      
+        <br>
+  
+
+
+       <!-- <label for="passw" style="color:rgb(192, 42, 42);font-size:30px">Password</label> -->
+       <input name="passw" type="password" style="margin-top:10px;;width: 80px;"></input>
+       <!-- <h2 style="color:lightcoral">Ingrese Parametros</h2> -->
+       
+         <input id="button1"  type="submit" value="Guardar" formaction="/configure" style="color:white;margin-top:5px;margin-left:5px;height:40px;background-color:blue">
+         <input id="button2"  type="submit" value="Cancel" formaction="/cancel" style="color:rgb(255, 255, 255);margin-top:5px;margin-left:5px;height:40px;background-color:rgb(255, 47, 0)">
+            </form>
+        </div>
+</body>

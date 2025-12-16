@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Configure Meters</title>
+    <style>
+        body {
+            background-color: rgba(108, 109, 105, 0.95);
+            text-align: center;
+            color: white;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        input {
+            text-align:center;
+            margin-left:2px;
+        }
+    </style>
+</head>
+
+<body>
+    <div style="text-align:center">
+        <h1>Meter Building Conf
+            <img src="cher.png" width="%d">
+
+        </h1>
+        <form method="get">
+        <p style="color:red">%d</p>
+        <label for="nodeid" style="padding-top:0px;color:rgb(2, 0, 0);font-size:25px">&nbsp;NodeId&nbsp;</label>
+        <input name="nodeid" type="text" style="margin-top:10px;width: 40px;font-size:15px" id="nodeid" value="%d" %s></input>
+        <!-- <br><br> -->
+
+        <!-- Provinicia y sector para Mqtt Topic -->
+        <label for="slot" style="color:rgb(192, 42, 42);font-size:25px"> Slot</label>
+        <input name="slot" type="text" style="width: 40px;font-size:15px" id="slot" value="%d" %s></input>
+        <!-- <label for="prov" style="color:rgb(42, 72, 192)"> Prov</label>
+        <input name="prov" type="text" style="width: 20px;" id="prov" value="%d" %s ></input>
+        <label for="cant" style="color:rgb(42, 72, 192)">Canton</label>
+        <input name="cant" type="text" style="width: 20px;" id="cant" value="%d" %s ></input>
+        <label for="parro" style="color:rgb(42, 72, 192)">Parro</label>
+        <input name="parro" type="text" style="width: 20px;" id="parro" value="%d" %s></input>
+        <label for="codp" style="color:rgb(42, 72, 192)">CodPostal</label>
+        <input name="codp" type="text" style="width: 60px;" id="copd" value="%d" %s></input> -->
+        <br><br>
+
+        <!-- Medter id, beats per kw and Starty kw reading -->
+        <label for="m1" style="color:rgb(192, 140, 42);margin-left:110px">MeterId</label>
+        <label for="m1" style="color:rgb(192, 140, 42);margin-left:90px">BPK</label>
+        <label for="m1" style="color:rgb(192, 140, 42);margin-left:30px">Start</label>
+        <label for="m1" style="color:rgb(192, 140, 42);margin-left:30px">kWh</label>
+        <label for="m1" style="color:rgb(192, 140, 42);margin-left:20px">Pre</label><br>
+
+        <input name="m1" type="text" style="width: 200px;" id="m1" value="%s" %s></input>
+        <input name="b1" type="text" style="width: 40px;" id="b1" value="%d"  %s></input>
+        <input name="s1" type="text" style="width: 60px;" id="s1" value="%d" %s></input>
+        <input name ="k1" type="text" style="width: 60px;" id="k1" value="%d" disabled></input>
+        <input name ="p1" type="text" style="width: 10px;" id="p1" value="%d" ></input>
+        <br>
+      
+        <br>
+        <label for="who" style="color:rgb(192, 140, 42)">User</label>
+        <label for="passw" style="color:rgb(192, 140, 42);margin-left:50px">Password</label>
+        <br>
+        <input name ="who" type="text" style="width: 80px;" id="who" ></input>
+       <!-- <label for="passw" style="color:rgb(192, 42, 42);font-size:30px">Password</label> -->
+       <input name="passw" type="password" style="margin-top:0px;width: 80px;"></input>
+       <!-- <h2 style="color:lightcoral">Ingrese Parametros</h2> -->
+       <br><br>
+         <input id="button1"  type="submit" value="Guardar" formaction="/configure" style="color:white;margin-top:5px;margin-left:5px;height:40px;background-color:blue">
+         <input id="button2"  type="submit" value="Cancel" formaction="/cancel" style="color:rgb(255, 255, 255);margin-top:5px;margin-left:5px;height:40px;background-color:rgb(255, 47, 0)">
+            </form>
+        </div>
+</body>
+
+</html>
