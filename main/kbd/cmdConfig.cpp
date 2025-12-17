@@ -80,10 +80,11 @@ uint32_t nada;    // this is compiler error, it goes crazy if done directly like
             theConf.loglevel,theConf.downtime,ctime((time_t*)&bootdate));
   printf("MeterConf %d Mqttf %d sendMeterf %d\n",theConf.meterconf,mqttf,sendMeterf);
   printf("Guard Date %s",ctime(&guardDate));
-  printf("Securty Check: %s\n",theConf.useSec?"Yes":"No");
+  // printf("Securty Check: %s\n",theConf.useSec?"Yes":"No");
   printf("Display Active: %s\n",gdispf?"Yes":"No");
   printf("App Version: %s IDF: %s Project: %s\nCompile Date %s & %s\n",mip->version,mip->idf_ver,mip->project_name,mip->date,mip->time);
   printf("APP latest sent Version %s\n",theConf.lastVersion);
+  printf("Delay %s Login Time %d\n",theConf.delay_mesh?"Yes":"No",theConf.loginwait);
 
   printf("\n\t\t\t Production Stuff\n");
   printf("\t\t\t =============\n");
@@ -96,6 +97,7 @@ uint32_t nada;    // this is compiler error, it goes crazy if done directly like
       if((theConf.debug_flags >> dMQTT) & 1U)  printf("Mqtt ");
       if((theConf.debug_flags >> dXCMDS) & 1U) printf("Xcmds ");
       if((theConf.debug_flags >> dBLOW) & 1U)  printf("Blower ");
+      if((theConf.debug_flags >> dLOGIC) & 1U) printf("Logic ");
   printf("\n");
   
   printf("Active Profile %d Start Day %d%\n",theConf.activeProfile,theConf.dayCycle);
@@ -105,27 +107,15 @@ uint32_t nada;    // this is compiler error, it goes crazy if done directly like
   else
     printf("Waiting for Production Cycle start\n");
 
-  // printf("\n\t\t\t Backup Stuff\n");
-  // printf("\t\t\t ============\n");
-  // printf("MID:%s\tBPK:%d\tkwhStart:%d\tDate:%s",theConf.medback.mid,theConf.medback.bpk,theConf.medback.kwhstart,ctime(&theConf.medback.backdate));
-
-
   printf("\n\t\t\t Mqtt Topics\n");
   printf("\t\t\t ===========\n");
   printf("Command Topic \t\t%s\n",cmdQueue);
   printf("Info Topic \t\t%s\n",infoQueue);
-  printf("DisCon Topic \t\t%s\n",discoQueue);
-  printf("Install Topic \t\t%s\n",installQueue);
+  printf("Alarm Topic \t\t%s\n",alarmQueue);
+  // printf("Install Topic \t\t%s\n",installQueue);
   printf("Mqtt server [%s] pass [%s] user [%s]\n",theConf.mqttServer,theConf.mqttPass,theConf.mqttUser);
 
-  // printf("\n\t\t\t FRAM Stuff\n");
-  // printf("\t\t\t ============\n");
-  // printf("Lost Pulses %d\tFramWrites %d\tFramReads %d\n",theBlower.getLost_Pulses(),theBlower.getFram_Writes(),theBlower.getFram_Reads());
 
-    // printf("Slot:%d @ %02d:%02d Created:%s",theConf.mqttSlots,min,secs,ctime(&theConf.bornDate));
-
-
-  
   // is mesh active?
   if(meshf)
   {
@@ -139,15 +129,16 @@ uint32_t nada;    // this is compiler error, it goes crazy if done directly like
   esp_wifi_get_config(WIFI_IF_AP, &conf);
   printf("AP:[%s]-Pswd:[%s]\n",conf.ap.ssid,conf.ap.password);
 
-      mesh_addr_t mmeshid;
-      esp_mesh_get_id(&mmeshid);
-      printf("\n\t\t\t MESH Stuff\n");
-      printf("\t\t\t ==========\n");
-      printf("NodeType:%s MAC:" MACSTR ", MeshID<"MACSTR">\n", tipo[typ],MAC2STR(mac_base),MAC2STR(mmeshid.addr));
-      printf("Device state %s\n",esp_mesh_is_device_active?"Up":"Down");
-      printf("\n");
-      printf("\n\t\t\t Timing Stuff\n");
-      printf("\t\t\t ============\n");
+  mesh_addr_t mmeshid;
+  esp_mesh_get_id(&mmeshid);
+  printf("\n\t\t\t MESH Stuff\n");
+  printf("\t\t\t ==========\n");
+  printf("NodeType:%s MAC:" MACSTR ", MeshID<"MACSTR">\n", tipo[typ],MAC2STR(mac_base),MAC2STR(mmeshid.addr));
+  printf("Device state %s\n",esp_mesh_is_device_active?"Up":"Down");
+  printf("\n");
+  printf("\n\t\t\t Timing Stuff\n");
+  printf("\t\t\t ============\n");
+
   if(esp_mesh_is_root())
   {
     if(collectTimer)
@@ -185,21 +176,7 @@ uint32_t nada;    // this is compiler error, it goes crazy if done directly like
     // printf("Provincia:%d Canton:%d Parroquia:%d CodigoPostal:%d\n",1,theConf.canton,theConf.parroquia,theConf.codpostal);
     printf("Expected Nodes %lu Expected Conns %lu\n",theConf.totalnodes,theConf.conns);
 
-
-    // printf("\n\t\t\t\t\tBlower Info\n");
-    // printf("\t\t\t\t\t=========\n");
-    // printf("Panel Section\n");
-    // printf("==================\n");
-    // printf("PV1 Volts: %.2f PV2 Volts: %.2f PV1 Amps: %.2f PV2 Amps: %.2f Charge Current: %d\n",
-    //     theBlower.getPV1Volts(),theBlower.getPV2Volts(),theBlower.getPV1Amp(),theBlower.getPV2Amp(),theBlower.getChargeCurr());
-    // printf("Battery Section\n");
-    // printf("==================\n");
-    // printf("Battery Volts: %.2f Battery Amps: %.2f State of Charge: %d%% Battery Health: %d%% Battery Temp: %.2f C\n",
-    //     theBlower.getBatteryVolts(),theBlower.getBatteryAmps(),theBlower.getStateOfCharge(),theBlower.getBatteryHealth(),theBlower.getBatteryTemp());
-    // printf("Energy Section\n");
-    // printf("==================\n");
-    // printf("Current Power: %.2f W Total Energy Today: %.2f Wh Total Energy Lifetime: %.2f kWh\n",
-    //     theBlower.getCurrentPower(),theBlower.getTotalEnergyToday(),theBlower.getTotalEnergyLifetime());
+    print_blower("Blower",theBlower.getSolarSystem(),false);
 
     vTaskDelete(NULL);
 }

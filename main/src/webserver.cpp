@@ -181,6 +181,9 @@ void my_set_settings(struct settings *data) {
 	theConf.masternode=s_settings.master_val;
 	theConf.poolid=s_settings.pool_val;
 	theConf.unitid=s_settings.unit_val;
+	theConf.totalnodes=s_settings.nodes_val;
+	theConf.delay_mesh=s_settings.delay_val;
+
 	time(&now);
 	// save data to flash and Fram
 	theConf.meterconf=1; // configuration is done... next step (2) will send confirmation to COntroller DB and receive confirmation (state 3)
@@ -210,6 +213,7 @@ void my_set_system(struct system *data) {
 	int cual=findLevel(s_system.loglevel_val);
 	if(cual>=0)
 		theConf.loglevel=cual;
+	theConf.loginwait=s_system.logtime_val;
 	strcpy(theConf.mqttPass,s_system. mqttpass_val);
 	strcpy(theConf.mqttUser,s_system. mqttuser_val);
 	strcpy(theConf.mqttServer,s_system. mqttserver_val);

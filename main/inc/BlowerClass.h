@@ -75,7 +75,8 @@ public:
     time_t getLastUpdate();
     time_t getLifeDate();
     time_t getReservedDate();
-
+    solarSystem_t* getSolarSystem();
+    
     int initBlower();
     void deinit();
     void format();

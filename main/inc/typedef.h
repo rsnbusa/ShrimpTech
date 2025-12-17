@@ -17,7 +17,8 @@ enum {
     dBLE,
     dMQTT,
     dXCMDS,
-    dBLOW
+    dBLOW,
+    dLOGIC
 };
 
 typedef struct {
@@ -63,6 +64,7 @@ typedef struct dbg{
     struct arg_str *mqtt;            // mqtt related
     struct arg_str *xcmds;            // external cmds related
     struct arg_str *blow;            // print. blower data
+    struct arg_str *logic;            // print. blower data
     struct arg_str *all;            // all cmds on/off
     struct arg_end *end;
 } dbg_t;
@@ -171,8 +173,8 @@ typedef struct config {
     char        mqttUser[50];
     char        mqttPass[50];
     char        thessid[40], thepass[20];
-    uint32_t    totalnodes;
-    uint16_t    conns;
+    uint32_t    totalnodes;     // this gives the EXACT number of nodes in this pool
+    uint16_t    conns;          // time to wiat before sending metrics in ms
     uint16_t    repeat;
     char        kpass[20];
     time_t      lastKnownDate;
@@ -186,7 +188,8 @@ typedef struct config {
     time_t      dateProfile,dateDayCycle;
     uint8_t     blower_mode;        //0 off 1 activated for power loss cases
     uint32_t    debug_flags,test_timer_div;
-    uint8_t     work_cycle,work_day,unit_num;
+    uint8_t     work_cycle,work_day,unit_num,delay_mesh;
+    uint32_t    loginwait;
 } config_flash;
 
 typedef struct meshp{

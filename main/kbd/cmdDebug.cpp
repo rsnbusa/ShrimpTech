@@ -82,6 +82,17 @@ int cmdDebug(int argc, char **argv)
             theConf.debug_flags &= ~(1U << dBLOW);
    }
 
+   if (dbgArg.logic->count) 
+   {
+         strcpy(aca,dbgArg.logic->sval[0]);
+         for (int x=0; x<strlen(aca); x++)
+            aca[x]=toupper(aca[x]);
+         if(strcmp(aca,"ON")==0)
+            theConf.debug_flags |= (1U << dLOGIC);
+         if(strcmp(aca,"OFF")==0)
+            theConf.debug_flags &= ~(1U << dLOGIC);
+   }
+
    if (dbgArg.all->count) 
    {
          strcpy(aca,dbgArg.all->sval[0]);

@@ -70,6 +70,10 @@ int BlowerClass::initBlower()
     return ESP_OK;
 }
 
+solarSystem_t* BlowerClass::getSolarSystem()
+{
+    return &(framConfig.solarSystem);
+}
 void BlowerClass::loadBlower()
 {
     if (xSemaphoreTake(framSem, portMAX_DELAY / portTICK_PERIOD_MS))

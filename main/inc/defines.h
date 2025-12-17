@@ -171,6 +171,7 @@
 // mqtt topic names
 #define MQTTCMD                         "cmd"
 #define MQTTINFO                        "info"
+#define MQTTALARM                       "alarm"
 #define MQTTEMER                        "911"
 #define MQTTBROADCAST                   "broadcast"
 #define MQTTDISCO                       "answer"
@@ -203,6 +204,9 @@
 
 #define BLE_MODE                        (0)
 #define MESH_MODE                       (1)
+
+#define SENDMUX                         (2)
+#define LOGINTIME                       (60000)         //1 minute
 
 #define DBG_SCH						    "\e[36m[SCH]\e[0m"               //blue
 #define DBG_MESH					    "\e[35m[MESH]\e[0m"              // Magenta

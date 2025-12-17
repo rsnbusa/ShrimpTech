@@ -10,6 +10,7 @@ esp_err_t init_lcd();
 void start_schedule_timers(void *pArg);
 err_t root_mesh_broadcast_msg(char * msg);   
 void print_blower(char * title,solarSystem_t *msolar,bool dumphex);
+void send_login_msg(char * title);
 
 void nimble_test(void *parg);
 void start_schedule_timers(void *pArg);

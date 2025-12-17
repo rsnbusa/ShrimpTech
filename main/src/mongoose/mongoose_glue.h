@@ -103,13 +103,15 @@ void glue_get_profile(struct profile *);
 void glue_set_profile(struct profile *);
 
 struct settings {
+  bool delay_val;
+  int nodes_val;
+  int unit_val;
   int disable_val;
   char msg_val[60];
   char challenge_val[16];
   bool master_val;
   int pool_val;
   char mac_val[10];
-  int unit_val;
 };
 void glue_get_settings(struct settings *);
 void glue_set_settings(struct settings *);
@@ -131,7 +133,7 @@ struct system {
   char mqttuser_val[30];
   char mqttserver_val[60];
   char mqttcert_val[1900];
-  char otaurl_val[100];
+  int logtime_val;
   char ssidpass_val[16];
   char ssid_val[30];
   int meshid_val;

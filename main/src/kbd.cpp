@@ -29,6 +29,7 @@ void kbd(void *pArg)
   dbgArg.mqtt =                   arg_str0(NULL, "mqtt","on | off",  "MQTT debugging ");
   dbgArg.xcmds =                  arg_str0(NULL, "xcmds","on | off",  "MQTT cmds debugging ");
   dbgArg.blow =                   arg_str0(NULL, "blow","on | off",  "Show Blower data ");
+  dbgArg.logic =                  arg_str0(NULL, "logic","on | off",  "Show logic stuff");
   dbgArg.all =                    arg_str0(NULL, "all","on | off",  "Set/Reset all cmds ");
   dbgArg.end =                    arg_end(6);
 

@@ -1144,7 +1144,8 @@ esp_err_t send_datos_to_root()
     }
 
         print_blower("send datos root",&myNode->nodedata.solarData.solarSystem,false);
-
+    if(theConf.delay_mesh>0)
+                delay(theConf.delay_mesh*theConf.unitid*SENDMUX);       //trying to avoid congestion UNIT id *ms
     datas.data      =(uint8_t*)myNode;
     datas.size      = sizeof(meshunion_t);
     datas.proto     = MESH_PROTO_BIN;
@@ -2128,6 +2129,15 @@ void mesh_event_handler(void *arg, esp_event_base_t event_base,
             err= root_send_data_to_node(id);      //send configuration to station Node including if start schedule
             if(err!=ESP_OK) 
                 ESP_LOGE(MESH_TAG,"Send SSID Failed");
+
+            logCount++;
+            if(logCount+1>=theConf.totalnodes)
+            {
+                xTimerStop(loginTimer,0);
+                if((theConf.debug_flags >> dLOGIC) & 1U) 
+                    ESP_LOGI(TAG,"Login Timeout Done %d have %d",theConf.totalnodes-1,logCount);
+                send_login_msg("Login Ok");
+            }
         }
     }
     break;
@@ -2141,6 +2151,17 @@ void mesh_event_handler(void *arg, esp_event_base_t event_base,
             ESP_LOGI(MESH_TAG,"Disconnect while sending data. Retry");
             //timeout will manage to send whomever was available
             // this station NEVER sent the data so no RAM to free
+        }
+        if( esp_mesh_is_root())
+        {
+            logCount--;
+            if(logCount<theConf.totalnodes-1)
+                if(!xTimerIsTimerActive(loginTimer ))
+                {
+                    xTimerStart(loginTimer,0);  
+                    esp_rom_printf("Login Timer restarted\n"); 
+                }
+
         }
     }
     break;
@@ -2332,6 +2353,58 @@ void send_internal_emergency(char * msg, uint32_t err)
 
 }
 
+void send_login_msg(char * title)
+{
+    mqttSender_t        mqttMsg;
+
+    cJSON *root=cJSON_CreateObject();
+    if(root)
+    {
+        cJSON_AddStringToObject(root,"alarm",title);
+        cJSON_AddNumberToObject(root,"pool",theConf.poolid);
+        cJSON_AddNumberToObject(root,"nodes",theConf.totalnodes-1);
+        cJSON_AddNumberToObject(root,"logged",logCount);
+
+        char *intmsg=cJSON_PrintUnformatted(root);
+        if(intmsg)
+        {  
+            mqttMsg.queue=                      alarmQueue;
+            mqttMsg.msg=                        intmsg;                                // freed by mqtt sender
+            mqttMsg.lenMsg=                     strlen(intmsg);
+            mqttMsg.code=                       NULL;
+            mqttMsg.param=                      NULL;
+            if(xQueueSend(mqttSender,&mqttMsg,0)!=pdTRUE)      //will free todo 
+            {
+                ESP_LOGE(MESH_TAG,"Error queueing msg");
+                if(mqttMsg.msg)
+                    free(mqttMsg.msg);  //due to failure
+            }
+            else
+                    //must set the wifi_event_bit SEND_MQTT_BIT, else it will just collect the message in the queue
+                xEventGroupSetBits(wifi_event_group, SENDMQTT_BIT);	// Send everything now !!!!!
+
+        }
+        else
+            ESP_LOGE(MESH_TAG,"No RAM for Login Timeout");
+        
+        cJSON_Delete(root);             
+    }
+    else
+        ESP_LOGE(MESH_TAG,"No RAM for Login Timeout CJSON");
+
+}
+
+void login_timeout(TimerHandle_t timer)
+{
+    // esp_rom_printf("Loggin Timeout\n");
+    // cannot log in a isr 
+    // if((theConf.debug_flags >> dLOGIC) & 1U) 
+    //     ESP_LOGI(TAG,"Login Timeout Expected %d have %d",theConf.totalnodes-1,logCount);
+    //send a time out messsage and restart timer again
+    send_login_msg("Login Timeout");
+
+}
+
 void init_process()
 {
     esp_err_t err;
@@ -2390,6 +2463,7 @@ void init_process()
 //lots of flags
 //todo try to avoid them
 // schedule counter globals for config display
+    logCount=0; 
     pausef=schedulef=false;
     ck=ck_d=ck_h=0;
     scheduleHandle=NULL;
@@ -2423,10 +2497,11 @@ void init_process()
 //cmd and info queue names derived form the Config so do it now
     sprintf(cmdQueue,"%s/%d/%s",QUEUE,theConf.poolid,MQTTCMD);
     sprintf(infoQueue,"%s/%d/%s",QUEUE,theConf.poolid,MQTTINFO);
-    sprintf(emergencyQueue,"%s/%s",QUEUE,MQTTEMER);
-    sprintf(cmdBroadcast,"%s/%s",QUEUE,MQTTBROADCAST);
-    sprintf(discoQueue,"%s/%s",QUEUE,MQTTDISCO);
-    sprintf(installQueue,"%s/%s",QUEUE,MQTTINSTALL);
+    sprintf(alarmQueue,"%s/%d/%s",QUEUE,theConf.poolid,MQTTALARM);
+    // sprintf(emergencyQueue,"%s/%s",QUEUE,MQTTEMER);
+    // sprintf(cmdBroadcast,"%s/%s",QUEUE,MQTTBROADCAST);
+    // sprintf(discoQueue,"%s/%s",QUEUE,MQTTDISCO);
+    // sprintf(installQueue,"%s/%s",QUEUE,MQTTINSTALL);
 
 // internal mesh commands 
 
@@ -2517,6 +2592,10 @@ void init_process()
 
     sendMeterTimer=xTimerCreate("SendM",pdMS_TO_TICKS(MESHTIMEOUT),pdFALSE,NULL, []( TimerHandle_t xTimer){ xEventGroupSetBits(otherGroup,REPEAT_BIT);});    // every 10secs for now -> use lambda
     collectTimer=xTimerCreate("Timer",pdMS_TO_TICKS(permanent_time*theConf.repeat),pdFALSE,( void * ) 0, root_collect_meter_data);    //no repeat, manually start it -> to big for lambda
+    if(theConf.loginwait==0)
+        theConf.loginwait=LOGINTIME;
+    // loginTimer=xTimerCreate("Ltim",pdMS_TO_TICKS(20000),pdFALSE,( void * ) 0, login_timeout);    //no repeat, manually start it -> to big for lambda
+    loginTimer=xTimerCreate("Ltim",pdMS_TO_TICKS(theConf.loginwait),pdFALSE,( void * ) 0, login_timeout);    //no repeat, manually start it -> to big for lambda
     confirmTimer=xTimerCreate("Confirm",pdMS_TO_TICKS(CONFIRMTIMER),pdFALSE,( void * ) 0,[] (TimerHandle_t xTimer)  
 {   // lambda function
     char *cualMID;
@@ -2946,6 +3025,7 @@ void ip_event_handler(void *arg, esp_event_base_t event_base,int32_t event_id, v
             post_root();
             xTaskCreate(&root_emergencyTask,"e911",2048,NULL, 5, NULL);
             xTaskCreate(&blinkRoot,"root",1024,(void*)400, 5, &blinkHandle);
+            xTimerStart(loginTimer,0);          // start the login timer
             // sprintf(prompt,"R%s",theBlower.getMID());
             // showLVGL(prompt,10000,3);   
 

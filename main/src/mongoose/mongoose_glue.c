@@ -22,7 +22,7 @@ void glue_set_profile(struct profile *data) {
   s_profile = *data; // Sync with your device
 }
 
- struct settings s_settings = {0, "", "", false, 0, "", 0};
+ struct settings s_settings = {false, 0, 0, 0, "", "", false, 0, ""};
 void glue_get_settings(struct settings *data) {
   *data = s_settings;  // Sync with your device
 }
@@ -30,7 +30,7 @@ void glue_set_settings(struct settings *data) {
   s_settings = *data; // Sync with your device
 }
 
- struct system s_system = {0, 1000, false, "5.0.1", false, 3, 5, 25, 0, 0, "", "", "d1nJEL8K-fHyox70LqvszcSqbP71ats8", "yqsgcxzu:yqsgcxzu", "http://64.123.180.233:1883", "", "", "", "", 0, false, 400000, 10000};
+ struct system s_system = {0, 1000, false, "5.0.1", false, 3, 5, 25, 0, 0, "", "", "d1nJEL8K-fHyox70LqvszcSqbP71ats8", "yqsgcxzu:yqsgcxzu", "http://64.123.180.233:1883", "", 60000, "", "", 0, false, 400000, 10000};
 void glue_get_system(struct system *data) {
   *data = s_system;  // Sync with your device
 }

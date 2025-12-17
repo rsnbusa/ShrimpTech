@@ -27,7 +27,7 @@ const static int TIMER2_BIT 			= BIT2;
 
 EXTERN TaskHandle_t                 scheduleHandle,recoTaskHandle,mqttSendHandle,mqttMgrHandle,showHandle,configureHandle,dispHandle,oledDisp;
 EXTERN esp_aes_context		        actx ;
-EXTERN uint8_t                      vanTimersStart,vanTimersEnd,mqttErrors,ssignal,dia,hora,mes,MESH_ID[6],lastline;
+EXTERN uint8_t                      vanTimersStart,vanTimersEnd,mqttErrors,ssignal,dia,hora,mes,MESH_ID[6],lastline,logCount;
 EXTERN int16_t                      theGuard,timeSlotStart,timeSlotEnd,sentMqtt,meterCount;
 EXTERN int                          lastheap,acumheap,s_retry_num,mesh_layer,BASETIMER;
 EXTERN bool                         schedulef,pausef,donef,mqttf,meshf,webLogin,mesh_started,nakf,logof,okf,favf,framFlag,sendMeterf,
@@ -43,7 +43,7 @@ EXTERN config_flash                 theConf;
 EXTERN nvs_handle 					nvshandle,nvshandlep;
 EXTERN EventGroupHandle_t 			wifi_event_group,s_wifi_event_group,otherGroup;
 EXTERN TimerHandle_t                dispTimer,beatTimer,firstTimer,collectTimer,webTimer,sendMeterTimer,reconfTimer,recconectTimer,confirmTimer,
-                                    recoverTimer,start_timers[MAXHORARIOS],end_timers[MAXHORARIOS];
+                                    recoverTimer,start_timers[MAXHORARIOS],end_timers[MAXHORARIOS],loginTimer;
 EXTERN mesh_addr_t                  s_route_table[CONFIG_MESH_ROUTE_TABLE_SIZE];
 EXTERN int                          ck,ck_d,ck_h,s_route_table_size,counting_nodes,msgout;
 //kbd stuff
@@ -60,7 +60,7 @@ EXTERN mesh_addr_t                  mesh_parent_addr;
 EXTERN esp_ip4_addr_t               s_current_ip;       
 EXTERN httpd_handle_t 				wserver;
 EXTERN wstate_t						webState;
-EXTERN char                         gwStr[20],*tempb,iv[16],key[32],cmdQueue[60],infoQueue[60],internal_cmds[MAXINTCMDS][20],
+EXTERN char                         alarmQueue[60],gwStr[20],*tempb,iv[16],key[32],cmdQueue[60],infoQueue[60],internal_cmds[MAXINTCMDS][20],
                                     emergencyQueue[60],cmdBroadcast[60],discoQueue[60],installQueue[60],*globalDupStr;
 EXTERN mesh_addr_t                  GroupID; 
 EXTERN master_node_t                masterNode;

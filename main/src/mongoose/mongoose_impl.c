@@ -152,13 +152,15 @@ struct attribute s_profile_attributes[] = {
   {NULL, NULL, NULL, 0, 0, false}
 };
 struct attribute s_settings_attributes[] = {
+  {"delay_val", "bool", NULL, offsetof(struct settings, delay_val), 0, false},
+  {"nodes_val", "int", NULL, offsetof(struct settings, nodes_val), 0, false},
+  {"unit_val", "int", NULL, offsetof(struct settings, unit_val), 0, false},
   {"disable_val", "int", NULL, offsetof(struct settings, disable_val), 0, false},
   {"msg_val", "string", NULL, offsetof(struct settings, msg_val), 60, false},
   {"challenge_val", "string", NULL, offsetof(struct settings, challenge_val), 16, false},
   {"master_val", "bool", NULL, offsetof(struct settings, master_val), 0, false},
   {"pool_val", "int", NULL, offsetof(struct settings, pool_val), 0, false},
   {"mac_val", "string", NULL, offsetof(struct settings, mac_val), 10, false},
-  {"unit_val", "int", NULL, offsetof(struct settings, unit_val), 16, false},
   {NULL, NULL, NULL, 0, 0, false}
 };
 struct attribute s_system_attributes[] = {
@@ -178,7 +180,7 @@ struct attribute s_system_attributes[] = {
   {"mqttuser_val", "string", NULL, offsetof(struct system, mqttuser_val), 30, false},
   {"mqttserver_val", "string", NULL, offsetof(struct system, mqttserver_val), 60, false},
   {"mqttcert_val", "string", NULL, offsetof(struct system, mqttcert_val), 1900, false},
-  {"otaurl_val", "string", NULL, offsetof(struct system, otaurl_val), 100, false},
+  {"logtime_val", "int", NULL, offsetof(struct system, logtime_val), 100, false},
   {"ssidpass_val", "string", NULL, offsetof(struct system, ssidpass_val), 16, false},
   {"ssid_val", "string", NULL, offsetof(struct system, ssid_val), 30, false},
   {"meshid_val", "int", NULL, offsetof(struct system, meshid_val), 0, false},
@@ -425,9 +427,8 @@ static void do_upload(struct mg_connection *c, int ev) {
   }
 }
 
-static void handle_uploads(struct mg_connection *c, int ev, void *ev_data) {
+static void start_uploads(struct mg_connection *c, struct mg_http_message *hm) {
   struct upload_state *us = (struct upload_state *) c->data;
-  struct mg_http_message *hm = (struct mg_http_message *) ev_data;
 
   if (sizeof(*us) > sizeof(c->data)) {
     mg_error(c,
@@ -440,20 +441,19 @@ static void handle_uploads(struct mg_connection *c, int ev, void *ev_data) {
   // Catch upload requests early, without buffering whole body
   // When we receive MG_EV_HTTP_HDRS event, that means we've received all
   // HTTP headers but not necessarily full HTTP body
-  if (ev == MG_EV_HTTP_HDRS && us->marker == 0 &&
-      mg_strcmp(hm->method, mg_str("POST")) == 0) {
+  if (mg_strcmp(hm->method, mg_str("POST")) == 0) {
     struct apihandler *h = find_handler(hm);
     char path[MG_PATH_MAX];
     get_file_name_from_uri(hm->uri, path, sizeof(path));
     if (h != NULL && strcmp(h->type, "ota") == 0) {
       struct apihandler_ota *oh = (struct apihandler_ota *) h;
-      us->h = h;
-      us->marker = CONN_OTA;
       us->ctx = oh->opener(path, hm->body.len);
       if (us->ctx == NULL) {
         mg_http_reply(c, 400, JSON_HEADERS, "OTA start error\n");
         c->is_draining = 1;
       } else {
+        us->h = h;
+        us->marker = CONN_OTA;
         us->expected = hm->body.len;
         mg_iobuf_del(&c->recv, 0, hm->head.len);
         c->pfn = NULL;
@@ -633,11 +633,12 @@ static void file_ev_handler(struct mg_connection *c, int ev, void *ev_data) {
     }
     // MG_INFO(("Read %lu buytes..", len));
     s->ofs += len;
-    mg_send(c, buf, len);
     if (len == 0) {
       mg_free(s->path);
       memset(s, 0, sizeof(*s));
       c->is_draining = 1;
+    } else {
+      mg_send(c, buf, len);
     }
   } else if (ev == MG_EV_CLOSE) {
     mg_free(s->path);
@@ -688,6 +689,16 @@ void glue_update_state(void) {
   s_device_change_version++;
 }
 
+void mongoose_add_custom_handler(const char *url_pattern,
+                                 mg_event_handler_t handler) {
+  struct custom_api_handler *ch =
+      (struct custom_api_handler *) mg_calloc(1, sizeof(*ch));
+  ch->url_pattern = mg_strdup(mg_str(url_pattern));
+  ch->handler = handler;
+  ch->next = s_custom_handlers;
+  s_custom_handlers = ch;
+}
+
 struct custom_api_handler *find_custom_handler(struct mg_http_message *hm) {
   struct custom_api_handler *ch;
   for (ch = s_custom_handlers; ch != NULL; ch = ch->next) {
@@ -716,7 +727,10 @@ static void http_ev_handler(struct mg_connection *c, int ev, void *ev_data) {
   }
 
   // We're checking c->is_websocket cause WS connection use c->data
-  if (c->is_websocket == 0) handle_uploads(c, ev, ev_data);
+  if (c->is_websocket == 0 && ev == MG_EV_HTTP_HDRS && c->data[0] == 0) {
+    start_uploads(c, ev_data);
+  }
+
   if (ev == MG_EV_POLL && c->is_websocket == 0 && c->data[0] == CONN_ACTION) {
     // Check if action in progress is complete
     struct action_state *as = (struct action_state *) c->data;
@@ -1077,16 +1091,6 @@ void glue_mdns_update_name(const char *newname) {
   strncpy(s_mdns_name, newname, sizeof(s_mdns_name));
 }
 #endif  // WIZARD_ENABLE_MDNS
-
-void mongoose_add_custom_handler(const char *url_pattern,
-                                 mg_event_handler_t handler) {
-  struct custom_api_handler *ch =
-      (struct custom_api_handler *) mg_calloc(1, sizeof(*ch));
-  ch->url_pattern = mg_strdup(mg_str(url_pattern));
-  ch->handler = handler;
-  ch->next = s_custom_handlers;
-  s_custom_handlers = ch;
-}
 
 void mongoose_init(void) {
   mg_mgr_init(&g_mgr);      // Initialise event manager
