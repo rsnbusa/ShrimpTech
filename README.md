@@ -1,5 +1,9 @@
 📝  🚀🔥✨❤️💼🏠📣🧑‍💻
 
+
+# Dic 2025
+Increase freertois timer stack to 4096... causes crashes if not
+
 # Mesh Router and MQTT offline strategy
 
 Experiments done to have final conditions for online and offline consistent work

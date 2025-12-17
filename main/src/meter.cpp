@@ -2365,6 +2365,7 @@ void send_internal_emergency(char * msg, uint32_t err)
 void send_login_msg(char * title)
 {
     mqttSender_t        mqttMsg;
+    bzero(&mqttMsg,sizeof(mqttMsg));            //have to zero it for the callback and param
 
     cJSON *root=cJSON_CreateObject();
     if(root)
@@ -2373,16 +2374,15 @@ void send_login_msg(char * title)
         cJSON_AddNumberToObject(root,"pool",theConf.poolid);
         cJSON_AddNumberToObject(root,"nodes",theConf.totalnodes-1);
         cJSON_AddNumberToObject(root,"logged",logCount);
-
         char *intmsg=cJSON_PrintUnformatted(root);
         if(intmsg)
         {  
             mqttMsg.queue=                      alarmQueue;
             mqttMsg.msg=                        intmsg;                                // freed by mqtt sender
             mqttMsg.lenMsg=                     strlen(intmsg);
-            mqttMsg.code=                       NULL;
+            mqttMsg.code=                       NULL;           //explicit so as not to forget to null
             mqttMsg.param=                      NULL;
-            if(xQueueSend(mqttSender,&mqttMsg,0)!=pdTRUE)      //will free todo 
+            if(xQueueSendFromISR(mqttSender,&mqttMsg,0)!=pdTRUE)      //will free todo from isr since its called from a timer callback ISR style 
             {
                 ESP_LOGE(MESH_TAG,"Error queueing msg");
                 if(mqttMsg.msg)
@@ -2405,12 +2405,12 @@ void send_login_msg(char * title)
 
 void login_timeout(TimerHandle_t timer)
 {
-    // esp_rom_printf("Loggin Timeout\n");
-    // cannot log in a isr 
-    // if((theConf.debug_flags >> dLOGIC) & 1U) 
-    //     ESP_LOGI(TAG,"Login Timeout Expected %d have %d",theConf.totalnodes-1,logCount);
+
+    if((theConf.debug_flags >> dLOGIC) & 1U) 
+        ESP_LOGI(TAG,"Login Timeout Expected %d have %d",theConf.totalnodes-1,logCount);
     //send a time out messsage and restart timer again
     send_login_msg("Login Timeout");
+
 
 }
 
@@ -2601,12 +2601,14 @@ void init_process()
     if (theConf.repeat<1 )
         theConf.repeat=1;
 
-    sendMeterTimer=xTimerCreate("SendM",pdMS_TO_TICKS(MESHTIMEOUT),pdFALSE,NULL, []( TimerHandle_t xTimer){ xEventGroupSetBits(otherGroup,REPEAT_BIT);});    // every 10secs for now -> use lambda
+    sendMeterTimer=xTimerCreate("SendM",pdMS_TO_TICKS(MESHTIMEOUT),pdFALSE,NULL, []( TimerHandle_t xTimer)  
+                { xEventGroupSetBits(otherGroup,REPEAT_BIT);});    // every 10secs for now -> use lambda
+    
     collectTimer=xTimerCreate("Timer",pdMS_TO_TICKS(permanent_time*theConf.repeat),pdFALSE,( void * ) 0, root_collect_meter_data);    //no repeat, manually start it -> to big for lambda
     if(theConf.loginwait==0)
         theConf.loginwait=LOGINTIME;
-    // loginTimer=xTimerCreate("Ltim",pdMS_TO_TICKS(20000),pdFALSE,( void * ) 0, login_timeout);    //no repeat, manually start it -> to big for lambda
     loginTimer=xTimerCreate("Ltim",pdMS_TO_TICKS(theConf.loginwait),pdFALSE,( void * ) 0, login_timeout);    //no repeat, manually start it -> to big for lambda
+    
     confirmTimer=xTimerCreate("Confirm",pdMS_TO_TICKS(CONFIRMTIMER),pdFALSE,( void * ) 0,[] (TimerHandle_t xTimer)  
 {   // lambda function
     char *cualMID;
@@ -3036,7 +3038,8 @@ void ip_event_handler(void *arg, esp_event_base_t event_base,int32_t event_id, v
             post_root();
             xTaskCreate(&root_emergencyTask,"e911",2048,NULL, 5, NULL);
             xTaskCreate(&blinkRoot,"root",1024,(void*)400, 5, &blinkHandle);
-            // xTimerStart(loginTimer,0);          // start the login timer
+            if(theConf.totalnodes>0)
+                xTimerStart(loginTimer,0);          // start the login timer if more that 0 nodes
             // sprintf(prompt,"R%s",theBlower.getMID());
             // showLVGL(prompt,10000,3);   
 
@@ -3349,7 +3352,8 @@ void start_mesh()
     if(!theConf.masternode)
         ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_LR));
     ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_LR));
-    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
+    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+    // ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
     ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
     ESP_ERROR_CHECK(esp_wifi_start());
     if(strlen(theConf.thessid)==0)
@@ -3790,6 +3794,8 @@ ESP_LOGI(MESH_TAG,"Heap Free APP %d",esp_get_free_heap_size());
 
 printf("PV PAnel %d Battery %d Energy %d Solar System %d SolarPad %d Union %d SmpMsg %d timet %d float %d\n",sizeof(pvPanel_t),sizeof(battery_t),
 sizeof(energy_t),sizeof(solarSystem_t),sizeof(solarDef_t),sizeof(meshunion_t),sizeof(shrimpMsg_t),sizeof(time_t),sizeof(float)); 
+
+int a=PV1V;
 
 }
 #endif

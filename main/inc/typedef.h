@@ -21,6 +21,27 @@ enum {
     dLOGIC
 };
 
+typedef enum {
+PV1V=0,
+ PV2V,
+ PV1A,
+ PV2A,
+ BMSO,
+ BMSo,
+ BMCC,
+BMTEMP,
+BMCHAH,
+BMDDAH,
+BMCHKT,
+BMDDKT,
+GENEER,
+USEDEN,
+LCONLI,
+BMCHKW,
+BMDDKW,
+GENLCT
+} algo;
+
 typedef struct {
     uint8_t hourStart;
     uint32_t horarioLen;
