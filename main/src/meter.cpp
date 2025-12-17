@@ -2463,6 +2463,8 @@ void init_process()
 //lots of flags
 //todo try to avoid them
 // schedule counter globals for config display
+    mesh_init_done=false;
+    mesh_on=false;
     logCount=0; 
     pausef=schedulef=false;
     ck=ck_d=ck_h=0;
@@ -3178,6 +3180,148 @@ void meter_configure()
     }
 }
 
+esp_err_t mesh_enable(void) {
+
+    
+  esp_err_t err = ESP_OK;
+    char            missid[30],mipassw[18];
+mesh_addr_t mesh_self_addr;
+esp_rom_printf("Start Mesh\n");
+        if(strlen(theConf.thessid)==0)
+    {
+        strcpy(missid,DEFAULT_MESH_SSID);
+        strcpy(mipassw,DEFAULT_MESH_PASSW); //8 chars at least
+        strcpy(theConf.thessid,DEFAULT_MESH_SSID);
+        strcpy(theConf.thepass,DEFAULT_MESH_PASSW);
+        write_to_flash();
+    }
+    else
+    {
+        strcpy(missid,theConf.thessid);
+        strcpy(mipassw,theConf.thepass);
+    }
+esp_rom_printf("SSID [%s] len %d Pass [%s] len %d\n",missid,strlen(missid),mipassw,strlen(mipassw));
+theConf.masternode=true;
+  if (!mesh_on) {
+    if (mesh_init_done == false) {
+      ESP_LOGW(MESH_TAG, "Initializing mesh network");
+    } else {
+      ESP_LOGW(MESH_TAG, "Enabling mesh network");
+    }
+    if (mesh_init_done == false) {
+    //   disableCore0WDT();
+      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_init());
+      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_event_loop_create_default());
+      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_create_default_wifi_mesh_netifs(NULL, NULL));
+      wifi_init_config_t config = WIFI_INIT_CONFIG_DEFAULT();
+      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_init(&config));
+      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &ip_event_handler, NULL));
+      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_mode(WIFI_MODE_APSTA));
+      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_ps(WIFI_PS_NONE));
+    }
+    // ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_country(&wifi_country));
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_LR));
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_LR));
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_start());
+    uint8_t i = 72;
+    while (esp_wifi_set_max_tx_power(i) == ESP_OK) {
+      i++;
+    }
+
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_init());
+    if (theConf.masternode) {
+      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_set_type(MESH_ROOT));
+    } else {
+      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_fix_root(true));
+      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_set_group_id(&GroupID, 1));
+    }
+    if (mesh_init_done == false) {
+      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_event_handler_register(MESH_EVENT, ESP_EVENT_ANY_ID, &mesh_event_handler, NULL));
+    }
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_set_topology(MESH_TOPO_CHAIN));
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_set_max_layer(10));
+    // ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_set_max_layer(mesh_settings.max_layer));
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_set_vote_percentage(1));
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_set_xon_qsize(16));
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_disable_ps());
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_set_ap_assoc_expire(10));
+    mesh_cfg_t cfg = MESH_INIT_CONFIG_DEFAULT();
+    // memcpy((uint8_t *)&cfg.mesh_id, mesh_settings.id, 6);
+        memcpy((uint8_t *) &cfg.mesh_id, MESH_ID, 6);       //was setup in init_vars
+
+    cfg.channel = 0;
+    // cfg.channel = mesh_settings.channel;
+    cfg.allow_channel_switch = true;
+    ESP_ERROR_CHECK(esp_mesh_set_ap_authmode((wifi_auth_mode_t)CONFIG_MESH_AP_AUTHMODE));
+    // ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_set_ap_authmode(mesh_settings.auth_mode));
+
+    // esp_mesh_set_ie_crypto_key(mesh_settings.crypt_key, strlen(mesh_settings.crypt_key));
+    cfg.mesh_ap.max_connection = 10;
+    // cfg.mesh_ap.max_connection = mesh_settings.max_conn;
+    // memcpy((uint8_t *)&cfg.mesh_ap.password, mesh_settings.ap_pass, strlen(mesh_settings.ap_pass));
+
+        cfg.router.ssid_len =strlen( missid);
+    memcpy((uint8_t *) &cfg.router.ssid, missid, cfg.router.ssid_len);
+    memcpy((uint8_t *) &cfg.router.password, mipassw,strlen(mipassw));
+        memcpy((uint8_t *)&cfg.mesh_ap.password, mipassw, strlen(mipassw));
+
+
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_set_config(&cfg));
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_start());
+    if (mesh_init_done == false) {
+    //   xTaskCreate(&get_message, "get_message", 9216, NULL, 5, &get_message_handle);
+      ESP_LOGI(MESH_TAG, "Created mesh receive task");
+    //   enableCore0WDT();
+      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_read_mac(mesh_self_addr.addr,(esp_mac_type_t) 0));
+    } else {
+    //   ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_comm_p2p_start());
+    }
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_set_self_organized(true, false));
+    mesh_on = true;
+    if (mesh_init_done == false) {
+      if (esp_mesh_is_root()) {
+        // memcpy(&mesh_root_addr, &mesh_self_addr, sizeof(mesh_addr_t));
+        // memcpy(&node_status[0].address, &mesh_self_addr, sizeof(mesh_addr_t));
+        // node_status[0].exists = true;
+        // node_status[0].connected = true;
+        // node_status[0].current_version = SOFTWARE_VERSION;
+        // node_status[0].uptime = (uint32_t)(esp_timer_get_time() / 1000000ULL);
+        // node_status[0].mesh_layer = esp_mesh_get_layer();
+      }
+      mesh_init_done = true;
+    }
+    uint8_t wifi_protocol_ap;
+    uint8_t wifi_protocol_sta;
+    esp_wifi_get_protocol(WIFI_IF_AP, &wifi_protocol_ap);
+    esp_wifi_get_protocol(WIFI_IF_STA, &wifi_protocol_sta);
+    mesh_addr_t id;
+    esp_mesh_get_id(&id);
+    int8_t max_tx_power;
+    esp_wifi_get_max_tx_power(&max_tx_power);
+
+    ESP_LOGI(MESH_TAG, "Mesh starts successfully");
+    ESP_LOGI(MESH_TAG, "Mesh type:                                  %s", (esp_mesh_is_root()) ? "Root" : "Node");
+    ESP_LOGI(MESH_TAG, "Mesh ID:                       " MACSTR "", MAC2STR(id.addr));
+    ESP_LOGI(MESH_TAG, "Station MAC:                   " MACSTR "", MAC2STR(mesh_self_addr.addr));
+    ESP_LOGI(MESH_TAG, "Channel:                                       %d", cfg.channel);
+    ESP_LOGI(MESH_TAG, "Max. connected stations:                       %d", cfg.mesh_ap.max_connection);
+    ESP_LOGI(MESH_TAG, "STA protocol:                         %s%s%s%s", (wifi_protocol_sta == 1) ? "802.11b" : "", (wifi_protocol_sta == 2) ? "802.11g" : "", (wifi_protocol_sta == 4) ? "802.11n" : "", (wifi_protocol_sta == 8) ? "Long Range" : "");
+    ESP_LOGI(MESH_TAG, "AP protocol:                          %s%s%s%s", (wifi_protocol_ap == 1) ? "802.11b" : "", (wifi_protocol_ap == 2) ? "802.11g" : "", (wifi_protocol_ap == 4) ? "802.11n" : "", (wifi_protocol_ap == 8) ? "Long Range" : "");
+    ESP_LOGI(MESH_TAG, "Max. layer:                                  %d", esp_mesh_get_max_layer());
+    ESP_LOGI(MESH_TAG, "Topology:                                  %s", (esp_mesh_get_topology()) ? "Chain" : "Tree");
+    ESP_LOGI(MESH_TAG, "Root fixed:                                  %s", (esp_mesh_is_root_fixed()) ? "Yes" : "No");
+    ESP_LOGI(MESH_TAG, "Power save enabled:                           %s", (esp_mesh_is_ps_enabled()) ? "Yes" : "No");
+    ESP_LOGI(MESH_TAG, "Max. TX power:                          %.1f dBm", (float)max_tx_power * 0.25);
+    ESP_LOGI(MESH_TAG, "Free heap:                                 %d", esp_get_free_heap_size());
+    // ESP_LOGI(MESH_TAG, "MF ID:      %s", basic_settings.mf_id);
+    // ESP_LOGI(MESH_TAG, "MF key:     %s", basic_settings.mf_key);
+    // ESP_LOGI(MESH_TAG, "MF chan:    %s", basic_settings.mf_channel);
+  } else {
+    ESP_LOGW(MESH_TAG, "Mesh network already enabled!");
+  }
+  return err;
+}
 
 void start_mesh()
 {
@@ -3193,6 +3337,8 @@ void start_mesh()
     ESP_ERROR_CHECK(esp_wifi_init(&configg));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &ip_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT,IP_EVENT_STA_LOST_IP, &ip_event_handler, NULL));
+    // ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_LR));
+    // ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_LR));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
     ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
     ESP_ERROR_CHECK(esp_wifi_start());
@@ -3223,7 +3369,7 @@ void start_mesh()
     memcpy((uint8_t *) &cfg.mesh_id, MESH_ID, 6);       //was setup in init_vars
 esp_log_buffer_hex("MESHID",&cfg.mesh_id,6);
 
-    cfg.channel = 0;        //has to be 0 NO IDEA WHY
+    cfg.channel = 0;        //has to be 0 NO IDEA WHY -> all have to have the same Channel
     
     //Router credentials STA
     cfg.router.ssid_len =strlen( missid);
@@ -3624,7 +3770,7 @@ void app_main(void)
 // the internal mesh is now going to start and begin all the main flow from its gotIp event manager
     showLVGL((char*)"MESH",10000,3);   
     start_mesh();
-    
+    // mesh_enable();
 // schedule timer will be started or not by sntp if root or when child connected by mesh if it was active and crash/power down
     
 ESP_LOGI(MESH_TAG,"Heap Free APP %d",esp_get_free_heap_size());

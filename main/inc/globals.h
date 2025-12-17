@@ -31,7 +31,7 @@ EXTERN uint8_t                      vanTimersStart,vanTimersEnd,mqttErrors,ssign
 EXTERN int16_t                      theGuard,timeSlotStart,timeSlotEnd,sentMqtt,meterCount;
 EXTERN int                          lastheap,acumheap,s_retry_num,mesh_layer,BASETIMER;
 EXTERN bool                         schedulef,pausef,donef,mqttf,meshf,webLogin,mesh_started,nakf,logof,okf,favf,framFlag,sendMeterf,
-                                    medidorlock,hostflag,loadedf,firstheap,loginf,gdispf,wifiready;
+                                    medidorlock,hostflag,loadedf,firstheap,loginf,gdispf,wifiready,mesh_init_done,mesh_on;
 EXTERN SemaphoreHandle_t 		    recoSem,flashSem,tableSem,scheduleSem,workTaskSem;
 EXTERN framArgs_t                   framArg;
 EXTERN dbg_t                        dbgArg;
