@@ -250,13 +250,13 @@ int get_routing_table()
         // taskEXIT_CRITICAL( &xTimerLock );
 
         counting_nodes=masterNode.existing_nodes;  //copy for counting purposes
-        for (int a=0;a<counting_nodes;a++) 
-        {
-            masterNode.theTable.thedata[a]=NULL;       //no data yet
-            masterNode.theTable.sendit[a]=true;        //default send it
-            masterNode.theTable.skipcounter[a]=0;      
-            masterNode.theTable.lastkwh[a]=0;
-        }
+        // for (int a=0;a<counting_nodes;a++) 
+        // {
+        //     masterNode.theTable.thedata[a]=NULL;       //no data yet
+        //     masterNode.theTable.sendit[a]=true;        //default send it
+        //     masterNode.theTable.skipcounter[a]=0;      
+        //     masterNode.theTable.lastkwh[a]=0;
+        // }
         time_t  now;
         theBlower.setStatsLastNodeCount(masterNode.existing_nodes);
         time(&now);
@@ -906,11 +906,15 @@ esp_err_t root_check_incoming_meters(mesh_addr_t *who, void* ladata)
     if(root_load_routing_table_mac(who,ladata)==ESP_OK)      //save messages in our masternode table
     {
         counting_nodes--;
+
         if(counting_nodes==0)                           //when we reach existing node count, start sending process
         {
             //stop watchdog timer
-            if( xTimerStop(sendMeterTimer, 0 ) != pdPASS )
-                ESP_LOGE(MESH_TAG,"Failed to stop SendMeter Timer mqtt_published nodes");
+            // if(xTimerIsTimerActive(sendMeterTimer))
+            // {
+                if( xTimerStop(sendMeterTimer, 0 ) != pdPASS )
+                    ESP_LOGE(MESH_TAG,"Failed to stop SendMeter Timer");
+            // }
             // printf("Sending data \n");
             err= root_send_collected_nodes(masterNode.existing_nodes);        //all existing nodes
             if(err)
@@ -950,9 +954,9 @@ void root_timer(void *parg)
             else
                 sendMeterf=false;       //reset flag on error
         }
-
-        if( xTimerStart(collectTimer, 0 ) != pdPASS )
-            ESP_LOGE(MESH_TAG,"Repeat Timer mqtt saender failed");
+        // if(!xTimerIsTimerActive(collectTimer))
+            if( xTimerStart(collectTimer, 0 ) != pdPASS )
+                ESP_LOGE(MESH_TAG,"Repeat Timer mqtt saender failed");
     }
 }
 
@@ -997,8 +1001,12 @@ void root_collect_meter_data(TimerHandle_t algo)
         }
         sendMeterf=true;            //now in sendmeter mode so start timer on this message to nodes
    // changed timer here IMPORTANT
-        if( xTimerStart(sendMeterTimer, 0 ) != pdPASS )         // mesh rx timer
-            ESP_LOGE(MESH_TAG,"SendMeter Timer failed");
+        // if(!xTimerIsTimerActive(sendMeterTimer))
+        // {
+            // esp_rom_printf("First sendtimer\n");
+            if( xTimerStart(sendMeterTimer, 0 ) != pdPASS )         // mesh rx timer
+                ESP_LOGE(MESH_TAG,"SendMeter Timer failed");
+        // }
         intMessage->cmd=MESH_INT_DATA_CJSON;
         strcpy(intMessage->parajson,"{\"cmd\":\"sendmetrics\"}");      //cJSON is long /elaborate for this simple message
         data.data   =(uint8_t*)intMessage;
@@ -1691,9 +1699,9 @@ void root_reconnectTask(void *pArg)
     mqttSender_t        mensaje;
     int retry=0;
     // in case timers are active
-    if(xTimerIsTimerActive(collectTimer))
+    // if(xTimerIsTimerActive(collectTimer))
         xTimerStop(collectTimer, 0 );
-if(xTimerIsTimerActive(sendMeterTimer))
+// if(xTimerIsTimerActive(sendMeterTimer))
     xTimerStop(sendMeterTimer, 0 );
     //kill MQTT Tasks
     if(mqttMgrHandle)
@@ -2133,7 +2141,8 @@ void mesh_event_handler(void *arg, esp_event_base_t event_base,
             logCount++;
             if(logCount+1>=theConf.totalnodes)
             {
-                xTimerStop(loginTimer,0);
+                // if(xTimerIsTimerActive(loginTimer))
+                    xTimerStop(loginTimer,0);
                 if((theConf.debug_flags >> dLOGIC) & 1U) 
                     ESP_LOGI(TAG,"Login Timeout Done %d have %d",theConf.totalnodes-1,logCount);
                 send_login_msg("Login Ok");
@@ -2156,11 +2165,11 @@ void mesh_event_handler(void *arg, esp_event_base_t event_base,
         {
             logCount--;
             if(logCount<theConf.totalnodes-1)
-                if(!xTimerIsTimerActive(loginTimer ))
-                {
+                // if(!xTimerIsTimerActive(loginTimer ))
+                // {
                     xTimerStart(loginTimer,0);  
                     esp_rom_printf("Login Timer restarted\n"); 
-                }
+                // }
 
         }
     }
@@ -2624,7 +2633,7 @@ void init_process()
                 ESP_LOGE(MESH_TAG,"No RAM for Confirm timeout");
 });
 
-    beatTimer=xTimerCreate("beats",pdMS_TO_TICKS(BEATTIMER),pdFALSE,( void * ) 0, [] (TimerHandle_t xTimer){theBlower.saveBlower();});    //lambda no repeat, manually start it -> use lambda
+    // beatTimer=xTimerCreate("beats",pdMS_TO_TICKS(BEATTIMER),pdFALSE,( void * ) 0, [] (TimerHandle_t xTimer){theBlower.saveBlower();});    //lambda no repeat, manually start it -> use lambda
 
 
 
@@ -3027,7 +3036,7 @@ void ip_event_handler(void *arg, esp_event_base_t event_base,int32_t event_id, v
             post_root();
             xTaskCreate(&root_emergencyTask,"e911",2048,NULL, 5, NULL);
             xTaskCreate(&blinkRoot,"root",1024,(void*)400, 5, &blinkHandle);
-            xTimerStart(loginTimer,0);          // start the login timer
+            // xTimerStart(loginTimer,0);          // start the login timer
             // sprintf(prompt,"R%s",theBlower.getMID());
             // showLVGL(prompt,10000,3);   
 
@@ -3201,7 +3210,7 @@ esp_rom_printf("Start Mesh\n");
         strcpy(mipassw,theConf.thepass);
     }
 esp_rom_printf("SSID [%s] len %d Pass [%s] len %d\n",missid,strlen(missid),mipassw,strlen(mipassw));
-theConf.masternode=true;
+// theConf.masternode=true;
   if (!mesh_on) {
     if (mesh_init_done == false) {
       ESP_LOGW(MESH_TAG, "Initializing mesh network");
@@ -3337,8 +3346,9 @@ void start_mesh()
     ESP_ERROR_CHECK(esp_wifi_init(&configg));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &ip_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT,IP_EVENT_STA_LOST_IP, &ip_event_handler, NULL));
-    // ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_LR));
-    // ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_LR));
+    if(!theConf.masternode)
+        ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_LR));
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_LR));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
     ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
     ESP_ERROR_CHECK(esp_wifi_start());
@@ -3770,6 +3780,7 @@ void app_main(void)
 // the internal mesh is now going to start and begin all the main flow from its gotIp event manager
     showLVGL((char*)"MESH",10000,3);   
     start_mesh();
+    theConf.loginwait=20000;
     // mesh_enable();
 // schedule timer will be started or not by sntp if root or when child connected by mesh if it was active and crash/power down
     
