@@ -22,25 +22,28 @@ enum {
 };
 
 typedef enum {
-PV1V=0,
- PV2V,
- PV1A,
- PV2A,
- BMSO,
- BMSo,
- BMCC,
-BMTEMP,
-BMCHAH,
-BMDDAH,
-BMCHKT,
-BMDDKT,
-GENEER,
-USEDEN,
-LCONLI,
-BMCHKW,
+AHUM,
+ATEMP,
+WTEMP,
+LIMITPH,
+LIMITDO,
+GENLCT,
 BMDDKW,
-GENLCT
-} algo;
+BMCHKW,
+LCONLI,
+USEDEN,
+GENEER,
+BMDDKT,
+BMCHKT,
+BMDDAH,
+BMCHAH,
+BMTEMP,
+BMCC,
+BMSOH,
+BMSOC,
+PV1A,
+PV1V
+} limits_enum;
 
 typedef struct {
     uint8_t hourStart;

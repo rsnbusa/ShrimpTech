@@ -5,6 +5,14 @@
 // Default mock implementation of the API callbacks
 
 #include "mongoose_glue.h"
+ struct limits s_limits = {90, 50, 32, 19, 31, 19, 70, 50, 70, 40, 42, 40, 42, 40, 42, 40, 42, 40, 42, 40, 42, 40, 820, 720, 850, 720, 820, 720, 820, 780, 50, 10, 5000, 0, 100, 20, 80, 20, 15, 14, 390, 340};
+void glue_get_limits(struct limits *data) {
+  *data = s_limits;  // Sync with your device
+}
+void glue_set_limits(struct limits *data) {
+  s_limits = *data; // Sync with your device
+}
+
  uint64_t s_action_timeout_saveProfile;  // Time when saveProfile ends
 bool glue_check_saveProfile(void) {
   return s_action_timeout_saveProfile > mg_now(); // Return true if saveProfile is in progress
@@ -44,39 +52,4 @@ void glue_get_sysset(struct sysset *data) {
 }
 void glue_set_sysset(struct sysset *data) {
   s_sysset = *data; // Sync with your device
-}
-
- struct meter s_meter = {"", 0, 0, 0, 0};
-void glue_get_meter(struct meter *data) {
-  *data = s_meter;  // Sync with your device
-}
-void glue_set_meter(struct meter *data) {
-  s_meter = *data; // Sync with your device
-}
-
- uint64_t s_action_timeout_Done;  // Time when Done ends
-bool glue_check_Done(void) {
-  return s_action_timeout_Done > mg_now(); // Return true if Done is in progress
-}
-void glue_start_Done(struct mg_str params) {
-  MG_DEBUG(("Passed parameters: [%.*s]", params.len, params.buf));
-  s_action_timeout_Done = mg_now() + 1000; // Start Done, finish after 1 second
-}
-
- uint64_t s_action_timeout_SaveSettings;  // Time when SaveSettings ends
-bool glue_check_SaveSettings(void) {
-  return s_action_timeout_SaveSettings > mg_now(); // Return true if SaveSettings is in progress
-}
-void glue_start_SaveSettings(struct mg_str params) {
-  MG_DEBUG(("Passed parameters: [%.*s]", params.len, params.buf));
-  s_action_timeout_SaveSettings = mg_now() + 1000; // Start SaveSettings, finish after 1 second
-}
-
- uint64_t s_action_timeout_SaveConfig;  // Time when SaveConfig ends
-bool glue_check_SaveConfig(void) {
-  return s_action_timeout_SaveConfig > mg_now(); // Return true if SaveConfig is in progress
-}
-void glue_start_SaveConfig(struct mg_str params) {
-  MG_DEBUG(("Passed parameters: [%.*s]", params.len, params.buf));
-  s_action_timeout_SaveConfig = mg_now() + 1000; // Start SaveConfig, finish after 1 second
 }

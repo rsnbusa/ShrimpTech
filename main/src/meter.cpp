@@ -3742,12 +3742,18 @@ void app_main(void)
         free(msg);
     }
 
-    theBlower.initBlower();        //load the blower driver
+    theBlower.initBlower();        //load the blower driver 
+
 //keyboard commands
 
 #ifdef DEBB
     xTaskCreate(&kbd,"kbd",1024*10,NULL, 5, NULL); 	        // keyboard commands
 #endif
+
+
+
+printf("PV PAnel %d Battery %d Energy %d Solar System %d SolarPad %d Union %d SmpMsg %d timet %d float %d\n",sizeof(pvPanel_t),sizeof(battery_t),
+sizeof(energy_t),sizeof(solarSystem_t),sizeof(solarDef_t),sizeof(meshunion_t),sizeof(shrimpMsg_t),sizeof(time_t),sizeof(float)); 
 
     if(theConf.meterconf==0  )  // is this meter NOT configured
     {
@@ -3756,6 +3762,8 @@ void app_main(void)
         ESP_LOGW(MESH_TAG,"Formatting Fram new configuration");
         theBlower.deinit();
         theBlower.format();
+        int monton[21][2]={{90, 50}, {32, 19}, {31, 19}, {70, 50}, {70, 40}, {42, 40}, {42, 40}, {42, 40}, {42, 40}, {42, 40}, {42, 40}, {820, 720}, {850, 720}, {820, 720}, {820, 780}, {50, 10}, {5000, 0}, {100, 20}, {80, 20}, {15, 14}, {390, 340}};
+        theBlower.setLimits((void*)&monton);
         xTaskCreate(&blinkConf,"displ",1024,(void*)800, 5, &configureHandle); 	        //blink we are not configured
         reconfTimer=xTimerCreate("Reconf",pdMS_TO_TICKS(300000),pdFALSE,( void * ) 0, [] ( TimerHandle_t xTimer){esp_restart();});   //monitor activity and timeout if no work done-> use lambda
         meter_configure();      //start the STA for access to Router directly.
@@ -3763,6 +3771,8 @@ void app_main(void)
         theConf.meterconf=1;
         write_to_flash();
     }
+
+
     if(theConf.meterconf>2)
     {
         // allow for meter configuration without without erasing meter data
@@ -3791,9 +3801,6 @@ void app_main(void)
 ESP_LOGI(MESH_TAG,"Heap Free APP %d",esp_get_free_heap_size());
 // if system has resetted and restarting, the sntpget routine will be in charge of starting the schedule timer again
 // the mesh connecting child will be order to start also if theConf.blower_mode=1; This is set to 0 when Cycle done see start shcedule timer
-
-printf("PV PAnel %d Battery %d Energy %d Solar System %d SolarPad %d Union %d SmpMsg %d timet %d float %d\n",sizeof(pvPanel_t),sizeof(battery_t),
-sizeof(energy_t),sizeof(solarSystem_t),sizeof(solarDef_t),sizeof(meshunion_t),sizeof(shrimpMsg_t),sizeof(time_t),sizeof(float)); 
 
 }
 #endif

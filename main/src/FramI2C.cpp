@@ -264,6 +264,7 @@ int FramI2C::write_Blower(uint8_t *mBlower,uint16_t len)
 	ret=write_bytes(badd,mBlower,len);
 	if(ret!=ESP_OK)
 		ESP_LOGE(MESH_TAG,"I2C write Blower err %x",ret);
+	// esp_rom_printf("Fram write add %x pointer %p len %d\n",badd,mBlower,len);
 	return ret;
 }
 

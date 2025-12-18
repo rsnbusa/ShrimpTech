@@ -22,6 +22,7 @@ extern struct system s_system;
 extern struct sysset s_sysset;
 extern struct meter s_meter;
 extern struct profile s_profile;
+extern struct limits s_limits;
 extern uint64_t s_action_timeout_Done;  // Time when Done starts
 
 extern int aes_encrypt(const char* src, size_t son, char *dst,const char *cualKey);
@@ -76,57 +77,6 @@ int como=memcmp((void*)aca,(void*)&challenge,4);
 
 }
 
-// void save_inst_msg(char *mid, int bpk,int kwhstart,char *who)
-// {
-// 	time_t	ts;
-// 	uint8_t     thismac[6];
-// 	uint32_t imac;
-
-
-// 	time(&ts);
-
-//     esp_base_mac_addr_get((uint8_t*)thismac);
-// 	memcpy(&imac,&thismac[2],4);;
-
-//     cJSON *local_root=cJSON_CreateObject();
-//     if(local_root==NULL)
-//     {
-//         printf("cannot create root installmsg\n");
-//         return;
-//     }
-
-// 	cJSON_AddStringToObject(local_root,"cmd","install");
-// 	cJSON_AddStringToObject(local_root,"mid",mid);
-//     cJSON_AddNumberToObject(local_root,"mac",imac);
-//     cJSON_AddNumberToObject(local_root,"bpk",bpk);
-//     cJSON_AddNumberToObject(local_root,"kwhs",kwhstart);
-//     cJSON_AddNumberToObject(local_root,"nodeid",theConf.poolid);
-//     cJSON_AddNumberToObject(local_root,"subnode",theConf.subnode);
-//     cJSON_AddNumberToObject(local_root,"prov",1);
-//     // cJSON_AddNumberToObject(local_root,"prov",theConf.provincia);
-//     // cJSON_AddNumberToObject(local_root,"cant",theConf.canton);
-//     // cJSON_AddNumberToObject(local_root,"parro",theConf.parroquia);
-//     // cJSON_AddNumberToObject(local_root,"cp",theConf.codpostal);
-// 	cJSON_AddStringToObject(local_root,"who",who);
-// 	cJSON_AddNumberToObject(local_root,"forced",0);
-//     cJSON_AddNumberToObject(local_root,"ts",(uint32_t)ts);
-// 	char *lmessage=cJSON_PrintUnformatted(local_root);
-// 	if(lmessage)
-// 	{
-// 		bzero(theConf.instMsg,sizeof(theConf.instMsg));
-// 		strcpy(theConf.instMsg,lmessage);
-// 		theConf.instMsglen=strlen(lmessage);
-// 		// printf("Inst message [%s] %d\n",theConf.instMsg,theConf.instMsglen);
-// 		write_to_flash();
-// 		free(lmessage);
-// 	}
-// 	else
-// 		ESP_LOGE(MESH_TAG,"No RAM for cjson installmsg");
-
-// 	cJSON_Delete(local_root);
-
-// }
-  
 void my_get_settings(struct settings *data) {
 
 	//only 2 parameters, the cid (used for the challenge) and set disaabled if lifekwh in fram is > 0 but somehow got here
@@ -229,7 +179,7 @@ void my_set_system(struct system *data) {
 	if(theConf.meterconf==3)
 		theConf.meterconf=2;
 	write_to_flash();
-	xTimerReset(webTimer,0);
+	// xTimerReset(webTimer,0);
 }
 
 void my_get_system(struct system *data) 
@@ -264,7 +214,7 @@ void my_get_system(struct system *data)
 	s_system.mqttreco_val=theConf.mqttDiscoRetry;
 
 	*data = s_system;
-	xTimerReset(webTimer,0);
+	// xTimerReset(webTimer,0);
 
 }
 
@@ -302,32 +252,6 @@ void my_get_sysset(struct sysset *data) 		// get data for general configuration 
 
 void my_set_sysset(struct sysset *data) // there is no setting in this menu option
 {
-}
-
-void my_get_meter(struct meter *data) 	// get data form current meter
-{
-	// strcpy(s_meter.mid_var,theBlower.getMID());
-	// s_meter.bpk_var=theBlower.getBPK();
-	// s_meter.kwh_var=theBlower.getLkwh();
-	// s_meter.beats_var=theBlower.getBeats();
-	// s_meter.maxamps_var=theBlower.getMaxamp();
-	*data=s_meter;
-}
-
-void my_set_meter(struct meter *data) 
-{
-}
-
-bool my_check_Done(void) {
-  return s_action_timeout_Done > mg_now(); // Return true if Done is in progress
-}
-
-void my_start_Done(struct mg_str params) {		//Done button pressed,
-	s_action_timeout_Done = mg_now() + 1000; // Start Done, finish after 1 second
-	// if(strlen(theBlower.getMID())!=0)		// if meter already configured then return to configured state (2)
-	// 	theConf.meterconf=2;
-	write_to_flash();
-	esp_restart();
 }
 
 void show_profiles()
@@ -571,6 +495,31 @@ void my_get_profile(struct profile *data)
 	*data=s_profile;
 }
 
+void my_set_limits(struct limits *data) // save limits from web to theblower
+{
+	int local[21][2];
+
+		// void * aca=theBlower.getLimits();
+		// memcpy(aca,data,sizeof(struct limits));
+	//	memcpy(local,data,sizeof(struct limits));
+	// for (int a=0;a<21;a++)
+	// 	printf("Pos[%d] Min %d Max %d\n",a,local[a][0],local[a][1]);
+		theBlower.setLimits((void*)data);
+	// 	memcpy(local,theBlower.getLimits(),sizeof(struct limits));
+	// for (int a=0;a<21;a++)
+	// 	printf("Web rePos[%d] Min %d Max %d\n",a,local[a][0],local[a][1]);
+}
+
+
+void my_get_limits(struct limits *data) // return limits saved in theblower
+{
+	// int local[21][2];
+	// memcpy(&local,theBlower.getLimits(),sizeof(local));
+	// for (int a=0;a<21;a++)
+	// 	printf("Web Get[%d] min %d max %d\n",a,local[a][0],local[a][1]);
+ 	// data=(struct limits*)theBlower.getLimits();
+	memcpy(data,theBlower.getLimits(),sizeof(struct limits));
+}
 
 void app_spiffs(void)
 {
@@ -645,17 +594,16 @@ void start_webserver(void *pArg)
   	mongoose_set_http_handlers("settings", my_get_settings, my_set_settings);		// when virgin chip or first run
   	mongoose_set_http_handlers("system", my_get_system ,my_set_system);				// additonal system settings
   	mongoose_set_http_handlers("sysset", my_get_sysset ,my_set_sysset);				// general data just for information not mutable
-  	mongoose_set_http_handlers("meter", my_get_meter ,my_set_meter);				// working meter data
   	mongoose_set_http_handlers("profile", my_get_profile ,my_set_profile);				// working meter data
-  	mongoose_set_http_handlers("Done", my_check_Done ,my_start_Done);				// used to restart chip and return to normal operation
+  	mongoose_set_http_handlers("limits", my_get_limits ,my_set_limits);				// working meter data
 	//web timeout if not done in 2 minutes restart
-	webTimer=xTimerCreate("restart",pdMS_TO_TICKS(120000),pdFALSE,( void * ) 0, [] ( TimerHandle_t xTimer){	
-		// if(strlen(theBlower.getMID())!=0)		// if meter already configured then return to configu4red state (2)
-		// 	theConf.meterconf=2;
-	write_to_flash();
-	esp_restart();});   
+	// webTimer=xTimerCreate("restart",pdMS_TO_TICKS(120000),pdFALSE,( void * ) 0, [] ( TimerHandle_t xTimer){	
+	// 	// if(strlen(theBlower.getMID())!=0)		// if meter already configured then return to configu4red state (2)
+	// 	// 	theConf.meterconf=2;
+	// write_to_flash();
+	// esp_restart();});   
 // start the meter now
-	xTimerStart(webTimer,0);
+	// xTimerStart(webTimer,0);
 
 	for (;;) {
     mongoose_poll();

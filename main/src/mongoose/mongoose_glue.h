@@ -93,6 +93,53 @@ void glue_update_state(void);
 
 // Firmware Glue
 
+struct limits {
+  int hummax;
+  int hummin;
+  int atempmax;
+  int atempmin;
+  int wtempmax;
+  int wtempmin;
+  int phmax;
+  int phmin;
+  int domax;
+  int domin;
+  int kwchoymax;
+  int kwchoymin;
+  int kwbatdhoymax;
+  int kwbatdhoymin;
+  int kwbatchoymax;
+  int kwbatchoymin;
+  int kwloadhoymax;
+  int kwloadhoymin;
+  int kwctodaymax;
+  int kwctodaymin;
+  int kwgtodaymax;
+  int kwgtodaymin;
+  int bdATotmax;
+  int bdATotmin;
+  int bcATotmax;
+  int bcATotmin;
+  int bdAhoymax;
+  int bdAhoymin;
+  int bcAhoymax;
+  int bcAhoymin;
+  int btempmax;
+  int btempmin;
+  int bcyclemax;
+  int bcyclemin;
+  int bSOHmax;
+  int bSOHmin;
+  int bSOCmax;
+  int bSOCmin;
+  int amax;
+  int amin;
+  int vmax;
+  int vmin;
+};
+void glue_get_limits(struct limits *);
+void glue_set_limits(struct limits *);
+
 void glue_start_saveProfile(struct mg_str);  // Start an action
 bool glue_check_saveProfile(void);  // Check if action is still in progress
 
@@ -167,25 +214,6 @@ struct sysset {
 };
 void glue_get_sysset(struct sysset *);
 void glue_set_sysset(struct sysset *);
-
-struct meter {
-  char mid_var[20];
-  int bpk_var;
-  int kwh_var;
-  int beats_var;
-  int maxamps_var;
-};
-void glue_get_meter(struct meter *);
-void glue_set_meter(struct meter *);
-
-void glue_start_Done(struct mg_str);  // Start an action
-bool glue_check_Done(void);  // Check if action is still in progress
-
-void glue_start_SaveSettings(struct mg_str);  // Start an action
-bool glue_check_SaveSettings(void);  // Check if action is still in progress
-
-void glue_start_SaveConfig(struct mg_str);  // Start an action
-bool glue_check_SaveConfig(void);  // Check if action is still in progress
 
 
 #ifdef __cplusplus

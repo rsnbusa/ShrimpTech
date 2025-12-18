@@ -84,6 +84,17 @@ void BlowerClass::loadBlower()
     framReads();
 }
 
+void * BlowerClass::getLimits()
+{
+    return (void*)&framConfig.solarSystem.limits;
+}
+
+void BlowerClass::setLimits(void * lims)
+{
+    memcpy(&framConfig.solarSystem.limits,lims,sizeof(framConfig.solarSystem.limits));
+    saveBlower();
+}
+
 void BlowerClass::saveBlower()
 {
     framWrites();

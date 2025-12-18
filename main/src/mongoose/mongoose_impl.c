@@ -147,6 +147,51 @@ struct custom_api_handler {
 };
 static struct custom_api_handler *s_custom_handlers;
 
+struct attribute s_limits_attributes[] = {
+  {"hummax", "int", NULL, offsetof(struct limits, hummax), 0, false},
+  {"hummin", "int", NULL, offsetof(struct limits, hummin), 0, false},
+  {"atempmax", "int", NULL, offsetof(struct limits, atempmax), 0, false},
+  {"atempmin", "int", NULL, offsetof(struct limits, atempmin), 0, false},
+  {"wtempmax", "int", NULL, offsetof(struct limits, wtempmax), 0, false},
+  {"wtempmin", "int", NULL, offsetof(struct limits, wtempmin), 0, false},
+  {"phmax", "int", NULL, offsetof(struct limits, phmax), 0, false},
+  {"phmin", "int", NULL, offsetof(struct limits, phmin), 0, false},
+  {"domax", "int", NULL, offsetof(struct limits, domax), 0, false},
+  {"domin", "int", NULL, offsetof(struct limits, domin), 0, false},
+  {"kwchoymax", "int", NULL, offsetof(struct limits, kwchoymax), 0, false},
+  {"kwchoymin", "int", NULL, offsetof(struct limits, kwchoymin), 0, false},
+  {"kwbatdhoymax", "int", NULL, offsetof(struct limits, kwbatdhoymax), 0, false},
+  {"kwbatdhoymin", "int", NULL, offsetof(struct limits, kwbatdhoymin), 0, false},
+  {"kwbatchoymax", "int", NULL, offsetof(struct limits, kwbatchoymax), 0, false},
+  {"kwbatchoymin", "int", NULL, offsetof(struct limits, kwbatchoymin), 0, false},
+  {"kwloadhoymax", "int", NULL, offsetof(struct limits, kwloadhoymax), 0, false},
+  {"kwloadhoymin", "int", NULL, offsetof(struct limits, kwloadhoymin), 0, false},
+  {"kwctodaymax", "int", NULL, offsetof(struct limits, kwctodaymax), 0, false},
+  {"kwctodaymin", "int", NULL, offsetof(struct limits, kwctodaymin), 0, false},
+  {"kwgtodaymax", "int", NULL, offsetof(struct limits, kwgtodaymax), 0, false},
+  {"kwgtodaymin", "int", NULL, offsetof(struct limits, kwgtodaymin), 0, false},
+  {"bdATotmax", "int", NULL, offsetof(struct limits, bdATotmax), 0, false},
+  {"bdATotmin", "int", NULL, offsetof(struct limits, bdATotmin), 0, false},
+  {"bcATotmax", "int", NULL, offsetof(struct limits, bcATotmax), 0, false},
+  {"bcATotmin", "int", NULL, offsetof(struct limits, bcATotmin), 0, false},
+  {"bdAhoymax", "int", NULL, offsetof(struct limits, bdAhoymax), 0, false},
+  {"bdAhoymin", "int", NULL, offsetof(struct limits, bdAhoymin), 0, false},
+  {"bcAhoymax", "int", NULL, offsetof(struct limits, bcAhoymax), 0, false},
+  {"bcAhoymin", "int", NULL, offsetof(struct limits, bcAhoymin), 0, false},
+  {"btempmax", "int", NULL, offsetof(struct limits, btempmax), 0, false},
+  {"btempmin", "int", NULL, offsetof(struct limits, btempmin), 0, false},
+  {"bcyclemax", "int", NULL, offsetof(struct limits, bcyclemax), 0, false},
+  {"bcyclemin", "int", NULL, offsetof(struct limits, bcyclemin), 0, false},
+  {"bSOHmax", "int", NULL, offsetof(struct limits, bSOHmax), 0, false},
+  {"bSOHmin", "int", NULL, offsetof(struct limits, bSOHmin), 0, false},
+  {"bSOCmax", "int", NULL, offsetof(struct limits, bSOCmax), 0, false},
+  {"bSOCmin", "int", NULL, offsetof(struct limits, bSOCmin), 0, false},
+  {"amax", "int", NULL, offsetof(struct limits, amax), 0, false},
+  {"amin", "int", NULL, offsetof(struct limits, amin), 0, false},
+  {"vmax", "int", NULL, offsetof(struct limits, vmax), 0, false},
+  {"vmin", "int", NULL, offsetof(struct limits, vmin), 0, false},
+  {NULL, NULL, NULL, 0, 0, false}
+};
 struct attribute s_profile_attributes[] = {
   {"schedule", "string", NULL, offsetof(struct profile, schedule), 10000, false},
   {NULL, NULL, NULL, 0, 0, false}
@@ -211,35 +256,21 @@ struct attribute s_sysset_attributes[] = {
   {"ldate_val", "string", NULL, offsetof(struct sysset, ldate_val), 100, false},
   {NULL, NULL, NULL, 0, 0, false}
 };
-struct attribute s_meter_attributes[] = {
-  {"mid_var", "string", NULL, offsetof(struct meter, mid_var), 20, false},
-  {"bpk_var", "int", NULL, offsetof(struct meter, bpk_var), 0, false},
-  {"kwh_var", "int", NULL, offsetof(struct meter, kwh_var), 0, false},
-  {"beats_var", "int", NULL, offsetof(struct meter, beats_var), 0, false},
-  {"maxamps_var", "int", NULL, offsetof(struct meter, maxamps_var), 0, false},
-  {NULL, NULL, NULL, 0, 0, false}
-};
 
+struct apihandler_data s_apihandler_limits = {{"limits", "data", false, 0, 0, 0UL}, s_limits_attributes, sizeof(struct limits), (void (*)(void *)) glue_get_limits, (void (*)(void *)) glue_set_limits};
 struct apihandler_action s_apihandler_saveProfile = {{"saveProfile", "action", false, 0, 0, 0UL}, glue_check_saveProfile, glue_start_saveProfile};
 struct apihandler_data s_apihandler_profile = {{"profile", "data", false, 0, 0, 0UL}, s_profile_attributes, sizeof(struct profile), (void (*)(void *)) glue_get_profile, (void (*)(void *)) glue_set_profile};
 struct apihandler_data s_apihandler_settings = {{"settings", "data", false, 0, 0, 0UL}, s_settings_attributes, sizeof(struct settings), (void (*)(void *)) glue_get_settings, (void (*)(void *)) glue_set_settings};
 struct apihandler_data s_apihandler_system = {{"system", "data", false, 0, 0, 0UL}, s_system_attributes, sizeof(struct system), (void (*)(void *)) glue_get_system, (void (*)(void *)) glue_set_system};
 struct apihandler_data s_apihandler_sysset = {{"sysset", "data", false, 0, 0, 0UL}, s_sysset_attributes, sizeof(struct sysset), (void (*)(void *)) glue_get_sysset, (void (*)(void *)) glue_set_sysset};
-struct apihandler_data s_apihandler_meter = {{"meter", "data", false, 0, 0, 0UL}, s_meter_attributes, sizeof(struct meter), (void (*)(void *)) glue_get_meter, (void (*)(void *)) glue_set_meter};
-struct apihandler_action s_apihandler_Done = {{"Done", "action", false, 0, 0, 0UL}, glue_check_Done, glue_start_Done};
-struct apihandler_action s_apihandler_SaveSettings = {{"SaveSettings", "action", false, 0, 0, 0UL}, glue_check_SaveSettings, glue_start_SaveSettings};
-struct apihandler_action s_apihandler_SaveConfig = {{"SaveConfig", "action", false, 0, 0, 0UL}, glue_check_SaveConfig, glue_start_SaveConfig};
 
 static struct apihandler *s_apihandlers[] = {
+  (struct apihandler *) &s_apihandler_limits,
   (struct apihandler *) &s_apihandler_saveProfile,
   (struct apihandler *) &s_apihandler_profile,
   (struct apihandler *) &s_apihandler_settings,
   (struct apihandler *) &s_apihandler_system,
-  (struct apihandler *) &s_apihandler_sysset,
-  (struct apihandler *) &s_apihandler_meter,
-  (struct apihandler *) &s_apihandler_Done,
-  (struct apihandler *) &s_apihandler_SaveSettings,
-  (struct apihandler *) &s_apihandler_SaveConfig
+  (struct apihandler *) &s_apihandler_sysset
 };
 
 static struct apihandler *get_api_handler(struct mg_str name) {
