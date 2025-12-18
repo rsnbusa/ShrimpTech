@@ -3795,7 +3795,5 @@ ESP_LOGI(MESH_TAG,"Heap Free APP %d",esp_get_free_heap_size());
 printf("PV PAnel %d Battery %d Energy %d Solar System %d SolarPad %d Union %d SmpMsg %d timet %d float %d\n",sizeof(pvPanel_t),sizeof(battery_t),
 sizeof(energy_t),sizeof(solarSystem_t),sizeof(solarDef_t),sizeof(meshunion_t),sizeof(shrimpMsg_t),sizeof(time_t),sizeof(float)); 
 
-int a=PV1V;
-
 }
 #endif

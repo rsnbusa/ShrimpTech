@@ -80,4 +80,5 @@ EXTERN lv_disp_t                   *disp;
 EXTERN esp_lcd_panel_handle_t       panel_handle;
 EXTERN int                          binary_file_length,meshDelay,meshMissed,resetroutet,routet;
 EXTERN uint32_t                     elapsed[MAXHORARIOS];
+EXTERN uint16_t                     sys_limits[18][2];              // 0 min 1 max
 #endif
