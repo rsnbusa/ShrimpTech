@@ -257,16 +257,16 @@ struct attribute s_sysset_attributes[] = {
   {NULL, NULL, NULL, 0, 0, false}
 };
 
+struct apihandler_action s_apihandler_reboot = {{"reboot", "action", false, 0, 0, 0UL}, glue_check_reboot, glue_start_reboot};
 struct apihandler_data s_apihandler_limits = {{"limits", "data", false, 0, 0, 0UL}, s_limits_attributes, sizeof(struct limits), (void (*)(void *)) glue_get_limits, (void (*)(void *)) glue_set_limits};
-struct apihandler_action s_apihandler_saveProfile = {{"saveProfile", "action", false, 0, 0, 0UL}, glue_check_saveProfile, glue_start_saveProfile};
 struct apihandler_data s_apihandler_profile = {{"profile", "data", false, 0, 0, 0UL}, s_profile_attributes, sizeof(struct profile), (void (*)(void *)) glue_get_profile, (void (*)(void *)) glue_set_profile};
 struct apihandler_data s_apihandler_settings = {{"settings", "data", false, 0, 0, 0UL}, s_settings_attributes, sizeof(struct settings), (void (*)(void *)) glue_get_settings, (void (*)(void *)) glue_set_settings};
 struct apihandler_data s_apihandler_system = {{"system", "data", false, 0, 0, 0UL}, s_system_attributes, sizeof(struct system), (void (*)(void *)) glue_get_system, (void (*)(void *)) glue_set_system};
 struct apihandler_data s_apihandler_sysset = {{"sysset", "data", false, 0, 0, 0UL}, s_sysset_attributes, sizeof(struct sysset), (void (*)(void *)) glue_get_sysset, (void (*)(void *)) glue_set_sysset};
 
 static struct apihandler *s_apihandlers[] = {
+  (struct apihandler *) &s_apihandler_reboot,
   (struct apihandler *) &s_apihandler_limits,
-  (struct apihandler *) &s_apihandler_saveProfile,
   (struct apihandler *) &s_apihandler_profile,
   (struct apihandler *) &s_apihandler_settings,
   (struct apihandler *) &s_apihandler_system,

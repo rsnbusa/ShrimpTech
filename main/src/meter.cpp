@@ -942,6 +942,11 @@ void root_timer(void *parg)
         xEventGroupWaitBits(otherGroup,REPEAT_BIT,pdTRUE,pdFALSE,portMAX_DELAY);    //wait forever, this is the starting gun, flag will be cleared
 
         ESP_LOGW(MESH_TAG,"Mesh Timeout. Will send only %d nodes",masterNode.existing_nodes-counting_nodes);
+for (int a=0;a<masterNode.existing_nodes;a++)
+{
+    if(!masterNode.theTable.thedata[a])
+        esp_rom_printf("Node not sending %d of %d" MACSTR " \n",a,masterNode.existing_nodes,MAC2STR(masterNode.theTable.big_table[a].addr));
+}
 
         if(sendMeterf)      //recheck we are sending mode
         {
@@ -3137,6 +3142,10 @@ void wifi_init_network()
                                                         NULL,
                                                         NULL));
 
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B));        // MUST BE
+    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
+    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
+
     esp_wifi_get_mac(WIFI_IF_AP,mac);
     bzero(apssid,sizeof(apssid));
     sprintf(apssid,"%s%02X%02X%02X\0",APPNAME, mac[3],mac[4],mac[5]);
@@ -3148,6 +3157,7 @@ void wifi_init_network()
     wifi_config.ap.ssid_len = strlen(apssid);
     wifi_config.ap.channel = 4;
     wifi_config.ap.max_connection = 4;
+    // wifi_config.ap.authmode = WIFI_AUTH_OPEN;
     wifi_config.ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
@@ -3352,8 +3362,8 @@ void start_mesh()
     if(!theConf.masternode)
         ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_LR));
     ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_LR));
-    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-    // ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
+    // ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
     ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
     ESP_ERROR_CHECK(esp_wifi_start());
     if(strlen(theConf.thessid)==0)
@@ -3763,7 +3773,7 @@ sizeof(energy_t),sizeof(solarSystem_t),sizeof(solarDef_t),sizeof(meshunion_t),si
         theBlower.deinit();
         theBlower.format();
         int monton[21][2]={{90, 50}, {32, 19}, {31, 19}, {70, 50}, {70, 40}, {42, 40}, {42, 40}, {42, 40}, {42, 40}, {42, 40}, {42, 40}, {820, 720}, {850, 720}, {820, 720}, {820, 780}, {50, 10}, {5000, 0}, {100, 20}, {80, 20}, {15, 14}, {390, 340}};
-        theBlower.setLimits((void*)&monton);
+        memcpy(&theConf.limits,&monton,sizeof(monton));
         xTaskCreate(&blinkConf,"displ",1024,(void*)800, 5, &configureHandle); 	        //blink we are not configured
         reconfTimer=xTimerCreate("Reconf",pdMS_TO_TICKS(300000),pdFALSE,( void * ) 0, [] ( TimerHandle_t xTimer){esp_restart();});   //monitor activity and timeout if no work done-> use lambda
         meter_configure();      //start the STA for access to Router directly.

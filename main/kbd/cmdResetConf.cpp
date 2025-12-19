@@ -52,8 +52,8 @@ int cmdResetConf(int argc, char **argv)
           erase_config();
           break;
         case 1:
-          printf("Meter resetted\n");
-          theConf.meterconf=0;
+          printf("Blower resetted\n");
+          theConf.meterconf=2;
           break;
         case 2:
           printf("Mesh resetted\n");

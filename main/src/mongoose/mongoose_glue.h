@@ -93,6 +93,9 @@ void glue_update_state(void);
 
 // Firmware Glue
 
+void glue_start_reboot(struct mg_str);  // Start an action
+bool glue_check_reboot(void);  // Check if action is still in progress
+
 struct limits {
   int hummax;
   int hummin;
@@ -139,9 +142,6 @@ struct limits {
 };
 void glue_get_limits(struct limits *);
 void glue_set_limits(struct limits *);
-
-void glue_start_saveProfile(struct mg_str);  // Start an action
-bool glue_check_saveProfile(void);  // Check if action is still in progress
 
 struct profile {
   char schedule[10000];

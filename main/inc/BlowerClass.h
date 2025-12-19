@@ -42,7 +42,6 @@ typedef struct {
     battery_t battery;
     energy_t  energy;
     sensor_t  sensors;
-    int       limits[21][2];     //for 21 variables , min 0 max 1
 } solarSystem_t;
 
 typedef struct {
@@ -76,8 +75,8 @@ public:
     time_t getLifeDate();
     time_t getReservedDate();
     solarSystem_t* getSolarSystem();
-    void * getLimits();
-    void setLimits( void * lims);
+    // void * getLimits();
+    // void setLimits( void * lims);
     
     int initBlower();
     void deinit();
@@ -130,11 +129,12 @@ public:
     TaskHandle_t getMainTask();
 
 private:
-    solarDef_t framConfig;
-    FramI2C fram;
-    SemaphoreHandle_t framSem;
-    bool framFlag;
-    uint32_t blowerSize;
+    solarDef_t          framConfig;
+    FramI2C             fram;
+    SemaphoreHandle_t   framSem;
+    bool                framFlag;
+    uint32_t            blowerSize;
+
 };
 
 #endif

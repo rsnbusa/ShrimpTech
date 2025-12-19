@@ -17,13 +17,14 @@
 // Delete the STATIC in the mongoose_glue.c or linker fails cannot find externals below
 //
 //
-extern struct settings s_settings;
-extern struct system s_system;
-extern struct sysset s_sysset;
-extern struct meter s_meter;
-extern struct profile s_profile;
-extern struct limits s_limits;
-extern uint64_t s_action_timeout_Done;  // Time when Done starts
+// below are the structures for the mongoose interface as well as Actions (independent from data)
+
+extern struct settings s_settings;			// main controller settings --> First Sidebar
+extern struct system s_system;				// system setting like mqtt server etc. --> Second sidebar
+extern struct profile s_profile;			// schedule profile cycles and working timers --> 5th sidebar
+extern struct limits s_limits;				// every know limit of 22 parameters from the inverter --> fourth sidebar
+extern struct sysset s_sysset;				// system parameters --> third sidebar
+extern uint64_t s_action_timeout_reboot;  	// Reboot button
 
 extern int aes_encrypt(const char* src, size_t son, char *dst,const char *cualKey);
 extern void write_to_flash();
@@ -179,7 +180,7 @@ void my_set_system(struct system *data) {
 	if(theConf.meterconf==3)
 		theConf.meterconf=2;
 	write_to_flash();
-	// xTimerReset(webTimer,0);
+	xTimerReset(webTimer,0);
 }
 
 void my_get_system(struct system *data) 
@@ -214,7 +215,7 @@ void my_get_system(struct system *data)
 	s_system.mqttreco_val=theConf.mqttDiscoRetry;
 
 	*data = s_system;
-	// xTimerReset(webTimer,0);
+	xTimerReset(webTimer,0);
 
 }
 
@@ -256,6 +257,7 @@ void my_set_sysset(struct sysset *data) // there is no setting in this menu opti
 
 void show_profiles()
 {
+	
 	for (int a=0;a<2;a++)
 	{
 		printf("======== Profile[%d] %s %s =========\n",a,theConf.profiles[a].name,theConf.profiles[a].version);
@@ -485,6 +487,11 @@ void my_get_profile(struct profile *data)
 {
 	size_t largo;
 
+	   if( theConf.meterconf>2)
+   		s_settings.disable_val=1;
+	else
+   		s_settings.disable_val=0;
+
 	FILE* f = fopen(PROFILE_FILE, "r");
     if (f == NULL) {
         ESP_LOGE(TAG, "Failed to open file for reading");
@@ -497,28 +504,18 @@ void my_get_profile(struct profile *data)
 
 void my_set_limits(struct limits *data) // save limits from web to theblower
 {
-	int local[21][2];
-
-		// void * aca=theBlower.getLimits();
-		// memcpy(aca,data,sizeof(struct limits));
-	//	memcpy(local,data,sizeof(struct limits));
-	// for (int a=0;a<21;a++)
-	// 	printf("Pos[%d] Min %d Max %d\n",a,local[a][0],local[a][1]);
-		theBlower.setLimits((void*)data);
-	// 	memcpy(local,theBlower.getLimits(),sizeof(struct limits));
-	// for (int a=0;a<21;a++)
-	// 	printf("Web rePos[%d] Min %d Max %d\n",a,local[a][0],local[a][1]);
+	memcpy(&theConf.limits,data,sizeof(theConf.limits));
+	write_to_flash();
 }
 
 
 void my_get_limits(struct limits *data) // return limits saved in theblower
 {
-	// int local[21][2];
-	// memcpy(&local,theBlower.getLimits(),sizeof(local));
-	// for (int a=0;a<21;a++)
-	// 	printf("Web Get[%d] min %d max %d\n",a,local[a][0],local[a][1]);
- 	// data=(struct limits*)theBlower.getLimits();
-	memcpy(data,theBlower.getLimits(),sizeof(struct limits));
+	if( theConf.meterconf>2)
+   		s_settings.disable_val=1;
+	else
+   		s_settings.disable_val=0;
+	memcpy(data,&theConf.limits,sizeof(theConf.limits));
 }
 
 void app_spiffs(void)
@@ -584,26 +581,38 @@ void app_spiffs(void)
 
 }
 
+bool my_check_reboot(void) {
+  return s_action_timeout_reboot > mg_now(); // Return true if Done is in progress
+}
+
+void my_start_reboot(struct mg_str params) {		//Done button pressed,
+	s_action_timeout_reboot = mg_now() + 1000; // Start Done, finish after 1 second
+	theConf.meterconf=1;
+	esp_rom_printf("Restarting\n");
+	write_to_flash();
+	esp_restart();
+}
+
 
 // When webserver started the meter controller is ACTIVE so beats are counted and saved
 void start_webserver(void *pArg)
 {
 	ESP_LOGW(MESH_TAG,"Starting webserver");
 	mongoose_init();
-	// app_spiffs();
   	mongoose_set_http_handlers("settings", my_get_settings, my_set_settings);		// when virgin chip or first run
   	mongoose_set_http_handlers("system", my_get_system ,my_set_system);				// additonal system settings
   	mongoose_set_http_handlers("sysset", my_get_sysset ,my_set_sysset);				// general data just for information not mutable
   	mongoose_set_http_handlers("profile", my_get_profile ,my_set_profile);				// working meter data
   	mongoose_set_http_handlers("limits", my_get_limits ,my_set_limits);				// working meter data
+  	mongoose_set_http_handlers("reboot", my_check_reboot ,my_start_reboot);				// used to restart chip and return to normal operation
 	//web timeout if not done in 2 minutes restart
-	// webTimer=xTimerCreate("restart",pdMS_TO_TICKS(120000),pdFALSE,( void * ) 0, [] ( TimerHandle_t xTimer){	
-	// 	// if(strlen(theBlower.getMID())!=0)		// if meter already configured then return to configu4red state (2)
-	// 	// 	theConf.meterconf=2;
-	// write_to_flash();
-	// esp_restart();});   
+	webTimer=xTimerCreate("restart",pdMS_TO_TICKS(120000),pdFALSE,( void * ) 0, [] ( TimerHandle_t xTimer){	
+			theConf.meterconf=2;
+			write_to_flash();
+			esp_restart();});   
+
 // start the meter now
-	// xTimerStart(webTimer,0);
+	xTimerStart(webTimer,0);
 
 	for (;;) {
     mongoose_poll();

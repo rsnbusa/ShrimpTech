@@ -214,6 +214,8 @@ typedef struct config {
     uint32_t    debug_flags,test_timer_div;
     uint8_t     work_cycle,work_day,unit_num,delay_mesh;
     uint32_t    loginwait;
+    int         limits[21][2];     //for 21 variables , min 0 max 1
+
 } config_flash;
 
 typedef struct meshp{

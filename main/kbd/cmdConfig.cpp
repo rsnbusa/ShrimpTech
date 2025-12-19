@@ -6,6 +6,9 @@
 #include "forwards.h"
 extern void show_profiles();
 
+char lims[21][10]={"AHUM","ATEMP","WTEMP","LIMITPH","LIMITDO","GENLCT","BMDDKW","BMCHKW","LCONLI","USEDEN","GENEER",
+"BMDDKT","BMCHKT","BMDDAH","BMCHAH","BMTEMP","BMCC","BMSOH","BMSOC","PV1A","PVV"};
+
 void showconf(void *pArg)
 {
 
@@ -177,8 +180,15 @@ uint32_t nada;    // this is compiler error, it goes crazy if done directly like
     printf("Expected Nodes %lu Expected Conns %lu\n",theConf.totalnodes,theConf.conns);
 
     print_blower("Blower",theBlower.getSolarSystem(),false);
+    printf("\n\t\t============== Limits ===============\n");
+    printf("\t\tName\t\t   Min\t\t  Max\n");
+    printf("\t\t=====================================\n");
+    for (int a=0;a<21;a++)
+        printf("\t\t%s\t\t%4d\t\t%4d\n",lims[a],theConf.limits[a][1],theConf.limits[a][0]);
+    printf("\n");
 
-    vTaskDelete(NULL);
+      
+      vTaskDelete(NULL);
 }
 
 int cmdConfig(int argc, char **argv)

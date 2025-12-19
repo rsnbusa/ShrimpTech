@@ -5,7 +5,16 @@
 // Default mock implementation of the API callbacks
 
 #include "mongoose_glue.h"
- struct limits s_limits = {90, 50, 32, 19, 31, 19, 70, 50, 70, 40, 42, 40, 42, 40, 42, 40, 42, 40, 42, 40, 42, 40, 820, 720, 850, 720, 820, 720, 820, 780, 50, 10, 5000, 0, 100, 20, 80, 20, 15, 14, 390, 340};
+uint64_t s_action_timeout_reboot;  // Time when reboot ends
+bool glue_check_reboot(void) {
+  return s_action_timeout_reboot > mg_now(); // Return true if reboot is in progress
+}
+void glue_start_reboot(struct mg_str params) {
+  MG_DEBUG(("Passed parameters: [%.*s]", params.len, params.buf));
+  s_action_timeout_reboot = mg_now() + 1000; // Start reboot, finish after 1 second
+}
+
+struct limits s_limits = {90, 50, 32, 19, 31, 19, 70, 50, 70, 40, 42, 40, 42, 40, 42, 40, 42, 40, 42, 40, 42, 40, 820, 720, 850, 720, 820, 720, 820, 780, 50, 10, 5000, 0, 100, 20, 80, 20, 15, 14, 390, 340};
 void glue_get_limits(struct limits *data) {
   *data = s_limits;  // Sync with your device
 }
@@ -13,16 +22,7 @@ void glue_set_limits(struct limits *data) {
   s_limits = *data; // Sync with your device
 }
 
- uint64_t s_action_timeout_saveProfile;  // Time when saveProfile ends
-bool glue_check_saveProfile(void) {
-  return s_action_timeout_saveProfile > mg_now(); // Return true if saveProfile is in progress
-}
-void glue_start_saveProfile(struct mg_str params) {
-  MG_DEBUG(("Passed parameters: [%.*s]", params.len, params.buf));
-  s_action_timeout_saveProfile = mg_now() + 1000; // Start saveProfile, finish after 1 second
-}
-
- struct profile s_profile = {""};
+struct profile s_profile = {""};
 void glue_get_profile(struct profile *data) {
   *data = s_profile;  // Sync with your device
 }
@@ -30,7 +30,7 @@ void glue_set_profile(struct profile *data) {
   s_profile = *data; // Sync with your device
 }
 
- struct settings s_settings = {false, 0, 0, 0, "", "", false, 0, ""};
+struct settings s_settings = {false, 0, 0, 0, "", "", false, 0, ""};
 void glue_get_settings(struct settings *data) {
   *data = s_settings;  // Sync with your device
 }
@@ -38,7 +38,7 @@ void glue_set_settings(struct settings *data) {
   s_settings = *data; // Sync with your device
 }
 
- struct system s_system = {0, 1000, false, "5.0.1", false, 3, 5, 25, 0, 0, "", "", "d1nJEL8K-fHyox70LqvszcSqbP71ats8", "yqsgcxzu:yqsgcxzu", "http://64.123.180.233:1883", "", 60000, "", "", 0, false, 400000, 10000};
+struct system s_system = {0, 1000, false, "5.0.1", false, 3, 5, 25, 0, 0, "", "", "d1nJEL8K-fHyox70LqvszcSqbP71ats8", "yqsgcxzu:yqsgcxzu", "http://64.123.180.233:1883", "", 60000, "", "", 0, false, 400000, 10000};
 void glue_get_system(struct system *data) {
   *data = s_system;  // Sync with your device
 }
@@ -46,7 +46,7 @@ void glue_set_system(struct system *data) {
   s_system = *data; // Sync with your device
 }
 
- struct sysset s_sysset = {"", "", 0, 0, false, false, 0, 0, 0, "", "", "", 0, 0, 0, 0, 0, 0, ""};
+struct sysset s_sysset = {"", "", 0, 0, false, false, 0, 0, 0, "", "", "", 0, 0, 0, 0, 0, 0, ""};
 void glue_get_sysset(struct sysset *data) {
   *data = s_sysset;  // Sync with your device
 }
