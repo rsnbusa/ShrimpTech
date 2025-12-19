@@ -3,6 +3,39 @@
 #include "includes.h"
 #include "defines.h"
 
+typedef struct answer{
+        char *      theanswer;
+        uint16_t    len;
+        time_t      ts;
+}answer_t;
+
+
+typedef struct modbus_general{
+    struct arg_int *slave;        
+    struct arg_int *address;        
+    struct arg_int *points; 
+    struct arg_str *saveid;       
+    struct arg_end *end;
+} modbus_general_t;
+
+typedef struct modbus_generic{
+    struct arg_int *slave;        
+    struct arg_int *cmd;        
+    struct arg_int *address;        
+    struct arg_int *points;    
+    struct arg_str *saveid;
+    struct arg_end *end;
+} modbus_generic_t;
+
+
+typedef struct modbus_rec{
+    uint8_t         slaveAddress;
+    uint8_t         functionCode;
+    uint16_t        startAdrress;
+    uint16_t        countBytes;
+    uint16_t        crc;
+} modbus_rec_t;
+
 typedef enum {
     wNONE,
     wLOGIN,
@@ -220,6 +253,8 @@ typedef struct config {
     uint8_t     work_cycle,work_day,unit_num,delay_mesh;
     uint32_t    loginwait;
     int         limits[21][2];     //for 21 variables , min 0 max 1
+    uint16_t    baud;
+    uart_port_t     port;
 
 } config_flash;
 

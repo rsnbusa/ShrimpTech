@@ -37,7 +37,7 @@ EXTERN framArgs_t                   framArg;
 EXTERN dbg_t                        dbgArg;
 EXTERN esp_mqtt_client_config_t 	mqtt_cfg;
 EXTERN esp_mqtt_client_handle_t     clientCloud;
-EXTERN QueueHandle_t 				mqttQ,mqttR,mqttSender,mqtt911,meshQueue; 
+EXTERN QueueHandle_t 				rs485Q,mqttQ,mqttR,mqttSender,mqtt911,meshQueue; 
 EXTERN cmdRecord 					cmds[MAXCMDS];
 EXTERN config_flash                 theConf;
 EXTERN nvs_handle 					nvshandle,nvshandlep;
@@ -81,5 +81,9 @@ EXTERN lv_disp_t                   *disp;
 EXTERN esp_lcd_panel_handle_t       panel_handle;
 EXTERN int                          binary_file_length,meshDelay,meshMissed,resetroutet,routet;
 EXTERN uint32_t                     elapsed[MAXHORARIOS];
-EXTERN uint16_t                     sys_limits[18][2];              // 0 min 1 max
+EXTERN uint16_t                     sys_limits[18][2];              // 1 min 0 max
+EXTERN modbus_general_t             generalParams;
+EXTERN modbus_generic_t             genericParams;
+EXTERN modbus_rec_t                 modbusRecord;
+EXTERN answer_t                     reply;
 #endif

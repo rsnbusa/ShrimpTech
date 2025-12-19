@@ -1,4 +1,25 @@
 
+#ifdef  CONFIG_IDF_TARGET_ESP32
+#define UTXD                            (25)
+#define URXD                            (27)
+// RTS for RS485 Half-Duplex Mode manages DE/~RE
+#define URTS                            (13)
+#endif 
+#ifdef  CONFIG_IDF_TARGET_ESP32S3
+#define UTXD                            (4)
+#define URXD                            (5)
+// RTS for RS485 Half-Duplex Mode manages DE/~RE
+#define URTS                            (6)
+#endif 
+#define UCTS                            (-1)
+#define ECHO_UART_PORT                  (1)
+
+#define MBUF_SIZE                       (200)
+#define BAUD_RATE                       (9600)
+#define REPLYWAIT                       (800)
+#define ECHO_READ_TOUT                  (3) // 3.5T * 8 = 28 ticks, TOUT=3 -> ~24..33 ticks
+#define PACKET_READ_TICS                (100 / portTICK_PERIOD_MS)
+
 // #define FRAMSPI
 //FRAM pins SPI
 #ifdef  CONFIG_IDF_TARGET_ESP32

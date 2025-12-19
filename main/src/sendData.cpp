@@ -32,6 +32,7 @@ meshunion_t * sendData(bool forced)
     thisNode->nodedata.msgnum=theBlower.getStatsMsgOut();
     thisNode->nodedata.nodeid=theConf.poolid;
     thisNode->nodedata.subnode=theConf.unitid;
+    
 // ========================================================================
 
     seed_blower();          // for simulations only  ERASE later

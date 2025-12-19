@@ -25,6 +25,8 @@ set (src
     src/displayManager.cpp
     src/nimble.cpp
     src/cmd/cmdReset.cpp
+    src/cmd/cmdReset.cpp
+    src/rs485.cpp
     kbd/cmdApp.cpp
     kbd/cmdConfig.cpp
     kbd/cmdEnDecrypt.cpp

@@ -62,6 +62,7 @@ extern "C"{
 #include "esp_lcd_panel_vendor.h"
 #include "esp_lcd_panel_ops.h"
 
+#include "driver/uart.h"
 
     // ble
 
