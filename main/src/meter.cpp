@@ -283,7 +283,7 @@ int root_delete_routing_table()
                 masterNode.theTable.thedata[a]=NULL;
             }
         }
-        // bzero(&masterNode,sizeof(masterNode));             
+        bzero(&masterNode,sizeof(masterNode));          // was commented out now active but might cause probloems but in theory it should be done every sendmetrics    
         counting_nodes=0;                                   
         xSemaphoreGive(tableSem);
         return ESP_OK;
@@ -946,6 +946,8 @@ for (int a=0;a<masterNode.existing_nodes;a++)
 {
     if(!masterNode.theTable.thedata[a])
         esp_rom_printf("Node not sending %d of %d" MACSTR " \n",a,masterNode.existing_nodes,MAC2STR(masterNode.theTable.big_table[a].addr));
+    else
+        esp_rom_printf("Valid answer %d of %d" MACSTR " \n",a,masterNode.existing_nodes,MAC2STR(masterNode.theTable.big_table[a].addr));
 }
 
         if(sendMeterf)      //recheck we are sending mode
@@ -3803,6 +3805,13 @@ sizeof(energy_t),sizeof(solarSystem_t),sizeof(solarDef_t),sizeof(meshunion_t),si
     xTaskCreate(&root_timer,"reptimer",1024*8,NULL, 5, NULL); 	        
 // the internal mesh is now going to start and begin all the main flow from its gotIp event manager
     showLVGL((char*)"MESH",10000,3);   
+
+    if(!theConf.masternode)     // allow master to boot
+    {
+        ESP_LOGW(TAG,"Leaf -> Waiting for Root to start");
+        delay(30000);
+    }
+
     start_mesh();
     theConf.loginwait=20000;
     // mesh_enable();

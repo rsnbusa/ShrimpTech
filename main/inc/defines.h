@@ -66,11 +66,9 @@
 
 #define CENTINEL                        (0x12345678)
 
-// #define AMPSHORA                        (8.33)
-#define BIASHOUR                        (14)
+// #define BIASHOUR                        (14)
 
 #define MQTTBIG                         (3000)  //big cause certiticate is at least 1700 bytes
-#define OTADEL                          5000
 #define MESH_TAG                        "Shrimp"
 #define WIFI_CONNECTED_BIT              BIT0
 #define WIFI_FAIL_BIT                   BIT1
@@ -84,9 +82,7 @@
 #define MQTTSECURE       
 #define MAXNODES                        (20)                
 #define MAXDEVSS                        (1)
-#define LONGCLICK                       (800)
-#define MAXMENU                         (10)
-#define SCRFONT                         (13)
+
 #define MQTTSENDER                      (2000)
 #define MQTTSENDERWAIT                  (10)
 #define SLOTSIZE                        (2)        // slot time in seconds
@@ -98,22 +94,12 @@
 #define EXPECTED_NODES                  (2500000)
 #define EXPECTED_CONNS                  (10000)
 #define EXPECTED_DELIVERY_TIME          (2)
-#define PREPAID                         (1)
-#define POSTPAID                        (0)
+
 #define TURNOFF                         (1)
 #define TURNON                          (0)
 #define MINPREPAID                      (1)       //as of today aprox $1
-#define MESHTIMEOUT                     (10000)
-#define SKIPS                           (3)
-// Error codes
-#define SHRIMPB                          (-4000)
-#define M_AES_MALLOC                    (SHRIMPB+0)
-#define M_AES_KEY                       (SHRIMPB-1)
-#define M_AES_ENCRYPT                   (SHRIMPB+2)
-#define M_AES_DECRYPT                   (SHRIMPB+3)
-#define M_NO_CMD                        (SHRIMPB+4)
-#define M_GET_TABLE                     (SHRIMPB+5)
-#define M_GET_TABLE                     (SHRIMPB+5)
+#define MESHTIMEOUT                     (1000)     // mesh timeout ms for all messages in mesh... a lot for 10... use 1000
+
 
 #define MAXMQTTERR                      (2)
 #define EMERGENCY                       (0)
@@ -132,8 +118,7 @@
 #define MQTTMETRICS                     (13)
 #define METRICRESP                      (14)
 #define SHOWDISPLAY                     (15)
-#define OTARECOVER                      (16)
-#define OTAEND                          (17)
+
 #define CONFIRMTIMER                    (1000)
 #define METER_NOT_FOUND                 (0x1234)
 
@@ -144,29 +129,7 @@
 #define QOS1                            (1)
 #define ALL
 
-// #define OTAURL                          "http://64.23.180.233/metermgr.bin"
-// have the file metermgr.bin in the webserver do under /var/www/html
-// in espidf use an espidf terminal and upload
-// cd build
-// scp metermgr.bin root@64.23.180.233:/var/www/html
-// the download url is fixed at that /var/www/html directory by default
-
-#define ADC_ATTEN                       ADC_ATTEN_DB_12
-#define ADC_BIT_WIDTH                   SOC_ADC_DIGI_MAX_BITWIDTH
-#define ADC_BUFF                        (256)
-#define ADC_CONV_MODE                   ADC_CONV_SINGLE_UNIT_1
-#define ADC_UNIT                        ADC_UNIT_1
-#define ADCBIAS                         (20)
-#define ADCDEL                          (300)
-#define ADCFREQ                         (20)
-#define ADCLOOP                         (5)
-#define ADCMAXAMP                       (5.5)
-#define ADCMINAMP                       (4.05)
-#define ADCVREF                         (3.3)
-#define VOLTS                           (118.5)
-#define BEATTIMER                       (10000)
 #define SSIDBLINKTIME                   (80)
-#define MINTICKSISR                     (10)            //very importante, debouncing time
 
 // mqtt topic names
 #define MQTTCMD                         "cmd"
@@ -179,17 +142,6 @@
 
 #define MESH_INT_DATA_BIN               (0x88995566)
 #define MESH_INT_DATA_CJSON             (0x33221144)
-#define MESH_MOTA_START                 (0x11447787)
-#define MESH_MOTA_DATA                  (0x11447788)
-#define MESH_MOTA_END                   (0x11447789)
-#define MESH_MOTA_DATA_REC              (0x11447790)
-#define MESH_MOTA_DATA_REC_END          (0x11447791)
-
-#define MOTALEN                         (1024)
-#define MAXMOTA                         (500)
-#define RECOVERTIMEOUT                  (1000*60*2)     // 2 minutes
-#define MAXMISSED                       (100)
-
 
 #define DEFAULT_SSID                    "NETLIFE-RSNCasa"
 #define DEFAULT_PSWD                    "csttpstt"

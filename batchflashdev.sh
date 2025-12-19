@@ -39,7 +39,7 @@ waitall()
         # echo " Variable [$var] ${#var}"
             if [ ${#var} -gt 1 ]
             then
-                # echo -n "."
+                printf "."
                 nada=0
                 # echo "$ppid is running"
                 # Do something knowing the pid exists, i.e. the process with $PID is running
@@ -75,8 +75,11 @@ var="$(ps aux |grep /dev/tty.u |grep -v grep | grep esp_idf_monitor| awk '{print
 if [ ${#var} -gt 0 ]; then
     kill -9 $var 
 fi
-    #  kill -9 $(ps  u |grep /dev/tty.u |grep -v grep | grep esp_idf_monitor| awk '{print $2}') 
 var="$(ps aux |grep "CoolTerm" |grep -v "grep"|awk '{print $2}')"
+if [ ${#var} -gt 0 ]; then
+    kill -9 $var 
+fi
+var="$(ps aux |grep "screen" |grep -v "grep"|awk '{print $2}')"
 if [ ${#var} -gt 0 ]; then
     kill -9 $var 
 fi
