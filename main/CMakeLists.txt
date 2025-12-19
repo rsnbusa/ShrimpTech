@@ -39,6 +39,7 @@ set (src
     kbd/cmdSecurity.cpp
     kbd/cmdNode.cpp
     kbd/cmdDebug.cpp
+    kbd/cmdBlow.cpp
     )
 
     set (html 

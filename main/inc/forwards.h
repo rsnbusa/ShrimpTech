@@ -70,6 +70,7 @@ int cmdConfig(int argc, char **argv);
 int cmdFindUnit(int argc, char **argv);
 int cmdSecurity(int argc, char **argv);
 int cmdMetersreset(int argc, char **argv);
+int cmdBlow(int argc, char **argv);
 void oled_disp(lv_disp_t *disp);
 esp_err_t root_send_confirmation_central(char *msg,uint16_t size,char *cualQ);
 void showData(void * pArg);

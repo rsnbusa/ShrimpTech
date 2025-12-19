@@ -62,6 +62,10 @@ void kbd(void *pArg)
   logArgs.erase =                   arg_int0(NULL, "erase", "0/1" ,"Erase logs");
   logArgs.end =                     arg_end(2);
 
+  blowArgs.seed =                    arg_str0(NULL, "seed", "x ", "Seed blower readngs");
+  blowArgs.init =                    arg_str0(NULL, "erase", "x" ,"Set 0 to blower readings");
+  blowArgs.end =                     arg_end(2);
+
   fram_cmd = {
         .command = "fram",
         .help = "Manage Fram",
@@ -135,6 +139,14 @@ void kbd(void *pArg)
         .argtable = &resetlevel
     };
 
+    blow_cmd = {
+        .command = "blow",
+        .help = "Manage Blower reading",
+        .hint = NULL,
+        .func = &cmdBlow,
+        .argtable = &blowArgs
+    };
+
     aes_cmd = {
         .command = "aes",
         .help = "Encrypt Decrypt",
@@ -201,6 +213,7 @@ void kbd(void *pArg)
       ESP_ERROR_CHECK(esp_console_cmd_register(&meshreset_cmd));
       ESP_ERROR_CHECK(esp_console_cmd_register(&node_cmd));
       ESP_ERROR_CHECK(esp_console_cmd_register(&debug_cmd));
+      ESP_ERROR_CHECK(esp_console_cmd_register(&blow_cmd));
     }
   ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &repl));
   ESP_ERROR_CHECK(esp_console_start_repl(repl));

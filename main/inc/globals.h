@@ -53,6 +53,7 @@ EXTERN prepaid_t                    prepaidcmd;
 EXTERN resetconf_t                  resetlevel;
 EXTERN securit_t                    kbdsedcurity,appSSID,appNode,appSkip; 
 EXTERN logargs_t                    logArgs;
+EXTERN blow_t                       blowArgs;
 // end kbd 
 EXTERN aes_en_dec_t                 endec;
 EXTERN esp_netif_t*                 esp_sta; 
@@ -64,7 +65,7 @@ EXTERN char                         alarmQueue[60],gwStr[20],*tempb,iv[16],key[3
                                     emergencyQueue[60],cmdBroadcast[60],discoQueue[60],installQueue[60],*globalDupStr;
 EXTERN mesh_addr_t                  GroupID; 
 EXTERN master_node_t                masterNode;
-EXTERN esp_console_cmd_t            fram_cmd,meter_cmd,mid_cmd,config_cmd,erase_cmd,loglevel_cmd,basetimer_cmd,prepaid_cmd,resetconf_cmd,
+EXTERN esp_console_cmd_t            blow_cmd,fram_cmd,meter_cmd,mid_cmd,config_cmd,erase_cmd,loglevel_cmd,basetimer_cmd,prepaid_cmd,resetconf_cmd,
                                     aes_cmd,security_cmd,app_cmd,node_cmd,skip_cmd,log_cmd,adc_cmd,findunit_cmd,meshreset_cmd,debug_cmd;
 EXTERN gpio_config_t 	            io_conf;
 EXTERN FILE*                        myFile;

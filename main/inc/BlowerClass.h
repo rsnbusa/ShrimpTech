@@ -101,6 +101,8 @@ public:
                    uint16_t *batDischgAHTotal, float *generateEnergyToday, float *usedEnergyToday,
                    float *gLoadConsumLineTotal, float *batChgkWhToday, float *batDischgkWhToday,
                    float *genLoadConsumToday);
+    void setSensors(float DO, float PH, float WTemp, float ATemp, float AHum);
+    void getSensors(float *DO, float *PH, float *WTemp, float *ATemp, float *AHum);
 
     uint32_t getStatsMsgIn();
     uint32_t getStatsMsgOut();
@@ -111,7 +113,6 @@ public:
     uint8_t getStatsStaConns();
     uint8_t getStatsStaDiscos();
     time_t getStatsLastCountTS();
-    void getSensors(float *DO, float *PH, float *WTemp, float *ATemp, float *AHum);;
     
     solarSystem_t* getPtrSolarsystem();
     void setStatsLastNodeCount(uint8_t count);
@@ -123,7 +124,6 @@ public:
     void setStatsMsgOut();
     void setStatsBytesIn(uint32_t count);
     void setStatsBytesOut(uint32_t count);
-    void setSensors(float DO, float PH, float WTemp, float ATemp, float AHum);
     
 
     TaskHandle_t getMainTask();

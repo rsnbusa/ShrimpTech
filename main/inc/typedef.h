@@ -134,6 +134,11 @@ typedef struct logop{
     struct arg_int *erase;
     struct  arg_end *end;
 } logargs_t;
+typedef struct blowst{
+    struct arg_str *seed;
+    struct arg_str *init;
+    struct  arg_end *end;
+} blow_t;
 
 //end kbd defs
 typedef struct medidores_mac{

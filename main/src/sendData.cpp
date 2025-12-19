@@ -6,6 +6,7 @@
 // for shrimp solar blower meter
 extern void print_blower(char * title,solarSystem_t *msolar);
 extern void delay(uint32_t son);
+extern void seed_blower();
 meshunion_t * sendData(bool forced)
 {
     time_t now;
@@ -31,8 +32,15 @@ meshunion_t * sendData(bool forced)
     thisNode->nodedata.msgnum=theBlower.getStatsMsgOut();
     thisNode->nodedata.nodeid=theConf.poolid;
     thisNode->nodedata.subnode=theConf.unitid;
+// ========================================================================
+
+    seed_blower();          // for simulations only  ERASE later
+
+// ========================================================================
+
     solarSystem_t *msolar;
     msolar=theBlower.getPtrSolarsystem();
+
     memcpy((void*)&thisNode->nodedata.solarData.solarSystem,msolar,sizeof(solarSystem_t));
     // print_blower("Senddata",msolar);
     return thisNode;        //must be freed by caller
