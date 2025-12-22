@@ -2,6 +2,16 @@
 #define TYPES_H_
 #include "includes.h"
 #include "defines.h"
+typedef struct mod_st { 
+    uint8_t  slave_address;
+    uint8_t  function_code;
+    uint16_t address;
+    uint16_t points; 
+    uint16_t timeout;
+    uint8_t  tipo;
+    void *   theAnswer;
+    uint8_t  error;
+} modbus_array_t;
 
 typedef struct answer{
         char *      theanswer;
@@ -51,7 +61,8 @@ enum {
     dMQTT,
     dXCMDS,
     dBLOW,
-    dLOGIC
+    dLOGIC,
+    dMODBUS
 };
 
 typedef enum {

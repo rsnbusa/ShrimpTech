@@ -86,4 +86,5 @@ EXTERN modbus_general_t             generalParams;
 EXTERN modbus_generic_t             genericParams;
 EXTERN modbus_rec_t                 modbusRecord;
 EXTERN answer_t                     reply;
+EXTERN modbus_array_t               modbusArray[MAXMODBUS];
 #endif

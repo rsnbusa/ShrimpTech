@@ -46,6 +46,7 @@ void erase_config();
 void writeLog(char * que);
 void logFileInit();
 err_t read_log(int nlines);
+void rs485_task(void *pArg);
 
 void main_app(void *parg);
 // kbd cmds

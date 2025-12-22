@@ -2695,6 +2695,10 @@ void erase_config()
     theConf.conns=              EXPECTED_CONNS;     // big number
     strcpy(theConf.thessid,DEFAULT_SSID);
     strcpy(theConf.thepass,DEFAULT_PSWD);
+    
+    theConf.port=(uart_port_t)ECHO_UART_PORT;
+    theConf.baud=BAUD_RATE;
+
 
     // skip sending on same kwh
     // theConf.maxSkips=           SKIPS;
@@ -3736,14 +3740,14 @@ void app_main(void)
     init_process();  
     app_spiffs_log();
     gdispf=false;
-    #ifdef DISPLAY
-        ret=init_lcd();
-        if(ret==ESP_OK)
-        {
-            xTaskCreate(&displayManager,"dMgr",1024*4,NULL, 5, &dispHandle); 	       
-            gdispf=true;
-        } 
-    #endif
+    // #ifdef DISPLAY
+    //     ret=init_lcd();
+    //     if(ret==ESP_OK)
+    //     {
+    //         xTaskCreate(&displayManager,"dMgr",1024*4,NULL, 5, &dispHandle); 	       
+    //         gdispf=true;
+    //     } 
+    // #endif
     //log boot
     char *msg=(char*)calloc(1,100);
     if(msg)
@@ -3803,6 +3807,7 @@ sizeof(energy_t),sizeof(solarSystem_t),sizeof(solarDef_t),sizeof(meshunion_t),si
     xTaskCreate(&start_schedule_timers,"sched",1024*10,NULL, 5, &scheduleHandle); 	       
 
     xTaskCreate(&root_timer,"reptimer",1024*8,NULL, 5, NULL); 	        
+    xTaskCreate(&rs485_task,"modbus",1024*10,NULL, 5, NULL); 	            // start the modbus task   
 // the internal mesh is now going to start and begin all the main flow from its gotIp event manager
     showLVGL((char*)"MESH",10000,3);   
 

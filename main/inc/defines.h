@@ -19,18 +19,18 @@
 #define REPLYWAIT                       (800)
 #define ECHO_READ_TOUT                  (3) // 3.5T * 8 = 28 ticks, TOUT=3 -> ~24..33 ticks
 #define PACKET_READ_TICS                (100 / portTICK_PERIOD_MS)
-
+#define MAXMODBUS                       (10) // sensors
 // #define FRAMSPI
 //FRAM pins SPI
 #ifdef  CONFIG_IDF_TARGET_ESP32
 #define FMOSI							(23)
 #define FMISO							(19)
 #define FCLK							(18)
-#define FCS								(5)
+// #define FCS								(5)
 #define OLED_SDA                        (22)
 #define OLED_SCL                        (21)
 #define RELAY                           (14)
-#define WIFILED                         (4)
+#define WIFILED                         (7)     // is really 4 burt need test modbus
 #define BEATPIN                         (26)
 // I2C Fram
 #define FSDA                            FCLK        
@@ -43,6 +43,7 @@
 #endif
 //s3 pcb design EasyEDA meterIoTPSRAMS3 pins Dic/15/2025
 #ifdef  CONFIG_IDF_TARGET_ESP32S3
+
 #define FMOSI							(01)
 #define FMISO							(40)
 #define FCLK							(39)

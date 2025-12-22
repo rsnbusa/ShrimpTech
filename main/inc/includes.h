@@ -19,6 +19,7 @@
 #include "host/ble_hs.h"
 #include "services/gap/ble_svc_gap.h"
 #include "services/gatt/ble_svc_gatt.h"
+#include "mbcontroller.h"
 
 extern "C"{
 
@@ -64,6 +65,8 @@ extern "C"{
 
 #include "driver/uart.h"
 
+
+#include "misparams.h"  // for modbus parameters structures
     // ble
 
 
