@@ -9,6 +9,7 @@
 
 #include "typedef.h"    
 #include "defines.h"
+#include "mongoose_glue.h"              // for website definitions 
 const static int MQTT_BIT 				= BIT0;
 const static int WIFI_BIT 				= BIT1;
 const static int PUB_BIT 				= BIT2;
@@ -87,4 +88,6 @@ EXTERN modbus_generic_t             genericParams;
 EXTERN modbus_rec_t                 modbusRecord;
 EXTERN answer_t                     reply;
 EXTERN modbus_array_t               modbusArray[MAXMODBUS];
+EXTERN struct modbus                mimodbus;                       // modbus parameters as a structure
+EXTERN struct limits                milimits;                       // limits as a strucure
 #endif

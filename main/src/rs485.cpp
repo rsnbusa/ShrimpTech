@@ -307,7 +307,7 @@ void rs485_task(void *arg)
                             //         alarm_state = true;
                             //         break;
                             // }
-                                    vTaskDelay(pdMS_TO_TICKS(20000));
+                                    vTaskDelay(pdMS_TO_TICKS(15*60*60*1000));
 
                         } else {
                             uint8_t state = *(uint8_t*)temp_data_ptr;

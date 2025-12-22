@@ -147,6 +147,41 @@ struct custom_api_handler {
 };
 static struct custom_api_handler *s_custom_handlers;
 
+struct attribute s_modbus_attributes[] = {
+  {"HumFcode", "int", NULL, offsetof(struct modbus, HumFcode), 0, false},
+  {"HumAddress", "int", NULL, offsetof(struct modbus, HumAddress), 0, false},
+  {"AmbientFcode", "int", NULL, offsetof(struct modbus, AmbientFcode), 0, false},
+  {"AmbientAddress", "int", NULL, offsetof(struct modbus, AmbientAddress), 0, false},
+  {"WaterFcode", "int", NULL, offsetof(struct modbus, WaterFcode), 0, false},
+  {"WaterAddress", "int", NULL, offsetof(struct modbus, WaterAddress), 0, false},
+  {"PHFcode", "int", NULL, offsetof(struct modbus, PHFcode), 0, false},
+  {"PHAddress", "int", NULL, offsetof(struct modbus, PHAddress), 0, false},
+  {"DOFcode", "int", NULL, offsetof(struct modbus, DOFcode), 0, false},
+  {"DOAddress", "int", NULL, offsetof(struct modbus, DOAddress), 0, false},
+  {"PVAddress", "int", NULL, offsetof(struct modbus, PVAddress), 0, false},
+  {"Charge_State", "int", NULL, offsetof(struct modbus, Charge_State), 0, false},
+  {"PV2_Volts", "int", NULL, offsetof(struct modbus, PV2_Volts), 0, false},
+  {"PV1_Volts", "int", NULL, offsetof(struct modbus, PV1_Volts), 0, false},
+  {"PV2_Amps", "int", NULL, offsetof(struct modbus, PV2_Amps), 0, false},
+  {"PV1_Amps", "int", NULL, offsetof(struct modbus, PV1_Amps), 0, false},
+  {"BatAddress", "int", NULL, offsetof(struct modbus, BatAddress), 0, false},
+  {"SOC", "int", NULL, offsetof(struct modbus, SOC), 0, false},
+  {"SOH", "int", NULL, offsetof(struct modbus, SOH), 0, false},
+  {"CycleCount", "int", NULL, offsetof(struct modbus, CycleCount), 0, false},
+  {"InverterAddress", "int", NULL, offsetof(struct modbus, InverterAddress), 0, false},
+  {"BatTemp", "int", NULL, offsetof(struct modbus, BatTemp), 0, false},
+  {"BatAhCharToday", "int", NULL, offsetof(struct modbus, BatAhCharToday), 0, false},
+  {"BatAhDiscToday", "int", NULL, offsetof(struct modbus, BatAhDiscToday), 0, false},
+  {"BatAhChgTotal", "int", NULL, offsetof(struct modbus, BatAhChgTotal), 0, false},
+  {"BatAhDischTotal", "int", NULL, offsetof(struct modbus, BatAhDischTotal), 0, false},
+  {"GenkWhToday", "int", NULL, offsetof(struct modbus, GenkWhToday), 0, false},
+  {"UsedkWhToday", "int", NULL, offsetof(struct modbus, UsedkWhToday), 0, false},
+  {"LoadUsedTotal", "int", NULL, offsetof(struct modbus, LoadUsedTotal), 0, false},
+  {"BatChgkWhToday", "int", NULL, offsetof(struct modbus, BatChgkWhToday), 0, false},
+  {"BatDschkWhToday", "int", NULL, offsetof(struct modbus, BatDschkWhToday), 0, false},
+  {"loadKusedToday", "int", NULL, offsetof(struct modbus, loadKusedToday), 0, false},
+  {NULL, NULL, NULL, 0, 0, false}
+};
 struct attribute s_limits_attributes[] = {
   {"hummax", "int", NULL, offsetof(struct limits, hummax), 0, false},
   {"hummin", "int", NULL, offsetof(struct limits, hummin), 0, false},
@@ -257,6 +292,7 @@ struct attribute s_sysset_attributes[] = {
   {NULL, NULL, NULL, 0, 0, false}
 };
 
+struct apihandler_data s_apihandler_modbus = {{"modbus", "data", false, 0, 0, 0UL}, s_modbus_attributes, sizeof(struct modbus), (void (*)(void *)) glue_get_modbus, (void (*)(void *)) glue_set_modbus};
 struct apihandler_action s_apihandler_reboot = {{"reboot", "action", false, 0, 0, 0UL}, glue_check_reboot, glue_start_reboot};
 struct apihandler_data s_apihandler_limits = {{"limits", "data", false, 0, 0, 0UL}, s_limits_attributes, sizeof(struct limits), (void (*)(void *)) glue_get_limits, (void (*)(void *)) glue_set_limits};
 struct apihandler_data s_apihandler_profile = {{"profile", "data", false, 0, 0, 0UL}, s_profile_attributes, sizeof(struct profile), (void (*)(void *)) glue_get_profile, (void (*)(void *)) glue_set_profile};
@@ -265,6 +301,7 @@ struct apihandler_data s_apihandler_system = {{"system", "data", false, 0, 0, 0U
 struct apihandler_data s_apihandler_sysset = {{"sysset", "data", false, 0, 0, 0UL}, s_sysset_attributes, sizeof(struct sysset), (void (*)(void *)) glue_get_sysset, (void (*)(void *)) glue_set_sysset};
 
 static struct apihandler *s_apihandlers[] = {
+  (struct apihandler *) &s_apihandler_modbus,
   (struct apihandler *) &s_apihandler_reboot,
   (struct apihandler *) &s_apihandler_limits,
   (struct apihandler *) &s_apihandler_profile,
@@ -524,19 +561,19 @@ size_t print_struct(void (*out)(char, void *), void *ptr, va_list *ap) {
   char *data = va_arg(*ap, char *);
   size_t i, len = 0;
   for (i = 0; a[i].name != NULL; i++) {
-    char *attrptr = data + a[i].offset;
+    char *buf = data + a[i].offset;
     len += mg_xprintf(out, ptr, "%s%m:", i == 0 ? "" : ",", MG_ESC(a[i].name));
     if (strcmp(a[i].type, "int") == 0) {
-      len += mg_xprintf(out, ptr, "%d", *(int *) attrptr);
+      len += mg_xprintf(out, ptr, "%d", *(int *) buf);
     } else if (strcmp(a[i].type, "double") == 0) {
       const char *fmt = a[i].format;
       if (fmt == NULL) fmt = "%g";
-      len += mg_xprintf(out, ptr, fmt, *(double *) attrptr);
+      len += mg_xprintf(out, ptr, fmt, *(double *) buf);
     } else if (strcmp(a[i].type, "bool") == 0) {
-      len += mg_xprintf(out, ptr, "%s", *(bool *) attrptr ? "true" : "false");
+      len += mg_xprintf(out, ptr, "%s", *(bool *) buf ? "true" : "false");
     } else if (strcmp(a[i].type, "string") == 0) {
       // We don't use MG_ESC cause the buffer may not be 0-terminated
-      len += mg_xprintf(out, ptr, "%m", mg_print_esc, a->size, attrptr);
+      len += mg_xprintf(out, ptr, "%m", mg_print_esc, a[i].size, buf);
     } else {
       len += mg_xprintf(out, ptr, "null");
     }
@@ -1166,7 +1203,7 @@ void mongoose_init(void) {
 
 #if WIZARD_ENABLE_MDNS
   MG_INFO(("Starting MDNS (domain name: %s.local)", s_mdns_name));
-  mg_mdns_listen(&g_mgr, s_mdns_name);
+  mg_mdns_listen(&g_mgr, NULL, s_mdns_name); // Mongoose #3351
 #endif
 
   glue_lock_init();

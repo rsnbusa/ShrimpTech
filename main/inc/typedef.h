@@ -2,6 +2,8 @@
 #define TYPES_H_
 #include "includes.h"
 #include "defines.h"
+#include "mongoose_glue.h"              // for website definitions 
+
 typedef struct mod_st { 
     uint8_t  slave_address;
     uint8_t  function_code;
@@ -265,7 +267,9 @@ typedef struct config {
     uint32_t    loginwait;
     int         limits[21][2];     //for 21 variables , min 0 max 1
     uint16_t    baud;
-    uart_port_t     port;
+    uart_port_t port;
+    struct modbus mimodbus;
+    struct limits milim;
 
 } config_flash;
 

@@ -2678,6 +2678,10 @@ void erase_config()
     strcpy(theConf.mqttServer,"mqtt://64.23.180.233:1883");
     strcpy(theConf.mqttUser,"robert");
     strcpy(theConf.mqttPass,"csttpstt");
+    struct limits start_limits = {90, 50, 32, 19, 31, 19, 70, 50, 70, 40, 42, 40, 42, 40, 42, 40, 42, 40, 42, 40, 42, 40, 820, 720, 850, 720, 820, 720, 820, 780, 50, 10, 5000, 0, 100, 20, 80, 20, 15, 14, 390, 340};
+    theConf.milim=start_limits;
+    struct modbus mimod={7,3,6,3,5,3,4,3,16,3,1,10,11,12,13,14,2,20,21,22,23,8,80,81,82,83,84,85,86,87,88,89};
+    theConf.mimodbus=mimod;
     // strcpy(theConf.mqttServer,"mqtts://possum.lmq.cloudamqp.com:8883");
     // strcpy(theConf.mqttUser,"yavwcjrm:yavwcjrm");
     // strcpy(theConf.mqttPass,"UjKTzDJOnMN7voH-FaflNW0rP-dUXck0");
@@ -3778,13 +3782,11 @@ sizeof(energy_t),sizeof(solarSystem_t),sizeof(solarDef_t),sizeof(meshunion_t),si
         ESP_LOGW(MESH_TAG,"Formatting Fram new configuration");
         theBlower.deinit();
         theBlower.format();
-        int monton[21][2]={{90, 50}, {32, 19}, {31, 19}, {70, 50}, {70, 40}, {42, 40}, {42, 40}, {42, 40}, {42, 40}, {42, 40}, {42, 40}, {820, 720}, {850, 720}, {820, 720}, {820, 780}, {50, 10}, {5000, 0}, {100, 20}, {80, 20}, {15, 14}, {390, 340}};
-        memcpy(&theConf.limits,&monton,sizeof(monton));
         xTaskCreate(&blinkConf,"displ",1024,(void*)800, 5, &configureHandle); 	        //blink we are not configured
         reconfTimer=xTimerCreate("Reconf",pdMS_TO_TICKS(300000),pdFALSE,( void * ) 0, [] ( TimerHandle_t xTimer){esp_restart();});   //monitor activity and timeout if no work done-> use lambda
         meter_configure();      //start the STA for access to Router directly.
         vTaskDelete(configureHandle);   //stop the blinking now we are configured
-        theConf.meterconf=1;
+        // theConf.meterconf=1;
         write_to_flash();
     }
 

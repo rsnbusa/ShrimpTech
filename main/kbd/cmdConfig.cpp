@@ -6,9 +6,98 @@
 #include "forwards.h"
 extern void show_profiles();
 
-char lims[21][10]={"AHUM","ATEMP","WTEMP","LIMITPH","LIMITDO","GENLCT","BMDDKW","BMCHKW","LCONLI","USEDEN","GENEER",
-"BMDDKT","BMCHKT","BMDDAH","BMCHAH","BMTEMP","BMCC","BMSOH","BMSOC","PV1A","PVV"};
+char lims[][10]={"AHUM","ATEMP","WTEMP","LIMITPH","LIMITDO","GENLCT","BMDDKW","BMCHKW","LCONLI","USEDEN","GENEER",
+"BMDDKT","BMCHKT","BMDDAH","BMCHAH","BMTEMP","BMCC","BMSOH","BMSOC","PV1A","PV1V","PV2A","PV2V"};
 
+char modb_names[][30]={
+ "ChargeState","PV1Volts","PV1AMps","PV2Volts","PV2AMps",
+"SOC","SOH","CycleCount","BatTemp",
+"DO","PH","WTemp","A Temp","Humidity",
+"BatChToday","BatDscToday","BatChgTotal","BatDscTotal","GenToday","Usedkoday","LoadUsedTotal","BatChdToday","BatDscToday","LoadUsedToday"
+};
+
+void show_mimodbus()
+{
+
+    printf("\n\t\t========== PV Panels Addr:[%02d] ============\n",theConf.mimodbus.PVAddress);
+    printf("\t\tName\t\tFunction Code\n");
+    printf("\t\t=====================================\n");
+    printf("\t\t%12s\t%d\n",modb_names[0],theConf.mimodbus.Charge_State);
+    printf("\t\t%12s\t%d\n",modb_names[1],theConf.mimodbus.PV1_Volts);
+    printf("\t\t%12s\t%d\n",modb_names[2],theConf.mimodbus.PV1_Amps);
+    printf("\t\t%12s\t%d\n",modb_names[3],theConf.mimodbus.PV2_Volts);
+    printf("\t\t%12s\t%d\n",modb_names[4],theConf.mimodbus.PV2_Amps);
+    printf("\n"); 
+
+    printf("\n\t\t======= Battery Addr:[%02d] ============\n",theConf.mimodbus.BatAddress);
+    printf("\t\tName\t\tFunction Code\n");
+    printf("\t\t=====================================\n");
+    printf("\t\t%12s\t%d\n",modb_names[5],theConf.mimodbus.SOC);
+    printf("\t\t%12s\t%d\n",modb_names[6],theConf.mimodbus.SOH);
+    printf("\t\t%12s\t%d\n",modb_names[7],theConf.mimodbus.CycleCount);
+    printf("\t\t%12s\t%d\n",modb_names[8],theConf.mimodbus.BatTemp);
+    printf("\n"); 
+
+    printf("\n\t\t============== Sensors =====================\n");
+    printf("\t\tName\t\t\tAddress\tFunction Code\n");
+    printf("\t\t=============================================\n");
+    printf("\t\t%12s\t\t%02d\t%d\n",modb_names[9],theConf.mimodbus.DOAddress,theConf.mimodbus.DOFcode);
+    printf("\t\t%12s\t\t%02d\t%d\n",modb_names[10],theConf.mimodbus.PHAddress,theConf.mimodbus.PHFcode);
+    printf("\t\t%12s\t\t%02d\t%d\n",modb_names[11],theConf.mimodbus.WaterAddress,theConf.mimodbus.WaterFcode);
+    printf("\t\t%12s\t\t%02d\t%d\n",modb_names[12],theConf.mimodbus.AmbientAddress,theConf.mimodbus.AmbientFcode);
+    printf("\t\t%12s\t\t%02d\t%d\n",modb_names[13],theConf.mimodbus.HumAddress,theConf.mimodbus.HumFcode);
+    printf("\n");
+
+    printf("\n\t\t========= Inverter Addr:[%02d] ============\n",theConf.mimodbus.InverterAddress);
+    printf("\t\tName\t\tFunction Code\n");
+    printf("\t\t=====================================\n");
+    printf("\t\t%12s\t%d\n",modb_names[14],theConf.mimodbus.BatAhCharToday);
+    printf("\t\t%12s\t%d\n",modb_names[15],theConf.mimodbus.BatAhDiscToday);
+    printf("\t\t%12s\t%d\n",modb_names[16],theConf.mimodbus.BatAhChgTotal);
+    printf("\t\t%12s\t%d\n",modb_names[17],theConf.mimodbus.BatAhDischTotal);
+    printf("\t\t%12s\t%d\n",modb_names[18],theConf.mimodbus.GenkWhToday);
+    printf("\t\t%12s\t%d\n",modb_names[19],theConf.mimodbus.UsedkWhToday);
+    printf("\t\t%12s\t%d\n",modb_names[20],theConf.mimodbus.LoadUsedTotal);
+    printf("\t\t%12s\t%d\n",modb_names[21],theConf.mimodbus.BatChgkWhToday);
+    printf("\t\t%12s\t%d\n",modb_names[22],theConf.mimodbus.BatDschkWhToday);
+    printf("\t\t%12s\t%d\n",modb_names[23],theConf.mimodbus.loadKusedToday);
+    printf("\n"); 
+
+}
+
+void show_limits()
+{
+
+    printf("\n\t\t============== Limits ===============\n");
+    printf("\t\tName\t\t   Min\t\t  Max\n");
+    printf("\t\t=====================================\n");
+    printf("\t\t%s\t\t%4d\t\t%4d\n",lims[0],theConf.milim.hummin,theConf.milim.hummax);
+    printf("\t\t%s\t\t%4d\t\t%4d\n",lims[1],theConf.milim.atempmin,theConf.milim.atempmax);
+    printf("\t\t%s\t\t%4d\t\t%4d\n",lims[2],theConf.milim.wtempmin,theConf.milim.wtempmax);
+    printf("\t\t%s\t\t%4d\t\t%4d\n",lims[3],theConf.milim.phmin,theConf.milim.phmax);
+    printf("\t\t%s\t\t%4d\t\t%4d\n",lims[4],theConf.milim.domin,theConf.milim.domax);
+    printf("\t\t%s\t\t%4d\t\t%4d\n",lims[5],theConf.milim.kwchoymin,theConf.milim.kwchoymax);
+    printf("\t\t%s\t\t%4d\t\t%4d\n",lims[6],theConf.milim.kwbatdhoymin,theConf.milim.kwbatdhoymax);
+    printf("\t\t%s\t\t%4d\t\t%4d\n",lims[7],theConf.milim.kwbatchoymin,theConf.milim.kwbatchoymax);
+    printf("\t\t%s\t\t%4d\t\t%4d\n",lims[8],theConf.milim.kwloadhoymin,theConf.milim.kwloadhoymax);
+    printf("\t\t%s\t\t%4d\t\t%4d\n",lims[9],theConf.milim.kwctodaymin,theConf.milim.kwctodaymax);
+    printf("\t\t%s\t\t%4d\t\t%4d\n",lims[10],theConf.milim.kwgtodaymin,theConf.milim.kwgtodaymax);
+    printf("\t\t%s\t\t%4d\t\t%4d\n",lims[11],theConf.milim.bdATotmin,theConf.milim.bdATotmax);
+    printf("\t\t%s\t\t%4d\t\t%4d\n",lims[12],theConf.milim.bcATotmin,theConf.milim.bcATotmax);
+    printf("\t\t%s\t\t%4d\t\t%4d\n",lims[13],theConf.milim.bdAhoymin,theConf.milim.bcAhoymax);
+    printf("\t\t%s\t\t%4d\t\t%4d\n",lims[14],theConf.milim.btempmin,theConf.milim.btempmax);
+    printf("\t\t%s\t\t%4d\t\t%4d\n",lims[15],theConf.milim.bcyclemin,theConf.milim.bcyclemax);
+    printf("\t\t%s\t\t%4d\t\t%4d\n",lims[16],theConf.milim.bSOHmin,theConf.milim.bSOHmax);
+    printf("\t\t%s\t\t%4d\t\t%4d\n",lims[17],theConf.milim.bSOCmin,theConf.milim.bSOCmax);
+    printf("\t\t%s\t\t%4d\t\t%4d\n",lims[18],theConf.milim.amin,theConf.milim.amax);
+    printf("\t\t%s\t\t%4d\t\t%4d\n",lims[19],theConf.milim.vmin,theConf.milim.vmax);
+    printf("\t\t%s\t\t%4d\t\t%4d\n",lims[20],theConf.milim.amin,theConf.milim.amax);
+    printf("\t\t%s\t\t%4d\t\t%4d\n",lims[21],theConf.milim.vmin,theConf.milim.vmax);
+
+
+    printf("\n");
+
+}
 void showconf(void *pArg)
 {
 
@@ -180,14 +269,9 @@ uint32_t nada;    // this is compiler error, it goes crazy if done directly like
     printf("Expected Nodes %lu Expected Conns %lu\n",theConf.totalnodes,theConf.conns);
 
     print_blower("Blower",theBlower.getSolarSystem(),false);
-    printf("\n\t\t============== Limits ===============\n");
-    printf("\t\tName\t\t   Min\t\t  Max\n");
-    printf("\t\t=====================================\n");
-    for (int a=0;a<21;a++)
-        printf("\t\t%s\t\t%4d\t\t%4d\n",lims[a],theConf.limits[a][1],theConf.limits[a][0]);
-    printf("\n");
 
-      
+    show_limits();
+    show_mimodbus();
       vTaskDelete(NULL);
 }
 

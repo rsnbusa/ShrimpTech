@@ -502,9 +502,25 @@ void my_get_profile(struct profile *data)
 	*data=s_profile;
 }
 
+void my_set_modbus(struct modbus *data) // save limits from web to theblower
+{
+	theConf.mimodbus=*data;
+	write_to_flash();
+}
+
+
+void my_get_modbus(struct modbus *data) // return limits saved in theblower
+{
+	if( theConf.meterconf>2)
+   		s_settings.disable_val=1;
+	else
+   		s_settings.disable_val=0;
+	*data=theConf.mimodbus;
+}
+
 void my_set_limits(struct limits *data) // save limits from web to theblower
 {
-	memcpy(&theConf.limits,data,sizeof(theConf.limits));
+	theConf.milim=*data;
 	write_to_flash();
 }
 
@@ -515,7 +531,7 @@ void my_get_limits(struct limits *data) // return limits saved in theblower
    		s_settings.disable_val=1;
 	else
    		s_settings.disable_val=0;
-	memcpy(data,&theConf.limits,sizeof(theConf.limits));
+	*data=theConf.milim;
 }
 
 void app_spiffs(void)
@@ -599,12 +615,13 @@ void start_webserver(void *pArg)
 {
 	ESP_LOGW(MESH_TAG,"Starting webserver");
 	mongoose_init();
-  	mongoose_set_http_handlers("settings", my_get_settings, my_set_settings);		// when virgin chip or first run
-  	mongoose_set_http_handlers("system", my_get_system ,my_set_system);				// additonal system settings
-  	mongoose_set_http_handlers("sysset", my_get_sysset ,my_set_sysset);				// general data just for information not mutable
-  	mongoose_set_http_handlers("profile", my_get_profile ,my_set_profile);				// working meter data
-  	mongoose_set_http_handlers("limits", my_get_limits ,my_set_limits);				// working meter data
-  	mongoose_set_http_handlers("reboot", my_check_reboot ,my_start_reboot);				// used to restart chip and return to normal operation
+  	mongoose_set_http_handlers("settings", my_get_settings, my_set_settings);		
+  	mongoose_set_http_handlers("system", my_get_system ,my_set_system);				
+  	mongoose_set_http_handlers("sysset", my_get_sysset ,my_set_sysset);				
+  	mongoose_set_http_handlers("profile", my_get_profile ,my_set_profile);				
+  	mongoose_set_http_handlers("limits", my_get_limits ,my_set_limits);				
+  	mongoose_set_http_handlers("modbus", my_get_modbus ,my_set_modbus);				
+  	mongoose_set_http_handlers("reboot", my_check_reboot ,my_start_reboot);				
 	//web timeout if not done in 2 minutes restart
 	webTimer=xTimerCreate("restart",pdMS_TO_TICKS(120000),pdFALSE,( void * ) 0, [] ( TimerHandle_t xTimer){	
 			theConf.meterconf=2;

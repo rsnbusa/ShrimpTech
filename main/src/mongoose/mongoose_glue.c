@@ -5,6 +5,14 @@
 // Default mock implementation of the API callbacks
 
 #include "mongoose_glue.h"
+struct modbus s_modbus = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+void glue_get_modbus(struct modbus *data) {
+  *data = s_modbus;  // Sync with your device
+}
+void glue_set_modbus(struct modbus *data) {
+  s_modbus = *data; // Sync with your device
+}
+
 uint64_t s_action_timeout_reboot;  // Time when reboot ends
 bool glue_check_reboot(void) {
   return s_action_timeout_reboot > mg_now(); // Return true if reboot is in progress

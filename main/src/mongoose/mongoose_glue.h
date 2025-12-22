@@ -93,6 +93,43 @@ void glue_update_state(void);
 
 // Firmware Glue
 
+struct modbus {
+  int HumFcode;
+  int HumAddress;
+  int AmbientFcode;
+  int AmbientAddress;
+  int WaterFcode;
+  int WaterAddress;
+  int PHFcode;
+  int PHAddress;
+  int DOFcode;
+  int DOAddress;
+  int PVAddress;
+  int Charge_State;
+  int PV2_Volts;
+  int PV1_Volts;
+  int PV2_Amps;
+  int PV1_Amps;
+  int BatAddress;
+  int SOC;
+  int SOH;
+  int CycleCount;
+  int InverterAddress;
+  int BatTemp;
+  int BatAhCharToday;
+  int BatAhDiscToday;
+  int BatAhChgTotal;
+  int BatAhDischTotal;
+  int GenkWhToday;
+  int UsedkWhToday;
+  int LoadUsedTotal;
+  int BatChgkWhToday;
+  int BatDschkWhToday;
+  int loadKusedToday;
+};
+void glue_get_modbus(struct modbus *);
+void glue_set_modbus(struct modbus *);
+
 void glue_start_reboot(struct mg_str);  // Start an action
 bool glue_check_reboot(void);  // Check if action is still in progress
 
