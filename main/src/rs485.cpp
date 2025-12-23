@@ -299,9 +299,10 @@ void rs485_task(void *arg)
                                             param_descriptor->param_units,
                                             value,
                                             *(uint32_t*)temp_data_ptr);
-                                            // ESP_LOG_BUFFER_HEX("TEMP",temp_data_ptr,12);
-                                            // ESP_LOG_BUFFER_HEX("HREG",&holding_reg_params,12);
+                                            ESP_LOG_BUFFER_HEX("TEMP",temp_data_ptr,12);
+                                            ESP_LOG_BUFFER_HEX("HREG",&holding_reg_params,12);
                                             DOHandler((void*)temp_data_ptr,12);
+                                            // printf("Float %f\n",holding_reg_params.temp);
                             // if (((value > param_descriptor->param_opts.max) ||
                             //     (value < param_descriptor->param_opts.min))) {
                             //         alarm_state = true;

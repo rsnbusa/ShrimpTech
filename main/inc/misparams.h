@@ -61,7 +61,7 @@ typedef struct
 #pragma pack(push, 1)
 typedef struct
 {
-    uint8_t todos[12];
+uint8_t todos[12];
 } holding_reg_params_t;
 // typedef struct
 // {
