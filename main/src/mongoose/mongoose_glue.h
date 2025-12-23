@@ -93,42 +93,112 @@ void glue_update_state(void);
 
 // Firmware Glue
 
-struct modbus {
-  int HumFcode;
-  int HumAddress;
-  int AmbientFcode;
-  int AmbientAddress;
-  int WaterFcode;
-  int WaterAddress;
-  int PHFcode;
-  int PHAddress;
-  int DOFcode;
-  int DOAddress;
-  int PVAddress;
-  int Charge_State;
-  int PV2_Volts;
-  int PV1_Volts;
-  int PV2_Amps;
-  int PV1_Amps;
-  int BatAddress;
-  int SOC;
-  int SOH;
-  int CycleCount;
+struct modbInverter {
+  int refresh_rate;
+  int I11_BatTempPoints;
+  int I11_BatTempStart;
+  int I11_BatTemp;
+  int I10_LoadUsedHoyPoints;
+  int I10_LoadUsedHoyStart;
+  int I10_LoadUsedHoy;
+  int I9_BatDscHoyPoints;
+  int I9_BatDscHoyStart;
+  int I9_BatDscHoy;
+  int I8_BatChdHoyPoints;
+  int I8_BatChdHoyStart;
+  int I8_BatChdHoy;
+  int I7_LoadUsedTotalPoints;
+  int I7_LoadUsedTotalStart;
+  int I7_LoadUsedTotal;
+  int I6_UsedkwhHoyPoints;
+  int I6_UsedkwhHoyStart;
+  int I6_UsedkwhHoy;
+  int I5_GenkWhHoyPoints;
+  int I5_GenkWhHoyStart;
+  int I5_GenkWhHoy;
+  int I4_BatDscTotalPoints;
+  int I4_BatDscTotalStart;
+  int I4_BatDscTotal;
+  int I3_BatChgTotalPoints;
+  int I3_BatChgTotalStart;
+  int I3_BatChgTotal;
+  int I2_BatDscHoyPoints;
+  int I2_BatDscHoyStart;
+  int I2_BatDscHoy;
+  int I1_BatChHoyPoints;
+  int I1_BatChHoyStart;
+  int I1_BatChHoy;
   int InverterAddress;
-  int BatTemp;
-  int BatAhCharToday;
-  int BatAhDiscToday;
-  int BatAhChgTotal;
-  int BatAhDischTotal;
-  int GenkWhToday;
-  int UsedkWhToday;
-  int LoadUsedTotal;
-  int BatChgkWhToday;
-  int BatDschkWhToday;
-  int loadKusedToday;
 };
-void glue_get_modbus(struct modbus *);
-void glue_set_modbus(struct modbus *);
+void glue_get_modbInverter(struct modbInverter *);
+void glue_set_modbInverter(struct modbInverter *);
+
+struct modbSensors {
+  int refresh_rate;
+  int humPoints;
+  int humStart;
+  int Humfc;
+  int HAddress;
+  int APoints;
+  int AStart;
+  int Afc;
+  int AAddress;
+  int WPoints;
+  int WStart;
+  int Wfc;
+  int WAddress;
+  int PHPoints;
+  int PHStart;
+  int PHfc;
+  int PHAddress;
+  int DOPoints;
+  int DOStart;
+  int DOfc;
+  int DOAddress;
+};
+void glue_get_modbSensors(struct modbSensors *);
+void glue_set_modbSensors(struct modbSensors *);
+
+struct modbBattery {
+  int refresh_rate;
+  int batAddress;
+  int tempPoints;
+  int tempStart;
+  int tempfc;
+  int cyclePoints;
+  int cycleStart;
+  int cyclefc;
+  int SOHPoints;
+  int SOHStart;
+  int SOHfc;
+  int SOCPoints;
+  int SOCStart;
+  int SOCfc;
+};
+void glue_get_modbBattery(struct modbBattery *);
+void glue_set_modbBattery(struct modbBattery *);
+
+struct modbPanels {
+  int refresh_rate;
+  int PVAddress;
+  int PV2AmpsPoints;
+  int PV2AmpsStart;
+  int PV2Amps;
+  int PV1AmpsPoints;
+  int PV1AmpsStart;
+  int PV1_Amps;
+  int PV2VPoints;
+  int PV2VStart;
+  int PV2Volts;
+  int PV1VPoints;
+  int PV1VStart;
+  int PV1Volts;
+  int ChargePoints;
+  int ChargeStart;
+  int Charge_State;
+};
+void glue_get_modbPanels(struct modbPanels *);
+void glue_set_modbPanels(struct modbPanels *);
 
 void glue_start_reboot(struct mg_str);  // Start an action
 bool glue_check_reboot(void);  // Check if action is still in progress

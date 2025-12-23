@@ -147,39 +147,103 @@ struct custom_api_handler {
 };
 static struct custom_api_handler *s_custom_handlers;
 
-struct attribute s_modbus_attributes[] = {
-  {"HumFcode", "int", NULL, offsetof(struct modbus, HumFcode), 0, false},
-  {"HumAddress", "int", NULL, offsetof(struct modbus, HumAddress), 0, false},
-  {"AmbientFcode", "int", NULL, offsetof(struct modbus, AmbientFcode), 0, false},
-  {"AmbientAddress", "int", NULL, offsetof(struct modbus, AmbientAddress), 0, false},
-  {"WaterFcode", "int", NULL, offsetof(struct modbus, WaterFcode), 0, false},
-  {"WaterAddress", "int", NULL, offsetof(struct modbus, WaterAddress), 0, false},
-  {"PHFcode", "int", NULL, offsetof(struct modbus, PHFcode), 0, false},
-  {"PHAddress", "int", NULL, offsetof(struct modbus, PHAddress), 0, false},
-  {"DOFcode", "int", NULL, offsetof(struct modbus, DOFcode), 0, false},
-  {"DOAddress", "int", NULL, offsetof(struct modbus, DOAddress), 0, false},
-  {"PVAddress", "int", NULL, offsetof(struct modbus, PVAddress), 0, false},
-  {"Charge_State", "int", NULL, offsetof(struct modbus, Charge_State), 0, false},
-  {"PV2_Volts", "int", NULL, offsetof(struct modbus, PV2_Volts), 0, false},
-  {"PV1_Volts", "int", NULL, offsetof(struct modbus, PV1_Volts), 0, false},
-  {"PV2_Amps", "int", NULL, offsetof(struct modbus, PV2_Amps), 0, false},
-  {"PV1_Amps", "int", NULL, offsetof(struct modbus, PV1_Amps), 0, false},
-  {"BatAddress", "int", NULL, offsetof(struct modbus, BatAddress), 0, false},
-  {"SOC", "int", NULL, offsetof(struct modbus, SOC), 0, false},
-  {"SOH", "int", NULL, offsetof(struct modbus, SOH), 0, false},
-  {"CycleCount", "int", NULL, offsetof(struct modbus, CycleCount), 0, false},
-  {"InverterAddress", "int", NULL, offsetof(struct modbus, InverterAddress), 0, false},
-  {"BatTemp", "int", NULL, offsetof(struct modbus, BatTemp), 0, false},
-  {"BatAhCharToday", "int", NULL, offsetof(struct modbus, BatAhCharToday), 0, false},
-  {"BatAhDiscToday", "int", NULL, offsetof(struct modbus, BatAhDiscToday), 0, false},
-  {"BatAhChgTotal", "int", NULL, offsetof(struct modbus, BatAhChgTotal), 0, false},
-  {"BatAhDischTotal", "int", NULL, offsetof(struct modbus, BatAhDischTotal), 0, false},
-  {"GenkWhToday", "int", NULL, offsetof(struct modbus, GenkWhToday), 0, false},
-  {"UsedkWhToday", "int", NULL, offsetof(struct modbus, UsedkWhToday), 0, false},
-  {"LoadUsedTotal", "int", NULL, offsetof(struct modbus, LoadUsedTotal), 0, false},
-  {"BatChgkWhToday", "int", NULL, offsetof(struct modbus, BatChgkWhToday), 0, false},
-  {"BatDschkWhToday", "int", NULL, offsetof(struct modbus, BatDschkWhToday), 0, false},
-  {"loadKusedToday", "int", NULL, offsetof(struct modbus, loadKusedToday), 0, false},
+struct attribute s_modbInverter_attributes[] = {
+  {"refresh_rate", "int", NULL, offsetof(struct modbInverter, refresh_rate), 0, false},
+  {"I11_BatTempPoints", "int", NULL, offsetof(struct modbInverter, I11_BatTempPoints), 0, false},
+  {"I11_BatTempStart", "int", NULL, offsetof(struct modbInverter, I11_BatTempStart), 0, false},
+  {"I11_BatTemp", "int", NULL, offsetof(struct modbInverter, I11_BatTemp), 0, false},
+  {"I10_LoadUsedHoyPoints", "int", NULL, offsetof(struct modbInverter, I10_LoadUsedHoyPoints), 0, false},
+  {"I10_LoadUsedHoyStart", "int", NULL, offsetof(struct modbInverter, I10_LoadUsedHoyStart), 0, false},
+  {"I10_LoadUsedHoy", "int", NULL, offsetof(struct modbInverter, I10_LoadUsedHoy), 0, false},
+  {"I9_BatDscHoyPoints", "int", NULL, offsetof(struct modbInverter, I9_BatDscHoyPoints), 0, false},
+  {"I9_BatDscHoyStart", "int", NULL, offsetof(struct modbInverter, I9_BatDscHoyStart), 0, false},
+  {"I9_BatDscHoy", "int", NULL, offsetof(struct modbInverter, I9_BatDscHoy), 0, false},
+  {"I8_BatChdHoyPoints", "int", NULL, offsetof(struct modbInverter, I8_BatChdHoyPoints), 0, false},
+  {"I8_BatChdHoyStart", "int", NULL, offsetof(struct modbInverter, I8_BatChdHoyStart), 0, false},
+  {"I8_BatChdHoy", "int", NULL, offsetof(struct modbInverter, I8_BatChdHoy), 0, false},
+  {"I7_LoadUsedTotalPoints", "int", NULL, offsetof(struct modbInverter, I7_LoadUsedTotalPoints), 0, false},
+  {"I7_LoadUsedTotalStart", "int", NULL, offsetof(struct modbInverter, I7_LoadUsedTotalStart), 0, false},
+  {"I7_LoadUsedTotal", "int", NULL, offsetof(struct modbInverter, I7_LoadUsedTotal), 0, false},
+  {"I6_UsedkwhHoyPoints", "int", NULL, offsetof(struct modbInverter, I6_UsedkwhHoyPoints), 0, false},
+  {"I6_UsedkwhHoyStart", "int", NULL, offsetof(struct modbInverter, I6_UsedkwhHoyStart), 0, false},
+  {"I6_UsedkwhHoy", "int", NULL, offsetof(struct modbInverter, I6_UsedkwhHoy), 0, false},
+  {"I5_GenkWhHoyPoints", "int", NULL, offsetof(struct modbInverter, I5_GenkWhHoyPoints), 0, false},
+  {"I5_GenkWhHoyStart", "int", NULL, offsetof(struct modbInverter, I5_GenkWhHoyStart), 0, false},
+  {"I5_GenkWhHoy", "int", NULL, offsetof(struct modbInverter, I5_GenkWhHoy), 0, false},
+  {"I4_BatDscTotalPoints", "int", NULL, offsetof(struct modbInverter, I4_BatDscTotalPoints), 0, false},
+  {"I4_BatDscTotalStart", "int", NULL, offsetof(struct modbInverter, I4_BatDscTotalStart), 0, false},
+  {"I4_BatDscTotal", "int", NULL, offsetof(struct modbInverter, I4_BatDscTotal), 0, false},
+  {"I3_BatChgTotalPoints", "int", NULL, offsetof(struct modbInverter, I3_BatChgTotalPoints), 0, false},
+  {"I3_BatChgTotalStart", "int", NULL, offsetof(struct modbInverter, I3_BatChgTotalStart), 0, false},
+  {"I3_BatChgTotal", "int", NULL, offsetof(struct modbInverter, I3_BatChgTotal), 0, false},
+  {"I2_BatDscHoyPoints", "int", NULL, offsetof(struct modbInverter, I2_BatDscHoyPoints), 0, false},
+  {"I2_BatDscHoyStart", "int", NULL, offsetof(struct modbInverter, I2_BatDscHoyStart), 0, false},
+  {"I2_BatDscHoy", "int", NULL, offsetof(struct modbInverter, I2_BatDscHoy), 0, false},
+  {"I1_BatChHoyPoints", "int", NULL, offsetof(struct modbInverter, I1_BatChHoyPoints), 0, false},
+  {"I1_BatChHoyStart", "int", NULL, offsetof(struct modbInverter, I1_BatChHoyStart), 0, false},
+  {"I1_BatChHoy", "int", NULL, offsetof(struct modbInverter, I1_BatChHoy), 0, false},
+  {"InverterAddress", "int", NULL, offsetof(struct modbInverter, InverterAddress), 0, false},
+  {NULL, NULL, NULL, 0, 0, false}
+};
+struct attribute s_modbSensors_attributes[] = {
+  {"refresh_rate", "int", NULL, offsetof(struct modbSensors, refresh_rate), 0, false},
+  {"humPoints", "int", NULL, offsetof(struct modbSensors, humPoints), 0, false},
+  {"humStart", "int", NULL, offsetof(struct modbSensors, humStart), 0, false},
+  {"Humfc", "int", NULL, offsetof(struct modbSensors, Humfc), 0, false},
+  {"HAddress", "int", NULL, offsetof(struct modbSensors, HAddress), 0, false},
+  {"APoints", "int", NULL, offsetof(struct modbSensors, APoints), 0, false},
+  {"AStart", "int", NULL, offsetof(struct modbSensors, AStart), 0, false},
+  {"Afc", "int", NULL, offsetof(struct modbSensors, Afc), 0, false},
+  {"AAddress", "int", NULL, offsetof(struct modbSensors, AAddress), 0, false},
+  {"WPoints", "int", NULL, offsetof(struct modbSensors, WPoints), 0, false},
+  {"WStart", "int", NULL, offsetof(struct modbSensors, WStart), 0, false},
+  {"Wfc", "int", NULL, offsetof(struct modbSensors, Wfc), 0, false},
+  {"WAddress", "int", NULL, offsetof(struct modbSensors, WAddress), 0, false},
+  {"PHPoints", "int", NULL, offsetof(struct modbSensors, PHPoints), 0, false},
+  {"PHStart", "int", NULL, offsetof(struct modbSensors, PHStart), 0, false},
+  {"PHfc", "int", NULL, offsetof(struct modbSensors, PHfc), 0, false},
+  {"PHAddress", "int", NULL, offsetof(struct modbSensors, PHAddress), 0, false},
+  {"DOPoints", "int", NULL, offsetof(struct modbSensors, DOPoints), 0, false},
+  {"DOStart", "int", NULL, offsetof(struct modbSensors, DOStart), 0, false},
+  {"DOfc", "int", NULL, offsetof(struct modbSensors, DOfc), 0, false},
+  {"DOAddress", "int", NULL, offsetof(struct modbSensors, DOAddress), 0, false},
+  {NULL, NULL, NULL, 0, 0, false}
+};
+struct attribute s_modbBattery_attributes[] = {
+  {"refresh_rate", "int", NULL, offsetof(struct modbBattery, refresh_rate), 0, false},
+  {"batAddress", "int", NULL, offsetof(struct modbBattery, batAddress), 0, false},
+  {"tempPoints", "int", NULL, offsetof(struct modbBattery, tempPoints), 0, false},
+  {"tempStart", "int", NULL, offsetof(struct modbBattery, tempStart), 0, false},
+  {"tempfc", "int", NULL, offsetof(struct modbBattery, tempfc), 0, false},
+  {"cyclePoints", "int", NULL, offsetof(struct modbBattery, cyclePoints), 0, false},
+  {"cycleStart", "int", NULL, offsetof(struct modbBattery, cycleStart), 0, false},
+  {"cyclefc", "int", NULL, offsetof(struct modbBattery, cyclefc), 0, false},
+  {"SOHPoints", "int", NULL, offsetof(struct modbBattery, SOHPoints), 0, false},
+  {"SOHStart", "int", NULL, offsetof(struct modbBattery, SOHStart), 0, false},
+  {"SOHfc", "int", NULL, offsetof(struct modbBattery, SOHfc), 0, false},
+  {"SOCPoints", "int", NULL, offsetof(struct modbBattery, SOCPoints), 0, false},
+  {"SOCStart", "int", NULL, offsetof(struct modbBattery, SOCStart), 0, false},
+  {"SOCfc", "int", NULL, offsetof(struct modbBattery, SOCfc), 0, false},
+  {NULL, NULL, NULL, 0, 0, false}
+};
+struct attribute s_modbPanels_attributes[] = {
+  {"refresh_rate", "int", NULL, offsetof(struct modbPanels, refresh_rate), 0, false},
+  {"PVAddress", "int", NULL, offsetof(struct modbPanels, PVAddress), 0, false},
+  {"PV2AmpsPoints", "int", NULL, offsetof(struct modbPanels, PV2AmpsPoints), 0, false},
+  {"PV2AmpsStart", "int", NULL, offsetof(struct modbPanels, PV2AmpsStart), 0, false},
+  {"PV2Amps", "int", NULL, offsetof(struct modbPanels, PV2Amps), 0, false},
+  {"PV1AmpsPoints", "int", NULL, offsetof(struct modbPanels, PV1AmpsPoints), 0, false},
+  {"PV1AmpsStart", "int", NULL, offsetof(struct modbPanels, PV1AmpsStart), 0, false},
+  {"PV1_Amps", "int", NULL, offsetof(struct modbPanels, PV1_Amps), 0, false},
+  {"PV2VPoints", "int", NULL, offsetof(struct modbPanels, PV2VPoints), 0, false},
+  {"PV2VStart", "int", NULL, offsetof(struct modbPanels, PV2VStart), 0, false},
+  {"PV2Volts", "int", NULL, offsetof(struct modbPanels, PV2Volts), 0, false},
+  {"PV1VPoints", "int", NULL, offsetof(struct modbPanels, PV1VPoints), 0, false},
+  {"PV1VStart", "int", NULL, offsetof(struct modbPanels, PV1VStart), 0, false},
+  {"PV1Volts", "int", NULL, offsetof(struct modbPanels, PV1Volts), 0, false},
+  {"ChargePoints", "int", NULL, offsetof(struct modbPanels, ChargePoints), 0, false},
+  {"ChargeStart", "int", NULL, offsetof(struct modbPanels, ChargeStart), 0, false},
+  {"Charge_State", "int", NULL, offsetof(struct modbPanels, Charge_State), 0, false},
   {NULL, NULL, NULL, 0, 0, false}
 };
 struct attribute s_limits_attributes[] = {
@@ -292,7 +356,10 @@ struct attribute s_sysset_attributes[] = {
   {NULL, NULL, NULL, 0, 0, false}
 };
 
-struct apihandler_data s_apihandler_modbus = {{"modbus", "data", false, 0, 0, 0UL}, s_modbus_attributes, sizeof(struct modbus), (void (*)(void *)) glue_get_modbus, (void (*)(void *)) glue_set_modbus};
+struct apihandler_data s_apihandler_modbInverter = {{"modbInverter", "data", false, 0, 0, 0UL}, s_modbInverter_attributes, sizeof(struct modbInverter), (void (*)(void *)) glue_get_modbInverter, (void (*)(void *)) glue_set_modbInverter};
+struct apihandler_data s_apihandler_modbSensors = {{"modbSensors", "data", false, 0, 0, 0UL}, s_modbSensors_attributes, sizeof(struct modbSensors), (void (*)(void *)) glue_get_modbSensors, (void (*)(void *)) glue_set_modbSensors};
+struct apihandler_data s_apihandler_modbBattery = {{"modbBattery", "data", false, 0, 0, 0UL}, s_modbBattery_attributes, sizeof(struct modbBattery), (void (*)(void *)) glue_get_modbBattery, (void (*)(void *)) glue_set_modbBattery};
+struct apihandler_data s_apihandler_modbPanels = {{"modbPanels", "data", false, 0, 0, 0UL}, s_modbPanels_attributes, sizeof(struct modbPanels), (void (*)(void *)) glue_get_modbPanels, (void (*)(void *)) glue_set_modbPanels};
 struct apihandler_action s_apihandler_reboot = {{"reboot", "action", false, 0, 0, 0UL}, glue_check_reboot, glue_start_reboot};
 struct apihandler_data s_apihandler_limits = {{"limits", "data", false, 0, 0, 0UL}, s_limits_attributes, sizeof(struct limits), (void (*)(void *)) glue_get_limits, (void (*)(void *)) glue_set_limits};
 struct apihandler_data s_apihandler_profile = {{"profile", "data", false, 0, 0, 0UL}, s_profile_attributes, sizeof(struct profile), (void (*)(void *)) glue_get_profile, (void (*)(void *)) glue_set_profile};
@@ -301,7 +368,10 @@ struct apihandler_data s_apihandler_system = {{"system", "data", false, 0, 0, 0U
 struct apihandler_data s_apihandler_sysset = {{"sysset", "data", false, 0, 0, 0UL}, s_sysset_attributes, sizeof(struct sysset), (void (*)(void *)) glue_get_sysset, (void (*)(void *)) glue_set_sysset};
 
 static struct apihandler *s_apihandlers[] = {
-  (struct apihandler *) &s_apihandler_modbus,
+  (struct apihandler *) &s_apihandler_modbInverter,
+  (struct apihandler *) &s_apihandler_modbSensors,
+  (struct apihandler *) &s_apihandler_modbBattery,
+  (struct apihandler *) &s_apihandler_modbPanels,
   (struct apihandler *) &s_apihandler_reboot,
   (struct apihandler *) &s_apihandler_limits,
   (struct apihandler *) &s_apihandler_profile,

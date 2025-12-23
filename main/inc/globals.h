@@ -88,6 +88,5 @@ EXTERN modbus_generic_t             genericParams;
 EXTERN modbus_rec_t                 modbusRecord;
 EXTERN answer_t                     reply;
 EXTERN modbus_array_t               modbusArray[MAXMODBUS];
-EXTERN struct modbus                mimodbus;                       // modbus parameters as a structure
 EXTERN struct limits                milimits;                       // limits as a strucure
 #endif

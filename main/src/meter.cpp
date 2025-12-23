@@ -2680,8 +2680,8 @@ void erase_config()
     strcpy(theConf.mqttPass,"csttpstt");
     struct limits start_limits = {90, 50, 32, 19, 31, 19, 70, 50, 70, 40, 42, 40, 42, 40, 42, 40, 42, 40, 42, 40, 42, 40, 820, 720, 850, 720, 820, 720, 820, 780, 50, 10, 5000, 0, 100, 20, 80, 20, 15, 14, 390, 340};
     theConf.milim=start_limits;
-    struct modbus mimod={7,3,6,3,5,3,4,3,16,3,1,10,11,12,13,14,2,20,21,22,23,8,80,81,82,83,84,85,86,87,88,89};
-    theConf.mimodbus=mimod;
+    // struct modbus mimod={7,3,6,3,5,3,4,3,16,3,1,10,11,12,13,14,2,20,21,22,23,8,80,81,82,83,84,85,86,87,88,89};
+    // theConf.mimodbus=mimod;
     // strcpy(theConf.mqttServer,"mqtts://possum.lmq.cloudamqp.com:8883");
     // strcpy(theConf.mqttUser,"yavwcjrm:yavwcjrm");
     // strcpy(theConf.mqttPass,"UjKTzDJOnMN7voH-FaflNW0rP-dUXck0");

@@ -13,55 +13,75 @@ char modb_names[][30]={
  "ChargeState","PV1Volts","PV1AMps","PV2Volts","PV2AMps",
 "SOC","SOH","CycleCount","BatTemp",
 "DO","PH","WTemp","A Temp","Humidity",
-"BatChToday","BatDscToday","BatChgTotal","BatDscTotal","GenToday","Usedkoday","LoadUsedTotal","BatChdToday","BatDscToday","LoadUsedToday"
+"BatChToday","BatDscToday","BatChgTotal","BatDscTotal","GenToday","UsedToday","LoadUsedTotal","BatChdToday","BatDscToday","LoadUsedToday","BatTemp"
 };
 
 void show_mimodbus()
 {
+  char aca[100];
 
-    printf("\n\t\t========== PV Panels Addr:[%02d] ============\n",theConf.mimodbus.PVAddress);
-    printf("\t\tName\t\tFunction Code\n");
-    printf("\t\t=====================================\n");
-    printf("\t\t%12s\t%d\n",modb_names[0],theConf.mimodbus.Charge_State);
-    printf("\t\t%12s\t%d\n",modb_names[1],theConf.mimodbus.PV1_Volts);
-    printf("\t\t%12s\t%d\n",modb_names[2],theConf.mimodbus.PV1_Amps);
-    printf("\t\t%12s\t%d\n",modb_names[3],theConf.mimodbus.PV2_Volts);
-    printf("\t\t%12s\t%d\n",modb_names[4],theConf.mimodbus.PV2_Amps);
-    printf("\n"); 
 
-    printf("\n\t\t======= Battery Addr:[%02d] ============\n",theConf.mimodbus.BatAddress);
-    printf("\t\tName\t\tFunction Code\n");
-    printf("\t\t=====================================\n");
-    printf("\t\t%12s\t%d\n",modb_names[5],theConf.mimodbus.SOC);
-    printf("\t\t%12s\t%d\n",modb_names[6],theConf.mimodbus.SOH);
-    printf("\t\t%12s\t%d\n",modb_names[7],theConf.mimodbus.CycleCount);
-    printf("\t\t%12s\t%d\n",modb_names[8],theConf.mimodbus.BatTemp);
-    printf("\n"); 
+    sprintf(aca,"\t\t========== PV Panels Addr:[%02d] Refresh %d ============\n",theConf.modbus_panels.PVAddress,theConf.modbus_panels.refresh_rate);
+    int len=strlen(aca);
+    printf(aca);
+    printf("\t\tName\t\tFCode\tStart\tPoints\n");
+    bzero(aca, sizeof(aca));
+    memset(aca,'=',len-3);  // for the 2 \t and the \n
+    printf("\t\t%s\n",aca);
+    printf("\t\t%12s\t%d\t%d\t%d\n",modb_names[0],theConf.modbus_panels.Charge_State,theConf.modbus_panels.ChargeStart,theConf.modbus_panels.ChargePoints);
+    printf("\t\t%12s\t%d\t%d\t%d\n",modb_names[1],theConf.modbus_panels.PV1Volts,theConf.modbus_panels.PV1VStart,theConf.modbus_panels.PV1VPoints);
+    printf("\t\t%12s\t%d\t%d\t%d\n",modb_names[2],theConf.modbus_panels.PV2Volts,theConf.modbus_panels.PV2VStart,theConf.modbus_panels.PV2VPoints);
+    printf("\t\t%12s\t%d\t%d\t%d\n",modb_names[3],theConf.modbus_panels.PV1_Amps,theConf.modbus_panels.PV1AmpsStart,theConf.modbus_panels.PV1AmpsPoints);
+    printf("\t\t%12s\t%d\t%d\t%d\n",modb_names[4],theConf.modbus_panels.PV2Amps,theConf.modbus_panels.PV2AmpsStart,theConf.modbus_panels.PV2AmpsPoints);
+    printf("\n\n"); 
 
-    printf("\n\t\t============== Sensors =====================\n");
-    printf("\t\tName\t\t\tAddress\tFunction Code\n");
-    printf("\t\t=============================================\n");
-    printf("\t\t%12s\t\t%02d\t%d\n",modb_names[9],theConf.mimodbus.DOAddress,theConf.mimodbus.DOFcode);
-    printf("\t\t%12s\t\t%02d\t%d\n",modb_names[10],theConf.mimodbus.PHAddress,theConf.mimodbus.PHFcode);
-    printf("\t\t%12s\t\t%02d\t%d\n",modb_names[11],theConf.mimodbus.WaterAddress,theConf.mimodbus.WaterFcode);
-    printf("\t\t%12s\t\t%02d\t%d\n",modb_names[12],theConf.mimodbus.AmbientAddress,theConf.mimodbus.AmbientFcode);
-    printf("\t\t%12s\t\t%02d\t%d\n",modb_names[13],theConf.mimodbus.HumAddress,theConf.mimodbus.HumFcode);
-    printf("\n");
+    sprintf(aca,"\t\t======= Battery Addr:[%02d] Refresh %d ============\n",theConf.modbus_battery.batAddress,theConf.modbus_battery.refresh_rate);
+    len=strlen(aca);
+    printf(aca);
+    printf("\t\tName\t\tFCode\tStart\tPoints\n");
+    bzero(aca, sizeof(aca));
+    memset(aca,'=',len-3);
+    printf("\t\t%s\n",aca);
+    printf("\t\t%12s\t%d\t%d\t%d\n",modb_names[5],theConf.modbus_battery.SOCfc,theConf.modbus_battery.SOCStart,theConf.modbus_battery.SOCPoints);
+    printf("\t\t%12s\t%d\t%d\t%d\n",modb_names[6],theConf.modbus_battery.SOHfc,theConf.modbus_battery.SOHStart,theConf.modbus_battery.SOHPoints);
+    printf("\t\t%12s\t%d\t%d\t%d\n",modb_names[7],theConf.modbus_battery.cyclefc,theConf.modbus_battery.cycleStart,theConf.modbus_battery.cyclePoints);
+    printf("\t\t%12s\t%d\t%d\t%d\n",modb_names[8],theConf.modbus_battery.tempfc,theConf.modbus_battery.tempStart,theConf.modbus_battery.tempPoints);
+    printf("\n\n"); 
 
-    printf("\n\t\t========= Inverter Addr:[%02d] ============\n",theConf.mimodbus.InverterAddress);
-    printf("\t\tName\t\tFunction Code\n");
-    printf("\t\t=====================================\n");
-    printf("\t\t%12s\t%d\n",modb_names[14],theConf.mimodbus.BatAhCharToday);
-    printf("\t\t%12s\t%d\n",modb_names[15],theConf.mimodbus.BatAhDiscToday);
-    printf("\t\t%12s\t%d\n",modb_names[16],theConf.mimodbus.BatAhChgTotal);
-    printf("\t\t%12s\t%d\n",modb_names[17],theConf.mimodbus.BatAhDischTotal);
-    printf("\t\t%12s\t%d\n",modb_names[18],theConf.mimodbus.GenkWhToday);
-    printf("\t\t%12s\t%d\n",modb_names[19],theConf.mimodbus.UsedkWhToday);
-    printf("\t\t%12s\t%d\n",modb_names[20],theConf.mimodbus.LoadUsedTotal);
-    printf("\t\t%12s\t%d\n",modb_names[21],theConf.mimodbus.BatChgkWhToday);
-    printf("\t\t%12s\t%d\n",modb_names[22],theConf.mimodbus.BatDschkWhToday);
-    printf("\t\t%12s\t%d\n",modb_names[23],theConf.mimodbus.loadKusedToday);
-    printf("\n"); 
+    sprintf(aca,"\t\t============== Sensors  Refresh %d =====================\n",theConf.modbus_sensors.refresh_rate);
+    len=strlen(aca);
+    printf(aca);
+    printf("\t\tName\t\t\tAddr\tFCode\tStart\tPoints\n");
+    bzero(aca, sizeof(aca));
+    memset(aca,'=',len-3);
+    printf("\t\t%s\n",aca);
+    printf("\t\t%12s\t\t%02d\t%d\t%d\t%d\n",modb_names[9],theConf.modbus_sensors.DOAddress,theConf.modbus_sensors.DOfc,theConf.modbus_sensors.DOStart,theConf.modbus_sensors.DOPoints);
+    printf("\t\t%12s\t\t%02d\t%d\t%d\t%d\n",modb_names[10],theConf.modbus_sensors.PHAddress,theConf.modbus_sensors.PHfc,theConf.modbus_sensors.PHStart,theConf.modbus_sensors.PHPoints);
+    printf("\t\t%12s\t\t%02d\t%d\t%d\t%d\n",modb_names[11],theConf.modbus_sensors.WAddress,theConf.modbus_sensors.Wfc,theConf.modbus_sensors.WStart,theConf.modbus_sensors.WPoints);
+    printf("\t\t%12s\t\t%02d\t%d\t%d\t%d\n",modb_names[12],theConf.modbus_sensors.AAddress,theConf.modbus_sensors.Afc,theConf.modbus_sensors.AStart,theConf.modbus_sensors.APoints);
+    printf("\t\t%12s\t\t%02d\t%d\t%d\t%d\n",modb_names[13],theConf.modbus_sensors.HAddress,theConf.modbus_sensors.Humfc,theConf.modbus_sensors.humStart,theConf.modbus_sensors.humPoints);
+    printf("\n\n");
+
+    sprintf(aca,"\t\t========= Inverter Addr:[%02d] Refresh %d ============\n",theConf.modbus_inverter.InverterAddress,theConf.modbus_inverter.refresh_rate);
+    len=strlen(aca);
+    printf(aca);
+    printf("\t\tName\t\tFCode\tStart\tPoints\n");
+    bzero(aca, sizeof(aca));
+    memset(aca,'=',len-3);
+    printf("\t\t%s\n",aca);
+    printf("\t\t%12s\t%d\t%d\t%d\n",modb_names[14],theConf.modbus_inverter.I1_BatChHoy,theConf.modbus_inverter.I1_BatChHoyStart,theConf.modbus_inverter.I1_BatChHoyPoints);
+    printf("\t\t%12s\t%d\t%d\t%d\n",modb_names[15],theConf.modbus_inverter.I2_BatDscHoy,theConf.modbus_inverter.I2_BatDscHoyStart,theConf.modbus_inverter.I2_BatDscHoyPoints);
+    printf("\t\t%12s\t%d\t%d\t%d\n",modb_names[16],theConf.modbus_inverter.I3_BatChgTotal,theConf.modbus_inverter.I3_BatChgTotalStart,theConf.modbus_inverter.I3_BatChgTotalPoints);
+    printf("\t\t%12s\t%d\t%d\t%d\n",modb_names[17],theConf.modbus_inverter.I4_BatDscTotal,theConf.modbus_inverter.I4_BatDscTotalStart,theConf.modbus_inverter.I4_BatDscTotalPoints);
+    printf("\t\t%12s\t%d\t%d\t%d\n",modb_names[18],theConf.modbus_inverter.I5_GenkWhHoy,theConf.modbus_inverter.I5_GenkWhHoyStart,theConf.modbus_inverter.I5_GenkWhHoyPoints);
+    printf("\t\t%12s\t%d\t%d\t%d\n",modb_names[19],theConf.modbus_inverter.I6_UsedkwhHoy,theConf.modbus_inverter.I6_UsedkwhHoyStart,theConf.modbus_inverter.I6_UsedkwhHoyPoints);
+    printf("\t\t%12s\t%d\t%d\t%d\n",modb_names[20],theConf.modbus_inverter.I7_LoadUsedTotal,theConf.modbus_inverter.I7_LoadUsedTotalStart,theConf.modbus_inverter.I7_LoadUsedTotalPoints);
+    printf("\t\t%12s\t%d\t%d\t%d\n",modb_names[21],theConf.modbus_inverter.I8_BatChdHoy,theConf.modbus_inverter.I8_BatChdHoyStart,theConf.modbus_inverter.I8_BatChdHoyPoints);
+    printf("\t\t%12s\t%d\t%d\t%d\n",modb_names[22],theConf.modbus_inverter.I9_BatDscHoy,theConf.modbus_inverter.I9_BatDscHoyStart,theConf.modbus_inverter.I9_BatDscHoyPoints);
+    printf("\t\t%12s\t%d\t%d\t%d\n",modb_names[23],theConf.modbus_inverter.I10_LoadUsedHoy,theConf.modbus_inverter.I10_LoadUsedHoyStart,theConf.modbus_inverter.I10_LoadUsedHoyPoints);
+    printf("\t\t%12s\t%d\t%d\t%d\n",modb_names[24],theConf.modbus_inverter.I11_BatTemp,theConf.modbus_inverter.I11_BatTempStart,theConf.modbus_inverter.I11_BatTempPoints);
+
+    printf("\n\n"); 
 
 }
 

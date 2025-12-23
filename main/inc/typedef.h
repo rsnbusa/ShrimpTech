@@ -268,9 +268,11 @@ typedef struct config {
     int         limits[21][2];     //for 21 variables , min 0 max 1
     uint16_t    baud;
     uart_port_t port;
-    struct modbus mimodbus;
     struct limits milim;
-
+    struct modbInverter modbus_inverter;
+    struct modbSensors  modbus_sensors;
+    struct modbBattery  modbus_battery;
+    struct modbPanels   modbus_panels;
 } config_flash;
 
 typedef struct meshp{

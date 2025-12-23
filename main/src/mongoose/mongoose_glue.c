@@ -5,12 +5,36 @@
 // Default mock implementation of the API callbacks
 
 #include "mongoose_glue.h"
-struct modbus s_modbus = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-void glue_get_modbus(struct modbus *data) {
-  *data = s_modbus;  // Sync with your device
+struct modbInverter s_modbInverter = {42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42};
+void glue_get_modbInverter(struct modbInverter *data) {
+  *data = s_modbInverter;  // Sync with your device
 }
-void glue_set_modbus(struct modbus *data) {
-  s_modbus = *data; // Sync with your device
+void glue_set_modbInverter(struct modbInverter *data) {
+  s_modbInverter = *data; // Sync with your device
+}
+
+struct modbSensors s_modbSensors = {42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42};
+void glue_get_modbSensors(struct modbSensors *data) {
+  *data = s_modbSensors;  // Sync with your device
+}
+void glue_set_modbSensors(struct modbSensors *data) {
+  s_modbSensors = *data; // Sync with your device
+}
+
+struct modbBattery s_modbBattery = {42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42};
+void glue_get_modbBattery(struct modbBattery *data) {
+  *data = s_modbBattery;  // Sync with your device
+}
+void glue_set_modbBattery(struct modbBattery *data) {
+  s_modbBattery = *data; // Sync with your device
+}
+
+struct modbPanels s_modbPanels = {42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 0};
+void glue_get_modbPanels(struct modbPanels *data) {
+  *data = s_modbPanels;  // Sync with your device
+}
+void glue_set_modbPanels(struct modbPanels *data) {
+  s_modbPanels = *data; // Sync with your device
 }
 
 uint64_t s_action_timeout_reboot;  // Time when reboot ends

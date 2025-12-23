@@ -502,20 +502,69 @@ void my_get_profile(struct profile *data)
 	*data=s_profile;
 }
 
-void my_set_modbus(struct modbus *data) // save limits from web to theblower
+
+void my_set_modbInverter(struct modbInverter *data) // save limits from web to theblower
 {
-	theConf.mimodbus=*data;
+	theConf.modbus_inverter=*data;
 	write_to_flash();
 }
 
 
-void my_get_modbus(struct modbus *data) // return limits saved in theblower
+void my_get_modbInverter(struct modbInverter *data) // return limits saved in theblower
 {
 	if( theConf.meterconf>2)
    		s_settings.disable_val=1;
 	else
    		s_settings.disable_val=0;
-	*data=theConf.mimodbus;
+	*data=theConf.modbus_inverter;
+}
+
+void my_set_modbSensors(struct modbSensors *data) // save limits from web to theblower
+{
+	theConf.modbus_sensors=*data;
+	write_to_flash();
+}
+
+
+void my_get_modbSensors(struct modbSensors *data) // return limits saved in theblower
+{
+	if( theConf.meterconf>2)
+   		s_settings.disable_val=1;
+	else
+   		s_settings.disable_val=0;
+	*data=theConf.modbus_sensors;
+}
+
+void my_set_modbBattery(struct modbBattery *data) // save limits from web to theblower
+{
+	theConf.modbus_battery=*data;
+	write_to_flash();
+}
+
+
+void my_get_modbBattery(struct modbBattery *data) // return limits saved in theblower
+{
+	if( theConf.meterconf>2)
+   		s_settings.disable_val=1;
+	else
+   		s_settings.disable_val=0;
+	*data=theConf.modbus_battery;
+}
+
+
+void my_get_modbPanels(struct modbPanels *data) // return limits saved in theblower
+{
+	if( theConf.meterconf>2)
+   		s_settings.disable_val=1;
+	else
+   		s_settings.disable_val=0;
+	*data=theConf.modbus_panels;
+}
+
+void my_set_modbPanels(struct modbPanels *data) // save limits from web to theblower
+{
+	theConf.modbus_panels=*data;
+	write_to_flash();
 }
 
 void my_set_limits(struct limits *data) // save limits from web to theblower
@@ -620,7 +669,10 @@ void start_webserver(void *pArg)
   	mongoose_set_http_handlers("sysset", my_get_sysset ,my_set_sysset);				
   	mongoose_set_http_handlers("profile", my_get_profile ,my_set_profile);				
   	mongoose_set_http_handlers("limits", my_get_limits ,my_set_limits);				
-  	mongoose_set_http_handlers("modbus", my_get_modbus ,my_set_modbus);				
+  	mongoose_set_http_handlers("modbInverter", my_get_modbInverter ,my_set_modbInverter);				
+  	mongoose_set_http_handlers("modbSensors", my_get_modbSensors ,my_set_modbSensors);				
+  	mongoose_set_http_handlers("modbBattery", my_get_modbBattery ,my_set_modbBattery);				
+  	mongoose_set_http_handlers("modbPanels", my_get_modbPanels ,my_set_modbPanels);				
   	mongoose_set_http_handlers("reboot", my_check_reboot ,my_start_reboot);				
 	//web timeout if not done in 2 minutes restart
 	webTimer=xTimerCreate("restart",pdMS_TO_TICKS(120000),pdFALSE,( void * ) 0, [] ( TimerHandle_t xTimer){	
