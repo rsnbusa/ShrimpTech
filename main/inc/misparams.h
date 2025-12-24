@@ -59,22 +59,27 @@ typedef struct
 #pragma pack(pop)
 
 #pragma pack(push, 1)
-typedef struct
-{
-uint8_t todos[12];
-} holding_reg_params_t;
 // typedef struct
 // {
-//     float holding_data0;
-//     float holding_data1;
-//     float holding_data2;
-//     float holding_data3;
-//     uint16_t test_regs[150];
-//     float holding_data4;
-//     float holding_data5;
-//     float holding_data6;
-//     float holding_data7;
+//     union {
+// uint8_t todos[12];
+// struct { float a;float b;float c;};
+
+// };
+
 // } holding_reg_params_t;
+typedef struct
+{
+    float holding_data0;
+    float holding_data1;
+    float holding_data2;
+    float holding_data3;
+    uint16_t test_regs[150];
+    float holding_data4;
+    float holding_data5;
+    float holding_data6;
+    float holding_data7;
+} holding_reg_params_t;
 #pragma pack(pop)
 
 extern holding_reg_params_t holding_reg_params;

@@ -62,6 +62,9 @@
 //lcd 
 #define PIN_NUM_SDA                     FMOSI 
 #define PIN_NUM_SCL                     FCLK 
+#define RS485RX                         (2)  
+#define RS485TX                         (42)  
+#define RS485RTS                        (19)  
 #endif
 
 #define I2C_BUS_PORT                    (1)
@@ -181,6 +184,8 @@
 
 #define SENDMUX                         (2)
 #define LOGINTIME                       (60000)         //1 minute
+#define FCHOLDING                       (0x03)
+#define FCINPUT                         (0x01)
 
 #define DBG_SCH						    "\e[36m[SCH]\e[0m"               //blue
 #define DBG_MESH					    "\e[35m[MESH]\e[0m"              // Magenta

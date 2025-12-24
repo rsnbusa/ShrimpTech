@@ -180,7 +180,7 @@ void my_set_system(struct system *data) {
 	if(theConf.meterconf==3)
 		theConf.meterconf=2;
 	write_to_flash();
-	xTimerReset(webTimer,0);
+	// xTimerReset(webTimer,0);
 }
 
 void my_get_system(struct system *data) 
@@ -215,7 +215,7 @@ void my_get_system(struct system *data)
 	s_system.mqttreco_val=theConf.mqttDiscoRetry;
 
 	*data = s_system;
-	xTimerReset(webTimer,0);
+	// xTimerReset(webTimer,0);
 
 }
 
@@ -681,7 +681,7 @@ void start_webserver(void *pArg)
 			esp_restart();});   
 
 // start the meter now
-	xTimerStart(webTimer,0);
+	// xTimerStart(webTimer,0);
 
 	for (;;) {
     mongoose_poll();

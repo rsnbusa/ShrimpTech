@@ -2680,6 +2680,15 @@ void erase_config()
     strcpy(theConf.mqttPass,"csttpstt");
     struct limits start_limits = {90, 50, 32, 19, 31, 19, 70, 50, 70, 40, 42, 40, 42, 40, 42, 40, 42, 40, 42, 40, 42, 40, 820, 720, 850, 720, 820, 720, 820, 780, 50, 10, 5000, 0, 100, 20, 80, 20, 15, 14, 390, 340};
     theConf.milim=start_limits;
+    modbSensors local_modbSensors = {15, 1, 42, 42, -1, 20, 1, 42, 42, -1, 19, 1, 42, 42, -1, 17, 1, 4, 8196, 3, 16, 1, 4, 8192, 3, 16};
+    modbInverter local_modbInverter = {10, 10, 1, 259, 3, 10, 2, 61530, 3, 10, 1, 61518, 3, 10, 1, 61517, 3, 10, 2, 61528, 3, 10, 1, 61526, 3, 10, 1, 61527, 3, 10, 2, 61522, 3, 10, 2, 61520, 3, 10, 1, 61518, 3, 10, 1, 61517, 3, 1};
+    modbBattery local_modbBattery = {30, 3, 10, 1, 276, 3, 1, 1, 268, 3, 1, 1, 260, 3, 1, 1, 256, 3};
+    modbPanels local_modbPanels = {30, 4, 10, 1, 272, 3, 10, 1, 271, 3, 10, 1, 264, 3, 10, 1, 263, 3, 1, 1, 267, 3};
+    theConf.modbus_inverter=local_modbInverter;
+    theConf.modbus_sensors=local_modbSensors;
+    theConf.modbus_battery=local_modbBattery;
+    theConf.modbus_panels=local_modbPanels;
+
     // struct modbus mimod={7,3,6,3,5,3,4,3,16,3,1,10,11,12,13,14,2,20,21,22,23,8,80,81,82,83,84,85,86,87,88,89};
     // theConf.mimodbus=mimod;
     // strcpy(theConf.mqttServer,"mqtts://possum.lmq.cloudamqp.com:8883");
@@ -3772,8 +3781,9 @@ void app_main(void)
 
 
 
-printf("PV PAnel %d Battery %d Energy %d Solar System %d SolarPad %d Union %d SmpMsg %d timet %d float %d\n",sizeof(pvPanel_t),sizeof(battery_t),
-sizeof(energy_t),sizeof(solarSystem_t),sizeof(solarDef_t),sizeof(meshunion_t),sizeof(shrimpMsg_t),sizeof(time_t),sizeof(float)); 
+printf("PV PAnel %d Battery %d Energy %d Solar System %d SolarPad %d Union %d SmpMsg %d timet %d float %d Config %d\n",sizeof(pvPanel_t),sizeof(battery_t),
+sizeof(energy_t),sizeof(solarSystem_t),sizeof(solarDef_t),sizeof(meshunion_t),sizeof(shrimpMsg_t),sizeof(time_t),sizeof(float),
+sizeof(theConf)); 
 
     if(theConf.meterconf==0  )  // is this meter NOT configured
     {

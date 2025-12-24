@@ -9,6 +9,7 @@
 #include "misparams.h"  // for modbus parameters structures
 #include "mbcontroller.h"
 #include "sdkconfig.h"
+#include "defines.h"
 
 #define MB_PORT_NUM     (CONFIG_MB_UART_PORT_NUM)   // Number of UART port used for Modbus connection
 #define MB_DEV_SPEED    (CONFIG_MB_UART_BAUD_RATE)  // The communication speed of the UART
@@ -41,7 +42,7 @@
 // Options can be used as bit masks or parameter limits
 #define OPTS(min_val, max_val, step_val) { .opt1 = min_val, .opt2 = max_val, .opt3 = step_val }
 
-static const char *TAG = "MASTER_TEST";
+// static const char *TAG = "MASTER_TEST";
 
 // Enumeration of modbus device addresses accessed by master device
 enum {
@@ -66,9 +67,12 @@ enum {
 
 const mb_parameter_descriptor_t device_parameters[] = {
     // { CID, Param Name, Units, Modbus Slave Addr, Modbus Reg Type, Reg Start, Reg Size, Instance Offset, Data Type, Data Size, Parameter Options, Access Mode}
-    { CID_INP_DATA_0, STR("Data_channel_0"), STR("Volts"), MB_DEVICE_ADDR1, MB_PARAM_HOLDING, 8192,6 ,
+    { CID_INP_DATA_0, STR("Data_channel_0"), STR("Volts"), MB_DEVICE_ADDR1, MB_PARAM_HOLDING, 8192,12 ,
         //    (void*)&aca, PARAM_TYPE_U8, 12, OPTS( 0,0,0 ), PAR_PERMS_READ_WRITE_TRIGGER },
-           HOLD_OFFSET(todos), PARAM_TYPE_U8, (mb_descr_size_t)12, OPTS( 0,0,0 ), PAR_PERMS_READ_WRITE_TRIGGER },
+           HOLD_OFFSET(holding_data0), PARAM_TYPE_FLOAT_BADC, (mb_descr_size_t)12, OPTS( 0,0,0 ), PAR_PERMS_READ_WRITE_TRIGGER },
+    // { 1, STR("Data_channel_0"), STR("Volts"), MB_DEVICE_ADDR1, MB_PARAM_HOLDING, 8194,4 ,
+    //     //    (void*)&aca, PARAM_TYPE_U8, 12, OPTS( 0,0,0 ), PAR_PERMS_READ_WRITE_TRIGGER },
+    //        HOLD_OFFSET(holding_data1), PARAM_TYPE_FLOAT_BADC, (mb_descr_size_t)4, OPTS( 0,0,0 ), PAR_PERMS_READ_WRITE_TRIGGER },
     // { CID_HOLD_DATA_0, STR("Humidity_1"), STR("%rH"), MB_DEVICE_ADDR1, MB_PARAM_HOLDING, 0, 2,
     //         HOLD_OFFSET(holding_data0), PARAM_TYPE_FLOAT, 4, OPTS( 0, 100, 1 ), PAR_PERMS_READ_WRITE_TRIGGER },
     // { CID_INP_DATA_1, STR("Temperature_1"), STR("C"), MB_DEVICE_ADDR1, MB_PARAM_INPUT, 2, 2,
@@ -199,8 +203,8 @@ static esp_err_t master_init(void)
 
     // Set UART pin numbers
     // err = uart_set_pin(1, CONFIG_MB_UART_RXD, CONFIG_MB_UART_TXD,
-    err = uart_set_pin((uart_port_t)1, 5, 4,
-                              6, UART_PIN_NO_CHANGE);
+    err = uart_set_pin((uart_port_t)1, RS485RX, RS485TX,
+                              RS485RTS, UART_PIN_NO_CHANGE);
     MB_RETURN_ON_FALSE((err == ESP_OK), ESP_ERR_INVALID_STATE, TAG,
         "mb serial set pin failure, uart_set_pin() returned (0x%x).", (int)err);
 
@@ -235,7 +239,8 @@ void rs485_task(void *arg)
 
     ESP_LOGI(TAG, "Start modbus test...");
 
-    for(uint16_t retry = 0; retry <= MASTER_MAX_RETRY && (!alarm_state); retry++) {
+    while(true) {
+    // for(uint16_t retry = 0; retry <= MASTER_MAX_RETRY && (!alarm_state); retry++) {
         // Read all found characteristics from slave(s)
         for (uint16_t cid = 0; (err != ESP_ERR_NOT_FOUND) && cid < MASTER_MAX_CIDS; cid++)
         {
@@ -293,22 +298,23 @@ void rs485_task(void *arg)
                         if ((param_descriptor->mb_param_type == MB_PARAM_HOLDING) ||
                             (param_descriptor->mb_param_type == MB_PARAM_INPUT)) {
                             value = *(float*)temp_data_ptr;
-                            ESP_LOGI(TAG, "%s Characteristic #%u %s (%s) value = %f (0x%" PRIx32 ") read successful.",param_descriptor->mb_param_type == MB_PARAM_HOLDING?"Holding":"Input",
-                                            param_descriptor->cid,
-                                            param_descriptor->param_key,
-                                            param_descriptor->param_units,
-                                            value,
-                                            *(uint32_t*)temp_data_ptr);
-                                            ESP_LOG_BUFFER_HEX("TEMP",temp_data_ptr,12);
-                                            ESP_LOG_BUFFER_HEX("HREG",&holding_reg_params,12);
-                                            DOHandler((void*)temp_data_ptr,12);
-                                            // printf("Float %f\n",holding_reg_params.temp);
+                            // ESP_LOGI(TAG, "%s Characteristic #%u %s (%s) value = %f (0x%" PRIx32 ") read successful.",param_descriptor->mb_param_type == MB_PARAM_HOLDING?"Holding":"Input",
+                            //                 param_descriptor->cid,
+                            //                 param_descriptor->param_key,
+                            //                 param_descriptor->param_units,
+                            //                 value,
+                            //                 *(uint32_t*)temp_data_ptr);
+                                            // ESP_LOG_BUFFER_HEX("TEMP",temp_data_ptr,12);
+                                            // ESP_LOG_BUFFER_HEX("HREG",&holding_reg_params,12);
+                                            // // DOHandler((void*)temp_data_ptr,12);
+                                            printf("Temp %.02f˚C Percent %.02f%% DO %.02f ppm\n",holding_reg_params.holding_data0,holding_reg_params.holding_data1*100,holding_reg_params.holding_data2);
                             // if (((value > param_descriptor->param_opts.max) ||
                             //     (value < param_descriptor->param_opts.min))) {
                             //         alarm_state = true;
                             //         break;
                             // }
-                                    vTaskDelay(pdMS_TO_TICKS(15*60*60*1000));
+                                    vTaskDelay(pdMS_TO_TICKS(20000));
+                                    // vTaskDelay(pdMS_TO_TICKS(15*60*60*1000));
 
                         } else {
                             uint8_t state = *(uint8_t*)temp_data_ptr;
