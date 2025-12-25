@@ -24,7 +24,7 @@ void show_mimodbus()
     sprintf(aca,"\t\t========== PV Panels Addr:[%02d] Refresh %d ========\n",theConf.modbus_panels.PVAddress,theConf.modbus_panels.refresh_rate);
     int len=strlen(aca);
     printf(aca);
-    printf("\t\tName\t\tFCode\tStart\tPoints\tMux\n");
+    printf("\t\tName\t\tOffset\tStart\tPoints\tMux\n");
     bzero(aca, sizeof(aca));
     memset(aca,'=',len-3);  // for the 2 \t and the \n
     printf("\t\t%s\n",aca);
@@ -38,7 +38,7 @@ void show_mimodbus()
     sprintf(aca,"\t\t======= Battery Addr:[%02d] Refresh %d ========\n",theConf.modbus_battery.batAddress,theConf.modbus_battery.refresh_rate);
     len=strlen(aca);
     printf(aca);
-    printf("\t\tName\t\tFCode\tStart\tPoints\tMux\n");
+    printf("\t\tName\t\tOffset\tStart\tPoints\tMux\n");
     bzero(aca, sizeof(aca));
     memset(aca,'=',len-3);
     printf("\t\t%s\n",aca);
@@ -51,7 +51,7 @@ void show_mimodbus()
     sprintf(aca,"\t\t============== Sensors  Refresh %d =========================\n",theConf.modbus_sensors.refresh_rate);
     len=strlen(aca);
     printf(aca);
-    printf("\t\tName\t\t\tAddr\tFCode\tStart\tPoints\tMux\n");
+    printf("\t\tName\t\t\tAddr\tOffset\tStart\tPoints\tMux\n");
     bzero(aca, sizeof(aca));
     memset(aca,'=',len-3);
     printf("\t\t%s\n",aca);
@@ -65,7 +65,7 @@ void show_mimodbus()
     sprintf(aca,"\t\t========= Inverter Addr:[%02d] Refresh %d ========\n",theConf.modbus_inverter.InverterAddress,theConf.modbus_inverter.refresh_rate);
     len=strlen(aca);
     printf(aca);
-    printf("\t\tName\t\tFCode\tStart\tPoints\tMux\n");
+    printf("\t\tName\t\tOffset\tStart\tPoints\tMux\n");
     bzero(aca, sizeof(aca));
     memset(aca,'=',len-3);
     printf("\t\t%s\n",aca);

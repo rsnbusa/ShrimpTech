@@ -29,13 +29,16 @@ typedef struct {
     float genLoadConsumToday;   // pos 5                GENLCT
 } energy_t;
 
+#pragma pack(push, 1)
 typedef struct {
-    float DO;                   // pos 4               LIMITDO
+    float  WTemp;               // pos 2               WTEMP  
+    float  percentDO;           // 
+    float  DO;                  // pos 4               LIMITDO
     float  PH;                  // pos 3               LIMITPH
-    float  WTemp;               // pos 2               WTEMP
     float  ATemp;               // pos 1               ATEMP
     float  AHum;                // pos 0               AHUM
 } sensor_t;
+#pragma pack(pop)
 
 typedef struct {
     pvPanel_t pvPanel;

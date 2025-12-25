@@ -13,7 +13,7 @@ void glue_set_modbInverter(struct modbInverter *data) {
   s_modbInverter = *data; // Sync with your device
 }
 
-struct modbSensors s_modbSensors = {15, 1, 42, 42, -1, 20, 1, 42, 42, -1, 19, 1, 42, 42, -1, 17, 1, 4, 8196, 0, 16, 1, 4, 8192, 0, 16};
+struct modbSensors s_modbSensors = {15, 1, 42, 42, -1, 20, 1, 42, 42, -1, 19, 1, 42, 42, -1, 17, 1, 4, 8192, 0, 16, 4, 8196, 1, 0, 16};
 void glue_get_modbSensors(struct modbSensors *data) {
   *data = s_modbSensors;  // Sync with your device
 }

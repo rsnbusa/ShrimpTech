@@ -213,16 +213,16 @@ struct attribute s_modbSensors_attributes[] = {
   {"PHStart", "int", NULL, offsetof(struct modbSensors, PHStart), 0, false},
   {"PHOffset", "int", NULL, offsetof(struct modbSensors, PHOffset), 0, false},
   {"PHAddress", "int", NULL, offsetof(struct modbSensors, PHAddress), 0, false},
-  {"WMux", "double", NULL, offsetof(struct modbSensors, WMux), 0, false},
-  {"WPoints", "int", NULL, offsetof(struct modbSensors, WPoints), 0, false},
-  {"WStart", "int", NULL, offsetof(struct modbSensors, WStart), 0, false},
-  {"WOffset", "int", NULL, offsetof(struct modbSensors, WOffset), 0, false},
-  {"WAddress", "int", NULL, offsetof(struct modbSensors, WAddress), 0, false},
   {"DOMux", "double", NULL, offsetof(struct modbSensors, DOMux), 0, false},
   {"DOPoints", "int", NULL, offsetof(struct modbSensors, DOPoints), 0, false},
   {"DOStart", "int", NULL, offsetof(struct modbSensors, DOStart), 0, false},
   {"DOOffset", "int", NULL, offsetof(struct modbSensors, DOOffset), 0, false},
   {"DOAddress", "int", NULL, offsetof(struct modbSensors, DOAddress), 0, false},
+  {"WPoints", "int", NULL, offsetof(struct modbSensors, WPoints), 0, false},
+  {"WStart", "int", NULL, offsetof(struct modbSensors, WStart), 0, false},
+  {"WMux", "double", NULL, offsetof(struct modbSensors, WMux), 0, false},
+  {"WOffset", "int", NULL, offsetof(struct modbSensors, WOffset), 0, false},
+  {"WAddress", "int", NULL, offsetof(struct modbSensors, WAddress), 0, false},
   {NULL, NULL, NULL, 0, 0, false}
 };
 struct attribute s_modbBattery_attributes[] = {

@@ -10,6 +10,9 @@
 #include "mbcontroller.h"
 #include "sdkconfig.h"
 #include "defines.h"
+#include "BlowerClass.h"
+
+extern sensor_t sensorData;
 
 #define MB_PORT_NUM     (CONFIG_MB_UART_PORT_NUM)   // Number of UART port used for Modbus connection
 #define MB_DEV_SPEED    (CONFIG_MB_UART_BAUD_RATE)  // The communication speed of the UART
@@ -35,6 +38,7 @@
 #define HOLD_OFFSET(field) ((uint16_t)(offsetof(holding_reg_params_t, field) + 1))
 #define INPUT_OFFSET(field) ((uint16_t)(offsetof(input_reg_params_t, field) + 1))
 #define COIL_OFFSET(field) ((uint16_t)(offsetof(coil_reg_params_t, field) + 1))
+#define SENSOR_OFFSET(field) ((uint16_t)(offsetof(sensor_t ,field) + 1))
 // Discrete offset macro
 #define DISCR_OFFSET(field) ((uint16_t)(offsetof(discrete_reg_params_t, field) + 1))
 
@@ -68,8 +72,9 @@ enum {
 const mb_parameter_descriptor_t device_parameters[] = {
     // { CID, Param Name, Units, Modbus Slave Addr, Modbus Reg Type, Reg Start, Reg Size, Instance Offset, Data Type, Data Size, Parameter Options, Access Mode}
     { CID_INP_DATA_0, STR("Data_channel_0"), STR("Volts"), MB_DEVICE_ADDR1, MB_PARAM_HOLDING, 8192,12 ,
-        //    (void*)&aca, PARAM_TYPE_U8, 12, OPTS( 0,0,0 ), PAR_PERMS_READ_WRITE_TRIGGER },
-           HOLD_OFFSET(holding_data0), PARAM_TYPE_FLOAT_BADC, (mb_descr_size_t)12, OPTS( 0,0,0 ), PAR_PERMS_READ_WRITE_TRIGGER },
+           SENSOR_OFFSET(WTemp), PARAM_TYPE_FLOAT_BADC, (mb_descr_size_t)12, OPTS( 0,0,0 ), PAR_PERMS_READ_WRITE_TRIGGER },
+        //    HOLD_OFFSET(holding_data0), PARAM_TYPE_FLOAT_BADC, (mb_descr_size_t)12, OPTS( 0,0,0 ), PAR_PERMS_READ_WRITE_TRIGGER },
+        //    HOLD_OFFSET(holding_data0), PARAM_TYPE_FLOAT_BADC, (mb_descr_size_t)12, OPTS( 0,0,0 ), PAR_PERMS_READ_WRITE_TRIGGER },
     // { 1, STR("Data_channel_0"), STR("Volts"), MB_DEVICE_ADDR1, MB_PARAM_HOLDING, 8194,4 ,
     //     //    (void*)&aca, PARAM_TYPE_U8, 12, OPTS( 0,0,0 ), PAR_PERMS_READ_WRITE_TRIGGER },
     //        HOLD_OFFSET(holding_data1), PARAM_TYPE_FLOAT_BADC, (mb_descr_size_t)4, OPTS( 0,0,0 ), PAR_PERMS_READ_WRITE_TRIGGER },
@@ -156,7 +161,8 @@ static void* master_get_param_data(const mb_parameter_descriptor_t* param_descri
        switch(param_descriptor->mb_param_type)
        {
            case MB_PARAM_HOLDING:
-               instance_ptr = ((void*)&holding_reg_params + param_descriptor->param_offset - 1);
+               instance_ptr = ((void*)&sensorData + param_descriptor->param_offset - 1);
+            //    instance_ptr = ((void*)&holding_reg_params + param_descriptor->param_offset - 1);
                break;
            case MB_PARAM_INPUT:
                instance_ptr = ((void*)&input_reg_params + param_descriptor->param_offset - 1);
@@ -218,7 +224,25 @@ static esp_err_t master_init(void)
             "mb serial set mode failure, uart_set_mode() returned (0x%x).", (int)err);
 
     vTaskDelay(5);
-    err = mbc_master_set_descriptor(&device_parameters[0], num_device_parameters);
+
+mb_parameter_descriptor_t *devices=(mb_parameter_descriptor_t*)calloc(1,sizeof(mb_parameter_descriptor_t)*1);
+
+devices->cid=CID_INP_DATA_0;
+devices->param_key="";
+devices->param_units="";
+devices->mb_slave_addr=16;
+devices->mb_param_type=MB_PARAM_HOLDING;
+devices->mb_reg_start=8192;
+devices->mb_size=12;
+devices->param_offset=1;
+devices->param_type=PARAM_TYPE_FLOAT_BADC;
+devices->param_size=(mb_descr_size_t)12;
+// devices->param_opts=OPTS(0,0,0);
+devices->access=PAR_PERMS_READ_WRITE_TRIGGER;
+
+
+    err = mbc_master_set_descriptor(devices, 1);
+    // err = mbc_master_set_descriptor(&device_parameters[0], num_device_parameters);
     MB_RETURN_ON_FALSE((err == ESP_OK), ESP_ERR_INVALID_STATE, TAG,
                                 "mb controller set descriptor fail, returns(0x%x).", (int)err);
     ESP_LOGI(TAG, "Modbus master stack initialized...");
@@ -233,6 +257,9 @@ void rs485_task(void *arg)
     float value = 0;
     bool alarm_state = false;
     const mb_parameter_descriptor_t* param_descriptor = NULL;
+
+
+
 
     ESP_ERROR_CHECK(master_init());
     vTaskDelay(10);
@@ -305,9 +332,10 @@ void rs485_task(void *arg)
                             //                 value,
                             //                 *(uint32_t*)temp_data_ptr);
                                             // ESP_LOG_BUFFER_HEX("TEMP",temp_data_ptr,12);
-                                            // ESP_LOG_BUFFER_HEX("HREG",&holding_reg_params,12);
+                                            // ESP_LOG_BUFFER_HEX("HREG",&sensorData,12);
                                             // // DOHandler((void*)temp_data_ptr,12);
-                                            printf("Temp %.02f˚C Percent %.02f%% DO %.02f ppm\n",holding_reg_params.holding_data0,holding_reg_params.holding_data1*100,holding_reg_params.holding_data2);
+                    printf("Temp %.02f˚C Percent %.02f%% DO %.02f ppm\n",sensorData.WTemp,sensorData.percentDO*100.0,sensorData.DO);
+                                            // printf("Temp %.02f˚C Percent %.02f%% DO %.02f ppm\n",holding_reg_params.holding_data0,holding_reg_params.holding_data1*100,holding_reg_params.holding_data2);
                             // if (((value > param_descriptor->param_opts.max) ||
                             //     (value < param_descriptor->param_opts.min))) {
                             //         alarm_state = true;
