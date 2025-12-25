@@ -5,7 +5,7 @@
 // Default mock implementation of the API callbacks
 
 #include "mongoose_glue.h"
-struct modbInverter s_modbInverter = {10, 10, 1, 259, 3, 10, 2, 61530, 3, 10, 1, 61518, 3, 10, 1, 61517, 3, 10, 2, 61528, 3, 10, 1, 61526, 3, 10, 1, 61527, 3, 10, 2, 61522, 3, 10, 2, 61520, 3, 10, 1, 61518, 3, 10, 1, 61517, 3, 1};
+struct modbInverter s_modbInverter = {10, 10, 1, 259, 0, 10, 2, 61530, 0, 10, 1, 61518, 0, 10, 1, 61517, 0, 10, 2, 61528, 0, 10, 1, 61526, 0, 10, 1, 61527, 0, 10, 2, 61522, 0, 10, 2, 61520, 0, 10, 1, 61518, 0, 10, 1, 61517, 0, 1};
 void glue_get_modbInverter(struct modbInverter *data) {
   *data = s_modbInverter;  // Sync with your device
 }
@@ -13,7 +13,7 @@ void glue_set_modbInverter(struct modbInverter *data) {
   s_modbInverter = *data; // Sync with your device
 }
 
-struct modbSensors s_modbSensors = {15, 1, 42, 42, -1, 20, 1, 42, 42, -1, 19, 1, 42, 42, -1, 17, 1, 4, 8196, 3, 16, 1, 4, 8192, 3, 16};
+struct modbSensors s_modbSensors = {15, 1, 42, 42, -1, 20, 1, 42, 42, -1, 19, 1, 42, 42, -1, 17, 1, 4, 8196, 0, 16, 1, 4, 8192, 0, 16};
 void glue_get_modbSensors(struct modbSensors *data) {
   *data = s_modbSensors;  // Sync with your device
 }
@@ -21,7 +21,7 @@ void glue_set_modbSensors(struct modbSensors *data) {
   s_modbSensors = *data; // Sync with your device
 }
 
-struct modbBattery s_modbBattery = {30, 3, 10, 1, 276, 3, 1, 1, 268, 3, 1, 1, 260, 3, 1, 1, 256, 3};
+struct modbBattery s_modbBattery = {30, 3, 10, 1, 276, 0, 1, 1, 268, 0, 1, 1, 260, 0, 1, 1, 256, 0};
 void glue_get_modbBattery(struct modbBattery *data) {
   *data = s_modbBattery;  // Sync with your device
 }
@@ -29,7 +29,7 @@ void glue_set_modbBattery(struct modbBattery *data) {
   s_modbBattery = *data; // Sync with your device
 }
 
-struct modbPanels s_modbPanels = {30, 4, 10, 1, 272, 3, 10, 1, 271, 3, 10, 1, 264, 3, 10, 1, 263, 3, 1, 1, 267, 3};
+struct modbPanels s_modbPanels = {30, 4, 10, 1, 272, 0, 10, 1, 271, 0, 10, 1, 264, 0, 10, 1, 263, 0, 1, 1, 267, 0};
 void glue_get_modbPanels(struct modbPanels *data) {
   *data = s_modbPanels;  // Sync with your device
 }

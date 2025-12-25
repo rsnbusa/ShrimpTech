@@ -89,4 +89,5 @@ EXTERN modbus_rec_t                 modbusRecord;
 EXTERN answer_t                     reply;
 EXTERN modbus_array_t               modbusArray[MAXMODBUS];
 EXTERN struct limits                milimits;                       // limits as a strucure
+EXTERN solarSystem_t                solarSystemData;
 #endif
