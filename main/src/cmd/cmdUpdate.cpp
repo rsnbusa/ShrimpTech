@@ -1,65 +1,145 @@
-#ifndef TYPESupd_H_
-#define TYPESupd_H_
 #define GLOBAL
+#include "includes.h"
 #include "globals.h"
+
+/*
+ * Handles meter configuration update commands sent over mesh network. Forwards update
+ * requests to specific meters identified by meter ID. Target node validates and applies
+ * the configuration changes (billing packages, schedules, skip flags, etc.).
+ */
+
 extern void writeLog(char* que);
-  
+
+// Update command constants
+#define UPDATE_LOG_BUFFER_SIZE 100
+#define UPDATE_MESSAGE_SIZE 400
+#define MESH_CMD_OFFSET 4
+
+/* Validates the update command JSON payload and extracts meter ID. */
+static bool validate_update_command(cJSON *updateCommand, const char **outMeterId)
+{
+    if(!updateCommand || !outMeterId)
+    {
+        ESP_LOGE(MESH_TAG, "Update command validation arguments invalid");
+        return false;
+    }
+    
+    if(!cJSON_IsObject(updateCommand))
+    {
+        ESP_LOGE(MESH_TAG, "Update command payload invalid");
+        return false;
+    }
+    
+    cJSON *meterIdNode = cJSON_GetObjectItem(updateCommand, "mid");
+    if(!meterIdNode)
+    {
+        ESP_LOGE(MESH_TAG, "Update command missing meter ID field");
+        return false;
+    }
+    
+    if(!cJSON_IsString(meterIdNode) || !meterIdNode->valuestring || strlen(meterIdNode->valuestring) == 0)
+    {
+        ESP_LOGE(MESH_TAG, "Update meter ID parameter invalid or empty");
+        return false;
+    }
+    
+    *outMeterId = meterIdNode->valuestring;
+    return true;
+}
+
+/* Logs the update request for audit trail. */
+static void log_update_request(const char *meterId)
+{
+    char *logBuffer = (char*)calloc(UPDATE_LOG_BUFFER_SIZE, 1);
+    if(logBuffer)
+    {
+        snprintf(logBuffer, UPDATE_LOG_BUFFER_SIZE, "Update Mid %s", meterId ? meterId : "");
+        writeLog(logBuffer);
+        free(logBuffer);
+    }
+}
+
+/* Logs mesh send failures for debugging. */
+static void log_update_error(int errorCode)
+{
+    char *logBuffer = (char*)calloc(UPDATE_LOG_BUFFER_SIZE, 1);
+    if(logBuffer)
+    {
+        snprintf(logBuffer, UPDATE_LOG_BUFFER_SIZE, "UpdateCmd not executed error %d", errorCode);
+        writeLog(logBuffer);
+        free(logBuffer);
+    }
+}
+
+/* Prepares and sends the update command via mesh broadcast. */
+static int send_update_mesh_message(cJSON *updateCommand)
+{
+    char *jsonMessage = cJSON_PrintUnformatted(updateCommand);
+    if(!jsonMessage)
+    {
+        ESP_LOGE(MESH_TAG, "Failed to serialize update command to JSON");
+        return ESP_FAIL;
+    }
+    
+    size_t messageLength = strlen(jsonMessage);
+    size_t totalSize = messageLength + MESH_CMD_OFFSET;
+    
+    meshunion_t *meshMessage = (meshunion_t*)calloc(1, UPDATE_MESSAGE_SIZE);
+    if(!meshMessage)
+    {
+        ESP_LOGE(MESH_TAG, "Failed to allocate mesh message buffer");
+        free(jsonMessage);
+        return ESP_FAIL;
+    }
+    
+    meshMessage->cmd = MESH_INT_DATA_CJSON;
+    void *payloadPtr = (void*)meshMessage + MESH_CMD_OFFSET;
+    memcpy(payloadPtr, jsonMessage, messageLength);
+    
+    mesh_data_t data;
+    data.proto = MESH_PROTO_BIN;
+    data.tos = MESH_TOS_P2P;
+    data.data = (uint8_t*)meshMessage;
+    data.size = totalSize;
+    
+    int err = esp_mesh_send(&GroupID, &data, MESH_DATA_P2P, NULL, MESH_OPT_SEND_GROUP);
+    
+    free(jsonMessage);
+    free(meshMessage);
+    
+    if(err != ESP_OK)
+    {
+        ESP_LOGE(MESH_TAG, "Failed to send update command via mesh: %d", err);
+        log_update_error(err);
+        return ESP_FAIL;
+    }
+    
+    ESP_LOGI(MESH_TAG, "Update command sent successfully");
+    return ESP_OK;
+}
+
 int cmdUpdate(void *argument)
 {
-
-     cJSON *cmd=(cJSON *)argument;
-     ESP_LOGI(MESH_TAG,"Update CMD");
-/*
-{"cmd":"update","f":"xxxxxx","mid";"thismeter","bpk":12234,"ks":1234,"k":12313,"sk":"y/n","skn":9,"cha":"xxxxxxxx"}
-*/
-    if(cmd)
+    /*
+     * Expected JSON format:
+     * {"cmd":"update","f":"xxxxxx","mid":"thismeter","bpk":12234,"ks":1234,"k":12313,"sk":"y/n","skn":9,"cha":"xxxxxxxx"}
+     */
+    
+    ESP_LOGI(MESH_TAG, "Update CMD");
+    
+    cJSON *updateCommand = (cJSON *)argument;
+    
+    if(updateCommand == NULL)
     {
-        cJSON *mid= 		cJSON_GetObjectItem(cmd,"mid");
-        if(mid)
-        {
-            //only checked required for this command before sending, NOde will do all other validations
-
-// this just prepares the message to be sent into the MESH to the appropiate Node. He will erase and format 
-            char *meshMsg=cJSON_PrintUnformatted(cmd);
-            if(!meshMsg)
-                return ESP_FAIL;
-            
-            char *aca=(char*)malloc(100);
-            if(aca)
-            {
-                sprintf(aca,"Update Mid %s",mid->valuestring);
-                writeLog(aca);
-                free(aca);
-            }
-            meshunion_t *intMessage=(meshunion_t*)calloc(1,400);     // the reserving of space for the union is not the sizeof union just arbitrary 
-            intMessage->cmd= MESH_INT_DATA_CJSON;
-            void *p=(void*)intMessage+4;
-            memcpy(p,meshMsg,strlen(meshMsg));     //skip cmd
-
-            mesh_data_t data;
-            data.proto = MESH_PROTO_BIN;
-            data.tos = MESH_TOS_P2P;
-            data.data=(uint8_t*)intMessage;
-            data.size=strlen(meshMsg)+4;
-            int err= esp_mesh_send( &GroupID, &data, MESH_DATA_P2P, NULL, MESH_OPT_SEND_GROUP);         //broadcast for appropiate node
-            if(err!=ESP_OK)
-            {
-                char *aca=(char*)malloc(100);
-                if(aca)
-                {
-                    sprintf(aca,"UpdateCmd not executed error %d",err);
-                    writeLog(aca);
-                    free(aca);
-                }
-            }
-            free(meshMsg);
-            free(intMessage);
-        }
-        else
-            return ESP_FAIL;
-        return ESP_OK;
-    }
-    else
+        ESP_LOGE(MESH_TAG, "Update command argument is NULL");
         return ESP_FAIL;
+    }
+    
+    const char *meterId = NULL;
+    if(!validate_update_command(updateCommand, &meterId))
+        return ESP_FAIL;
+    
+    log_update_request(meterId);
+    
+    return send_update_mesh_message(updateCommand);
 }
-#endif
