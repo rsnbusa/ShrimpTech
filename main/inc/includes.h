@@ -1,91 +1,137 @@
-#ifndef includes_h
-#define includes_h
-#include "defines.h"
+#ifndef INCLUDES_H
+#define INCLUDES_H
+
+// ============================================================================
+// STANDARD C/C++ LIBRARIES
+// ============================================================================
 #include <inttypes.h>
+#include <math.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include "time.h"
-#include "math.h"
-#include <unistd.h>
 #include <sys/lock.h>
+#include <unistd.h>
 
-#include "esp_lcd_panel_io.h"
+// ============================================================================
+// PROJECT DEFINES
+// ============================================================================
+#include "defines.h"
 
+// ============================================================================
+// C++ COMPATIBLE ESP HEADERS (Must be outside extern "C")
+// ============================================================================
+#include "esp_lcd_panel_io.h"  // C++ compatible, must be outside extern "C"
+
+// ============================================================================
+// BLE/NIMBLE HEADERS (C++ compatible)
+// ============================================================================
 #include "esp_nimble_hci.h"
+#include "host/ble_hs.h"
 #include "nimble/nimble_port.h"
 #include "nimble/nimble_port_freertos.h"
-#include "host/ble_hs.h"
 #include "services/gap/ble_svc_gap.h"
 #include "services/gatt/ble_svc_gatt.h"
-#include "mbcontroller.h"
 
-extern "C"{
+extern "C" {
 
-#include "lvgl.h"
-#include "freertos/FreeRTOS.h"      // ALWAYS first before all other freertos
+// ============================================================================
+// FREERTOS (ALWAYS include FreeRTOS.h first)
+// ============================================================================
+#include "freertos/FreeRTOS.h"
+#include "freertos/event_groups.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "freertos/timers.h"
-#include "freertos/event_groups.h"
-#include "cJSON.h"
-#include "driver/gpio.h"
-#include "driver/i2c_master.h"
-#include "esp_err.h"
-#include "framI2C.h"
-#include "nvs_flash.h"
-#include "nvs.h"
-#include "esp_system.h"
-#include "esp_wifi.h"
-#include "esp_netif.h"
-#include "esp_event.h"
-#include "esp_console.h"
-#include "private_include/console_private.h"            //for prompt change
-#include "argtable3/argtable3.h"
-#include "esp_timer.h"
-#include "esp_sntp.h"
-#include "mqtt_client.h"
-#include "esp_random.h"
-#include "esp_mac.h"
+
+// ============================================================================
+// ESP-IDF CORE
+// ============================================================================
+#include "esp_app_desc.h"
 #include "esp_chip_info.h"
-#include <esp_log.h>
+#include "esp_console.h"
+#include "esp_crc.h"
+#include "esp_err.h"
+#include "esp_event.h"
+#include "esp_log.h"
+#include "esp_mac.h"
+#include "esp_netif.h"
+#include "esp_random.h"
+#include "esp_sntp.h"
+#include "esp_system.h"
+#include "esp_timer.h"
+
+// ============================================================================
+// ESP-IDF NETWORKING
+// ============================================================================
 #include "esp_http_client.h"
+#include "esp_http_server.h"
+#include "esp_https_ota.h"
+#include "esp_https_server.h"
 #include "esp_mesh.h"
+#include "esp_ota_ops.h"
+#include "esp_wifi.h"
 #include "esp_wifi_netif.h"
 #include "mesh_netif.h"
-#include "esp_http_server.h"
-#include "esp_https_server.h"
-#include "aes_alt.h"			//hw acceleration
+#include "mqtt_client.h"
 
-#include "lvgl.h"
-#include "esp_lcd_panel_vendor.h"
-#include "esp_lcd_panel_ops.h"
-
+// ============================================================================
+// ESP-IDF DRIVERS
+// ============================================================================
+#include "driver/gpio.h"
+#include "driver/i2c_master.h"
 #include "driver/uart.h"
 
+// ============================================================================
+// ESP-IDF LCD
+// ============================================================================
 
-#include "misparams.h"  // for modbus parameters structures
-    // ble
+#include "esp_lcd_panel_ops.h"
+#include "esp_lcd_panel_vendor.h"
+
+// ============================================================================
+// ESP-IDF STORAGE
+// ============================================================================
+#include "esp_spiffs.h"
+#include "nvs.h"
+#include "nvs_flash.h"
+
+// ============================================================================
+// SECURITY/CRYPTO
+// ============================================================================
+#include "aes_alt.h"  // HW acceleration
+
+// ============================================================================
+// THIRD-PARTY LIBRARIES
+// ============================================================================
+#include "argtable3/argtable3.h"
+#include "cJSON.h"
+#include "lvgl.h"
+
+// ============================================================================
+// MODBUS
+// ============================================================================
+#include "mbcontroller.h"
+#include "misparams.h"  // Modbus parameter structures
+
+// ============================================================================
+// PROJECT COMPONENTS
+// ============================================================================
+#include "framI2C.h"
+#include "private_include/console_private.h"  // For prompt change
+#include "time.h"
 
 
-// #ifdef  CONFIG_IDF_TARGET_ESP32
-// #include "esp32/rom/crc.h"
-// #endif
-// #ifdef  CONFIG_IDF_TARGET_ESP32s3
-// #include "esp32s3/rom/crc.h"
-// #endif
-#include <esp_spiffs.h>
+// ============================================================================
+// C++ HEADERS (Must be INSIDE extern "C") -> FramI2C.h forces it
+// ============================================================================
 #include "BlowerClass.h"
-#include "esp_crc.h"
-#include "esp_ota_ops.h"
-#include "esp_http_client.h"
-#include "esp_https_ota.h"
-#include "esp_app_desc.h"
-    void app_main();
+// ============================================================================
+// FUNCTION DECLARATIONS
+// ============================================================================
+void app_main();
+
 }
 
-
-
-#endif
+#endif // INCLUDES_H
