@@ -1,34 +1,39 @@
+# ==============================================================================
+# ShrimpTech ESP32 Main Component CMakeLists
+# ==============================================================================
+# This file defines the main component build configuration for the ShrimpTech
+# IoT project including source files, dependencies, and embedded resources.
+# ==============================================================================
 
+# C++ Standard Configuration
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set (src
-    src/cmd/cmdFormat.cpp
+# ==============================================================================
+# Source Files Organization
+# ==============================================================================
+
+# Command handlers (MQTT/Mesh commands)
+set(CMD_SOURCES
+    src/cmd/cmdDisplay.cpp
     src/cmd/cmdEraseMetrics.cpp
-    src/cmd/cmdSendMetrics.cpp
+    src/cmd/cmdFormat.cpp
     src/cmd/cmdLock.cpp
-    src/cmd/cmdProd.cpp
+    src/cmd/cmdLogs.cpp
     src/cmd/cmdMQTT.cpp
     src/cmd/cmdNetw.cpp
+    src/cmd/cmdProd.cpp
+    src/cmd/cmdReset.cpp
+    src/cmd/cmdSendMetrics.cpp
     src/cmd/cmdUpdate.cpp
-    src/cmd/cmdDisplay.cpp
-    src/cmd/cmdLogs.cpp
-    src/FramI2C.cpp
-    src/kbd.cpp
-    src/logmanager.cpp
-    src/mesh_netif.c
-    src/meter.cpp
-    src/BlowerClass.cpp
-    src/sendData.cpp
-    src/webserver.cpp
-    src/lcd.cpp
-    src/displayManager.cpp
-    src/nimble.cpp
-    src/cmd/cmdReset.cpp
-    src/cmd/cmdReset.cpp
-    src/rs485.cpp
+)
+
+# Keyboard/Console interface commands
+set(KBD_SOURCES
     kbd/cmdApp.cpp
+    kbd/cmdBlow.cpp
     kbd/cmdConfig.cpp
+    kbd/cmdDebug.cpp
     kbd/cmdEnDecrypt.cpp
     kbd/cmdErase.cpp
     kbd/cmdFindUnit.cpp
@@ -37,45 +42,108 @@ set (src
     kbd/cmdLogLevel.cpp
     kbd/cmdMeter.cpp
     kbd/cmdMetersreset.cpp
+    kbd/cmdNode.cpp
     kbd/cmdResetConf.cpp
     kbd/cmdSecurity.cpp
-    kbd/cmdNode.cpp
-    kbd/cmdDebug.cpp
-    kbd/cmdBlow.cpp
-    )
-
-    set (html 
-    web/index-min.html
-    cert/cloudamp.pem
-    # cert/cert.pem
-    )
-
-    set(bins
-    web/nak.png
-    web/ok.png
-    web/favicon.ico
-    web/cher.png
-    web/cancel.png
-    )
-
-    FILE(GLOB mongoose_files src/mongoose/*.c)
-
-    
-idf_component_register(SRCS "${src}" ${mongoose_files}
-                       INCLUDE_DIRS inc src/mongoose
-REQUIRES driver bt esp_timer nvs_flash esp_wifi  esp_event esp_netif spiffs json console app_update mqtt esp_http_client esp_https_server esp_driver_i2c esp_https_ota
-esp_http_client app_update esp_https_ota esp_netif mbedtls nvs_flash esp_rom
-# REQUIRES driver esp_timer nvs_flash esp_https_ota esp_timer esp_wifi esp_adc esp_event esp_netif spiffs json console u8g2 app_update wifi_provisioning mqtt esp_http_client esp_https_server u8g2-hal-esp-idf
-
-                       EMBED_TXTFILES "${html}" 
-                       EMBED_FILES "${bins}"
 )
 
-# Add permissive only for C++ files
-# THIS DOES WORK for cpp fpermissive etc.
-# target_compile_options(${COMPONENT_LIB} PRIVATE
-#     $<$<COMPILE_LANGUAGE:CXX>:-fpermissive>
-#     $<$<COMPILE_LANGUAGE:CXX>:-Wno-error=address>
-# )
+# Core application sources
+set(CORE_SOURCES
+    src/BlowerClass.cpp
+    src/displayManager.cpp
+    src/FramI2C.cpp
+    src/kbd.cpp
+    src/lcd.cpp
+    src/logmanager.cpp
+    src/mesh_netif.c
+    src/meter.cpp
+    src/nimble.cpp
+    src/rs485.cpp
+    src/sendData.cpp
+    src/webserver.cpp
+)
 
+# Combine all source files
+set(src
+    ${CMD_SOURCES}
+    ${KBD_SOURCES}
+    ${CORE_SOURCES}
+)
+
+# ==============================================================================
+# Embedded Text Resources (HTML, certificates)
+# ==============================================================================
+
+set(html 
+    web/index-min.html
+    cert/cloudamp.pem
+)
+
+# ==============================================================================
+# Embedded Binary Resources (images, icons)
+# ==============================================================================
+
+set(bins
+    web/cancel.png
+    web/cher.png
+    web/favicon.ico
+    web/nak.png
+    web/ok.png
+)
+
+# ==============================================================================
+# Third-Party Sources
+# ==============================================================================
+
+# Mongoose HTTP/networking library
+FILE(GLOB mongoose_files src/mongoose/*.c)
+
+# ==============================================================================
+# Component Registration
+# ==============================================================================
+
+idf_component_register(
+    SRCS 
+        "${src}" 
+        ${mongoose_files}
+    
+    INCLUDE_DIRS 
+        inc 
+        src/mongoose
+    
+    REQUIRES 
+        # Core ESP-IDF components
+        driver
+        esp_driver_i2c
+        esp_event
+        esp_netif
+        esp_rom
+        esp_timer
+        esp_wifi
+        nvs_flash
+        
+        # Networking & protocols
+        esp_http_client
+        esp_https_ota
+        esp_https_server
+        mbedtls
+        mqtt
+        
+        # Storage & data
+        json
+        spiffs
+        
+        # Application components
+        app_update
+        bt
+        console
+    
+    EMBED_TXTFILES 
+        "${html}"
+    
+    EMBED_FILES 
+        "${bins}"
+)
+
+# Note: Unused component include directory variable
 set(COMPONENT_ADD_INCLUDEDIRS "")
