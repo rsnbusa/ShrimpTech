@@ -74,22 +74,22 @@ set(src
 # Embedded Text Resources (HTML, certificates)
 # ==============================================================================
 
-set(html 
-    web/index-min.html
-    cert/cloudamp.pem
-)
+# set(html 
+#     web/index-min.html
+#     cert/cloudamp.pem
+# )
 
 # ==============================================================================
 # Embedded Binary Resources (images, icons)
 # ==============================================================================
 
-set(bins
-    web/cancel.png
-    web/cher.png
-    web/favicon.ico
-    web/nak.png
-    web/ok.png
-)
+# set(bins
+#     web/cancel.png
+#     web/cher.png
+#     web/favicon.ico
+#     web/nak.png
+#     web/ok.png
+# )
 
 # ==============================================================================
 # Third-Party Sources
@@ -138,11 +138,11 @@ idf_component_register(
         bt
         console
     
-    EMBED_TXTFILES 
-        "${html}"
+    # EMBED_TXTFILES 
+    #     "${html}"
     
-    EMBED_FILES 
-        "${bins}"
+    # EMBED_FILES 
+    #     "${bins}"
 )
 
 # Note: Unused component include directory variable
