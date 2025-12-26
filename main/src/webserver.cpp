@@ -99,12 +99,15 @@ void my_get_settings(struct settings *data) {
 	}
 	if(theConf.meterconf==0)
 			strcpy(s_settings.msg_val,"ENTER KEY");
-
-
-//current configuration and readigns
-
-	// s_settings.mesh_val=theConf.controllerid;
-
+	else
+	{
+			strcpy(s_settings.msg_val,"REVIEWING");
+			s_settings.delay_val=theConf.delay_mesh;
+			s_settings.nodes_val=theConf.totalnodes;
+			s_settings.unit_val=theConf.unitid;
+			s_settings.master_val=theConf.masternode;
+			s_settings.pool_val=theConf.poolid;
+	}
 
 	*data = s_settings;  // Sync with your device
 }

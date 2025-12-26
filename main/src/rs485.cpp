@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-
+#define GLOBALS
 #include "string.h"
 #include "esp_log.h"
 #include "misparams.h"  // for modbus parameters structures
@@ -11,7 +11,9 @@
 #include "sdkconfig.h"
 #include "defines.h"
 #include "BlowerClass.h"
+#include "typedef.h"
 
+extern config_flash                 theConf;
 extern sensor_t sensorData;
 
 #define MB_PORT_NUM     (CONFIG_MB_UART_PORT_NUM)   // Number of UART port used for Modbus connection
@@ -226,6 +228,17 @@ static esp_err_t master_init(void)
     vTaskDelay(5);
 
 mb_parameter_descriptor_t *devices=(mb_parameter_descriptor_t*)calloc(1,sizeof(mb_parameter_descriptor_t)*1);
+
+typedef struct  {
+    int regfresh,bataddr;
+    int specs[4][4];
+} bat_specs_t;
+bat_specs_t *batinfo=(bat_specs_t *)&theConf.modbus_battery;    // make it array type for easy management
+printf("Bat address %d refresh %d\n",batinfo->bataddr,batinfo->regfresh);
+for (int a=0;a<4;a++)
+{
+    printf("Battery specs %d: Mux %d Points %d Start %d Offset%d\n",a,batinfo->specs[a][0],batinfo->specs[a][1],batinfo->specs[a][2],batinfo->specs[a][3]);
+}
 
 devices->cid=CID_INP_DATA_0;
 devices->param_key="";
