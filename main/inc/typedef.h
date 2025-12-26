@@ -1,8 +1,12 @@
-#ifndef TYPES_H_
-#define TYPES_H_
+#ifndef TYPEDEF_H
+#define TYPEDEF_H
 #include "includes.h"
 #include "defines.h"
-#include "mongoose_glue.h"              // for website definitions 
+#include "mongoose_glue.h"  // For website definitions
+
+// ============================================================================
+// MODBUS TYPES
+// ============================================================================
 
 typedef struct mod_st { 
     uint8_t  slave_address;
@@ -15,14 +19,14 @@ typedef struct mod_st {
     uint8_t  error;
 } modbus_array_t;
 
-typedef struct answer{
-        char *      theanswer;
-        uint16_t    len;
-        time_t      ts;
-}answer_t;
+typedef struct answer {
+    char *theanswer;
+    uint16_t len;
+    time_t ts;
+} answer_t;
 
-
-typedef struct modbus_general{
+// Modbus command line argument types
+typedef struct modbus_general {
     struct arg_int *slave;        
     struct arg_int *address;        
     struct arg_int *points; 
@@ -45,8 +49,12 @@ typedef struct modbus_rec{
     uint8_t         functionCode;
     uint16_t        startAdrress;
     uint16_t        countBytes;
-    uint16_t        crc;
+    uint16_t crc;
 } modbus_rec_t;
+
+// ============================================================================
+// WEB STATE & DEBUG ENUMS
+// ============================================================================
 
 typedef enum {
     wNONE,
@@ -65,7 +73,7 @@ enum {
     dBLOW,
     dLOGIC,
     dMODBUS
-};
+} debug_flags_t;
 
 typedef enum {
 AHUM,
@@ -91,6 +99,10 @@ PV1A,
 PV1V
 } limits_enum;
 
+// ============================================================================
+// PROFILE & SCHEDULE TYPES
+// ============================================================================
+
 typedef struct {
     uint8_t hourStart;
     uint32_t horarioLen;
@@ -113,29 +125,31 @@ typedef struct {
     ciclo_t cycle[MAXCICLOS];
 } profile_t;
 
+// ============================================================================
+// COMMAND LINE ARGUMENT TYPES
+// ============================================================================
 
-//kbd definitions 
-typedef struct fram{
-    struct arg_str *format;         //format WHOLE fram
-    struct arg_str *midw;            // read working meter id
-    struct arg_int *midr;            // write working meter id
-    struct arg_int *seed;       // write working meter kwh start
-    struct arg_int *rstart;         // read working meter kwh start
-    struct arg_int *mtime;          // write working meter datetime
-    struct arg_int *mbeat;          // write working meter beatstart aka beat
-    struct arg_str *stats;          // init meter internal values
+typedef struct fram {
+    struct arg_str *format;  // Format WHOLE FRAM
+    struct arg_str *midw;    // Read working meter ID
+    struct arg_int *midr;    // Write working meter ID
+    struct arg_int *seed;    // Write working meter kWh start
+    struct arg_int *rstart;  // Read working meter kWh start
+    struct arg_int *mtime;   // Write working meter datetime
+    struct arg_int *mbeat;   // Write working meter beatstart aka beat
+    struct arg_str *stats;   // Init meter internal values
     struct arg_end *end;
 } framArgs_t;
 
-typedef struct dbg{
-    struct arg_str *schedule;         // schedule timing etc
-    struct arg_str *mesh;            // mesh related
-    struct arg_str *ble;            // ble related
-    struct arg_str *mqtt;            // mqtt related
-    struct arg_str *xcmds;            // external cmds related
-    struct arg_str *blow;            // print. blower data
-    struct arg_str *logic;            // print. blower data
-    struct arg_str *all;            // all cmds on/off
+typedef struct dbg {
+    struct arg_str *schedule;  // Schedule timing etc
+    struct arg_str *mesh;      // Mesh related
+    struct arg_str *ble;       // BLE related
+    struct arg_str *mqtt;      // MQTT related
+    struct arg_str *xcmds;     // External commands related
+    struct arg_str *blow;      // Blower data
+    struct arg_str *logic;     // Logic data
+    struct arg_str *all;       // All commands on/off
     struct arg_end *end;
 } dbg_t;
 
@@ -144,17 +158,15 @@ typedef struct logl{
     struct arg_end *end;
 } loglevel_t;
 
-typedef struct timerl{
-    
-    struct arg_int *first; 
-    struct arg_int *repeat;          // init meter internal values
+typedef struct timerl {
+    struct arg_int *first;
+    struct arg_int *repeat;  // Init meter internal values
     struct arg_end *end;
 } timerl_t;
 
-typedef struct prepaid{
-    
-    struct arg_int *unit; 
-    struct arg_int *balance;          // init meter internal values
+typedef struct prepaid {
+    struct arg_int *unit;
+    struct arg_int *balance;  // Init meter internal values
     struct arg_end *end;
 } prepaid_t;
 
@@ -180,14 +192,17 @@ typedef struct logop{
     struct arg_int *erase;
     struct  arg_end *end;
 } logargs_t;
-typedef struct blowst{
+typedef struct blowst {
     struct arg_str *seed;
     struct arg_str *init;
-    struct  arg_end *end;
+    struct arg_end *end;
 } blow_t;
 
-//end kbd defs
-typedef struct medidores_mac{
+// ============================================================================
+// MESH NETWORK TYPES
+// ============================================================================
+
+typedef struct medidores_mac {
     mesh_addr_t     big_table[MAXNODES];
     bool            received[MAXNODES];
     void            *thedata[MAXNODES];
@@ -198,58 +213,79 @@ typedef struct medidores_mac{
     uint8_t         onoff[MAXNODES];
 } medidores_mac_t;
 
-typedef struct master_Node{
-    medidores_mac_t     theTable;
-    int                 existing_nodes;
-}master_node_t;
+typedef struct master_Node {
+    medidores_mac_t theTable;
+    int existing_nodes;
+} master_node_t;
 
-typedef struct mqttMsgInt{
-	uint8_t 	*message;	// memory of message. MUST be freed by the Submode Routine and allocated by caller
-	uint16_t	msgLen;
-	char		*queueName;	// queue name to send
-	uint32_t	maxTime;	//max ms to wait
-}mqttMsg_t;
-
+// ============================================================================
+// FUNCTION POINTER TYPES
+// ============================================================================
 
 typedef int (*functrsn)(void *);
 
-typedef struct cmdRecord{
-    char 		comando[20];
-    char        abr[6];
-    functrsn 	code;
-    uint32_t	count;
-}cmdRecord;
+// ============================================================================
+// MQTT TYPES
+// ============================================================================
 
-typedef struct mqttRecord{
-    char        * msg,*queue;
-    uint16_t    lenMsg;
-    functrsn 	code;
-    uint32_t    *param;
+typedef struct mqttMsgInt {
+    uint8_t *message;    // Memory of message. MUST be freed by the Submode Routine and allocated by caller
+    uint16_t msgLen;
+    char *queueName;     // Queue name to send
+    uint32_t maxTime;    // Max ms to wait
+} mqttMsg_t;
+
+typedef struct mqttRecord {
+    char *msg, *queue;
+    uint16_t lenMsg;
+    functrsn code;
+    uint32_t *param;
     mesh_addr_t *addr;
-}mqttSender_t;
+} mqttSender_t;
 
-typedef struct medbkcup{
-    char        mid[13];
-    uint16_t    bpk;
-    time_t      backdate;
-    uint32_t    kwhstart;
+// ============================================================================
+// COMMAND & RECORD TYPES
+// ============================================================================
+
+typedef struct cmdRecord {
+    char comando[20];
+    char abr[6];
+    functrsn code;
+    uint32_t count;
+} cmdRecord;
+
+typedef struct medbkcup {
+    char mid[13];
+    uint16_t bpk;
+    time_t backdate;
+    uint32_t kwhstart;
 } med_bck;
 
+// ============================================================================
+// CONFIGURATION TYPES
+// ============================================================================
+
+/**
+ * @brief Main device configuration structure stored in flash/NVS
+ * 
+ * Contains all persistent configuration including network settings, MQTT credentials,
+ * WiFi parameters, profiles, and Modbus device configurations.
+ */
 typedef struct config {
-    time_t 		bornDate;
-    uint32_t 	bootcount,lastResetCode,centinel;
-    uint8_t		bleboot,masternode,unitid;
-    uint32_t    downtime;               //downtime accumulator
-    uint32_t    mqttSlots;          //slot number
-    uint16_t    loglevel;
-    uint8_t     meterconf,ptch;
-    uint32_t    lastRebootTime,meterconfdate,baset,cid,subnode,poolid;
-    char        mqttServer[100];
-    char        mqttUser[50];
-    char        mqttPass[50];
-    char        thessid[40], thepass[20];
-    uint32_t    totalnodes;     // this gives the EXACT number of nodes in this pool
-    uint16_t    conns;          // time to wiat before sending metrics in ms
+    time_t bornDate;
+    uint32_t bootcount, lastResetCode, centinel;
+    uint8_t bleboot, masternode, unitid;
+    uint32_t downtime;      // Downtime accumulator
+    uint32_t mqttSlots;     // Slot number
+    uint16_t loglevel;
+    uint8_t meterconf, ptch;
+    uint32_t lastRebootTime, meterconfdate, baset, cid, subnode, poolid;
+    char mqttServer[100];
+    char mqttUser[50];
+    char mqttPass[50];
+    char thessid[40], thepass[20];
+    uint32_t totalnodes;  // Exact number of nodes in this pool
+    uint16_t conns;       // Time to wait before sending metrics in ms
     uint16_t    repeat;
     char        kpass[20];
     time_t      lastKnownDate;
@@ -258,78 +294,116 @@ typedef struct config {
     uint8_t     useSec;
     char        lastVersion[20];
     uint32_t    mqttDiscoRetry;
-    profile_t   profiles[MAXPROFILES];
-    uint8_t     activeProfile,dayCycle;
-    time_t      dateProfile,dateDayCycle;
-    uint8_t     blower_mode;        //0 off 1 activated for power loss cases
-    uint32_t    debug_flags,test_timer_div;
-    uint8_t     work_cycle,work_day,unit_num,delay_mesh;
-    uint32_t    loginwait;
-    int         limits[21][2];     //for 21 variables , min 0 max 1
+    profile_t profiles[MAXPROFILES];
+    uint8_t activeProfile, dayCycle;
+    time_t dateProfile, dateDayCycle;
+    uint8_t blower_mode;           // 0=off, 1=activated for power loss cases
+    uint32_t debug_flags, test_timer_div;
+    uint8_t work_cycle, work_day, unit_num, delay_mesh;
+    uint32_t loginwait;
+    int limits[21][2];             // For 21 variables: [0]=min, [1]=max
     uint16_t    baud;
     uart_port_t port;
     struct limits milim;
     struct modbInverter modbus_inverter;
     struct modbSensors  modbus_sensors;
     struct modbBattery  modbus_battery;
-    struct modbPanels   modbus_panels;
+    struct modbPanels modbus_panels;
 } config_flash;
 
-typedef struct meshp{
+// ============================================================================
+// METER TYPES
+// ============================================================================
+
+typedef struct meshp {
     mesh_addr_t *from;
     mesh_data_t *data;
 } meshp_t;
-typedef struct meterType2{          //exact match to fram struct
-    uint16_t beat;              //2
-    char        mid[12];               // 14
-    uint8_t     paymode,onoff;          //16
-    int32_t     prebal;  //can be negative  //20
-    uint16_t    maxamp,minamp; //24
-    uint32_t    bpk,beatlife,kwhstart,lastupdate,lifekwh,lifedate,lastclock; //52
-    uint16_t    months[12];                        // 76
-    uint8_t     monthHours[12][24];                 // 288+76 =364
-    uint32_t    framWrites;
-    uint32_t    framReads;
-    uint32_t    pulseerrs;
+
+/**
+ * @brief Meter data structure - exact match to FRAM memory layout
+ * 
+ * This structure mirrors the physical layout in FRAM memory.
+ * Memory offsets are documented for each field.
+ * Total structure size must match FRAM allocation.
+ */
+typedef struct meterType2 {  // Exact match to FRAM struct
+    uint16_t beat;       // Offset 2
+    char mid[12];        // Offset 14
+    uint8_t paymode, onoff;  // Offset 16
+    int32_t prebal;      // Can be negative, Offset 20
+    uint16_t maxamp, minamp;  // Offset 24
+    uint32_t bpk, beatlife, kwhstart, lastupdate, lifekwh, lifedate, lastclock;  // Offset 52
+    uint16_t months[12];      // Offset 76
+    uint8_t monthHours[12][24];  // Offset 364
+    uint32_t framWrites;
+    uint32_t framReads;
+    uint32_t pulseerrs;
 } meterType;
 
-#pragma pack(push, 2)       //align on word boundary this struct and enxt one then normal c++ compiler reqiuirements
+// ============================================================================
+// PACKED NETWORK MESSAGE TYPES
+// ============================================================================
+
+#pragma pack(push, 2)  // Align on word boundary for network transmission
+
+/**
+ * @brief Packed mesh network message format
+ * 
+ * This structure is transmitted over the mesh network.
+ * Packed to 2-byte alignment for consistent network transmission.
+ * Total message size: 62 bytes
+ * Memory offsets are critical for protocol compatibility.
+ */
 typedef struct mesh_md_sg {
-char        meter_id[12];           // 0 meter id
-uint8_t     paym;                   //12 payment method
-uint8_t     poweroff;               //13 locked or not
-uint16_t    preval;                 //14 prepaid balance
-uint32_t    kwhlife;                //16 kwh for life
-uint32_t    beatlife;               //20 betas for life
-uint16_t    maxamp;                 //24 max amp registered
-uint16_t    monthnum;               //26 month number
-uint16_t    monthkwh;               //28 monthkwh
-uint32_t    intid;                  //30 units mac
-uint32_t    fwr;                    //34 fram writes
-uint8_t     horas[24];              //38 24 hours kwh
-} mesh_msg_t;           //message size is 62
+    char meter_id[12];     // Offset 0: Meter ID
+    uint8_t paym;          // Offset 12: Payment method
+    uint8_t poweroff;      // Offset 13: Locked or not
+    uint16_t preval;       // Offset 14: Prepaid balance
+    uint32_t kwhlife;      // Offset 16: kWh for life
+    uint32_t beatlife;     // Offset 20: Beats for life
+    uint16_t maxamp;       // Offset 24: Max amp registered
+    uint16_t monthnum;     // Offset 26: Month number
+    uint16_t monthkwh;     // Offset 28: Month kWh
+    uint32_t intid;        // Offset 30: Unit's MAC
+    uint32_t fwr;          // Offset 34: FRAM writes
+    uint8_t horas[24];     // Offset 38: 24 hours kWh
+} mesh_msg_t;  // Message size is 62 bytes
 
 
 typedef struct thenode {
-uint32_t    nodeid,subnode;
-uint32_t    tstamp,msgnum;
-solarDef_t  solarData;      // want a solarSystem+_t  
-} thenode_t;                
+    uint32_t nodeid, subnode;
+    uint32_t tstamp, msgnum;
+    solarDef_t solarData;
+} thenode_t;
 
-typedef struct thebigunion{     //4 + 78 = 82
-        uint32_t cmd;                      
-        union  {
-            thenode_t nodedata;                         // for binary data format
-            char    parajson[sizeof(thenode_t)];        // for json which should have the same cmd
-        };
-    } meshunion_t;
+/**
+ * @brief Union wrapper for binary/JSON mesh data transmission
+ * 
+ * Allows same data to be sent as either:
+ * - Binary format (nodedata)
+ * - JSON string format (parajson)
+ * Both formats share the same memory space.
+ * Total size: 82 bytes (4 byte cmd + 78 byte payload)
+ */
+typedef struct thebigunion {  // Size: 4 + 78 = 82 bytes
+    uint32_t cmd;
+    union {
+        thenode_t nodedata;                  // For binary data format
+        char parajson[sizeof(thenode_t)];    // For JSON (same size as cmd)
+    };
+} meshunion_t;
 
 #pragma pack(pop)
 
-typedef struct locker{
-    char * data;
-    int     len;
-}locker_t;
+// ============================================================================
+// UTILITY TYPES
+// ============================================================================
+
+typedef struct locker {
+    char *data;
+    int len;
+} locker_t;
 
 typedef struct lvg {
     char *msg;
@@ -339,7 +413,13 @@ typedef struct lvg {
 
 #pragma pack(push, 2)
 
-typedef struct shrimpMsg_st{
+/**
+ * @brief Aggregated pool metrics message for MQTT transmission
+ * 
+ * Contains averaged solar system metrics for an entire pool of nodes.
+ * Packed to 2-byte alignment for network efficiency.
+ */
+typedef struct shrimpMsg_st {
     uint32_t centinel;
     uint16_t poolid;
     uint16_t countnodes;
@@ -348,4 +428,4 @@ typedef struct shrimpMsg_st{
 } shrimpMsg_t;
 #pragma pack(pop)
 
-#endif
+#endif // TYPEDEF_H
