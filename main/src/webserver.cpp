@@ -1,8 +1,18 @@
-/*
- * webserver.cpp
- *
- *  Created on: Dec 29, 2019
- *      Author: rsn
+/**
+ * @file webserver.cpp
+ * @brief Web server implementation for IoT device configuration and monitoring
+ * 
+ * This module provides a web interface using Mongoose for configuring and monitoring
+ * the IoT device. It handles:
+ * - Device initial configuration and authentication
+ * - System settings (WiFi, MQTT, security)
+ * - Profile management (schedules and cycles)
+ * - Modbus device configuration (inverter, sensors, battery, panels)
+ * - System status and statistics
+ * - Device reboot control
+ * 
+ * @author rsn
+ * @date Dec 29, 2019
  */
 #ifndef TYPESweb_H_
 #define TYPESweb_H_
@@ -11,6 +21,44 @@
 #include "includes.h"
 #include "globals.h"
 #include "mongoose/mongoose_glue.h"
+
+// Configuration state constants
+#define CONF_STATE_UNCONFIGURED  0
+#define CONF_STATE_CONFIGURED    1
+#define CONF_STATE_PENDING       2
+#define CONF_STATE_CONFIRMED     3
+#define CONF_STATE_ACTIVE        4
+
+// Timer constants (milliseconds)
+#define RESTART_DELAY_MS        5000
+#define WEB_TIMEOUT_MS          120000
+#define REBOOT_ACTION_MS        1000
+
+// Buffer sizes
+#define KEY_BUFFER_SIZE         17
+#define KEY_STRING_SIZE         33
+#define AES_BUFFER_SIZE         100
+#define CHALLENGE_KEY_SIZE      40
+#define CHALLENGE_BYTES         4
+
+// Status messages
+#define MSG_READY               "Listo"
+#define MSG_ENTER_KEY           "ENTER KEY"
+#define MSG_REVIEWING           "REVIEWING"
+#define MSG_RETRY               "Retry"
+
+// Profile constants
+#define MAX_PROFILES            2
+#define MIN_PROFILES            1
+#define MAX_PROFILES_ALLOWED    3
+
+// Safe string copy helper
+#define SAFE_STRCPY(dest, src, size) do { \
+	if (src) { \
+		strncpy(dest, src, (size) - 1); \
+		dest[(size) - 1] = '\0'; \
+	} \
+} while(0)
 
 // mongoose glue structures. 
 //
@@ -33,195 +81,305 @@ extern char levels[6][10];			// log levels external in cmdConfig.cpp
 static bool restartf=false;
 extern 	int findLevel(char * cual);
 
+/**
+ * @brief Validates the authentication key against the expected challenge
+ * 
+ * Converts the provided key into a challenge value using AES encryption
+ * and compares it against the expected challenge derived from the configuration ID.
+ * 
+ * @param key The 64-bit authentication key to validate
+ * @return true if the key is valid, false otherwise
+ */
 bool check_key(uint64_t key)
 {
-	char kkey[17],laclave[33];
-	int challenge;
-	uint8_t *porg,*pdest;
-
-	// ESP_LOG_BUFFER_HEX("KEY",&key,4);
-
-	porg=(uint8_t*)&key;
-	pdest=(uint8_t*)&challenge;
-	pdest+=3;
-
-	for (int a=0;a<4;a++)
+	char cid_buffer[KEY_BUFFER_SIZE];
+	char encryption_key[KEY_STRING_SIZE];
+	int32_t challenge_from_key;
+	
+	// Extract challenge from the input key (reverse byte order)
+	uint8_t *key_bytes = (uint8_t*)&key;
+	uint8_t *challenge_bytes = (uint8_t*)&challenge_from_key;
+	challenge_bytes += 3;  // Start from the end
+	
+	for (int i = 0; i < CHALLENGE_BYTES; i++)
 	{
-		*pdest=*porg;
-		pdest--;
-		porg++;
+		*challenge_bytes = *key_bytes;
+		challenge_bytes--;
+		key_bytes++;
 	}
 
-	sprintf(kkey,"%016d",theConf.cid);
-	// printf("num [%s]\n",kkey);
-	sprintf(laclave,"%s%s",kkey,kkey);
-	// printf("clave [%s] %d\n",laclave,strlen(laclave));
-	char *aca=(char*)calloc (100,1);
-
-	int ret=aes_encrypt(SUPERSECRET,sizeof(SUPERSECRET),aca,laclave);
-	if(ret==ESP_FAIL)
+	// Generate encryption key from configuration ID
+	sprintf(cid_buffer, "%016d", theConf.cid);
+	sprintf(encryption_key, "%s%s", cid_buffer, cid_buffer);  // Double the CID
+	
+	// Allocate buffer for encrypted challenge
+	char *encrypted_challenge = (char*)calloc(AES_BUFFER_SIZE, 1);
+	if (encrypted_challenge == NULL)
 	{
-		ESP_LOGE("KEY","Fail encrypt");
+		ESP_LOGE("KEY", "Failed to allocate memory for encryption");
 		return false;
 	}
 
-	// ESP_LOG_BUFFER_HEX("ACA",aca,strlen(SUPERSECRET));
-	// ESP_LOG_BUFFER_HEX("CHA",&challenge,4);
+	// Encrypt the secret and compare with the challenge
+	int ret = aes_encrypt(SUPERSECRET, sizeof(SUPERSECRET), encrypted_challenge, encryption_key);
+	if (ret == ESP_FAIL)
+	{
+		ESP_LOGE("KEY", "AES encryption failed");
+		free(encrypted_challenge);
+		return false;
+	}
 
-int como=memcmp((void*)aca,(void*)&challenge,4);
-// printf("Como %d\n",como);
-	free(aca);
-	if(como==0)
-		return true;
-
-	return false;
-
+	// Compare the encrypted result with the challenge from the key
+	bool is_valid = (memcmp(encrypted_challenge, &challenge_from_key, CHALLENGE_BYTES) == 0);
+	
+	free(encrypted_challenge);
+	return is_valid;
 }
 
-void my_get_settings(struct settings *data) {
+/**
+ * @brief Helper function to check if settings should be disabled based on configuration state
+ * @return 1 if disabled, 0 if enabled
+ */
+static inline int should_disable_settings(void)
+{
+	return (theConf.meterconf > CONF_STATE_PENDING) ? 1 : 0;
+}
 
-	//only 2 parameters, the cid (used for the challenge) and set disaabled if lifekwh in fram is > 0 but somehow got here
-   if( theConf.meterconf>2)
-   		s_settings.disable_val=1;
-	else
-   		s_settings.disable_val=0;
-
-	sprintf(s_settings.mac_val,"%d",theConf.cid);		// challenge initiaol value
-	if(restartf)
-	{
-		strcpy(s_settings.msg_val,"Listo");
-		TimerHandle_t restartTimer=xTimerCreate("restart",pdMS_TO_TICKS(5000),pdFALSE,( void * ) 0, [] ( TimerHandle_t xTimer)
-		{	
-			theConf.meterconf=1;
+/**
+ * @brief Schedules a system restart after a delay
+ * 
+ * Creates and starts a timer that will save configuration and restart the device
+ */
+static void schedule_restart(void)
+{
+	TimerHandle_t restartTimer = xTimerCreate(
+		"restart",
+		pdMS_TO_TICKS(RESTART_DELAY_MS),
+		pdFALSE,
+		(void *)0,
+		[](TimerHandle_t xTimer) {
+			theConf.meterconf = CONF_STATE_CONFIGURED;
 			write_to_flash();
-			esp_restart();});   //monitor activity and tiemout if no work done-> use lambda
-		xTimerStart(restartTimer,0);
-	}
-	if(theConf.meterconf==0)
-			strcpy(s_settings.msg_val,"ENTER KEY");
-	else
-	{
-			strcpy(s_settings.msg_val,"REVIEWING");
-			s_settings.delay_val=theConf.delay_mesh;
-			s_settings.nodes_val=theConf.totalnodes;
-			s_settings.unit_val=theConf.unitid;
-			s_settings.master_val=theConf.masternode;
-			s_settings.pool_val=theConf.poolid;
-	}
-
-	*data = s_settings;  // Sync with your device
+			esp_restart();
+		}
+	);
+	xTimerStart(restartTimer, 0);
 }
 
-void my_set_settings(struct settings *data) {
-	// save Meter and theConf structures
-	uint32_t keyread;
-	char *ptr; 
-	char *laclave=(char*)calloc(1,40);
-	time_t now;
-
-	s_settings=*data;
-// check if challenge is met
-	strcpy(laclave,data->challenge_val);
-	keyread=strtoul(laclave, &ptr, 16);
-	if(!check_key(keyread))
+/**
+ * @brief Populates settings structure based on current configuration state
+ */
+static void populate_settings_data(void)
+{
+	if (theConf.meterconf == CONF_STATE_UNCONFIGURED)
 	{
-		printf("Not same key %d %d\n",keyread,theConf.cid);
-		strcpy(s_settings.msg_val,"Retry");
-		free(laclave);
+		strcpy(s_settings.msg_val, MSG_ENTER_KEY);
+	}
+	else
+	{
+		strcpy(s_settings.msg_val, MSG_REVIEWING);
+		s_settings.delay_val = theConf.delay_mesh;
+		s_settings.nodes_val = theConf.totalnodes;
+		s_settings.unit_val = theConf.unitid;
+		s_settings.master_val = theConf.masternode;
+		s_settings.pool_val = theConf.poolid;
+	}
+}
+
+/**
+ * @brief Applies validated settings to the configuration
+ * @param data The settings structure containing new values
+ */
+static void apply_settings_to_config(struct settings *data)
+{
+	time_t now;
+	time(&now);
+	
+	// Update configuration from settings
+	theConf.masternode = data->master_val;
+	theConf.poolid = data->pool_val;
+	theConf.unitid = data->unit_val;
+	theConf.totalnodes = data->nodes_val;
+	theConf.delay_mesh = data->delay_val;
+	
+	// Update configuration state
+	theConf.meterconf = CONF_STATE_CONFIGURED;
+	theConf.ptch = 1;  // Pop that Cherry :)
+	theConf.meterconfdate = now;
+	theConf.bornDate = theConf.meterconfdate;
+	theConf.cid = 0;  // Reset Challenge ID, we are configured now
+	
+	write_to_flash();
+}
+
+/**
+ * @brief Get current settings for the web interface
+ * @param data Pointer to settings structure to populate
+ */
+void my_get_settings(struct settings *data) {
+	// Check if settings should be disabled based on configuration state
+	s_settings.disable_val = should_disable_settings();
+	
+	// Set challenge initial value
+	sprintf(s_settings.mac_val, "%d", theConf.cid);
+	
+	// Handle restart scenario
+	if (restartf)
+	{
+		strcpy(s_settings.msg_val, MSG_READY);
+		schedule_restart();
+	}
+	else
+	{
+		// Populate settings based on current state
+		populate_settings_data();
+	}
+	
+	*data = s_settings;
+}
+
+/**
+ * @brief Apply new settings from the web interface after key validation
+ * @param data Pointer to settings structure with new values
+ */
+void my_set_settings(struct settings *data) {
+	// Allocate memory for challenge string
+	char *challenge_str = (char*)calloc(1, CHALLENGE_KEY_SIZE);
+	if (challenge_str == NULL)
+	{
+		ESP_LOGE("SETTINGS", "Failed to allocate memory for challenge");
+		strcpy(s_settings.msg_val, MSG_RETRY);
 		return;
 	}
-	free(laclave);
-//challenge OK
-	theConf.masternode=s_settings.master_val;
-	theConf.poolid=s_settings.pool_val;
-	theConf.unitid=s_settings.unit_val;
-	theConf.totalnodes=s_settings.nodes_val;
-	theConf.delay_mesh=s_settings.delay_val;
-
-	time(&now);
-	// save data to flash and Fram
-	theConf.meterconf=1; // configuration is done... next step (2) will send confirmation to COntroller DB and receive confirmation (state 3)
-	theConf.ptch=1;		//Pop that Cherry :) 
-	theConf.meterconfdate=now;	//configuration date... useless we have no NTP access so start of unix time
-	theConf.bornDate=theConf.meterconfdate;
-	theConf.cid=0;						// reset Challenge ID to 0, we are configured now
-	// theConf.medback.backdate=now;
-	write_to_flash();
-
-	// save_inst_msg(theBlower.getMID(),theBlower.getBPK(),theBlower.getKstart(),(char*)"SYSTEM");
-
-	s_settings = *data; 
-	restartf=true;
+	
+	// Copy and validate the challenge key
+	strcpy(challenge_str, data->challenge_val);
+	char *endptr;
+	uint32_t key_value = strtoul(challenge_str, &endptr, 16);
+	free(challenge_str);
+	
+	if (!check_key(key_value))
+	{
+		ESP_LOGW("SETTINGS", "Invalid authentication key (expected CID: %d)", theConf.cid);
+		s_settings = *data;
+		strcpy(s_settings.msg_val, MSG_RETRY);
+		return;
+	}
+	
+	// Challenge validated - apply settings
+	ESP_LOGI("SETTINGS", "Authentication successful, applying configuration");
+	s_settings = *data;
+	apply_settings_to_config(data);
+	restartf = true;
 }
 
+/**
+ * @brief Apply system settings from web interface
+ * @param data Pointer to system settings structure
+ */
 void my_set_system(struct system *data) {
-	//set/save genreal paramenter in theConf structure
-	s_system=*data;
-
-	// theConf.allowSkips=s_system.skipopt_val;
-	// theConf.maxSkips=s_system.skip_val;
-	theConf.repeat=s_system.repeat_val;
-	theConf.baset=s_system.baset_val;
-	// theConf.otaOnTheFly=s_system.otf_val;
-	strcpy(theConf.kpass,s_system. password_val);
-	int cual=findLevel(s_system.loglevel_val);
-	if(cual>=0)
-		theConf.loglevel=cual;
-	theConf.loginwait=s_system.logtime_val;
-	strcpy(theConf.mqttPass,s_system. mqttpass_val);
-	strcpy(theConf.mqttUser,s_system. mqttuser_val);
-	strcpy(theConf.mqttServer,s_system. mqttserver_val);
-	strcpy(theConf.mqttcert,s_system. mqttcert_val);
-	// strcpy(theConf.OTAURL,s_system. otaurl_val);
-	strcpy(theConf.thepass,s_system. ssidpass_val);
-	strcpy(theConf.thessid,s_system. ssid_val);
-	theConf.poolid=s_system. meshid_val;
-	theConf.useSec=s_system. security_val;
-	theConf.totalnodes=s_system. nodes_val;
-	theConf.conns=s_system. conns_val;
-	theConf.mqttDiscoRetry=s_system.mqttreco_val;
-	if(theConf.meterconf==3)
-		theConf.meterconf=2;
+	if (!data)
+	{
+		ESP_LOGE(TAG, "Invalid system data pointer");
+		return;
+	}
+	
+	s_system = *data;
+	
+	// Apply settings with safe string operations
+	theConf.repeat = s_system.repeat_val;
+	theConf.baset = s_system.baset_val;
+	
+	SAFE_STRCPY(theConf.kpass, s_system.password_val, sizeof(theConf.kpass));
+	
+	int cual = findLevel(s_system.loglevel_val);
+	if (cual >= 0)
+	{
+		theConf.loglevel = cual;
+	}
+	else
+	{
+		ESP_LOGW(TAG, "Invalid log level, keeping current: %d", theConf.loglevel);
+	}
+	
+	theConf.loginwait = s_system.logtime_val;
+	
+	SAFE_STRCPY(theConf.mqttPass, s_system.mqttpass_val, sizeof(theConf.mqttPass));
+	SAFE_STRCPY(theConf.mqttUser, s_system.mqttuser_val, sizeof(theConf.mqttUser));
+	SAFE_STRCPY(theConf.mqttServer, s_system.mqttserver_val, sizeof(theConf.mqttServer));
+	SAFE_STRCPY(theConf.mqttcert, s_system.mqttcert_val, sizeof(theConf.mqttcert));
+	SAFE_STRCPY(theConf.thepass, s_system.ssidpass_val, sizeof(theConf.thepass));
+	SAFE_STRCPY(theConf.thessid, s_system.ssid_val, sizeof(theConf.thessid));
+	
+	theConf.poolid = s_system.meshid_val;
+	theConf.useSec = s_system.security_val;
+	theConf.totalnodes = s_system.nodes_val;
+	theConf.conns = s_system.conns_val;
+	theConf.mqttDiscoRetry = s_system.mqttreco_val;
+	
+	if (theConf.meterconf == CONF_STATE_CONFIRMED)
+	{
+		theConf.meterconf = CONF_STATE_PENDING;
+	}
+	
 	write_to_flash();
-	// xTimerReset(webTimer,0);
+	ESP_LOGI(TAG, "System settings applied successfully");
 }
 
+/**
+ * @brief Get current system settings for web interface
+ * @param data Pointer to system structure to populate
+ */
 void my_get_system(struct system *data) 
 {
-	   if(theConf.meterconf>3)				// CONF is 4
-	   
-			s_system.disable_val=1;
-	else
-   		s_system.disable_val=0;
-
-	s_system.meshid_val=theConf.poolid;
-	const esp_app_desc_t *mip=esp_app_get_description();
-	strcpy(s_system.version_val,mip->version);
-	s_system.meshid_val=theConf.poolid;
-	// s_system.skipopt_val=theConf.allowSkips;
-	// s_system.skip_val=theConf.maxSkips;
-	s_system.repeat_val=theConf.repeat;
-	s_system.baset_val=theConf.baset;
-	// s_system.otf_val=theConf.otaOnTheFly;
-	strcpy(s_system. password_val,theConf.kpass);
-	strcpy(s_system. loglevel_val,levels[theConf.loglevel]);
-	strcpy(s_system. mqttpass_val,theConf.mqttPass);
-	strcpy(s_system. mqttuser_val,theConf.mqttUser);
-	strcpy(s_system. mqttserver_val,theConf.mqttServer);
-	strcpy(s_system. mqttcert_val,theConf.mqttcert);
-	// strcpy(s_system. otaurl_val,theConf.OTAURL);
-	strcpy(s_system. ssidpass_val,theConf.thepass);
-	strcpy(s_system. ssid_val,theConf.thessid);
-	s_system. security_val=theConf.useSec;
-	s_system. nodes_val=theConf.totalnodes;
-	s_system. conns_val=theConf.conns;
-	s_system.mqttreco_val=theConf.mqttDiscoRetry;
-
+	if (!data)
+	{
+		ESP_LOGE(TAG, "Invalid system data pointer");
+		return;
+	}
+	
+	s_system.disable_val = (theConf.meterconf > CONF_STATE_CONFIRMED) ? 1 : 0;
+	
+	s_system.meshid_val = theConf.poolid;
+	
+	const esp_app_desc_t *mip = esp_app_get_description();
+	if (mip && mip->version)
+	{
+		SAFE_STRCPY(s_system.version_val, mip->version, sizeof(s_system.version_val));
+	}
+	
+	s_system.repeat_val = theConf.repeat;
+	s_system.baset_val = theConf.baset;
+	
+	SAFE_STRCPY(s_system.password_val, theConf.kpass, sizeof(s_system.password_val));
+	SAFE_STRCPY(s_system.loglevel_val, levels[theConf.loglevel], sizeof(s_system.loglevel_val));
+	SAFE_STRCPY(s_system.mqttpass_val, theConf.mqttPass, sizeof(s_system.mqttpass_val));
+	SAFE_STRCPY(s_system.mqttuser_val, theConf.mqttUser, sizeof(s_system.mqttuser_val));
+	SAFE_STRCPY(s_system.mqttserver_val, theConf.mqttServer, sizeof(s_system.mqttserver_val));
+	SAFE_STRCPY(s_system.mqttcert_val, theConf.mqttcert, sizeof(s_system.mqttcert_val));
+	SAFE_STRCPY(s_system.ssidpass_val, theConf.thepass, sizeof(s_system.ssidpass_val));
+	SAFE_STRCPY(s_system.ssid_val, theConf.thessid, sizeof(s_system.ssid_val));
+	
+	s_system.security_val = theConf.useSec;
+	s_system.nodes_val = theConf.totalnodes;
+	s_system.conns_val = theConf.conns;
+	s_system.mqttreco_val = theConf.mqttDiscoRetry;
+	
 	*data = s_system;
-	// xTimerReset(webTimer,0);
-
 }
 
+/**
+ * @brief Get system status and statistics for web interface
+ * @param data Pointer to sysset structure to populate with system info
+ * 
+ * Retrieves comprehensive system information including:
+ * - Firmware version and compile info
+ * - Boot count and last reset reason
+ * - Security and display settings
+ * - FRAM statistics (reads/writes)
+ * - Network information (MAC addresses, mesh status)
+ * - Communication statistics (bytes, messages, connections)
+ */
 void my_get_sysset(struct sysset *data) 		// get data for general configuration and display
 {
 	// set s_sysset strucutre to stored values in Meter or theConf structures
@@ -254,14 +412,28 @@ void my_get_sysset(struct sysset *data) 		// get data for general configuration 
 	*data = s_sysset;
 }
 
+/**
+ * @brief Set system settings (currently read-only)
+ * @param data Pointer to sysset structure (unused)
+ * @note This function is a placeholder as sysset is read-only
+ */
 void my_set_sysset(struct sysset *data) // there is no setting in this menu option
 {
 }
 
+/**
+ * @brief Display all configured profiles to console for debugging
+ * 
+ * Prints detailed information about all profiles including:
+ * - Profile name and version
+ * - Issued and expiry dates
+ * - All cycles with start day and duration
+ * - All horarios (schedules) with start time, duration, and PWM duty
+ */
 void show_profiles()
 {
 	
-	for (int a=0;a<2;a++)
+	for (int a=0;a<MAX_PROFILES;a++)
 	{
 		printf("======== Profile[%d] %s %s =========\n",a,theConf.profiles[a].name,theConf.profiles[a].version);
 		printf("\tIssued %s",ctime(&theConf.profiles[a].issued));
@@ -281,311 +453,523 @@ void show_profiles()
 		}
 	}	
 }
-err_t make_profile(char * prof)
+
+/**
+ * @brief Parse profile metadata (name, version, issued, expires)
+ * @param pitem JSON object containing profile data
+ * @param profile_index Index of the profile being parsed
+ * @return ESP_OK on success, ESP_FAIL on error
+ */
+static err_t parse_profile_metadata(cJSON *pitem, int profile_index)
 {
-	struct tm tm={0};
-	time_t tt;
-
-	cJSON *root=cJSON_Parse(prof);
-	if (!root) 
+	struct tm tm = {0};
+	cJSON *metad;
+	
+	if (!pitem)
 	{
-		ESP_LOGE(TAG, "Internal cJSON Make");
-        return ESP_FAIL;
-	}
-	// lets parse it
-	//get profile array
-	cJSON *profiles_array=cJSON_GetObjectItem(root,"profiles");
-	if(!profiles_array) {
-		ESP_LOGE(TAG, "Make Profile no profiles");
-        return ESP_FAIL;
-	}
-	int sonp=cJSON_GetArraySize(profiles_array);
-	if(sonp>0 && sonp<3) // wierd its not > 0 but...
-	{
-		for(int a=0;a<sonp;a++)
-		{
-			cJSON *pitem=cJSON_GetArrayItem(profiles_array, a);//next item
-			if(pitem)
-			{
-				// got a valid profile
-				// save metadata Name, issued, expires and number of cycles
-				cJSON *metad= cJSON_GetObjectItem(pitem,"name");
-				if(metad)
-					strcpy(theConf.profiles[a].name,metad->valuestring);
-
-				metad= cJSON_GetObjectItem(pitem,"version");
-				if(metad)
-					strcpy(theConf.profiles[a].version,metad->valuestring);
-				
-				// printf("Profile Name %s Version %s\n",theConf.profiles[a].name,theConf.profiles[a].version);
-
-				metad= cJSON_GetObjectItem(pitem,"issued");
-				if(metad)
-				{
-
-				    if (strptime(metad->valuestring, "%d-%m-%Y", &tm) != NULL) 
-						// Convert to time_t
-						theConf.profiles[a].issued= mktime(&tm);
-
-				}
-
-				metad= cJSON_GetObjectItem(pitem,"expires");
-				if(metad)
-				{
-				    if (strptime(metad->valuestring, "%d-%m-%Y", &tm) != NULL) 
-						// Convert to time_t
-						theConf.profiles[a].expires= mktime(&tm);	
-				}
-			// get cycles
-				cJSON *ciclos=cJSON_GetObjectItem(pitem,"ciclos");
-                if(!ciclos)
-				{
-					ESP_LOGE(TAG, "Make Profile no Cycles");
-					cJSON_Delete(root);
-        			return ESP_FAIL;
-				}
-
-				int sonc=cJSON_GetArraySize(ciclos);
-				if(sonc<1 || sonc>MAXCICLOS)
-				{
-					ESP_LOGE(TAG, "Make Profile Invalid Number of Cycles %d",sonc);
-					cJSON_Delete(root);
-        			return ESP_FAIL;
-				}
-				// set count of cycles
-				theConf.profiles[a].numCycles=sonc;
-				// printf("Profile[%d] ciclos %d\n",a,sonc);
-				// loop for cycles
-				for (int c=0;c<sonc;c++)
-				{
-					// get next cycle 
-					cJSON *cycle_item=cJSON_GetArrayItem(ciclos, c);//next item
-					if(!cycle_item)
-					{
-						ESP_LOGE(TAG, "Make Profile % d no cycle item  %d",a,c);
-						cJSON_Delete(root);
-						return ESP_FAIL;
-					}
-					// get cycle data
-					cJSON *cycle_meta=cJSON_GetObjectItem(cycle_item,"startday");
-					if(!cycle_meta)
-					{
-						ESP_LOGE(TAG, "Make Profile %d Cycles %d no Startday",a,c);
-						cJSON_Delete(root);
-						return ESP_FAIL;
-					}
-					theConf.profiles[a].cycle[c].day=cycle_meta->valueint; //later check sanity
-
-					cycle_meta=cJSON_GetObjectItem(cycle_item,"dias");
-					if(!cycle_meta)
-					{
-						ESP_LOGE(TAG, "Make Profile %d Cycles %d no Days",a,c);
-						cJSON_Delete(root);
-						return ESP_FAIL;
-					}
-					theConf.profiles[a].cycle[c].duration=cycle_meta->valueint; //later check sanity
-
-					// get horarios
-					cJSON *horas=cJSON_GetObjectItem(cycle_item,"horario");
-					if(!horas)
-					{
-						ESP_LOGE(TAG, "Make Profile %d Cycle %d no Hour Schedule",a,c);
-						cJSON_Delete(root);
-						return ESP_FAIL;
-					}
-					// get count Hours
-					int sonh=cJSON_GetArraySize(horas);
-					// printf("Profile[%d] Ciclo[%d] horarios %d\n",a,c,sonh);
-					if(sonh<1 || sonh>MAXHORARIOS)
-					{
-						ESP_LOGE(TAG, "Make Profile %d Cycles %d Hours Invalid %d",a,c,sonh);
-						cJSON_Delete(root);
-						return ESP_FAIL;
-					}
-					theConf.profiles[a].cycle[c].numHorarios=sonh;
-
-					//loop for hours
-					for (int h=0;h<sonh;h++)
-					{
-						cJSON *hour_item=cJSON_GetArrayItem(horas, h);//next item
-						if(!hour_item)
-						{
-							ESP_LOGE(TAG, "Make Profile %d Cycles %d no Hour %d",a,c,h);
-							cJSON_Delete(root);
-							return ESP_FAIL;
-						}
-						// get hour start data
-						cJSON *hmeta=cJSON_GetObjectItem(hour_item,"h_start");
-						if(!hmeta)
-						{
-							ESP_LOGE(TAG, "Make Profile %d Cycle %d Hour %d no start hour",a,c,h);
-							cJSON_Delete(root);
-							return ESP_FAIL;
-						}	
-						theConf.profiles[a].cycle[c].horarios[h].hourStart=hmeta->valueint;
-						// get hour duration data
-						hmeta=cJSON_GetObjectItem(hour_item,"h_secs");
-						if(!hmeta)
-						{
-							ESP_LOGE(TAG, "Make Profile %d Cycle %d Hour %d no start duration",a,c,h);
-							cJSON_Delete(root);
-							return ESP_FAIL;
-
-						}	
-						theConf.profiles[a].cycle[c].horarios[h].horarioLen=hmeta->valueint;
-						// printf("Horario len %d - %d\n",theConf.profiles[a].cycle[c].c_horarios[h].horario_len,hmeta->valueint);
-						// get hour pwm data
-						hmeta=cJSON_GetObjectItem(hour_item,"pwm_duty");
-						if(!hmeta)
-						{
-							ESP_LOGE(TAG, "Make Profile %d Cycle %d Hour %d no PWM",a,c,h);
-							cJSON_Delete(root);
-							return ESP_FAIL;
-;
-						}	
-						theConf.profiles[a].cycle[c].horarios[h].pwmDuty=hmeta->valueint;
-					}	// horarios
-				}	// ciclos
-			}	// pitme
-		}	// profiles
-	}	// array count profiles > 0
-	else
-	{
-		ESP_LOGE(TAG, "Make Profile range invalid %d",sonp);
-		cJSON_Delete(root);
+		ESP_LOGE(TAG, "Invalid profile item");
 		return ESP_FAIL;
 	}
+	
+	// Parse profile name with bounds checking
+	metad = cJSON_GetObjectItem(pitem, "name");
+	if (metad && metad->valuestring)
+	{
+		SAFE_STRCPY(theConf.profiles[profile_index].name, metad->valuestring, 
+					sizeof(theConf.profiles[profile_index].name));
+	}
+	
+	// Parse profile version with bounds checking
+	metad = cJSON_GetObjectItem(pitem, "version");
+	if (metad && metad->valuestring)
+	{
+		SAFE_STRCPY(theConf.profiles[profile_index].version, metad->valuestring,
+					sizeof(theConf.profiles[profile_index].version));
+	}
+	
+	// Parse issued date
+	metad = cJSON_GetObjectItem(pitem, "issued");
+	if (metad && metad->valuestring)
+	{
+		if (strptime(metad->valuestring, "%d-%m-%Y", &tm) != NULL)
+		{
+			theConf.profiles[profile_index].issued = mktime(&tm);
+		}
+		else
+		{
+			ESP_LOGW(TAG, "Profile %d: Invalid issued date format", profile_index);
+		}
+	}
+		else
+		{
+			ESP_LOGW(TAG, "Profile %d: Invalid issued date format", profile_index);
+		}
+	
+	
+	// Parse expiry date
+	metad = cJSON_GetObjectItem(pitem, "expires");
+	if (metad && metad->valuestring)
+	{
+		if (strptime(metad->valuestring, "%d-%m-%Y", &tm) != NULL)
+		{
+			theConf.profiles[profile_index].expires = mktime(&tm);
+		}
+		else
+		{
+			ESP_LOGW(TAG, "Profile %d: Invalid expiry date format", profile_index);
+		}
+	}
+	
 	return ESP_OK;
 }
 
-void my_set_profile(struct profile *data) // there is no setting in this menu option
+/**
+ * @brief Parse a single horario (schedule) item
+ * @param hour_item JSON object containing horario data
+ * @param profile_idx Profile index
+ * @param cycle_idx Cycle index
+ * @param hour_idx Horario index
+ * @return ESP_OK on success, ESP_FAIL on error
+ */
+static err_t parse_horario(cJSON *hour_item, int profile_idx, int cycle_idx, int hour_idx)
 {
-
-	s_profile=*data;
-	cJSON *prof_root= cJSON_Parse(s_profile.schedule);
-	if(!prof_root)
+	cJSON *hmeta;
+	
+	if (!hour_item)
 	{
-        ESP_LOGE(TAG, "Invalid JSON Profile");
+		ESP_LOGE(TAG, "Profile %d Cycle %d: Missing horario %d", profile_idx, cycle_idx, hour_idx);
+		return ESP_FAIL;
+	}
+	
+	// Parse start hour
+	hmeta = cJSON_GetObjectItem(hour_item, "h_start");
+	if (!hmeta)
+	{
+		ESP_LOGE(TAG, "Profile %d Cycle %d Horario %d: Missing start hour", profile_idx, cycle_idx, hour_idx);
+		return ESP_FAIL;
+	}
+	theConf.profiles[profile_idx].cycle[cycle_idx].horarios[hour_idx].hourStart = hmeta->valueint;
+	
+	// Parse duration
+	hmeta = cJSON_GetObjectItem(hour_item, "h_secs");
+	if (!hmeta)
+	{
+		ESP_LOGE(TAG, "Profile %d Cycle %d Horario %d: Missing duration", profile_idx, cycle_idx, hour_idx);
+		return ESP_FAIL;
+	}
+	theConf.profiles[profile_idx].cycle[cycle_idx].horarios[hour_idx].horarioLen = hmeta->valueint;
+	
+	// Parse PWM duty
+	hmeta = cJSON_GetObjectItem(hour_item, "pwm_duty");
+	if (!hmeta)
+	{
+		ESP_LOGE(TAG, "Profile %d Cycle %d Horario %d: Missing PWM duty", profile_idx, cycle_idx, hour_idx);
+		return ESP_FAIL;
+	}
+	theConf.profiles[profile_idx].cycle[cycle_idx].horarios[hour_idx].pwmDuty = hmeta->valueint;
+	
+	return ESP_OK;
+}
+
+/**
+ * @brief Parse all horarios for a cycle
+ * @param horas JSON array containing horarios
+ * @param profile_idx Profile index
+ * @param cycle_idx Cycle index
+ * @return ESP_OK on success, ESP_FAIL on error
+ */
+static err_t parse_cycle_horarios(cJSON *horas, int profile_idx, int cycle_idx)
+{
+	if (!horas)
+	{
+		ESP_LOGE(TAG, "Profile %d Cycle %d: Missing horario array", profile_idx, cycle_idx);
+		return ESP_FAIL;
+	}
+	
+	int num_horarios = cJSON_GetArraySize(horas);
+	if (num_horarios < 1 || num_horarios > MAXHORARIOS)
+	{
+		ESP_LOGE(TAG, "Profile %d Cycle %d: Invalid horarios count %d (max %d)", 
+				 profile_idx, cycle_idx, num_horarios, MAXHORARIOS);
+		return ESP_FAIL;
+	}
+	
+	theConf.profiles[profile_idx].cycle[cycle_idx].numHorarios = num_horarios;
+	
+	// Parse each horario
+	for (int h = 0; h < num_horarios; h++)
+	{
+		cJSON *hour_item = cJSON_GetArrayItem(horas, h);
+		if (parse_horario(hour_item, profile_idx, cycle_idx, h) != ESP_OK)
+		{
+			return ESP_FAIL;
+		}
+	}
+	
+	return ESP_OK;
+}
+
+/**
+ * @brief Parse a single cycle
+ * @param cycle_item JSON object containing cycle data
+ * @param profile_idx Profile index
+ * @param cycle_idx Cycle index
+ * @return ESP_OK on success, ESP_FAIL on error
+ */
+static err_t parse_cycle(cJSON *cycle_item, int profile_idx, int cycle_idx)
+{
+	cJSON *cycle_meta;
+	
+	if (!cycle_item)
+	{
+		ESP_LOGE(TAG, "Profile %d: Missing cycle %d", profile_idx, cycle_idx);
+		return ESP_FAIL;
+	}
+	
+	// Parse start day
+	cycle_meta = cJSON_GetObjectItem(cycle_item, "startday");
+	if (!cycle_meta)
+	{
+		ESP_LOGE(TAG, "Profile %d Cycle %d: Missing startday", profile_idx, cycle_idx);
+		return ESP_FAIL;
+	}
+	theConf.profiles[profile_idx].cycle[cycle_idx].day = cycle_meta->valueint;
+	
+	// Parse duration (days)
+	cycle_meta = cJSON_GetObjectItem(cycle_item, "dias");
+	if (!cycle_meta)
+	{
+		ESP_LOGE(TAG, "Profile %d Cycle %d: Missing duration (dias)", profile_idx, cycle_idx);
+		return ESP_FAIL;
+	}
+	theConf.profiles[profile_idx].cycle[cycle_idx].duration = cycle_meta->valueint;
+	
+	// Parse horarios
+	cJSON *horas = cJSON_GetObjectItem(cycle_item, "horario");
+	return parse_cycle_horarios(horas, profile_idx, cycle_idx);
+}
+
+/**
+ * @brief Parse all cycles for a profile
+ * @param ciclos JSON array containing cycles
+ * @param profile_idx Profile index
+ * @return ESP_OK on success, ESP_FAIL on error
+ */
+static err_t parse_profile_cycles(cJSON *ciclos, int profile_idx)
+{
+	if (!ciclos)
+	{
+		ESP_LOGE(TAG, "Profile %d: Missing cycles array", profile_idx);
+		return ESP_FAIL;
+	}
+	
+	int num_cycles = cJSON_GetArraySize(ciclos);
+	if (num_cycles < 1 || num_cycles > MAXCICLOS)
+	{
+		ESP_LOGE(TAG, "Profile %d: Invalid cycles count %d (max %d)", 
+				 profile_idx, num_cycles, MAXCICLOS);
+		return ESP_FAIL;
+	}
+	
+	theConf.profiles[profile_idx].numCycles = num_cycles;
+	
+	// Parse each cycle
+	for (int c = 0; c < num_cycles; c++)
+	{
+		cJSON *cycle_item = cJSON_GetArrayItem(ciclos, c);
+		if (parse_cycle(cycle_item, profile_idx, c) != ESP_OK)
+		{
+			return ESP_FAIL;
+		}
+	}
+	
+	return ESP_OK;
+}
+
+/**
+ * @brief Parse and validate a JSON profile configuration
+ * @param prof JSON string containing profile data
+ * @return ESP_OK on success, ESP_FAIL on error
+ */
+err_t make_profile(char * prof)
+{
+	// Parse JSON
+	cJSON *root = cJSON_Parse(prof);
+	if (!root)
+	{
+		ESP_LOGE(TAG, "Failed to parse profile JSON");
+		return ESP_FAIL;
+	}
+	
+	// Get profiles array
+	cJSON *profiles_array = cJSON_GetObjectItem(root, "profiles");
+	if (!profiles_array)
+	{
+		ESP_LOGE(TAG, "Missing 'profiles' array in JSON");
+		cJSON_Delete(root);
+		return ESP_FAIL;
+	}
+	
+	// Validate profile count
+	int num_profiles = cJSON_GetArraySize(profiles_array);
+	if (num_profiles < MIN_PROFILES || num_profiles >= MAX_PROFILES_ALLOWED)
+	{
+		ESP_LOGE(TAG, "Invalid profile count: %d (expected %d-%d)", 
+				 num_profiles, MIN_PROFILES, MAX_PROFILES_ALLOWED - 1);
+		cJSON_Delete(root);
+		return ESP_FAIL;
+	}
+	
+	// Parse each profile
+	for (int a = 0; a < num_profiles; a++)
+	{
+		cJSON *pitem = cJSON_GetArrayItem(profiles_array, a);
+		if (!pitem)
+		{
+			ESP_LOGE(TAG, "Failed to get profile %d", a);
+			cJSON_Delete(root);
+			return ESP_FAIL;
+		}
+		
+		// Parse profile metadata
+		if (parse_profile_metadata(pitem, a) != ESP_OK)
+		{
+			cJSON_Delete(root);
+			return ESP_FAIL;
+		}
+		
+		// Parse cycles
+		cJSON *ciclos = cJSON_GetObjectItem(pitem, "ciclos");
+		if (parse_profile_cycles(ciclos, a) != ESP_OK)
+		{
+			cJSON_Delete(root);
+			return ESP_FAIL;
+		}
+	}
+	
+	cJSON_Delete(root);
+	ESP_LOGI(TAG, "Successfully parsed %d profile(s)", num_profiles);
+	return ESP_OK;
+}
+
+/**
+ * @brief Set and validate profile configuration from web interface
+ * @param data Pointer to profile structure with new configuration
+ */
+void my_set_profile(struct profile *data)
+{
+	if (!data)
+	{
+		ESP_LOGE(TAG, "Invalid profile data pointer");
 		return;
 	}
 	
+	s_profile = *data;
+	
+	// Validate JSON before processing
+	cJSON *prof_root = cJSON_Parse(s_profile.schedule);
+	if (!prof_root)
+	{
+		ESP_LOGE(TAG, "Invalid JSON Profile format");
+		return;
+	}
+	
+	// Try to save to file
 	FILE* f = fopen(PROFILE_FILE, "w");
-    if (f == NULL) {
-        ESP_LOGE(TAG, "Failed to open file for writing Profile");
-        return;
-    }
-	fprintf(f, s_profile.schedule);
-    fclose(f);
-	// printf("Profile saved len %d\n",strlen(s_profile.schedule));
-	err_t err=make_profile(s_profile.schedule);
-	if(err==ESP_OK)
+	if (f == NULL)
+	{
+		ESP_LOGE(TAG, "Failed to open profile file for writing: %s", PROFILE_FILE);
+		cJSON_Delete(prof_root);
+		return;
+	}
+	
+	size_t written = fprintf(f, "%s", s_profile.schedule);
+	fclose(f);
+	
+	if (written <= 0)
+	{
+		ESP_LOGE(TAG, "Failed to write profile to file");
+		cJSON_Delete(prof_root);
+		return;
+	}
+	
+	cJSON_Delete(prof_root);
+	
+	// Parse and apply profile
+	err_t err = make_profile(s_profile.schedule);
+	if (err == ESP_OK)
 	{
 		write_to_flash();
 		show_profiles();
+		ESP_LOGI(TAG, "Profile successfully applied");
 	}
-	cJSON_Delete(prof_root);
-}
-
-void my_get_profile(struct profile *data) 
-{
-	size_t largo;
-
-	   if( theConf.meterconf>2)
-   		s_settings.disable_val=1;
 	else
-   		s_settings.disable_val=0;
-
-	FILE* f = fopen(PROFILE_FILE, "r");
-    if (f == NULL) {
-        ESP_LOGE(TAG, "Failed to open file for reading");
-        return;
-    }
-	fgets(s_profile.schedule, sizeof(s_profile.schedule), f);
-    fclose(f);
-	*data=s_profile;
+	{
+		ESP_LOGE(TAG, "Failed to parse and apply profile");
+	}
 }
 
+/**
+ * @brief Get current profile configuration for web interface
+ * @param data Pointer to profile structure to populate
+ */
+void my_get_profile(struct profile *data)
+{
+	if (!data)
+	{
+		ESP_LOGE(TAG, "Invalid profile data pointer");
+		return;
+	}
+	
+	s_settings.disable_val = should_disable_settings();
+	
+	FILE* f = fopen(PROFILE_FILE, "r");
+	if (f == NULL)
+	{
+		ESP_LOGW(TAG, "Profile file not found, using empty profile");
+		s_profile.schedule[0] = '\0';
+		*data = s_profile;
+		return;
+	}
+	
+	// Read with size limit to prevent buffer overflow
+	if (fgets(s_profile.schedule, sizeof(s_profile.schedule), f) == NULL)
+	{
+		ESP_LOGE(TAG, "Failed to read profile file");
+		s_profile.schedule[0] = '\0';
+	}
+	
+	fclose(f);
+	*data = s_profile;
+}
 
+/**
+ * @brief Set Modbus inverter configuration
+ * @param data Pointer to modbInverter structure with new settings
+ */
 void my_set_modbInverter(struct modbInverter *data) // save limits from web to theblower
 {
 	theConf.modbus_inverter=*data;
 	write_to_flash();
 }
 
-
+/**
+ * @brief Get current Modbus inverter configuration
+ * @param data Pointer to modbInverter structure to populate
+ */
 void my_get_modbInverter(struct modbInverter *data) // return limits saved in theblower
 {
-	if( theConf.meterconf>2)
+	if( theConf.meterconf>CONF_STATE_PENDING)
    		s_settings.disable_val=1;
 	else
    		s_settings.disable_val=0;
 	*data=theConf.modbus_inverter;
 }
 
+/**
+ * @brief Set Modbus sensors configuration
+ * @param data Pointer to modbSensors structure with new settings
+ */
 void my_set_modbSensors(struct modbSensors *data) // save limits from web to theblower
 {
 	theConf.modbus_sensors=*data;
 	write_to_flash();
 }
 
-
+/**
+ * @brief Get current Modbus sensors configuration
+ * @param data Pointer to modbSensors structure to populate
+ */
 void my_get_modbSensors(struct modbSensors *data) // return limits saved in theblower
 {
-	if( theConf.meterconf>2)
+	if( theConf.meterconf>CONF_STATE_PENDING)
    		s_settings.disable_val=1;
 	else
    		s_settings.disable_val=0;
 	*data=theConf.modbus_sensors;
 }
 
+/**
+ * @brief Set Modbus battery configuration
+ * @param data Pointer to modbBattery structure with new settings
+ */
 void my_set_modbBattery(struct modbBattery *data) // save limits from web to theblower
 {
 	theConf.modbus_battery=*data;
 	write_to_flash();
 }
 
-
+/**
+ * @brief Get current Modbus battery configuration
+ * @param data Pointer to modbBattery structure to populate
+ */
 void my_get_modbBattery(struct modbBattery *data) // return limits saved in theblower
 {
-	if( theConf.meterconf>2)
+	if( theConf.meterconf>CONF_STATE_PENDING)
    		s_settings.disable_val=1;
 	else
    		s_settings.disable_val=0;
 	*data=theConf.modbus_battery;
 }
 
-
+/**
+ * @brief Get current Modbus solar panels configuration
+ * @param data Pointer to modbPanels structure to populate
+ */
 void my_get_modbPanels(struct modbPanels *data) // return limits saved in theblower
 {
-	if( theConf.meterconf>2)
+	if( theConf.meterconf>CONF_STATE_PENDING)
    		s_settings.disable_val=1;
 	else
    		s_settings.disable_val=0;
 	*data=theConf.modbus_panels;
 }
 
+/**
+ * @brief Set Modbus solar panels configuration
+ * @param data Pointer to modbPanels structure with new settings
+ */
 void my_set_modbPanels(struct modbPanels *data) // save limits from web to theblower
 {
 	theConf.modbus_panels=*data;
 	write_to_flash();
 }
 
+/**
+ * @brief Set operational limits for the system
+ * @param data Pointer to limits structure with new limit values
+ */
 void my_set_limits(struct limits *data) // save limits from web to theblower
 {
 	theConf.milim=*data;
 	write_to_flash();
 }
 
-
+/**
+ * @brief Get current operational limits
+ * @param data Pointer to limits structure to populate
+ */
 void my_get_limits(struct limits *data) // return limits saved in theblower
 {
-	if( theConf.meterconf>2)
+	if( theConf.meterconf>CONF_STATE_PENDING)
    		s_settings.disable_val=1;
 	else
    		s_settings.disable_val=0;
 	*data=theConf.milim;
 }
 
+/**
+ * @brief Initialize SPIFFS filesystem for profile storage
+ * 
+ * Initializes the SPIFFS partition for storing profile configurations.
+ * Performs the following:
+ * - Mounts the SPIFFS partition labeled "profile"
+ * - Runs filesystem integrity checks
+ * - Reports partition size and usage
+ * - Auto-formats if mount fails
+ * 
+ * The filesystem is mounted at /spiffs with a maximum of 2 files.
+ */
 void app_spiffs(void)
 {
     ESP_LOGI(TAG, "Initializing SPIFFS");
@@ -649,20 +1033,50 @@ void app_spiffs(void)
 
 }
 
+/**
+ * @brief Check if system reboot is in progress
+ * @return true if reboot action is active, false otherwise
+ */
 bool my_check_reboot(void) {
   return s_action_timeout_reboot > mg_now(); // Return true if Done is in progress
 }
 
+/**
+ * @brief Initiate system reboot
+ * @param params Mongoose parameters (unused)
+ * 
+ * Triggers a system restart after saving the configuration state.
+ * Sets configuration state to CONFIGURED before rebooting.
+ */
 void my_start_reboot(struct mg_str params) {		//Done button pressed,
-	s_action_timeout_reboot = mg_now() + 1000; // Start Done, finish after 1 second
-	theConf.meterconf=1;
+	s_action_timeout_reboot = mg_now() + REBOOT_ACTION_MS; // Start Done, finish after 1 second
+	theConf.meterconf=CONF_STATE_CONFIGURED;
 	esp_rom_printf("Restarting\n");
 	write_to_flash();
 	esp_restart();
 }
 
-
-// When webserver started the meter controller is ACTIVE so beats are counted and saved
+/**
+ * @brief Start and run the web server
+ * @param pArg Task parameter (unused)
+ * 
+ * Initializes the Mongoose web server and registers all HTTP handlers:
+ * - settings: Initial device configuration with authentication
+ * - system: System-wide settings (WiFi, MQTT, security)
+ * - sysset: Read-only system status and statistics
+ * - profile: Schedule profile management
+ * - limits: Operational limits configuration
+ * - modbInverter: Modbus inverter settings
+ * - modbSensors: Modbus sensors settings
+ * - modbBattery: Modbus battery settings
+ * - modbPanels: Modbus solar panels settings
+ * - reboot: System reboot control
+ * 
+ * Creates a watchdog timer that restarts the device if configuration
+ * is not completed within the timeout period (WEB_TIMEOUT_MS).
+ * 
+ * Runs indefinitely, polling the Mongoose event loop.
+ */
 void start_webserver(void *pArg)
 {
 	ESP_LOGW(MESH_TAG,"Starting webserver");
@@ -678,8 +1092,8 @@ void start_webserver(void *pArg)
   	mongoose_set_http_handlers("modbPanels", my_get_modbPanels ,my_set_modbPanels);				
   	mongoose_set_http_handlers("reboot", my_check_reboot ,my_start_reboot);				
 	//web timeout if not done in 2 minutes restart
-	webTimer=xTimerCreate("restart",pdMS_TO_TICKS(120000),pdFALSE,( void * ) 0, [] ( TimerHandle_t xTimer){	
-			theConf.meterconf=2;
+	webTimer=xTimerCreate("restart",pdMS_TO_TICKS(WEB_TIMEOUT_MS),pdFALSE,( void * ) 0, [] ( TimerHandle_t xTimer){	
+			theConf.meterconf=CONF_STATE_PENDING;
 			write_to_flash();
 			esp_restart();});   
 

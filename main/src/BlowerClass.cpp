@@ -1,10 +1,28 @@
-#ifndef BlowerC_H_
-#define BlowerC_H_
+/**
+ * @file BlowerClass.cpp
+ * @brief Implementation of BlowerClass for solar system data management
+ * 
+ * This file implements the BlowerClass methods for managing solar energy system data
+ * with persistent storage in FRAM (Ferroelectric RAM). Provides thread-safe access
+ * to all subsystem data including PV panels, battery, energy tracking, and sensors.
+ * 
+ * Key features:
+ * - Atomic FRAM read/write operations with semaphore protection
+ * - Automatic timestamp updates on data changes
+ * - Wear leveling tracking (read/write counts)
+ * - Data validation using sentinel values
+ */
+
 #include "BlowerClass.h"
 #include "includes.h"
 #include "typedef.h"
 #include "defines.h"
-extern void delay(uint32_t a); 
+
+extern void delay(uint32_t a);
+
+// ============================================================================
+// Lifecycle Management
+// ============================================================================
 
 BlowerClass::BlowerClass()
 {
@@ -12,26 +30,33 @@ BlowerClass::BlowerClass()
     blowerSize = sizeof(framConfig);
 }
 
+// ============================================================================
+// Device Identity and Metadata
+// ============================================================================
+
 void BlowerClass::setReservedDate(time_t theDate)
 {
     framConfig.lastDate = theDate;
 }
 
-time_t BlowerClass::getLastUpdate()
+time_t BlowerClass::getLastUpdate() const
 {
     return framConfig.lastUpdate;
 }
 
-time_t BlowerClass::getLifeDate()
+time_t BlowerClass::getLifeDate() const
 {
     return framConfig.lifeDate;
 }
 
-time_t BlowerClass::getReservedDate()
+time_t BlowerClass::getReservedDate() const
 {
     return framConfig.lastDate;
 }
 
+// ============================================================================
+// FRAM Persistence Operations
+// ============================================================================
 
 void BlowerClass::deinit()
 {
@@ -48,9 +73,18 @@ void BlowerClass::format()
         framConfig.centinel = CENTINEL;
         xSemaphoreGive(framSem);
     }
+    else
+    {
+        ESP_LOGE(MESH_TAG, "format: failed to acquire semaphore");
+        return;
+    }
     saveBlower();
 }
 
+/**
+ * Initialize FRAM and validate stored data using centinel value.
+ * Returns ESP_FAIL if FRAM initialization fails or centinel is invalid.
+ */
 int BlowerClass::initBlower()
 {
     framFlag = fram.begin(FSDA, FSCL, &framSem);
@@ -70,10 +104,24 @@ int BlowerClass::initBlower()
     return ESP_OK;
 }
 
+// ============================================================================
+// Direct System Data Access
+// ============================================================================
+
 solarSystem_t* BlowerClass::getSolarSystem()
 {
     return &(framConfig.solarSystem);
 }
+
+const solarSystem_t* BlowerClass::getSolarSystem() const
+{
+    return &(framConfig.solarSystem);
+}
+
+/**
+ * Load complete configuration from FRAM into memory.
+ * Thread-safe with semaphore protection.
+ */
 void BlowerClass::loadBlower()
 {
     if (xSemaphoreTake(framSem, portMAX_DELAY / portTICK_PERIOD_MS))
@@ -81,34 +129,37 @@ void BlowerClass::loadBlower()
         fram.read_Blower((uint8_t*)&framConfig, sizeof(framConfig));
         xSemaphoreGive(framSem);
     }
+    else
+    {
+        ESP_LOGE(MESH_TAG, "loadBlower: failed to acquire semaphore");
+    }
     framReads();
 }
 
-// void * BlowerClass::getLimits()
-// {
-//     return (void*)&limits;
-// }
-
-// void BlowerClass::setLimits(void * lims)
-// {
-//     memcpy(&limits,lims,sizeof(limits));
-//     saveBlower();
-// }
-
+/**
+ * Save complete configuration to FRAM.
+ * Automatically updates lastUpdate timestamp and increments write counter.
+ * Thread-safe with semaphore protection.
+ */
 void BlowerClass::saveBlower()
 {
     framWrites();
     if (xSemaphoreTake(framSem, portMAX_DELAY / portTICK_PERIOD_MS))
     {
-        framConfig.lastUpdate = time(NULL); //every time we do this save we update last update time
+        // Update timestamp every time we save to FRAM
+        framConfig.lastUpdate = time(NULL);
         fram.write_Blower((uint8_t*)&framConfig, sizeof(framConfig));
         xSemaphoreGive(framSem);
+    }
+    else
+    {
+        ESP_LOGE(MESH_TAG, "saveBlower: failed to acquire semaphore");
     }
 }
 
 solarSystem_t* BlowerClass::getPtrSolarsystem()
 {
-    return &framConfig.solarSystem;
+    return getSolarSystem();  // Reuse existing method
 }
 
 void BlowerClass::writeCreationDate(time_t ddate)
@@ -119,13 +170,16 @@ void BlowerClass::writeCreationDate(time_t ddate)
 
 void BlowerClass::eraseBlower()
 {
+    // Reserved for future implementation
+    // Currently, FRAM erase is handled by format() method
 }
 
-time_t BlowerClass::readCreationDate()
+time_t BlowerClass::readCreationDate() const
 {
     return framConfig.creationDate;
 }
 
+// Internal methods for tracking FRAM wear leveling
 void BlowerClass::framWrites()
 {
     framConfig.framWrites++;
@@ -136,56 +190,60 @@ void BlowerClass::framReads()
     framConfig.framReads++;
 }
 
-uint32_t BlowerClass::getFram_Writes()
+uint32_t BlowerClass::getFram_Writes() const
 {
     return framConfig.framWrites;
 }
 
-uint32_t BlowerClass::getFram_Reads()
+uint32_t BlowerClass::getFram_Reads() const
 {
     return framConfig.framReads;
 }
 
-uint32_t BlowerClass::getStatsMsgIn()
+// ============================================================================
+// Network Statistics
+// ============================================================================
+
+uint32_t BlowerClass::getStatsMsgIn() const
 {
     return framConfig.theStats.msgIn;
 }
-uint32_t BlowerClass::getStatsMsgOut()
+uint32_t BlowerClass::getStatsMsgOut() const
 {
     return framConfig.theStats.msgOut;
 }
 
-uint32_t BlowerClass::getStatsBytesOut()
+uint32_t BlowerClass::getStatsBytesOut() const
 {
     return framConfig.theStats.bytesOut;
 }
 
-uint32_t BlowerClass::getStatsBytesIn()
+uint32_t BlowerClass::getStatsBytesIn() const
 {
     return framConfig.theStats.bytesIn;
 }
 
-uint8_t BlowerClass::getStatsLastNodeCount()
+uint8_t BlowerClass::getStatsLastNodeCount() const
 {
     return framConfig.theStats.lastNodeCount;
 }
 
-uint8_t BlowerClass::getStatsLastBlowerCount()
+uint8_t BlowerClass::getStatsLastBlowerCount() const
 {
     return framConfig.theStats.lastBlowerCount;
 }
 
-uint8_t BlowerClass::getStatsStaConns()
+uint8_t BlowerClass::getStatsStaConns() const
 {
     return framConfig.theStats.staCons;
 }
 
-uint8_t BlowerClass::getStatsStaDiscos()
+uint8_t BlowerClass::getStatsStaDiscos() const
 {
     return framConfig.theStats.staDisco;
 }
 
-time_t BlowerClass::getStatsLastCountTS()
+time_t BlowerClass::getStatsLastCountTS() const
 {
     return framConfig.theStats.lastCountTS;
 }
@@ -205,6 +263,7 @@ void BlowerClass::setStatsLastCountTS(time_t now)
     framConfig.theStats.lastCountTS = now;
 }
 
+// Increment statistics counters (non-persistent until saveBlower() is called)
 void BlowerClass::setStatsStaConns()
 {
     framConfig.theStats.staCons++;
@@ -235,6 +294,10 @@ void BlowerClass::setStatsBytesIn(uint32_t count)
     framConfig.theStats.bytesIn += count;
 }
 
+// ============================================================================
+// PV Panel Data Access
+// ============================================================================
+
 void BlowerClass::setPVPanel(uint8_t chargeCurr, float pv1Volts, float pv2Volts, float pv1Amp, float pv2Amp)
 {
     framConfig.solarSystem.pvPanel.chargeCurr = chargeCurr;
@@ -248,12 +311,20 @@ void BlowerClass::setPVPanel(uint8_t chargeCurr, float pv1Volts, float pv2Volts,
 
 void BlowerClass::getPVPanel(uint8_t *chargeCurr, float *pv1Volts, float *pv2Volts, float *pv1Amp, float *pv2Amp)
 {
+    if (!chargeCurr || !pv1Volts || !pv2Volts || !pv1Amp || !pv2Amp) {
+        ESP_LOGE(MESH_TAG, "getPVPanel: null pointer argument");
+        return;
+    }
     *chargeCurr = framConfig.solarSystem.pvPanel.chargeCurr;
     *pv1Volts = framConfig.solarSystem.pvPanel.pv1Volts;
     *pv2Volts = framConfig.solarSystem.pvPanel.pv2Volts;
     *pv1Amp = framConfig.solarSystem.pvPanel.pv1Amp;
     *pv2Amp = framConfig.solarSystem.pvPanel.pv2Amp;
 }
+
+// ============================================================================
+// Battery Data Access
+// ============================================================================
 
 void BlowerClass::setBattery(uint8_t batSoc, uint8_t batSOH, uint16_t batteryCycleCount, float batBmsTemp)
 {
@@ -267,11 +338,19 @@ void BlowerClass::setBattery(uint8_t batSoc, uint8_t batSOH, uint16_t batteryCyc
 
 void BlowerClass::getBattery(uint8_t *batSoc, uint8_t *batSOH, uint16_t *batteryCycleCount, float *batBmsTemp)
 {
+    if (!batSoc || !batSOH || !batteryCycleCount || !batBmsTemp) {
+        ESP_LOGE(MESH_TAG, "getBattery: null pointer argument");
+        return;
+    }
     *batSoc = framConfig.solarSystem.battery.batSoc;
     *batSOH = framConfig.solarSystem.battery.batSOH;
     *batteryCycleCount = framConfig.solarSystem.battery.batteryCycleCount;
     *batBmsTemp = framConfig.solarSystem.battery.batBmsTemp;
 }
+
+// ============================================================================
+// Energy Tracking Data Access
+// ============================================================================
 
 void BlowerClass::setEnergy(uint16_t batChgAHToday, uint16_t batDischgAHToday, uint16_t batChgAHTotal,
                              uint16_t batDischgAHTotal, float generateEnergyToday, float usedEnergyToday,
@@ -297,6 +376,12 @@ void BlowerClass::getEnergy(uint16_t *batChgAHToday, uint16_t *batDischgAHToday,
                              float *gLoadConsumLineTotal, float *batChgkWhToday, float *batDischgkWhToday,
                              float *genLoadConsumToday)
 {
+    if (!batChgAHToday || !batDischgAHToday || !batChgAHTotal || !batDischgAHTotal ||
+        !generateEnergyToday || !usedEnergyToday || !gLoadConsumLineTotal ||
+        !batChgkWhToday || !batDischgkWhToday || !genLoadConsumToday) {
+        ESP_LOGE(MESH_TAG, "getEnergy: null pointer argument");
+        return;
+    }
     *batChgAHToday = framConfig.solarSystem.energy.batChgAHToday;
     *batDischgAHToday = framConfig.solarSystem.energy.batDischgAHToday;
     *batChgAHTotal = framConfig.solarSystem.energy.batChgAHTotal;
@@ -309,8 +394,16 @@ void BlowerClass::getEnergy(uint16_t *batChgAHToday, uint16_t *batDischgAHToday,
     *genLoadConsumToday = framConfig.solarSystem.energy.genLoadConsumToday;
 }
 
+// ============================================================================
+// Environmental Sensor Data Access
+// ============================================================================
+
 void BlowerClass::getSensors(float *DO, float *PH, float *WTemp, float *ATemp, float *AHum)
 {
+    if (!DO || !PH || !WTemp || !ATemp || !AHum) {
+        ESP_LOGE(MESH_TAG, "getSensors: null pointer argument");
+        return;
+    }
     *DO = framConfig.solarSystem.sensors.DO;
     *PH = framConfig.solarSystem.sensors.PH;
     *WTemp = framConfig.solarSystem.sensors.WTemp;
@@ -327,6 +420,4 @@ void BlowerClass::setSensors(float DO, float PH, float WTemp, float ATemp, float
     framConfig.solarSystem.sensors.AHum = AHum;
     framConfig.lastUpdateSensors = time(NULL);
     saveBlower();
-}   
-
-#endif
+}
