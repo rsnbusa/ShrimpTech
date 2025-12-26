@@ -1,5 +1,4 @@
-#ifndef TYPESconfig_H_
-#define TYPESconfig_H_
+
 #define GLOBAL
 #include "includes.h"
 #include "globals.h"
@@ -16,9 +15,21 @@ char modb_names[][30]={
 "BatChToday","BatDscToday","BatChgTotal","BatDscTotal","GenToday","UsedToday","LoadUsedTotal","BatChdToday","BatDscToday","LoadUsedToday","BatTemp"
 };
 
+/**
+ * @brief Display complete Modbus configuration for all devices
+ * 
+ * Shows detailed Modbus settings for:
+ * - PV Panels (solar panels - charge state, voltages, currents)
+ * - Battery (SOC, SOH, cycle count, temperature)
+ * - Sensors (DO, PH, water temp, air temp, humidity)
+ * - Inverter (energy metrics, charging/discharging stats)
+ * 
+ * Each section displays: device address, refresh rate, register offsets,
+ * start addresses, point counts, and multiplexer values.
+ */
 void show_mimodbus()
 {
-  char aca[100];
+    char aca[100];
 
     printf("\t\t================== Modbus Configuration ======================\n\n");
     sprintf(aca,"\t\t========== PV Panels Addr:[%02d] Refresh %d ========\n",theConf.modbus_panels.PVAddress,theConf.modbus_panels.refresh_rate);
@@ -85,6 +96,16 @@ void show_mimodbus()
 
 }
 
+/**
+ * @brief Display configured min/max limits for all monitored parameters
+ * 
+ * Shows operational limits for environmental sensors, battery metrics,
+ * energy consumption, and solar generation. Used for alarming and
+ * validation of sensor readings.
+ * 
+ * Parameters include: humidity, temperatures, pH, DO, battery SOC/SOH,
+ * energy generation/consumption, PV voltages/currents, etc.
+ */
 void show_limits()
 {
 
@@ -118,120 +139,136 @@ void show_limits()
     printf("\n");
 
 }
+
+/**
+ * @brief Display comprehensive system configuration (runs as FreeRTOS task)
+ * 
+ * This function displays complete system status and configuration including:
+ * - Device information (boot count, reset reasons, version info)
+ * - Production configuration (blower mode, debug flags, active profile)
+ * - MQTT topics and server settings
+ * - Network/Mesh configuration (SSIDs, mesh topology, routing table)
+ * - Timing information (next scheduled actions)
+ * - Statistics (bytes in/out, message counts, connection stats)
+ * - Location settings
+ * - Current blower/solar system data
+ * - Operational limits (via show_limits)
+ * - Modbus configuration (via show_mimodbus)
+ * 
+ * @param pArg Unused task parameter (required by FreeRTOS task signature)
+ * @note Deletes itself after completion using vTaskDelete(NULL)
+ */
 void showconf(void *pArg)
 {
 
-  char            buf[50],buf2[50],fecha[60],myssid[20];
-  time_t          lastwrite,now;
-  struct tm       timeinfo;
-  // portMUX_TYPE    xTimerLock = portMUX_INITIALIZER_UNLOCKED;
-  TickType_t      xRemainingTime;
-  int             routet;
-  mesh_type_t     typ;
-  char            my_mac[8]={0};
-  uint8_t         min,secs;
-  mesh_addr_t     bssid;
-  time_t         guardDate,bootdate;
+    char            buf[50],buf2[50],fecha[60],myssid[20];
+    time_t          lastwrite,now;
+    struct tm       timeinfo;
+    // portMUX_TYPE    xTimerLock = portMUX_INITIALIZER_UNLOCKED;
+    TickType_t      xRemainingTime;
+    int             routet;
+    mesh_type_t     typ;
+    char            my_mac[8]={0};
+    uint8_t         min,secs;
+    mesh_addr_t     bssid;
+    time_t         guardDate,bootdate;
 
-  time(&now);
-  localtime_r(&now, &timeinfo);
+    time(&now);
+    localtime_r(&now, &timeinfo);
 
-  bzero(myssid,sizeof(myssid));
+    bzero(myssid,sizeof(myssid));
 
 
-  char *tipo[]={"Idle","ROOT","NODE","LEAF","STA"};
-  wifi_config_t conf;
+    char *tipo[]={"Idle","ROOT","NODE","LEAF","STA"};
+    wifi_config_t conf;
 
-  unsigned char mac_base[6] = {0};
-  esp_efuse_mac_get_default(mac_base);
-  esp_read_mac(mac_base, ESP_MAC_WIFI_STA);
+    unsigned char mac_base[6] = {0};
+    esp_efuse_mac_get_default(mac_base);
+    esp_read_mac(mac_base, ESP_MAC_WIFI_STA);
 
-  if(mesh_started)
-  {
-      memcpy(my_mac,mesh_netif_get_station_mac(),6);
-  if(esp_wifi_get_config(WIFI_IF_STA, &conf)!=ESP_OK)
-  {
-    printf("Error readinmg wifi config\n");
-    strcpy(myssid,(char*)conf.sta.ssid);
-  }
+    if(mesh_started)
+    {
+        memcpy(my_mac,mesh_netif_get_station_mac(),6);
+        if(esp_wifi_get_config(WIFI_IF_STA, &conf)==ESP_OK)
+        {
+            strcpy(myssid,(char*)conf.sta.ssid);
+        }
+        else
+        {
+            printf("Error reading wifi config\n");
+        }
 
-  typ=esp_mesh_get_type();
-}
+        typ=esp_mesh_get_type();
+    }
 
-  min=10;
-  secs=10*2-(min*60);
+    min=10;
+    secs=10*2-(min*60);
 
-  timeinfo.tm_min=min;
-  timeinfo.tm_sec=secs; 
-  time_t nexthour = mktime(&timeinfo);
-  int faltan=nexthour-now;
-  int fhora=faltan/3600;
-  int fmin=faltan/60;
-  int fsecs=faltan-(fmin*60);
+    timeinfo.tm_min=min;
+    timeinfo.tm_sec=secs; 
+    time_t nexthour = mktime(&timeinfo);
+    int faltan=nexthour-now;
 
-  
-  esp_mesh_get_parent_bssid(&bssid);
-  const esp_app_desc_t *mip=esp_app_get_description();
-if(mip)
-  printf("\t\t Mesh Configuration Date %s ",ctime(&now));
+    esp_mesh_get_parent_bssid(&bssid);
+    const esp_app_desc_t *mip=esp_app_get_description();
+    if(mip)
+        printf("\t\t Mesh Configuration Date %s ",ctime(&now));
 
-  if(!theConf.ptch)
-      printf("Virgin Chip\n");
+    if(!theConf.ptch)
+        printf("Virgin Chip\n");
 
-uint32_t nada;    // this is compiler error, it goes crazy if done directly like fram.read_fdate(uint8_t*)&guarddate)
+    uint32_t nada;    // this is compiler error, it goes crazy if done directly like fram.read_fdate(uint8_t*)&guarddate)
 
     nada=theBlower.getLastUpdate();
     // fram.read_fdate((uint8_t*)&nada);				// read last saved datetime.
     guardDate=(time_t)nada;
 
-  bootdate=(time_t)theConf.lastRebootTime;    //same compiler error
+    bootdate=(time_t)theConf.lastRebootTime;    //same compiler error
 
-  printf("\n\t\t\t Device Stuff\n");
-  printf("\t\t\t ============\n");
-  printf("BootCount:%d LastReset:%d Reason:%d LogLevel:%d DownTime: %lus LastReboot %s",theConf.bootcount,theConf.lastResetCode,theConf.lastResetCode,
+    printf("\n\t\t\t Device Stuff\n");
+    printf("\t\t\t ============\n");
+    printf("BootCount:%d LastReset:%d Reason:%d LogLevel:%d DownTime: %lus LastReboot %s",theConf.bootcount,theConf.lastResetCode,theConf.lastResetCode,
             theConf.loglevel,theConf.downtime,ctime((time_t*)&bootdate));
-  printf("MeterConf %d Mqttf %d sendMeterf %d\n",theConf.meterconf,mqttf,sendMeterf);
-  printf("Guard Date %s",ctime(&guardDate));
-  // printf("Securty Check: %s\n",theConf.useSec?"Yes":"No");
-  printf("Display Active: %s\n",gdispf?"Yes":"No");
-  printf("App Version: %s IDF: %s Project: %s\nCompile Date %s & %s\n",mip->version,mip->idf_ver,mip->project_name,mip->date,mip->time);
-  printf("APP latest sent Version %s\n",theConf.lastVersion);
-  printf("Delay %s Login Time %d\n",theConf.delay_mesh?"Yes":"No",theConf.loginwait);
+    printf("MeterConf %d Mqttf %d sendMeterf %d\n",theConf.meterconf,mqttf,sendMeterf);
+    printf("Guard Date %s",ctime(&guardDate));
+    // printf("Securty Check: %s\n",theConf.useSec?"Yes":"No");
+    printf("Display Active: %s\n",gdispf?"Yes":"No");
+    printf("App Version: %s IDF: %s Project: %s\nCompile Date %s & %s\n",mip->version,mip->idf_ver,mip->project_name,mip->date,mip->time);
+    printf("APP latest sent Version %s\n",theConf.lastVersion);
+    printf("Delay %s Login Time %d\n",theConf.delay_mesh?"Yes":"No",theConf.loginwait);
 
-  printf("\n\t\t\t Production Stuff\n");
-  printf("\t\t\t =============\n");
+    printf("\n\t\t\t Production Stuff\n");
+    printf("\t\t\t =============\n");
+    printf("Blower Mode %d\n",theConf.blower_mode);
+    printf("Debug Flags(0x%X): ",theConf.debug_flags);
+    if((theConf.debug_flags >> dSCH) & 1U)   printf("Schedule ");
+    if((theConf.debug_flags >> dMESH) & 1U)  printf("Mesh ");
+    if((theConf.debug_flags >> dBLE) & 1U)   printf("Ble ");
+    if((theConf.debug_flags >> dMQTT) & 1U)  printf("Mqtt ");
+    if((theConf.debug_flags >> dXCMDS) & 1U) printf("Xcmds ");
+    if((theConf.debug_flags >> dBLOW) & 1U)  printf("Blower ");
+    if((theConf.debug_flags >> dLOGIC) & 1U) printf("Logic ");
+    printf("\n");
+    
+    printf("Active Profile %d Start Day %d%\n",theConf.activeProfile,theConf.dayCycle);
+    printf("Is Master %S\n",theConf.masternode?"Yes":"No");
+    if(theConf.blower_mode)
+        printf("Cycle %d Day %d Mux %d\n",ck,ck_d,theConf.test_timer_div);
+    else
+        printf("Waiting for Production Cycle start\n");
 
-  printf("Blower Mode %d\n",theConf.blower_mode);
-  printf("Debug Flags(0x%X): ",theConf.debug_flags);
-      if((theConf.debug_flags >> dSCH) & 1U)   printf("Schedule ");
-      if((theConf.debug_flags >> dMESH) & 1U)  printf("Mesh ");
-      if((theConf.debug_flags >> dBLE) & 1U)   printf("Ble ");
-      if((theConf.debug_flags >> dMQTT) & 1U)  printf("Mqtt ");
-      if((theConf.debug_flags >> dXCMDS) & 1U) printf("Xcmds ");
-      if((theConf.debug_flags >> dBLOW) & 1U)  printf("Blower ");
-      if((theConf.debug_flags >> dLOGIC) & 1U) printf("Logic ");
-  printf("\n");
-  
-  printf("Active Profile %d Start Day %d%\n",theConf.activeProfile,theConf.dayCycle);
-  printf("Is Master %S\n",theConf.masternode?"Yes":"No");
-  if(theConf.blower_mode)
-    printf("Cycle %d Day %d Mux %d\n",ck,ck_d,theConf.test_timer_div);
-  else
-    printf("Waiting for Production Cycle start\n");
-
-  printf("\n\t\t\t Mqtt Topics\n");
-  printf("\t\t\t ===========\n");
-  printf("Command Topic \t\t%s\n",cmdQueue);
-  printf("Info Topic \t\t%s\n",infoQueue);
-  printf("Alarm Topic \t\t%s\n",alarmQueue);
-  // printf("Install Topic \t\t%s\n",installQueue);
-  printf("Mqtt server [%s] pass [%s] user [%s]\n",theConf.mqttServer,theConf.mqttPass,theConf.mqttUser);
+    printf("\n\t\t\t Mqtt Topics\n");
+    printf("\t\t\t ===========\n");
+    printf("Command Topic \t\t%s\n",cmdQueue);
+    printf("Info Topic \t\t%s\n",infoQueue);
+    printf("Alarm Topic \t\t%s\n",alarmQueue);
+    // printf("Install Topic \t\t%s\n",installQueue);
+    printf("Mqtt server [%s] pass [%s] user [%s]\n",theConf.mqttServer,theConf.mqttPass,theConf.mqttUser);
 
 
-  // is mesh active?
-  if(meshf)
-  {
-      
+    // is mesh active?
+    if(meshf)
+    {
   printf("\n\t\t\t Network Stuff\n");
   printf("\t\t\t =============\n");
   printf("Mesh Id:"MACSTR" SubNode:%d Pool Id:%d Unit Id:%d\n",MAC2STR(MESH_ID),theConf.subnode,theConf.poolid,theConf.unitid);
@@ -241,17 +278,15 @@ uint32_t nada;    // this is compiler error, it goes crazy if done directly like
   esp_wifi_get_config(WIFI_IF_AP, &conf);
   printf("AP:[%s]-Pswd:[%s]\n",conf.ap.ssid,conf.ap.password);
 
-  mesh_addr_t mmeshid;
-  esp_mesh_get_id(&mmeshid);
-  printf("\n\t\t\t MESH Stuff\n");
-  printf("\t\t\t ==========\n");
-  printf("NodeType:%s MAC:" MACSTR ", MeshID<"MACSTR">\n", tipo[typ],MAC2STR(mac_base),MAC2STR(mmeshid.addr));
-  printf("Device state %s\n",esp_mesh_is_device_active?"Up":"Down");
-  printf("\n");
-  printf("\n\t\t\t Timing Stuff\n");
-  printf("\t\t\t ============\n");
-
-  if(esp_mesh_is_root())
+        mesh_addr_t mmeshid;
+        esp_mesh_get_id(&mmeshid);
+        printf("\n\t\t\t MESH Stuff\n");
+        printf("\t\t\t ==========\n");
+        printf("NodeType:%s MAC:" MACSTR ", MeshID<"MACSTR">\n", tipo[typ],MAC2STR(mac_base),MAC2STR(mmeshid.addr));
+        printf("Device state %s\n",esp_mesh_is_device_active?"Up":"Down");
+        printf("\n");
+        printf("\n\t\t\t Timing Stuff\n");
+        printf("\t\t\t ============\n");
   {
     if(collectTimer)
       if(xTimerIsTimerActive(collectTimer))
@@ -292,14 +327,26 @@ uint32_t nada;    // this is compiler error, it goes crazy if done directly like
 
     show_limits();
     show_mimodbus();
-      vTaskDelete(NULL);
+    vTaskDelete(NULL);
 }
 
+/**
+ * @brief Console command to display complete system configuration
+ * 
+ * Creates a FreeRTOS task to display comprehensive system status.
+ * Task runs independently to avoid blocking the console while generating
+ * the large configuration output.
+ * 
+ * @param argc Argument count (unused, no arguments expected)
+ * @param argv Argument vector (unused, no arguments expected)
+ * @return 0 on success
+ * 
+ * @note Usage: config
+ * @note Task stack size: 4096 bytes, priority: 10
+ */
 int cmdConfig(int argc, char **argv)
 {
 
     xTaskCreate(&showconf,"show",4096,NULL, 10, NULL); 	        // long display allow for others to do stuff
     return 0;
 }
-
-#endif
