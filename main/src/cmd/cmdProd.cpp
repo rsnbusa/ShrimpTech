@@ -1,187 +1,307 @@
-#ifndef TYPESprod_H_
-#define TYPESprod_H_
 #define GLOBAL
+#include "includes.h"
 #include "globals.h"
 #include "forwards.h"
+
+/*
+ * Handles production schedule control commands sent over mesh. Manages production profile
+ * activation, day cycle configuration, and operational state (start/stop/pause/resume).
+ * Broadcasts changes to all mesh nodes and updates persistent configuration.
+ */
+
 extern void writeLog(char *que);
 extern void save_ota_version(char *version);
 
-void send_start_production(uint8_t active_profile, uint8_t curr_day, uint8_t mux_time,char* theorder)
+// Production command constants
+#define PRODUCTION_LOG_BUFFER_SIZE 200
+#define ORDER_COMMAND_MAX_LENGTH 10
+
+// Production order types
+typedef enum {
+    ORDER_START = 0,
+    ORDER_STOP = 1,
+    ORDER_PAUSE = 2,
+    ORDER_RESUME = 3,
+    ORDER_INVALID = -1
+} ProductionOrderType;
+
+typedef struct {
+    uint8_t profileIndex;
+    uint8_t dayIndex;
+    uint8_t muxTime;
+    ProductionOrderType orderType;
+    char orderCommand[ORDER_COMMAND_MAX_LENGTH];
+} ProductionCommandFields;
+
+/* Broadcasts production control message to all mesh nodes. */
+void send_start_production(uint8_t profileIndex, uint8_t dayIndex, uint8_t muxTime, char* orderCommand)
 {
-    cJSON *root=cJSON_CreateObject();
+    cJSON *root = cJSON_CreateObject();
     if(root)
     {
-        cJSON_AddStringToObject(root,"cmd",internal_cmds[PRODUCTION]);
-        cJSON_AddNumberToObject(root,"prof",active_profile);
-        cJSON_AddNumberToObject(root,"day",curr_day);
-        cJSON_AddNumberToObject(root,"mux",mux_time);
-        cJSON_AddStringToObject(root,"order",theorder);
-        char *mensaje=cJSON_PrintUnformatted(root);
+        cJSON_AddStringToObject(root, "cmd", internal_cmds[PRODUCTION]);
+        cJSON_AddNumberToObject(root, "prof", profileIndex);
+        cJSON_AddNumberToObject(root, "day", dayIndex);
+        cJSON_AddNumberToObject(root, "mux", muxTime);
+        cJSON_AddStringToObject(root, "order", orderCommand);
+        char *mensaje = cJSON_PrintUnformatted(root);
         if(!mensaje)
         {
-            ESP_LOGE(MESH_TAG,"Start Production failed create unformatted msg");
+            ESP_LOGE(MESH_TAG, "Start Production failed create unformatted msg");
             cJSON_Delete(root);
+            return;
         }
-        if(root_mesh_broadcast_msg(mensaje)!=ESP_OK)
-            ESP_LOGE(MESH_TAG,"Start Production Msg not sent");
+        if(root_mesh_broadcast_msg(mensaje) != ESP_OK)
+            ESP_LOGE(MESH_TAG, "Start Production Msg not sent");
         free(mensaje);
         cJSON_Delete(root);
     }
     else
     {
-        ESP_LOGE(MESH_TAG,"Could not create root Start Prodcution");
+        ESP_LOGE(MESH_TAG, "Could not create root Start Production");
     }
+}
+
+/* Validates JSON payload and extracts production command parameters. */
+static bool validate_production_command(cJSON *productionCommand, ProductionCommandFields *outFields)
+{
+    if(!productionCommand || !outFields)
+    {
+        ESP_LOGE(MESH_TAG, "Production command argument invalid");
+        return false;
+    }
+    
+    if(!cJSON_IsObject(productionCommand))
+    {
+        ESP_LOGE(MESH_TAG, "Production command payload invalid");
+        return false;
+    }
+    
+    cJSON *profileNode = cJSON_GetObjectItem(productionCommand, "prof");
+    cJSON *dayNode = cJSON_GetObjectItem(productionCommand, "day");
+    cJSON *muxNode = cJSON_GetObjectItem(productionCommand, "mux");
+    cJSON *orderNode = cJSON_GetObjectItem(productionCommand, "order");
+    
+    if(!profileNode || !dayNode || !muxNode || !orderNode)
+    {
+        ESP_LOGE(MESH_TAG, "Production command missing required fields");
+        return false;
+    }
+    
+    if(!cJSON_IsNumber(profileNode) || !cJSON_IsNumber(dayNode) || !cJSON_IsNumber(muxNode))
+    {
+        ESP_LOGE(MESH_TAG, "Production command numeric parameters invalid");
+        return false;
+    }
+    
+    if(!cJSON_IsString(orderNode) || !orderNode->valuestring || strlen(orderNode->valuestring) == 0)
+    {
+        ESP_LOGE(MESH_TAG, "Production order parameter invalid or empty");
+        return false;
+    }
+    
+    outFields->profileIndex = profileNode->valueint - 1;
+    outFields->dayIndex = dayNode->valueint - 1;
+    outFields->muxTime = muxNode->valueint;
+    
+    if(outFields->profileIndex >= MAXPROFILES)
+    {
+        ESP_LOGE(MESH_TAG, "Production profile index out of range: %d (max %d)", 
+                 outFields->profileIndex, MAXPROFILES - 1);
+        return false;
+    }
+    
+    if(outFields->dayIndex >= MAXDAYCYCLE)
+    {
+        ESP_LOGE(MESH_TAG, "Production day index out of range: %d (max %d)", 
+                 outFields->dayIndex, MAXDAYCYCLE - 1);
+        return false;
+    }
+    
+    strlcpy(outFields->orderCommand, orderNode->valuestring, ORDER_COMMAND_MAX_LENGTH);
+    
+    if(strcmp(outFields->orderCommand, "start") == 0)
+        outFields->orderType = ORDER_START;
+    else if(strcmp(outFields->orderCommand, "stop") == 0)
+        outFields->orderType = ORDER_STOP;
+    else if(strcmp(outFields->orderCommand, "pause") == 0)
+        outFields->orderType = ORDER_PAUSE;
+    else if(strcmp(outFields->orderCommand, "resume") == 0)
+        outFields->orderType = ORDER_RESUME;
+    else
+        outFields->orderType = ORDER_INVALID;
+    
+    if(outFields->orderType == ORDER_INVALID)
+    {
+        ESP_LOGE(MESH_TAG, "Invalid production order: %s", outFields->orderCommand);
+        return false;
+    }
+    
+    return true;
+}
+
+/* Updates persistent configuration with production parameters. */
+static void apply_production_config(const ProductionCommandFields *fields)
+{
+    theConf.dayCycle = fields->dayIndex;
+    theConf.activeProfile = fields->profileIndex;
+    theConf.test_timer_div = fields->muxTime;
+    write_to_flash();
+}
+
+/* Handles production start operation. */
+static int handle_production_start(const ProductionCommandFields *fields, char *logBuffer)
+{
+    if(schedulef)
+    {
+        if((theConf.debug_flags >> dXCMDS) & 1U)  
+            ESP_LOGI(MESH_TAG, "%sCMd Prod already started %s", DBG_XCMDS, fields->orderCommand);
+        return ESP_OK;
+    }
+    
+    snprintf(logBuffer, PRODUCTION_LOG_BUFFER_SIZE, "CMd Prod Start %s", fields->orderCommand);
+    if((theConf.debug_flags >> dXCMDS) & 1U)  
+        ESP_LOGI(MESH_TAG, "%sCMd Prod Start %s", DBG_XCMDS, fields->orderCommand);
+    writeLog(logBuffer);
+    
+    theConf.blower_mode = 1;
+    write_to_flash();
+    xSemaphoreGive(workTaskSem);
+    
+    send_start_production(fields->profileIndex, fields->dayIndex, 
+                         theConf.test_timer_div, (char*)fields->orderCommand);
+    return ESP_OK;
+}
+
+/* Handles production stop operation. */
+static int handle_production_stop(const ProductionCommandFields *fields, char *logBuffer)
+{
+    if(!schedulef)
+    {
+        if((theConf.debug_flags >> dXCMDS) & 1U)  
+            ESP_LOGI(MESH_TAG, "%sCMd Prod Stop but not scheduling %s", DBG_XCMDS, fields->orderCommand);
+        return ESP_OK;
+    }
+    
+    theConf.dayCycle = 0;
+    theConf.blower_mode = 0;
+    write_to_flash();
+    
+    snprintf(logBuffer, PRODUCTION_LOG_BUFFER_SIZE, "CMd Prod Stop %s", fields->orderCommand);
+    writeLog(logBuffer);
+    
+    if((theConf.debug_flags >> dXCMDS) & 1U)  
+        ESP_LOGI(MESH_TAG, "%sCMd Prod Stop %s", DBG_XCMDS, fields->orderCommand);
+    
+    vTaskDelete(scheduleHandle);
+    xTaskCreate(&start_schedule_timers, "sched", 1024*10, NULL, 5, &scheduleHandle);
+    
+    send_start_production(fields->profileIndex, fields->dayIndex, 
+                         theConf.test_timer_div, (char*)fields->orderCommand);
+    schedulef = false;
+    return ESP_OK;
+}
+
+/* Handles production pause operation. */
+static int handle_production_pause(const ProductionCommandFields *fields, char *logBuffer)
+{
+    if(!schedulef) 
+    {
+        if((theConf.debug_flags >> dXCMDS) & 1U)  
+            ESP_LOGI(MESH_TAG, "%sCMd Prod Pause but not scheduling %s", DBG_XCMDS, fields->orderCommand);
+        return ESP_OK;
+    }
+    
+    if((theConf.debug_flags >> dXCMDS) & 1U)  
+        ESP_LOGI(MESH_TAG, "%sCMd Prod Paused %s", DBG_XCMDS, fields->orderCommand);
+    
+    snprintf(logBuffer, PRODUCTION_LOG_BUFFER_SIZE, "CMd Prod Pause %s", fields->orderCommand);
+    writeLog(logBuffer);
+    
+    send_start_production(fields->profileIndex, fields->dayIndex, 
+                         theConf.test_timer_div, (char*)fields->orderCommand);
+    pausef = true;
+    return ESP_OK;
+}
+
+/* Handles production resume operation. */
+static int handle_production_resume(const ProductionCommandFields *fields, char *logBuffer)
+{
+    if(!schedulef) 
+    {
+        if((theConf.debug_flags >> dXCMDS) & 1U)  
+            ESP_LOGI(MESH_TAG, "%sCMd Prod Resume but not scheduling %s", DBG_XCMDS, fields->orderCommand);
+        return ESP_OK;
+    }
+    
+    if((theConf.debug_flags >> dXCMDS) & 1U)  
+        ESP_LOGI(MESH_TAG, "%sCMd Prod Resumed %s", DBG_XCMDS, fields->orderCommand);
+    
+    snprintf(logBuffer, PRODUCTION_LOG_BUFFER_SIZE, "CMd Prod Resume %s", fields->orderCommand);
+    pausef = false;
+    send_start_production(fields->profileIndex, fields->dayIndex, 
+                         theConf.test_timer_div, (char*)fields->orderCommand);
+    writeLog(logBuffer);
+    return ESP_OK;
 }
 
 int cmdProd(void *argument)
 {
-    cJSON               *root,*cualm,*lstate,*elcmd;
-    mesh_data_t         data;
-    int                 err,cualorden;
-    mqttSender_t        meshMsg;
-    char                laorden[10],*log_msg;
-    /* Msg json format
-    {"cmd":"prod","prof":1,"day":1,"mux":30,"start":0}
-    */
+    /*
+     * Expected JSON format:
+     * {"cmd":"prod","prof":1,"day":1,"mux":30,"order":"start"}
+     * order values: "start", "stop", "pause", "resume"
+     */
+    
     if((theConf.debug_flags >> dXCMDS) & 1U)  
-        ESP_LOGI(MESH_TAG, "%sCMd Prod",DBG_XCMDS);
-    elcmd=(cJSON *)argument;
-    if(elcmd)
+        ESP_LOGI(MESH_TAG, "%sCMd Prod", DBG_XCMDS);
+    
+    cJSON *productionCommand = (cJSON *)argument;
+    
+    if(productionCommand == NULL)
     {
-        cJSON *prof= 		    cJSON_GetObjectItem(elcmd,"prof");       
-        cJSON *pday= 		    cJSON_GetObjectItem(elcmd,"day");       
-        cJSON *pmux= 		    cJSON_GetObjectItem(elcmd,"mux");       
-        cJSON *order= 		    cJSON_GetObjectItem(elcmd,"order");     
-        if(prof && pday && pmux && order)
-        {
-            // sanity checks
-            uint8_t iprof,iday,imux; 
-            iprof=prof->valueint-1;
-            iday=pday->valueint-1;
-            imux=pmux->valueint;
-            if(iprof<MAXPROFILES && iday<MAXDAYCYCLE)
-            {
-                theConf.dayCycle=iday;
-                theConf.activeProfile=iprof;
-                theConf.test_timer_div=imux;
-                write_to_flash();
-                // should send mnsg to all stations broadcast to start production with these parameters
-                // and start your self
-                // which orer Start, Stop, Pause-Resume
-                strcpy(laorden,order->valuestring);
-                if (strcmp(laorden,"start")==0)
-                    cualorden=0;
-                if (strcmp(laorden,"stop")==0)
-                    cualorden=1;
-                if (strcmp(laorden,"pause")==0)
-                    cualorden=2;
-                if (strcmp(laorden,"resume")==0)
-                    cualorden=3;
-                if (cualorden<0)
-                    return ESP_OK;
-                char * log_msg=(char*)calloc(200,1);
-                if(!log_msg)
-                {
-                    ESP_LOGE(TAG,"No Ram CmdProd log msg");
-                    return ESP_FAIL;
-                }
-                if(cualorden==0)
-                {   
-                    if(schedulef)
-                    {
-                        if((theConf.debug_flags >> dXCMDS) & 1U)  
-                            ESP_LOGI(MESH_TAG,"%sCMd Prod again Start %s",DBG_XCMDS,laorden);
-                            return ESP_OK;
-                    }
-                    sprintf(log_msg,"CMd Prod Start %s",laorden);
-                    if((theConf.debug_flags >> dXCMDS) & 1U)  
-                        ESP_LOGI(MESH_TAG,"%sCMd Prod Start %s",DBG_XCMDS,laorden);
-                    writeLog(log_msg);
-                    free(log_msg);
-                    theConf.blower_mode=1;
-                    write_to_flash(); 
-                    xSemaphoreGive(workTaskSem);
-                // send start production to children
-                    send_start_production(iprof,iday,theConf.test_timer_div,laorden);
-                }
-                if(cualorden==1)
-                {
-                    // stop 
-                    // reset values
-                    if(!schedulef)
-                    {
-                        if((theConf.debug_flags >> dXCMDS) & 1U)  
-                            ESP_LOGI(MESH_TAG,"%sCMd Prod Stop and not scheduling %s",DBG_XCMDS,laorden);
-                            return ESP_OK;
-                    }
-                    theConf.dayCycle=0;
-                    theConf.blower_mode=0;
-                    write_to_flash();
-                    sprintf(log_msg,"CMd Prod Stop %s",laorden);
-                    writeLog(log_msg);
-                    free(log_msg);
-                    if((theConf.debug_flags >> dXCMDS) & 1U)  
-                        ESP_LOGI(MESH_TAG, "%sCMd Prod Stop %s",DBG_XCMDS,laorden);
-                    vTaskDelete(scheduleHandle);    //task killed
-                    xTaskCreate(&start_schedule_timers,"sched",1024*10,NULL, 5, &scheduleHandle); 	       
-                    // send broadcast to all to stop
-                    send_start_production(iprof,iday,theConf.test_timer_div,laorden);
-                    schedulef=false;
-                    return ESP_OK;
-                }
-                if(cualorden==2)
-                {
-                    // puase 
-                    // reset values
-                    if (!schedulef) 
-                    {
-                        if((theConf.debug_flags >> dXCMDS) & 1U)  
-                            ESP_LOGI(MESH_TAG,"%sCMd Prod Pause and not scheduling %s",DBG_XCMDS,laorden);
-                        return ESP_OK;
-                    }
-                    if((theConf.debug_flags >> dXCMDS) & 1U)  
-                        ESP_LOGI(MESH_TAG, "%sCMd Prod Paused %s",DBG_XCMDS,laorden);
-                    sprintf(log_msg,"CMd Prod Pause %s",laorden);
-                    writeLog(log_msg);
-                    send_start_production(iprof,iday,theConf.test_timer_div,laorden);
-                    pausef=true;
-                    // send broadcast to all to stop
-                    free(log_msg);
-                    return ESP_OK;
-                }
-                if(cualorden==3)
-                {
-                    // resume 
-                    // reset values
-                    if (!schedulef) 
-                    {
-                        if((theConf.debug_flags >> dXCMDS) & 1U)  
-                            ESP_LOGI(MESH_TAG,"%sCMd Prod Resume and not scheduling %s",DBG_XCMDS,laorden);
-                        return ESP_OK;
-                    }
-                    if((theConf.debug_flags >> dXCMDS) & 1U)  
-                        ESP_LOGI(MESH_TAG, "%sCMd Prod Resumed %s",DBG_XCMDS,laorden);
-                    // send broadcast to all to stop
-                    sprintf(log_msg,"CMd Prod Resume %s",laorden);
-                    pausef=false;
-                    send_start_production(iprof,iday,theConf.test_timer_div,laorden);
-                    writeLog(log_msg);
-                    free(log_msg);
-                    return ESP_OK;
-                }
-            }
-        }
-        else
-        {
-            ESP_LOGE(MESH_TAG,"Start Production Cmd parameter missing or Task already started");
-            return ESP_FAIL;
-        }
-        return ESP_OK;
+        ESP_LOGE(MESH_TAG, "Production command argument is NULL");
+        return ESP_FAIL;
     }
-    else 
+    
+    ProductionCommandFields fields = {0};
+    if(!validate_production_command(productionCommand, &fields))
+        return ESP_FAIL;
+    
+    apply_production_config(&fields);
+    
+    char *logBuffer = (char*)calloc(PRODUCTION_LOG_BUFFER_SIZE, 1);
+    if(!logBuffer)
     {
-       ESP_LOGE(MESH_TAG,"NO CMD argument passed. Internal error");
+        ESP_LOGE(TAG, "No RAM for CmdProd log message");
+        return ESP_FAIL;
     }
-    return ESP_FAIL;
+    
+    int result = ESP_FAIL;
+    
+    switch(fields.orderType)
+    {
+        case ORDER_START:
+            result = handle_production_start(&fields, logBuffer);
+            break;
+            
+        case ORDER_STOP:
+            result = handle_production_stop(&fields, logBuffer);
+            break;
+            
+        case ORDER_PAUSE:
+            result = handle_production_pause(&fields, logBuffer);
+            break;
+            
+        case ORDER_RESUME:
+            result = handle_production_resume(&fields, logBuffer);
+            break;
+            
+        default:
+            ESP_LOGE(MESH_TAG, "Unhandled production order type");
+            break;
+    }
+    
+    free(logBuffer);
+    return result;
 }
-#endif
