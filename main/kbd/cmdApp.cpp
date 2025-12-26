@@ -1,5 +1,4 @@
-#ifndef TYPESCMDAPP_H_
-#define TYPESCMDAPP_H_
+
 #define GLOBAL            // important fo not remove
 #include "includes.h"
 #include "globals.h"
@@ -47,4 +46,3 @@ int cmdApp(int argc, char **argv)
 
     return 0;
 }
-#endif
