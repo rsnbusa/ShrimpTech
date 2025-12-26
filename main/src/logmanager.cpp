@@ -1,84 +1,233 @@
-#ifndef TYPESlmgr_H_
-#define TYPESlmgr_H_
+/**
+ * @file logmanager.cpp
+ * @brief SPIFFS-based logging system for persistent log storage
+ * 
+ * This module provides persistent logging functionality using ESP32's SPIFFS
+ * filesystem. Logs are written with timestamps and automatically recycled when
+ * the file reaches capacity.
+ * 
+ * Features:
+ * - Timestamped log entries
+ * - Automatic file recycling when full
+ * - SPIFFS partition management
+ * - Append-only logging
+ * 
+ * Usage:
+ *   logFileInit();                    // Initialize once at startup
+ *   writeLog("System started");       // Write log entries
+ */
+
 #define GLOBAL
 #include "globals.h"
 #include "forwards.h"
 
+// ===================================================================
+// Log Manager Constants
+// ===================================================================
 
+#define LOG_BUFFER_SIZE         500
+#define LOG_MOUNT_POINT         "/spiffs"
+#define LOG_FILE_PATH           "/spiffs/log.txt"
+#define LOG_MAX_FILES           2
+#define TIMESTAMP_FORMAT        "[%d-%02d-%02d %02d:%02d:%02d] %s\n"
 
-void writeLog(char * que)
+// ===================================================================
+// Helper Functions
+// ===================================================================
+
+/**
+ * @brief Creates a formatted timestamp string with message
+ * @param buffer Buffer to store the formatted string
+ * @param bufferSize Size of the buffer
+ * @param message Message to append to timestamp
+ * @return true if successful, false if buffer too small
+ */
+static bool formatLogMessage(char *buffer, size_t bufferSize, const char *message)
 {
-    time_t t = time(NULL);
-    struct tm tm = *localtime(&t);
-    char * str=(char*)calloc(500,1);
-    if(str)
+    if(!buffer || !message)
     {
-        sprintf(str,"[%d-%02d-%02d %02d:%02d:%02d] %s\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,que);
-        int son=strlen(str);
-        int fueron=fprintf(myFile,str);
-        if(fueron<son)
-        {
-            // presume the file is full so we now recycle file
-            fclose(myFile);
-            remove("/spiffs/log.txt");
-
-            myFile= fopen("/spiffs/log.txt", "a");
-            if (myFile == NULL) 
-            {
-                ESP_LOGE(MESH_TAG,"Failed to open file for append erase");
-            }
-            sprintf(str,"[%d-%02d-%02d %02d:%02d:%02d] %s\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,"File was recycled");
-            fprintf(myFile,str);
-        }
-        fflush(myFile);
-        free(str);
+        return false;
     }
+
+    time_t currentTime = time(NULL);
+    struct tm timeInfo = *localtime(&currentTime);
+    
+    int written = snprintf(buffer, bufferSize, TIMESTAMP_FORMAT,
+                          timeInfo.tm_year + 1900, timeInfo.tm_mon + 1, timeInfo.tm_mday,
+                          timeInfo.tm_hour, timeInfo.tm_min, timeInfo.tm_sec, message);
+    
+    return (written > 0 && written < (int)bufferSize);
 }
 
+/**
+ * @brief Recycles the log file by deleting and recreating it
+ * @return true if successful, false on failure
+ */
+static bool recycleLogFile()
+{
+    ESP_LOGW("LOG", "Log file full, recycling...");
+    
+    if(myFile)
+    {
+        fclose(myFile);
+        myFile = NULL;
+    }
+    
+    remove(LOG_FILE_PATH);
+    
+    myFile = fopen(LOG_FILE_PATH, "a");
+    if(!myFile)
+    {
+        ESP_LOGE("LOG", "Failed to open file after recycling");
+        return false;
+    }
+    
+    // Write recycling notice
+    char logBuffer[LOG_BUFFER_SIZE];
+    if(formatLogMessage(logBuffer, LOG_BUFFER_SIZE, "File was recycled"))
+    {
+        fprintf(myFile, logBuffer);
+        fflush(myFile);
+    }
+    
+    return true;
+}
+
+// ===================================================================
+// Log Writing Functions
+// ===================================================================
+
+/**
+ * @brief Writes a timestamped log entry to the SPIFFS log file
+ * 
+ * This function appends a log message with current timestamp to the persistent
+ * log file. If the file is full (write fails), it automatically recycles the
+ * file by deleting and recreating it.
+ * 
+ * @param message The log message to write (must not be NULL)
+ * 
+ * @note This function uses the global myFile handle which must be initialized
+ *       by calling logFileInit() first
+ * @warning Not thread-safe - caller must ensure synchronization
+ */
+void writeLog(char *message)
+{
+    if(!message)
+    {
+        ESP_LOGW("LOG", "Attempted to write NULL message");
+        return;
+    }
+
+    if(!myFile)
+    {
+        ESP_LOGE("LOG", "Log file not initialized - call logFileInit() first");
+        return;
+    }
+    
+    char *logBuffer = (char*)calloc(LOG_BUFFER_SIZE, 1);
+    if(!logBuffer)
+    {
+        ESP_LOGE("LOG", "Failed to allocate log buffer");
+        return;
+    }
+
+    // Format message with timestamp
+    if(!formatLogMessage(logBuffer, LOG_BUFFER_SIZE, message))
+    {
+        ESP_LOGE("LOG", "Failed to format log message");
+        free(logBuffer);
+        return;
+    }
+    
+    size_t messageLength = strlen(logBuffer);
+    int bytesWritten = fprintf(myFile, logBuffer);
+    
+    // Check if write failed due to full filesystem - recycle log file
+    if(bytesWritten < (int)messageLength)
+    {
+        if(!recycleLogFile())
+        {
+            free(logBuffer);
+            return;
+        }
+        
+        // Retry writing original message after recycling
+        fprintf(myFile, logBuffer);
+    }
+    
+    fflush(myFile);
+    free(logBuffer);
+}
+
+// ===================================================================
+// Log Initialization
+// ===================================================================
+
+/**
+ * @brief Initializes the SPIFFS filesystem and opens the log file
+ * 
+ * This function must be called once during system startup before any calls
+ * to writeLog(). It performs the following:
+ * - Registers and mounts SPIFFS filesystem
+ * - Formats partition if mount fails
+ * - Opens log file in append mode
+ * - Reports partition usage statistics
+ * 
+ * @note Sets global myFile handle for use by writeLog()
+ * @note Automatically formats SPIFFS if partition is corrupt or not found
+ */
 void logFileInit()
 {
     esp_vfs_spiffs_conf_t conf = {
-    .base_path = "/spiffs",
-    .partition_label = NULL,
-    .max_files = 2,
-    .format_if_mount_failed = true
+        .base_path = LOG_MOUNT_POINT,
+        .partition_label = NULL,
+        .max_files = LOG_MAX_FILES,
+        .format_if_mount_failed = true
     };
 
-     esp_err_t ret = esp_vfs_spiffs_register(&conf);
+    esp_err_t result = esp_vfs_spiffs_register(&conf);
 
-    if (ret != ESP_OK) {
-        if (ret == ESP_FAIL) {
-           ESP_LOGE(MESH_TAG,"Failed to mount or format filesystem");
-        } else if (ret == ESP_ERR_NOT_FOUND) {
-            ESP_LOGE(MESH_TAG, "Failed to find SPIFFS partition");
-        } else {
-            ESP_LOGE(MESH_TAG,"Failed to initialize SPIFFS (%s)\n", esp_err_to_name(ret));
+    if(result != ESP_OK)
+    {
+        if(result == ESP_FAIL)
+        {
+            ESP_LOGE("LOG", "Failed to mount or format filesystem");
+        }
+        else if(result == ESP_ERR_NOT_FOUND)
+        {
+            ESP_LOGE("LOG", "Failed to find SPIFFS partition");
+        }
+        else
+        {
+            ESP_LOGE("LOG", "Failed to initialize SPIFFS: %s", esp_err_to_name(result));
         }
         return;
     }
 
-    size_t total = 0, used = 0;
-    ret = esp_spiffs_info(conf.partition_label, &total, &used);
-    if (ret != ESP_OK) {
-#ifdef DEBB        
-        ESP_LOGE(MESH_TAG,"Failed to get SPIFFS partition information (%s). Formatting...", esp_err_to_name(ret));
-#endif        
+    // Get partition information
+    size_t totalBytes = 0, usedBytes = 0;
+    result = esp_spiffs_info(conf.partition_label, &totalBytes, &usedBytes);
+    
+    if(result != ESP_OK)
+    {
+        ESP_LOGE("LOG", "Failed to get SPIFFS partition info: %s. Formatting...", 
+                 esp_err_to_name(result));
         esp_spiffs_format(conf.partition_label);
         return;
-    } else {
-#ifdef DEBB        
-        // printf("%sPartition size: total: %d, used: %d\n", total, used);
-#endif        
     }
     
-    myFile= fopen("/spiffs/log.txt", "a");
-    if (myFile == NULL) {
-#ifdef DEBB        
-        ESP_LOGE(MESH_TAG,"Failed to open file for append");
-#endif        
+    // Calculate and display usage percentage
+    int usagePercent = (totalBytes > 0) ? (usedBytes * 100 / totalBytes) : 0;
+    ESP_LOGI("LOG", "SPIFFS - Total: %d bytes, Used: %d bytes (%d%%)", 
+             totalBytes, usedBytes, usagePercent);
+    
+    // Open log file in append mode
+    myFile = fopen(LOG_FILE_PATH, "a");
+    if(!myFile)
+    {
+        ESP_LOGE("LOG", "Failed to open log file: %s", LOG_FILE_PATH);
         return;
     }
-    ESP_LOGI(MESH_TAG,"Log file open");
+    
+    ESP_LOGI("LOG", "Log file opened successfully: %s", LOG_FILE_PATH);
 }
-
-#endif
