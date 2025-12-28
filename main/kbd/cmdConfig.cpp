@@ -265,19 +265,32 @@ void showconf(void *pArg)
 
     // ===== DEVICE INFORMATION =====
     printf("\n┌─────────────────────────────────────────────────────────────┐\n");
-    printf("│                    DEVICE INFORMATION                      │\n");
+    printf("│                   DEVICE INFORMATION                        │\n");
     printf("├─────────────────────────────────────────────────────────────┤\n");
-    printf("│ Boot Count: %d | Last Reset: %d | Reason: %d               │\n", theConf.bootcount, theConf.lastResetCode, theConf.lastResetCode);
-    printf("│ Log Level: %d | Down Time: %lus                             │\n", theConf.loglevel, theConf.downtime);
-    printf("│ Last Reboot: %s", ctime((time_t*)&bootdate));
-    printf("│ Meter Config: %d | MQTT Flag: %d | Send Meter: %d          │\n", theConf.meterconf, mqttf, sendMeterf);
-    printf("│ Guard Date: %s", ctime(&guardDate));
-    printf("│ Display Active: %s                                          │\n", gdispf?"Yes":"No");
-    printf("│ App Version: %s | IDF: %s                  │\n", mip->version, mip->idf_ver);
-    printf("│ Project: %s                                  │\n", mip->project_name);
-    printf("│ Compiled: %s @ %s                              │\n", mip->date, mip->time);
-    printf("│ Latest Version Sent: %s                           │\n", theConf.lastVersion);
-    printf("│ Mesh Delay: %s | Login Wait Time: %d                      │\n", theConf.delay_mesh?"Yes":"No", theConf.loginwait);
+    printf("│ Boot Count:                                                 │\n");
+    printf("│   %-57d │\n", theConf.bootcount);
+    printf("│ Last Reset & Reason:                                        │\n");
+    printf("│   Reset: %-6d  Reason: %-34d │\n", theConf.lastResetCode, theConf.lastResetCode);
+    printf("│ Log Level & Down Time:                                      │\n");
+    printf("│   Level: %-6d  Down Time: %-28lus │\n", theConf.loglevel, theConf.downtime);
+    printf("│ Last Reboot:                                                │\n");
+    char reboot_str[60];
+    strftime(reboot_str, sizeof(reboot_str), "  %Y-%m-%d %H:%M:%S", localtime((time_t*)&bootdate));
+    printf("│ %-59s │\n", reboot_str);
+    printf("│ Configuration Flags:                                        │\n");
+    printf("│   Meter: %-6d  MQTT: %-6d  Send Meter: %-16d │\n", theConf.meterconf, mqttf, sendMeterf);
+    printf("│ Guard Date:                                                 │\n");
+    strftime(reboot_str, sizeof(reboot_str), "  %Y-%m-%d %H:%M:%S", localtime(&guardDate));
+    printf("│ %-59s │\n", reboot_str);
+    printf("│ Display & System Status:                                    │\n");
+    printf("│   Display Active: %-42s │\n", gdispf?"Yes":"No");
+    printf("│ Version Information:                                        │\n");
+    printf("│   App: %-11s  IDF: %-33s │\n", mip->version, mip->idf_ver);
+    printf("│   Project: %-48s │\n", mip->project_name);
+    printf("│   Compiled: %s @ %-36s │\n", mip->date, mip->time);
+    printf("│   Latest Sent: %-44s │\n", theConf.lastVersion);
+    printf("│ Network Settings:                                           │\n");
+    printf("│   Mesh Delay: %-10s  Login Wait: %-23d │\n", theConf.delay_mesh?"Yes":"No", theConf.loginwait);
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
 
     // ===== PRODUCTION CONFIGURATION =====

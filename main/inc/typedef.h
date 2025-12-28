@@ -52,6 +52,31 @@ typedef struct modbus_rec{
     uint16_t crc;
 } modbus_rec_t;
 
+
+// ============================================================================
+// ModBus Working Structures for dynamic Descriptors
+// ============================================================================
+typedef struct  {
+    int regfresh,addr;
+    int specs[4][4];
+} bat_modbus_specs_t;
+
+typedef struct  {
+    int regfresh,addr;
+    int specs[5][4];
+} panel_modbus_specs_t;
+
+typedef struct  {
+    int regfresh;
+    int specs[5][5];
+} sensors_modbus_specs_t;
+
+typedef struct  {
+    int regfresh,addr;
+    int specs[11][4];
+} inverter_modbus_specs_t;
+
+
 // ============================================================================
 // WEB STATE & DEBUG ENUMS
 // ============================================================================

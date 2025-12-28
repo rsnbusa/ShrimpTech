@@ -5,7 +5,7 @@
 // Default mock implementation of the API callbacks
 
 #include "mongoose_glue.h"
-struct modbInverter s_modbInverter = {10, 10, 1, 259, 0, 10, 2, 61530, 0, 10, 1, 61518, 0, 10, 1, 61517, 0, 10, 2, 61528, 0, 10, 1, 61526, 0, 10, 1, 61527, 0, 10, 2, 61522, 0, 10, 2, 61520, 0, 10, 1, 61518, 0, 10, 1, 61517, 0, 1};
+struct modbInverter s_modbInverter = {10, 1, 10, 1, 259, 0, 10, 2, 61530, 0, 10, 1, 61518, 0, 10, 1, 61517, 0, 10, 2, 61528, 0, 10, 1, 61526, 0, 10, 1, 61527, 0, 10, 2, 61522, 0, 10, 2, 61520, 0, 10, 1, 61518, 0, 10, 1, 61517, 0};
 void glue_get_modbInverter(struct modbInverter *data) {
   *data = s_modbInverter;  // Sync with your device
 }
@@ -13,7 +13,7 @@ void glue_set_modbInverter(struct modbInverter *data) {
   s_modbInverter = *data; // Sync with your device
 }
 
-struct modbSensors s_modbSensors = {15, 1, 42, 42, -1, 20, 1, 42, 42, -1, 19, 1, 42, 42, -1, 17, 1, 4, 8192, 0, 16, 4, 8196, 1, 0, 16};
+struct modbSensors s_modbSensors = {15, 1, 42, 42, -1, 20, 1, 42, 42, -1, 19, 1, 42, 42, -1, 17, 1, 4, 8192, 0, 16, 1, 4, 8196, 0, 16};
 void glue_get_modbSensors(struct modbSensors *data) {
   *data = s_modbSensors;  // Sync with your device
 }

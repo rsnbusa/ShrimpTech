@@ -138,11 +138,6 @@ idf_component_register(
         bt
         console
     
-    # EMBED_TXTFILES 
-    #     "${html}"
-    
-    # EMBED_FILES 
-    #     "${bins}"
 )
 
 # Note: Unused component include directory variable

@@ -149,6 +149,7 @@ static struct custom_api_handler *s_custom_handlers;
 
 struct attribute s_modbInverter_attributes[] = {
   {"refresh_rate", "int", NULL, offsetof(struct modbInverter, refresh_rate), 0, false},
+  {"InverterAddress", "int", NULL, offsetof(struct modbInverter, InverterAddress), 0, false},
   {"I11_BatTempMux", "int", NULL, offsetof(struct modbInverter, I11_BatTempMux), 0, false},
   {"I11_BatTempPoints", "int", NULL, offsetof(struct modbInverter, I11_BatTempPoints), 0, false},
   {"I11_BatTempStart", "int", NULL, offsetof(struct modbInverter, I11_BatTempStart), 0, false},
@@ -193,7 +194,6 @@ struct attribute s_modbInverter_attributes[] = {
   {"I1_BatChHoyPoints", "int", NULL, offsetof(struct modbInverter, I1_BatChHoyPoints), 0, false},
   {"I1_BatChHoyStart", "int", NULL, offsetof(struct modbInverter, I1_BatChHoyStart), 0, false},
   {"I1_BatChHoyOff", "int", NULL, offsetof(struct modbInverter, I1_BatChHoyOff), 0, false},
-  {"InverterAddress", "int", NULL, offsetof(struct modbInverter, InverterAddress), 0, false},
   {NULL, NULL, NULL, 0, 0, false}
 };
 struct attribute s_modbSensors_attributes[] = {
@@ -218,9 +218,9 @@ struct attribute s_modbSensors_attributes[] = {
   {"DOStart", "int", NULL, offsetof(struct modbSensors, DOStart), 0, false},
   {"DOOffset", "int", NULL, offsetof(struct modbSensors, DOOffset), 0, false},
   {"DOAddress", "int", NULL, offsetof(struct modbSensors, DOAddress), 0, false},
+  {"WMux", "int", NULL, offsetof(struct modbSensors, WMux), 0, false},
   {"WPoints", "int", NULL, offsetof(struct modbSensors, WPoints), 0, false},
   {"WStart", "int", NULL, offsetof(struct modbSensors, WStart), 0, false},
-  {"WMux", "int", NULL, offsetof(struct modbSensors, WMux), 0, false},
   {"WOffset", "int", NULL, offsetof(struct modbSensors, WOffset), 0, false},
   {"WAddress", "int", NULL, offsetof(struct modbSensors, WAddress), 0, false},
   {NULL, NULL, NULL, 0, 0, false}

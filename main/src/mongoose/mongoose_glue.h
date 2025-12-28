@@ -95,6 +95,7 @@ void glue_update_state(void);
 
 struct modbInverter {
   int refresh_rate;
+  int InverterAddress;
   int I11_BatTempMux;
   int I11_BatTempPoints;
   int I11_BatTempStart;
@@ -139,7 +140,6 @@ struct modbInverter {
   int I1_BatChHoyPoints;
   int I1_BatChHoyStart;
   int I1_BatChHoyOff;
-  int InverterAddress;
 };
 void glue_get_modbInverter(struct modbInverter *);
 void glue_set_modbInverter(struct modbInverter *);
@@ -166,9 +166,9 @@ struct modbSensors {
   int DOStart;
   int DOOffset;
   int DOAddress;
+  int WMux;
   int WPoints;
   int WStart;
-  int WMux;
   int WOffset;
   int WAddress;
 };
