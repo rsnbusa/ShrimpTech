@@ -4,6 +4,10 @@
 #include "defines.h"
 #include "mongoose_glue.h"  // For website definitions
 
+// Mongoose send double for floats so we will typedef it back to float
+
+
+
 // ============================================================================
 // MODBUS TYPES
 // ============================================================================

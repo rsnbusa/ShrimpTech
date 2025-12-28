@@ -9,6 +9,8 @@
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+
+
 # ==============================================================================
 # Source Files Organization
 # ==============================================================================
@@ -139,6 +141,7 @@ idf_component_register(
         console
     
 )
+
 
 # Note: Unused component include directory variable
 set(COMPONENT_ADD_INCLUDEDIRS "")

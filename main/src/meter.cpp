@@ -3786,7 +3786,7 @@ void app_main(void)
 
 printf("PV PAnel %d Battery %d Energy %d Solar System %d SolarPad %d Union %d SmpMsg %d timet %d float %d Config %d\n",sizeof(pvPanel_t),sizeof(battery_t),
 sizeof(energy_t),sizeof(solarSystem_t),sizeof(solarDef_t),sizeof(meshunion_t),sizeof(shrimpMsg_t),sizeof(time_t),sizeof(float),
-sizeof(theConf)); 
+sizeof(theConf) ); 
 
     if(theConf.meterconf==0  )  // is this meter NOT configured
     {
@@ -3822,7 +3822,7 @@ sizeof(theConf));
     xTaskCreate(&start_schedule_timers,"sched",1024*10,NULL, 5, &scheduleHandle); 	       
 
     xTaskCreate(&root_timer,"reptimer",1024*8,NULL, 5, NULL); 	        
-    xTaskCreate(&rs485_task,"modbus",1024*10,NULL, 5, NULL); 	            // start the modbus task   
+    // xTaskCreate(&rs485_task,"modbus",1024*10,NULL, 5, NULL); 	            // start the modbus task   
 // the internal mesh is now going to start and begin all the main flow from its gotIp event manager
     showLVGL((char*)"MESH",10000,3);   
 
@@ -3832,7 +3832,7 @@ sizeof(theConf));
         delay(30000);
     }
 
-    // start_mesh();
+    start_mesh();
     theConf.loginwait=20000;
     // mesh_enable();
 // schedule timer will be started or not by sntp if root or when child connected by mesh if it was active and crash/power down

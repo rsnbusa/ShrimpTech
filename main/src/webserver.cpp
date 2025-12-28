@@ -63,7 +63,7 @@
 // mongoose glue structures. 
 //
 // Delete the STATIC in the mongoose_glue.c or linker fails cannot find externals below
-//
+// AND AND double to float conversion in mongoose_glue.h
 //
 // below are the structures for the mongoose interface as well as Actions (independent from data)
 

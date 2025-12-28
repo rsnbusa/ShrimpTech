@@ -14,7 +14,7 @@
 #include "typedef.h"
 
 extern config_flash                 theConf;
-extern sensor_t sensorData;
+extern sensor_t                     sensorData;     //local copy in RAM fo sensor data... it should then be saved in BlowerClass FRAM
 
 #define MB_PORT_NUM     (CONFIG_MB_UART_PORT_NUM)   // Number of UART port used for Modbus connection
 #define MB_DEV_SPEED    (CONFIG_MB_UART_BAUD_RATE)  // The communication speed of the UART
@@ -72,43 +72,10 @@ enum {
 
 int totalcids=0;
 int refreshrate=0;
-    typedef struct {mb_parameter_descriptor_t devices[5];} mio_t;
-    mio_t *devicesarr;
-    
-// const mb_parameter_descriptor_t device_parameters[] = {
-    // { CID, Param Name, Units, Modbus Slave Addr, Modbus Reg Type, Reg Start, Reg Size, Instance Offset, Data Type, Data Size, Parameter Options, Access Mode}
-    // { CID_INP_DATA_0, STR("Data_channel_0"), STR("Volts"), MB_DEVICE_ADDR1, MB_PARAM_HOLDING, 8192,12 ,
-        //    SENSOR_OFFSET(WTemp), PARAM_TYPE_FLOAT_BADC, (mb_descr_size_t)12, OPTS( 0,0,0 ), PAR_PERMS_READ_WRITE_TRIGGER },
-        //    HOLD_OFFSET(holding_data0), PARAM_TYPE_FLOAT_BADC, (mb_descr_size_t)12, OPTS( 0,0,0 ), PAR_PERMS_READ_WRITE_TRIGGER },
-        //    HOLD_OFFSET(holding_data0), PARAM_TYPE_FLOAT_BADC, (mb_descr_size_t)12, OPTS( 0,0,0 ), PAR_PERMS_READ_WRITE_TRIGGER },
-    // { 1, STR("Data_channel_0"), STR("Volts"), MB_DEVICE_ADDR1, MB_PARAM_HOLDING, 8194,4 ,
-    //     //    (void*)&aca, PARAM_TYPE_U8, 12, OPTS( 0,0,0 ), PAR_PERMS_READ_WRITE_TRIGGER },
-    //        HOLD_OFFSET(holding_data1), PARAM_TYPE_FLOAT_BADC, (mb_descr_size_t)4, OPTS( 0,0,0 ), PAR_PERMS_READ_WRITE_TRIGGER },
-    // { CID_HOLD_DATA_0, STR("Humidity_1"), STR("%rH"), MB_DEVICE_ADDR1, MB_PARAM_HOLDING, 0, 2,
-    //         HOLD_OFFSET(holding_data0), PARAM_TYPE_FLOAT, 4, OPTS( 0, 100, 1 ), PAR_PERMS_READ_WRITE_TRIGGER },
-    // { CID_INP_DATA_1, STR("Temperature_1"), STR("C"), MB_DEVICE_ADDR1, MB_PARAM_INPUT, 2, 2,
-    //         INPUT_OFFSET(input_data1), PARAM_TYPE_FLOAT, 4, OPTS( -40, 100, 1 ), PAR_PERMS_READ_WRITE_TRIGGER },
-    // { CID_HOLD_DATA_1, STR("Humidity_2"), STR("%rH"), MB_DEVICE_ADDR1, MB_PARAM_HOLDING, 2, 2,
-    //         HOLD_OFFSET(holding_data1), PARAM_TYPE_FLOAT, 4, OPTS( 0, 100, 1 ), PAR_PERMS_READ_WRITE_TRIGGER },
-    // { CID_INP_DATA_2, STR("Temperature_2"), STR("C"), MB_DEVICE_ADDR1, MB_PARAM_INPUT, 4, 2,
-    //         INPUT_OFFSET(input_data2), PARAM_TYPE_FLOAT, 4, OPTS( -40, 100, 1 ), PAR_PERMS_READ_WRITE_TRIGGER },
-    // { CID_HOLD_DATA_2, STR("Humidity_3"), STR("%rH"), MB_DEVICE_ADDR1, MB_PARAM_HOLDING, 4, 2,
-    //         HOLD_OFFSET(holding_data2), PARAM_TYPE_FLOAT, 4, OPTS( 0, 100, 1 ), PAR_PERMS_READ_WRITE_TRIGGER },
-    // { CID_HOLD_TEST_REG, STR("Test_regs"), STR("__"), MB_DEVICE_ADDR1, MB_PARAM_HOLDING, 10, 58,
-    //         HOLD_OFFSET(test_regs), PARAM_TYPE_ASCII, 116, OPTS( 0, 100, 1 ), PAR_PERMS_READ_WRITE_TRIGGER },
-    // { CID_RELAY_P1, STR("RelayP1"), STR("on/off"), MB_DEVICE_ADDR1, MB_PARAM_COIL, 2, 6,
-    //         COIL_OFFSET(coils_port0), PARAM_TYPE_U8, 1, OPTS( 0xAA, 0x15, 0 ), PAR_PERMS_READ_WRITE_TRIGGER },
-    // { CID_RELAY_P2, STR("RelayP2"), STR("on/off"), MB_DEVICE_ADDR1, MB_PARAM_COIL, 10, 6,
-    //         COIL_OFFSET(coils_port1), PARAM_TYPE_U8, 1, OPTS( 0x55, 0x2A, 0 ), PAR_PERMS_READ_WRITE_TRIGGER },
-    // { CID_DISCR_P1, STR("DiscreteInpP1"), STR("on/off"), MB_DEVICE_ADDR1, MB_PARAM_DISCRETE, 2, 7,
-    //         DISCR_OFFSET(discrete_input_port1), PARAM_TYPE_U8, 1, OPTS( 0xAA, 0x15, 0 ), PAR_PERMS_READ_WRITE_TRIGGER 
-    // }
 
-// };
-
-
-// Calculate number of parameters in the table
-// const uint16_t num_device_parameters = (sizeof(device_parameters)/sizeof(device_parameters[0]));
+// local variables for Descreiptors like an Array of devices
+typedef struct {mb_parameter_descriptor_t devices[5];} mio_t;
+mio_t *devicesarr;
 
 // The function to get pointer to parameter storage (instance) according to parameter description table
 static void* master_get_param_data(const mb_parameter_descriptor_t* param_descriptor)
@@ -118,7 +85,7 @@ static void* master_get_param_data(const mb_parameter_descriptor_t* param_descri
     if (param_descriptor->param_offset != 0) {
        switch(param_descriptor->mb_param_type)
        {
-           case MB_PARAM_HOLDING:
+           case MB_PARAM_HOLDING:       // use local data array for storing sensor data form Device
                instance_ptr = ((void*)&sensorData + param_descriptor->param_offset - 1);
             //    instance_ptr = ((void*)&holding_reg_params + param_descriptor->param_offset - 1);
                break;
@@ -141,7 +108,6 @@ static void* master_get_param_data(const mb_parameter_descriptor_t* param_descri
     }
     return instance_ptr;
 }
-
 
 // Modbus master initialization
 static esp_err_t master_init(void)
@@ -170,7 +136,6 @@ static esp_err_t master_init(void)
 
                             
     // Set UART pin numbers
-    // err = uart_set_pin(1, CONFIG_MB_UART_RXD, CONFIG_MB_UART_TXD,
     err = uart_set_pin((uart_port_t)1, RS485RX, RS485TX,
                               RS485RTS, UART_PIN_NO_CHANGE);
     MB_RETURN_ON_FALSE((err == ESP_OK), ESP_ERR_INVALID_STATE, TAG,
@@ -188,12 +153,10 @@ static esp_err_t master_init(void)
     vTaskDelay(5);
 
 
-
-//array will be [etry] and individual values order is mux-Points-Start-Offset
+//get configured sensors data descriptors variables
 sensors_modbus_specs_t *sensorinfo=(sensors_modbus_specs_t *)&theConf.modbus_sensors;    // make it array type for easy management
 refreshrate=sensorinfo->regfresh;
-// ESP_LOG_BUFFER_HEX("SENS",sensorinfo,sizeof(sensors_modbus_specs_t));
-int son=0;
+int son=0;      //since we can skip certain sensros via the Offse being -1 we need a separate counter
 
 for (int a=0;a<5;a++)
 {
