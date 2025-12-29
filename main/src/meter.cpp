@@ -2680,8 +2680,8 @@ void erase_config()
     strcpy(theConf.mqttPass,"csttpstt");
     struct limits start_limits = {90, 50, 32, 19, 31, 19, 70, 50, 70, 40, 42, 40, 42, 40, 42, 40, 42, 40, 42, 40, 42, 40, 820, 720, 850, 720, 820, 720, 820, 780, 50, 10, 5000, 0, 100, 20, 80, 20, 15, 14, 390, 340};
     theConf.milim=start_limits;
-    modbSensors local_modbSensors = {15, 1, 42, 42, -1, 20, 1, 42, 42, -1, 19, 1, 42, 42, -1, 17, 1, 4, 8192, 0, 16, 4, 8196, 1, 0, 16};
-    modbInverter local_modbInverter = {10, 10, 1, 259, 0, 10, 2, 61530, 0, 10, 1, 61518, 0, 10, 1, 61517, 0, 10, 2, 61528, 0, 10, 1, 61526, 0, 10, 1, 61527, 0, 10, 2, 61522, 0, 10, 2, 61520, 0, 10, 1, 61518, 0, 10, 1, 61517, 0, 1};
+    modbSensors local_modbSensors = {15, 1.5, 0, 0, -1, 20, 1, 0, 0, -1, 19, 1, 0, 0, -1, 17, 1, 6, 8192, 0, 16, 1, 2, 8192, 0, 16};
+    modbInverter local_modbInverter = {10, 1, 10, 1, 259, 0, 10, 2, 61530, 0, 10, 1, 61518, 0, 10, 1, 61517, 0, 10, 2, 61528, 0, 10, 1, 61526, 0, 10, 1, 61527, 0, 10, 2, 61522, 0, 10, 2, 61520, 0, 10, 1, 61518, 0, 10, 1, 61517, 0};
     modbBattery local_modbBattery = {30, 3, 10, 1, 276, 0, 1, 1, 268, 0, 1, 1, 260, 0, 1, 1, 256, 0};
     modbPanels local_modbPanels = {30, 4, 10, 1, 272, 0, 10, 1, 271, 0, 10, 1, 264, 0, 10, 1, 263, 0, 1, 1, 267, 0};
     theConf.modbus_inverter=local_modbInverter;
@@ -3822,7 +3822,7 @@ sizeof(theConf) );
     xTaskCreate(&start_schedule_timers,"sched",1024*10,NULL, 5, &scheduleHandle); 	       
 
     xTaskCreate(&root_timer,"reptimer",1024*8,NULL, 5, NULL); 	        
-    // xTaskCreate(&rs485_task,"modbus",1024*10,NULL, 5, NULL); 	            // start the modbus task   
+    xTaskCreate(&rs485_task,"modbus",1024*10,NULL, 5, NULL); 	            // start the modbus task   
 // the internal mesh is now going to start and begin all the main flow from its gotIp event manager
     showLVGL((char*)"MESH",10000,3);   
 
@@ -3832,7 +3832,7 @@ sizeof(theConf) );
         delay(30000);
     }
 
-    start_mesh();
+    // start_mesh();
     theConf.loginwait=20000;
     // mesh_enable();
 // schedule timer will be started or not by sntp if root or when child connected by mesh if it was active and crash/power down

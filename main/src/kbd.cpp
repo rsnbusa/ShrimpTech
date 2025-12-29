@@ -29,7 +29,7 @@
 
 #define PROMPT_BUFFER_SIZE          20
 #define CONSOLE_MAX_ARGUMENTS       8
-#define DEBUG_MAX_ARGUMENTS         6
+#define DEBUG_MAX_ARGUMENTS         8
 #define SECURITY_MAX_ARGUMENTS      3
 #define LOG_MAX_ARGUMENTS           2
 
@@ -120,6 +120,7 @@ void kbd(void *pArg)
   dbgArg.xcmds    = arg_str0(NULL, "xcmds",    "on | off", "MQTT cmds debugging");
   dbgArg.blow     = arg_str0(NULL, "blow",     "on | off", "Show Blower data");
   dbgArg.logic    = arg_str0(NULL, "logic",    "on | off", "Show logic stuff");
+  dbgArg.modbus   = arg_str0(NULL, "modbus",   "on | off", "Show modbus stuff");
   dbgArg.all      = arg_str0(NULL, "all",      "on | off", "Set/Reset all cmds");
   dbgArg.end      = arg_end(DEBUG_MAX_ARGUMENTS);
 

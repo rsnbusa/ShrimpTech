@@ -100,6 +100,9 @@ int cmdDebug(int argc, char **argv)
     if (dbgArg.logic->count)
         set_debug_flag(dbgArg.logic->sval[0], dLOGIC);
 
+    if (dbgArg.modbus->count)
+        set_debug_flag(dbgArg.modbus->sval[0], dMODBUS);
+
     if (dbgArg.all->count) 
     {
         char aca[10];

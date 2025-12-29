@@ -89,15 +89,15 @@ static void* master_get_param_data(const mb_parameter_descriptor_t* param_descri
                instance_ptr = ((void*)&sensorData + param_descriptor->param_offset - 1);
             //    instance_ptr = ((void*)&holding_reg_params + param_descriptor->param_offset - 1);
                break;
-           case MB_PARAM_INPUT:
-               instance_ptr = ((void*)&input_reg_params + param_descriptor->param_offset - 1);
-               break;
-           case MB_PARAM_COIL:
-               instance_ptr = ((void*)&coil_reg_params + param_descriptor->param_offset - 1);
-               break;
-           case MB_PARAM_DISCRETE:
-               instance_ptr = ((void*)&discrete_reg_params + param_descriptor->param_offset - 1);
-               break;
+        //    case MB_PARAM_INPUT:
+        //        instance_ptr = ((void*)&input_reg_params + param_descriptor->param_offset - 1);
+        //        break;
+        //    case MB_PARAM_COIL:
+        //        instance_ptr = ((void*)&coil_reg_params + param_descriptor->param_offset - 1);
+        //        break;
+        //    case MB_PARAM_DISCRETE:
+        //        instance_ptr = ((void*)&discrete_reg_params + param_descriptor->param_offset - 1);
+        //        break;
            default:
                instance_ptr = NULL;
                break;
@@ -160,41 +160,36 @@ int son=0;      //since we can skip certain sensros via the Offse being -1 we ne
 
 for (int a=0;a<5;a++)
 {
-    if(sensorinfo->specs[a][3]>=0)
+    // printf("Vamos %d vale %d\n",a,sensorinfo->specs[a].devices[3]);
+    if(sensorinfo->specs[a].devices[2]>=0)
     {
-        // printf("Sensors specs %d/%d: Address %d Offset %d Start %04X Points %d Mux %d\n",a,son,sensorinfo->specs[a][4],sensorinfo->specs[a][3],sensorinfo->specs[a][2],sensorinfo->specs[a][1],sensorinfo->specs[a][0]); 
+        if((theConf.debug_flags >> dMODBUS) & 1U)
+                printf("Sensors specs %d/%d: Address %d Offset %d Start %04X Points %d Mux %0.02f\n",a,son,sensorinfo->specs[a].devices[3],sensorinfo->specs[a].devices[2],sensorinfo->specs[a].devices[1],sensorinfo->specs[a].devices[0],sensorinfo->specs[a].mux); 
+       
         devicesarr->devices[son].cid=son;
         char *label=(char*)calloc(1,20);
         sprintf(label,"Sensor_%d",son);
         devicesarr->devices[son].param_key=label;
         char *labelunits=(char*)calloc(1,20);
-        sprintf(labelunits,"%d",sensorinfo->specs[a][0]);
+        sprintf(labelunits,"%d",sensorinfo->specs[a].mux);
         devicesarr->devices[son].param_units=labelunits;
-        devicesarr->devices[son].mb_slave_addr=sensorinfo->specs[a][4];
+        devicesarr->devices[son].mb_slave_addr=sensorinfo->specs[a].devices[3];
         devicesarr->devices[son].mb_param_type=MB_PARAM_HOLDING;
-        devicesarr->devices[son].mb_reg_start=sensorinfo->specs[a][2];
-        devicesarr->devices[son].mb_size=sensorinfo->specs[a][1];
-        devicesarr->devices[son].param_offset=sensorinfo->specs[a][3]+1;
-        devicesarr->devices[son].param_type=PARAM_TYPE_FLOAT_BADC;
-        devicesarr->devices[son].param_size=(mb_descr_size_t)(sensorinfo->specs[a][1]*2);
+        devicesarr->devices[son].mb_reg_start=sensorinfo->specs[a].devices[1];
+        devicesarr->devices[son].mb_size=sensorinfo->specs[a].devices[0];
+        devicesarr->devices[son].param_offset=sensorinfo->specs[a].devices[2]+1;
+        // TODO this is for testing. we have to have clartiy of the sensors (as we have of DO) of other sensors variable types
+        if(sensorinfo->specs[a].devices[3]!=100)
+            devicesarr->devices[son].param_type=PARAM_TYPE_FLOAT_BADC;
+        else
+            devicesarr->devices[son].param_type=PARAM_TYPE_U16;
+        devicesarr->devices[son].param_size=(mb_descr_size_t)(sensorinfo->specs[a].devices[0]*2);
         devicesarr->devices[son].access=PAR_PERMS_READ_WRITE;
         son++;
-        // devices[a]->cid=a;
-        // devices[a]->param_key="";
-        // devices[a]->param_units="";
-        // devices[a]->mb_slave_addr=16;
-        // devices[a]->mb_param_type=MB_PARAM_HOLDING;
-        // devices[a]->mb_reg_start=8192;
-        // devices[a]->mb_size=12;
-        // devices[a]->param_offset=1;
-        // devices[a]->param_type=PARAM_TYPE_FLOAT_BADC;
-        // devices[a]->param_size=(mb_descr_size_t)12;
-        // devices[a]->access=PAR_PERMS_READ_WRITE;
     }
 totalcids=son;
 }
     err = mbc_master_set_descriptor((mb_parameter_descriptor_t*)devicesarr, son);
-    // err = mbc_master_set_descriptor(&device_parameters[0], num_device_parameters);
     MB_RETURN_ON_FALSE((err == ESP_OK), ESP_ERR_INVALID_STATE, TAG,
                                 "mb controller set descriptor fail, returns(0x%x).", (int)err);
     ESP_LOGI(TAG, "Modbus master stack initialized...");
@@ -229,48 +224,11 @@ void rs485_task(void *arg)
                 // esp_log_buffer_hex("DESC", param_descriptor, sizeof(mb_parameter_descriptor_t));
                 // printf("Processing CID %d Key %s Start %04X Size %d Offset %d\n",param_descriptor->cid,param_descriptor->param_key,
                 // param_descriptor->mb_reg_start,param_descriptor->mb_size,param_descriptor->param_offset);
-                void* temp_data_ptr = master_get_param_data(param_descriptor);
+                void* temp_data_ptr =  ((void*)&sensorData + param_descriptor->param_offset - 1);
+                // void* temp_data_ptr = master_get_param_data(param_descriptor);
                 assert(temp_data_ptr);
                 uint8_t type = 0;
-                if ((param_descriptor->param_type == PARAM_TYPE_ASCII) &&
-                        (param_descriptor->cid == CID_HOLD_TEST_REG)) {
-                   // Check for long array of registers of type PARAM_TYPE_ASCII
-                    err = mbc_master_get_parameter(cid, (char*)param_descriptor->param_key,
-                                                    (uint8_t*)temp_data_ptr, &type);
-                    if (err == ESP_OK) {
-                        ESP_LOGI(TAG, "Characteristic #%u %s (%s) value = (0x%" PRIx32 ") read successful.",
-                                        param_descriptor->cid,
-                                        param_descriptor->param_key,
-                                        param_descriptor->param_units,
-                                        *(uint32_t*)temp_data_ptr);
-                        // Initialize data of test array and write to slave
-                        if (*(uint32_t*)temp_data_ptr != 0xAAAAAAAA) {
-                            memset((void*)temp_data_ptr, 0xAA, param_descriptor->param_size);
-                            *(uint32_t*)temp_data_ptr = 0xAAAAAAAA;
-                            err = mbc_master_set_parameter(cid, (char*)param_descriptor->param_key,
-                                                              (uint8_t*)temp_data_ptr, &type);
-                            if (err == ESP_OK) {
-                                ESP_LOGI(TAG, "Characteristic #%u %s (%s) value = (0x%" PRIx32 "), write successful.",
-                                                param_descriptor->cid,
-                                                param_descriptor->param_key,
-                                                param_descriptor->param_units,
-                                                *(uint32_t*)temp_data_ptr);
-                            } else {
-                                ESP_LOGE(TAG, "Characteristic #%u (%s) write fail, err = 0x%x (%s).",
-                                                param_descriptor->cid,
-                                                param_descriptor->param_key,
-                                                (int)err,
-                                                (char*)esp_err_to_name(err));
-                            }
-                        }
-                    } else {
-                        ESP_LOGE(TAG, "Characteristic #%u (%s) read fail, err = 0x%x (%s).",
-                                        param_descriptor->cid,
-                                        param_descriptor->param_key,
-                                        (int)err,
-                                        (char*)esp_err_to_name(err));
-                    }
-                } else {
+    
                     // this is the actual request from maser to slave stupid name for routine
                     err = mbc_master_get_parameter(cid, (char*)param_descriptor->param_key,
                                                         (uint8_t*)temp_data_ptr, &type);
@@ -278,17 +236,31 @@ void rs485_task(void *arg)
                         if ((param_descriptor->mb_param_type == MB_PARAM_HOLDING) ||
                             (param_descriptor->mb_param_type == MB_PARAM_INPUT)) {
                             value = *(float*)temp_data_ptr;
-                            ESP_LOGI(TAG, "%s Characteristic #%u %s (%s) value = %f (0x%" PRIx32 ") read successful.",param_descriptor->mb_param_type == MB_PARAM_HOLDING?"Holding":"Input",
+
+                        if((theConf.debug_flags >> dMODBUS) & 1U)
+                            ESP_LOGI(TAG, "%s Characteristic #%u %s (%s) ADDR %X value = %f (0x%" PRIx32 ") read successful.",param_descriptor->mb_param_type == MB_PARAM_HOLDING?"Holding":"Input",
                                             param_descriptor->cid,
                                             param_descriptor->param_key,
                                             param_descriptor->param_units,
+                                            param_descriptor->mb_slave_addr,
                                             value,
                                             *(uint32_t*)temp_data_ptr);
                                             // ESP_LOG_BUFFER_HEX("TEMP",temp_data_ptr,12);
                                             // ESP_LOG_BUFFER_HEX("HREG",&sensorData,12);
-                                            // // DOHandler((void*)temp_data_ptr,12);
-                    printf("CID %d Temp %.02f˚C Percent %.02f%% DO %.02f ppm\n",cid,sensorData.WTemp,sensorData.percentDO*100.0,sensorData.DO);
-                                            // printf("Temp %.02f˚C Percent %.02f%% DO %.02f ppm\n",holding_reg_params.holding_data0,holding_reg_params.holding_data1*100,holding_reg_params.holding_data2);
+                    if(param_descriptor->mb_slave_addr==16)
+                    {  
+                        if((theConf.debug_flags >> dMODBUS) & 1U)
+                        {
+                            printf("CID %d Temp %.02f˚C Percent %.02f%% DO %.02f ppm\n",cid,sensorData.WTemp,sensorData.percentDO*100.0,sensorData.DO);
+                        }
+                    }
+                    else
+                    {
+                        uint16_t nvalue=*(uint16_t*)temp_data_ptr;
+                        if((theConf.debug_flags >> dMODBUS) & 1U)
+                            printf("Incoming %x\n",nvalue);
+                    }
+                        // printf("Temp %.02f˚C Percent %.02f%% DO %.02f ppm\n",holding_reg_params.holding_data0,holding_reg_params.holding_data1*100,holding_reg_params.holding_data2);
                             // if (((value > param_descriptor->param_opts.max) ||
                             //     (value < param_descriptor->param_opts.min))) {
                             //         alarm_state = true;
@@ -329,13 +301,11 @@ void rs485_task(void *arg)
                                         (int)err,
                                         (char*)esp_err_to_name(err));
                     }
-                }
-                vTaskDelay(POLL_TIMEOUT_TICS); // timeout between polls
+                
+                vTaskDelay(pdMS_TO_TICKS(100));
             }
         }
-        // vTaskDelay(refreshrate*1000); // wait before next full read cycle
-        // vTaskDelay(UPDATE_CIDS_TIMEOUT_TICS);
-        vTaskDelay(2000);
+        vTaskDelay(pdMS_TO_TICKS(refreshrate*1000));
     }
 
     if (alarm_state) {

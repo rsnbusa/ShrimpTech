@@ -60,24 +60,36 @@ typedef struct modbus_rec{
 // ============================================================================
 // ModBus Working Structures for dynamic Descriptors
 // ============================================================================
+
+typedef struct {
+    double mux;
+    int devices[4];
+} four_t;
+typedef struct {
+    double mux;
+    int devices[3];
+} three_t;
+
+
 typedef struct  {
     int regfresh,addr;
-    int specs[4][4];
+    three_t specs[4];
 } bat_modbus_specs_t;
 
 typedef struct  {
     int regfresh,addr;
-    int specs[5][4];
+    three_t specs[5];
 } panel_modbus_specs_t;
 
 typedef struct  {
     int regfresh;
-    int specs[5][5];
+    four_t specs[5];
 } sensors_modbus_specs_t;
 
 typedef struct  {
     int regfresh,addr;
-    int specs[11][4];
+    three_t specs[10];
+
 } inverter_modbus_specs_t;
 
 
@@ -178,6 +190,7 @@ typedef struct dbg {
     struct arg_str *xcmds;     // External commands related
     struct arg_str *blow;      // Blower data
     struct arg_str *logic;     // Logic data
+    struct arg_str *modbus;    // modbus data
     struct arg_str *all;       // All commands on/off
     struct arg_end *end;
 } dbg_t;

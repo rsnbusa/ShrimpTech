@@ -308,6 +308,7 @@ void showconf(void *pArg)
     if((theConf.debug_flags >> dXCMDS) & 1U) printf("Xcmds ");
     if((theConf.debug_flags >> dBLOW) & 1U)  printf("Blower ");
     if((theConf.debug_flags >> dLOGIC) & 1U) printf("Logic ");
+    if((theConf.debug_flags >> dMODBUS) & 1U) printf("Modbus ");
     printf("              │\n");
     if(theConf.blower_mode)
         printf("│ Cycle: %d | Day: %d | Timer Div: %d                              │\n", ck, ck_d, theConf.test_timer_div);
