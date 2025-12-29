@@ -3,116 +3,30 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-#define GLOBALS
-#include "string.h"
+#define GLOBAL
 #include "esp_log.h"
 #include "misparams.h"  // for modbus parameters structures
 #include "mbcontroller.h"
-#include "sdkconfig.h"
+// #include "sdkconfig.h"
 #include "defines.h"
 #include "BlowerClass.h"
 #include "typedef.h"
+#include "globals.h"
 
-extern config_flash                 theConf;
-extern sensor_t                     sensorData;     //local copy in RAM fo sensor data... it should then be saved in BlowerClass FRAM
-
-#define MB_PORT_NUM     (CONFIG_MB_UART_PORT_NUM)   // Number of UART port used for Modbus connection
-#define MB_DEV_SPEED    (CONFIG_MB_UART_BAUD_RATE)  // The communication speed of the UART
-
-// Note: Some pins on target chip cannot be assigned for UART communication.
-// See UART documentation for selected board and target to configure pins using Kconfig.
-
-// The number of parameters that intended to be used in the particular control process
-#define MASTER_MAX_CIDS num_device_parameters
-
-// Number of reading of parameters from slave
-#define MASTER_MAX_RETRY 30
-
-// Timeout to update cid over Modbus
-#define UPDATE_CIDS_TIMEOUT_MS          (500)
-#define UPDATE_CIDS_TIMEOUT_TICS        (UPDATE_CIDS_TIMEOUT_MS / portTICK_PERIOD_MS)
-
-// Timeout between polls
-#define POLL_TIMEOUT_MS                 (1)
-#define POLL_TIMEOUT_TICS               (POLL_TIMEOUT_MS / portTICK_PERIOD_MS)
-
-// The macro to get offset for parameter in the appropriate structure
-#define HOLD_OFFSET(field) ((uint16_t)(offsetof(holding_reg_params_t, field) + 1))
-#define INPUT_OFFSET(field) ((uint16_t)(offsetof(input_reg_params_t, field) + 1))
-#define COIL_OFFSET(field) ((uint16_t)(offsetof(coil_reg_params_t, field) + 1))
 #define SENSOR_OFFSET(field) ((uint16_t)(offsetof(sensor_t ,field) + 1))
-// Discrete offset macro
-#define DISCR_OFFSET(field) ((uint16_t)(offsetof(discrete_reg_params_t, field) + 1))
-
-#define STR(fieldname) ((const char*)( fieldname ))
-// Options can be used as bit masks or parameter limits
-#define OPTS(min_val, max_val, step_val) { .opt1 = min_val, .opt2 = max_val, .opt3 = step_val }
-
-// static const char *TAG = "MASTER_TEST";
-
-// Enumeration of modbus device addresses accessed by master device
-enum {
-    MB_DEVICE_ADDR1 = 16 // Only one slave device used for the test (add other slave addresses here)
-};
-
-// Enumeration of all supported CIDs for device (used in parameter definition table)
-enum {
-    CID_INP_DATA_0 = 0,
-    CID_HOLD_DATA_0,
-    CID_INP_DATA_1,
-    CID_HOLD_DATA_1,
-    CID_INP_DATA_2,
-    CID_HOLD_DATA_2,
-    CID_HOLD_TEST_REG,
-    CID_RELAY_P1,
-    CID_RELAY_P2,
-    CID_DISCR_P1,
-    CID_COUNT
-};
+#define MAXSENSORS              (5)
 
 int totalcids=0;
 int refreshrate=0;
 
-// local variables for Descreiptors like an Array of devices
-typedef struct {mb_parameter_descriptor_t devices[5];} mio_t;
-mio_t *devicesarr;
-
-// The function to get pointer to parameter storage (instance) according to parameter description table
-static void* master_get_param_data(const mb_parameter_descriptor_t* param_descriptor)
-{
-    assert(param_descriptor != NULL);
-    void* instance_ptr = NULL;
-    if (param_descriptor->param_offset != 0) {
-       switch(param_descriptor->mb_param_type)
-       {
-           case MB_PARAM_HOLDING:       // use local data array for storing sensor data form Device
-               instance_ptr = ((void*)&sensorData + param_descriptor->param_offset - 1);
-            //    instance_ptr = ((void*)&holding_reg_params + param_descriptor->param_offset - 1);
-               break;
-        //    case MB_PARAM_INPUT:
-        //        instance_ptr = ((void*)&input_reg_params + param_descriptor->param_offset - 1);
-        //        break;
-        //    case MB_PARAM_COIL:
-        //        instance_ptr = ((void*)&coil_reg_params + param_descriptor->param_offset - 1);
-        //        break;
-        //    case MB_PARAM_DISCRETE:
-        //        instance_ptr = ((void*)&discrete_reg_params + param_descriptor->param_offset - 1);
-        //        break;
-           default:
-               instance_ptr = NULL;
-               break;
-       }
-    } else {
-        ESP_LOGE(TAG, "Wrong parameter offset for CID #%u", (unsigned)param_descriptor->cid);
-        assert(instance_ptr != NULL);
-    }
-    return instance_ptr;
-}
+// local variables for Descriptors like an Array of devices
+typedef struct {mb_parameter_descriptor_t devices[5];} descriptor_array_t;
+descriptor_array_t *devicesarr;
 
 // Modbus master initialization
 static esp_err_t master_init(void)
 {
-    // Initialize and start Modbus controller
+    // Initialize and start Modbus controller... take them form theConf  
     mb_communication_info_t comm = {
             .mode = (mb_mode_type_t)0,
             .port = (uart_port_t)1,
@@ -122,8 +36,7 @@ static esp_err_t master_init(void)
     };
     void* master_handler = NULL;
 
-    devicesarr=(mio_t*)calloc(1,sizeof(mio_t));
-
+    devicesarr=(descriptor_array_t*)calloc(1,sizeof(descriptor_array_t));
 
     esp_err_t err = mbc_master_init(MB_PORT_SERIAL_MASTER, &master_handler);
     MB_RETURN_ON_FALSE((master_handler != NULL), ESP_ERR_INVALID_STATE, TAG,
@@ -214,105 +127,83 @@ void rs485_task(void *arg)
     // for(uint16_t retry = 0; retry <= MASTER_MAX_RETRY && (!alarm_state); retry++) {
         // Read all found characteristics from slave(s)
         for (uint16_t cid = 0; (err != ESP_ERR_NOT_FOUND) && cid < totalcids; cid++)
-        // for (uint16_t cid = 0; (err != ESP_ERR_NOT_FOUND) && cid < MASTER_MAX_CIDS; cid++)
         {
             // Get data from parameters description table
             // and use this information to fill the characteristics description table
             // and having all required fields in just one table
             err = mbc_master_get_cid_info(cid, &param_descriptor);
-            if ((err != ESP_ERR_NOT_FOUND) && (param_descriptor != NULL)) {
-                // esp_log_buffer_hex("DESC", param_descriptor, sizeof(mb_parameter_descriptor_t));
-                // printf("Processing CID %d Key %s Start %04X Size %d Offset %d\n",param_descriptor->cid,param_descriptor->param_key,
-                // param_descriptor->mb_reg_start,param_descriptor->mb_size,param_descriptor->param_offset);
+            if ((err != ESP_ERR_NOT_FOUND) && (param_descriptor != NULL)) 
+            {
                 void* temp_data_ptr =  ((void*)&sensorData + param_descriptor->param_offset - 1);
-                // void* temp_data_ptr = master_get_param_data(param_descriptor);
                 assert(temp_data_ptr);
                 uint8_t type = 0;
     
-                    // this is the actual request from maser to slave stupid name for routine
+                    // this is the actual request from matser to slave stupid name for routine
                     err = mbc_master_get_parameter(cid, (char*)param_descriptor->param_key,
                                                         (uint8_t*)temp_data_ptr, &type);
-                    if (err == ESP_OK) {
-                        if ((param_descriptor->mb_param_type == MB_PARAM_HOLDING) ||
-                            (param_descriptor->mb_param_type == MB_PARAM_INPUT)) {
-                            value = *(float*)temp_data_ptr;
+                    if (err == ESP_OK) 
+                    {
+                        if (param_descriptor->mb_param_type == MB_PARAM_HOLDING) 
+                        {
+                                value = *(float*)temp_data_ptr;
 
-                        if((theConf.debug_flags >> dMODBUS) & 1U)
-                            ESP_LOGI(TAG, "%s Characteristic #%u %s (%s) ADDR %X value = %f (0x%" PRIx32 ") read successful.",param_descriptor->mb_param_type == MB_PARAM_HOLDING?"Holding":"Input",
+                            // if((theConf.debug_flags >> dMODBUS) & 1U)
+                            //     ESP_LOGI(TAG, "%s Characteristic #%u %s (%s) ADDR %X value = %f (0x%" PRIx32 ") read successful.",param_descriptor->mb_param_type == MB_PARAM_HOLDING?"Holding":"Input",
+                            //                     param_descriptor->cid,
+                            //                     param_descriptor->param_key,
+                            //                     param_descriptor->param_units,
+                            //                     param_descriptor->mb_slave_addr,
+                            //                     value,
+                            //                     *(uint32_t*)temp_data_ptr);
+                            // TODO for testing only
+
+                            if(param_descriptor->mb_slave_addr==16)
+                            {  
+                                if((theConf.debug_flags >> dMODBUS) & 1U)
+                                {
+                                    printf("CID %d Temp %.02f˚C Percent %.02f%% DO %.02f ppm\n",cid,sensorData.WTemp,sensorData.percentDO*100.0,sensorData.DO);
+                                }
+                            }
+                            else
+                            {
+                                uint16_t nvalue=*(uint16_t*)temp_data_ptr;
+                                if((theConf.debug_flags >> dMODBUS) & 1U)
+                                    printf("Battery: SOC %d%% SOH %d%%\n",(nvalue)&0xFF,(nvalue>>8)&0xFF);
+                            }
+                        } 
+                        else 
+                        {
+                            ESP_LOGW(TAG, "Characteristic #%u (%s) has unsupported param type %u.", 
                                             param_descriptor->cid,
                                             param_descriptor->param_key,
-                                            param_descriptor->param_units,
-                                            param_descriptor->mb_slave_addr,
-                                            value,
-                                            *(uint32_t*)temp_data_ptr);
-                                            // ESP_LOG_BUFFER_HEX("TEMP",temp_data_ptr,12);
-                                            // ESP_LOG_BUFFER_HEX("HREG",&sensorData,12);
-                    if(param_descriptor->mb_slave_addr==16)
-                    {  
-                        if((theConf.debug_flags >> dMODBUS) & 1U)
-                        {
-                            printf("CID %d Temp %.02f˚C Percent %.02f%% DO %.02f ppm\n",cid,sensorData.WTemp,sensorData.percentDO*100.0,sensorData.DO);
+                                            (unsigned)param_descriptor->mb_param_type);
                         }
                     }
-                    else
+                    else 
                     {
-                        uint16_t nvalue=*(uint16_t*)temp_data_ptr;
-                        if((theConf.debug_flags >> dMODBUS) & 1U)
-                            printf("Incoming %x\n",nvalue);
-                    }
-                        // printf("Temp %.02f˚C Percent %.02f%% DO %.02f ppm\n",holding_reg_params.holding_data0,holding_reg_params.holding_data1*100,holding_reg_params.holding_data2);
-                            // if (((value > param_descriptor->param_opts.max) ||
-                            //     (value < param_descriptor->param_opts.min))) {
-                            //         alarm_state = true;
-                            //         break;
-                            // }
-                                    // vTaskDelay(pdMS_TO_TICKS(20000));
-                                    // vTaskDelay(pdMS_TO_TICKS(15*60*60*1000));
-
-                        } else {
-                            uint8_t state = *(uint8_t*)temp_data_ptr;
-                            const char* rw_str = (state & param_descriptor->param_opts.opt1) ? "ON" : "OFF";
-                            if ((state & param_descriptor->param_opts.opt2) == param_descriptor->param_opts.opt2) {
-                                ESP_LOGI(TAG, "Characteristic #%u %s (%s) value = %s (0x%" PRIx8 ") read successful.",
-                                                param_descriptor->cid,
-                                                param_descriptor->param_key,
-                                                param_descriptor->param_units,
-                                                (const char*)rw_str,
-                                                *(uint8_t*)temp_data_ptr);
-                            } else {
-                                ESP_LOGE(TAG, "Characteristic #%u %s (%s) value = %s (0x%" PRIx8 "), unexpected value.",
-                                                param_descriptor->cid,
-                                                param_descriptor->param_key,
-                                                param_descriptor->param_units,
-                                                (const char*)rw_str,
-                                                *(uint8_t*)temp_data_ptr);
-                                alarm_state = true;
-                                break;
-                            }
-                            if (state & param_descriptor->param_opts.opt1) {
-                                alarm_state = true;
-                                break;
-                            }
-                        }
-                    } else {
-                        ESP_LOGE(TAG, "FAIL Characteristic #%u (%s) read fail, err = 0x%x (%s).",       //timeout here
+                        ESP_LOGE(TAG, "FAIL Characteristic #%u (%s) Addr %x read fail, err = 0x%x (%s).",       //timeout here
                                         param_descriptor->cid,
                                         param_descriptor->param_key,
+                                        param_descriptor->mb_slave_addr,
                                         (int)err,
                                         (char*)esp_err_to_name(err));
                     }
                 
-                vTaskDelay(pdMS_TO_TICKS(100));
             }
+            else
+            {
+                ESP_LOGE(TAG, "Characteristic #%u get cid info fail, err = 0x%x (%s).",
+                                cid,
+                                (int)err,
+                                (char*)esp_err_to_name(err));
+            }
+            
+            vTaskDelay(pdMS_TO_TICKS(5000)); // the smallest time between polls... speed is low 9600 usually give it some time
+
         }
         vTaskDelay(pdMS_TO_TICKS(refreshrate*1000));
     }
-
-    if (alarm_state) {
-        ESP_LOGI(TAG, "Alarm triggered by cid #%u.", param_descriptor->cid);
-    } else {
-        ESP_LOGE(TAG, "Alarm is not triggered after %u retries.", MASTER_MAX_RETRY);
-    }
+// shouyld not happend 
     ESP_LOGI(TAG, "Destroy master...");
     ESP_ERROR_CHECK(mbc_master_destroy());
 }
