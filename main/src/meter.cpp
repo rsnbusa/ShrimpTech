@@ -3069,14 +3069,16 @@ void ip_event_handler(void *arg, esp_event_base_t event_base,int32_t event_id, v
                 xTimerStart(loginTimer,0);          // start the login timer if more that 0 nodes
             // sprintf(prompt,"R%s",theBlower.getMID());
             // showLVGL(prompt,10000,3);   
-                xTaskCreate(&rs485_task,"modbus",1024*10,NULL, 5, NULL); 	            // start the modbus task   
-
+                // xTaskCreate(&rs485_task,"modbus",1024*10,NULL, 5, NULL); 	            // start the modbus task   
+    // delay(2000);
+    xTaskCreate(&sensor_task,"sensors",1024*10,NULL, 5, NULL); 	
         }
         else
         {
             ESP_LOGE(MESH_TAG,"IP child");
-                xTaskCreate(&rs485_task,"modbus",1024*10,NULL, 5, NULL); 	            // start the modbus task   
-
+                // xTaskCreate(&rs485_task,"modbus",1024*10,NULL, 5, NULL); 	            // start the modbus task   
+    // delay(2000);
+    xTaskCreate(&sensor_task,"sensors",1024*10,NULL, 5, NULL); 	
             // sprintf(prompt,"N%s",theBlower.getMID());
             // showLVGL(prompt,10000,3);   
         } 
@@ -3826,8 +3828,7 @@ sizeof(theConf) );
 
     xTaskCreate(&root_timer,"reptimer",1024*8,NULL, 5, NULL); 	        
     xTaskCreate(&rs485_task_manager,"modbus",1024*10,NULL, 5, NULL); 	            // start the modbus task   
-    delay(2000);
-    xTaskCreate(&sensor_task,"sensors",1024*10,NULL, 5, NULL); 	            // start the modbus task   
+            // start the modbus task   
 // the internal mesh is now going to start and begin all the main flow from its gotIp event manager
     showLVGL((char*)"MESH",10000,3);   
 
@@ -3837,7 +3838,7 @@ sizeof(theConf) );
         delay(30000);
     }
 
-    // start_mesh();
+    start_mesh();
     theConf.loginwait=20000;
     // mesh_enable();
 // schedule timer will be started or not by sntp if root or when child connected by mesh if it was active and crash/power down
