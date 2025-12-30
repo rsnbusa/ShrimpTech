@@ -169,6 +169,8 @@ void rs485_task(void *arg)
                                 uint16_t nvalue=*(uint16_t*)temp_data_ptr;
                                 if((theConf.debug_flags >> dMODBUS) & 1U)
                                     printf("Battery: SOC %d%% SOH %d%%\n",(nvalue)&0xFF,(nvalue>>8)&0xFF);
+                                    batteryData.batSOC=(nvalue)&0xFF;
+                                    batteryData.batSOH=(nvalue>>8)&0xFF;
                             }
                         } 
                         else 
@@ -198,7 +200,7 @@ void rs485_task(void *arg)
                                 (char*)esp_err_to_name(err));
             }
             
-            vTaskDelay(pdMS_TO_TICKS(5000)); // the smallest time between polls... speed is low 9600 usually give it some time
+            vTaskDelay(pdMS_TO_TICKS(500)); // the smallest time between polls... speed is low 9600 usually give it some time
 
         }
         vTaskDelay(pdMS_TO_TICKS(refreshrate*1000));

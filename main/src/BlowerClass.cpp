@@ -328,7 +328,7 @@ void BlowerClass::getPVPanel(uint8_t *chargeCurr, float *pv1Volts, float *pv2Vol
 
 void BlowerClass::setBattery(uint8_t batSoc, uint8_t batSOH, uint16_t batteryCycleCount, float batBmsTemp)
 {
-    framConfig.solarSystem.battery.batSoc = batSoc;
+    framConfig.solarSystem.battery.batSOC = batSoc;
     framConfig.solarSystem.battery.batSOH = batSOH;
     framConfig.solarSystem.battery.batteryCycleCount = batteryCycleCount;
     framConfig.solarSystem.battery.batBmsTemp = batBmsTemp;
@@ -342,7 +342,7 @@ void BlowerClass::getBattery(uint8_t *batSoc, uint8_t *batSOH, uint16_t *battery
         ESP_LOGE(MESH_TAG, "getBattery: null pointer argument");
         return;
     }
-    *batSoc = framConfig.solarSystem.battery.batSoc;
+    *batSoc = framConfig.solarSystem.battery.batSOC;
     *batSOH = framConfig.solarSystem.battery.batSOH;
     *batteryCycleCount = framConfig.solarSystem.battery.batteryCycleCount;
     *batBmsTemp = framConfig.solarSystem.battery.batBmsTemp;

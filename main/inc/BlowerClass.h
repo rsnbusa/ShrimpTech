@@ -47,7 +47,7 @@ typedef struct {
  * Essential for battery life estimation and charge/discharge control.
  */
 typedef struct {
-    uint8_t batSoc;             // pos 18               BMSOC
+    uint8_t batSOC;             // pos 18               BMSOC
     uint8_t batSOH;             // pos 17               BMSOH
     uint16_t batteryCycleCount; // pos 16               BMCC
     float batBmsTemp;           // pos 15               BMTEMP

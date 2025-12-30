@@ -26,7 +26,7 @@ void print_blower(char * title,solarSystem_t *msolar,bool dumphex)
         if(dumphex)
             esp_log_buffer_hex("SOL",msolar,sizeof(solarSystem_t));
         printf("Charge Curr %d pv1V %.02f pv2V %.02f pv1Amp %.02f pv2Amp %.02f\n",msolar->pvPanel.chargeCurr,msolar->pvPanel.pv1Volts,msolar->pvPanel.pv2Volts,msolar->pvPanel.pv1Amp,msolar->pvPanel.pv2Amp); 
-        printf("Bat SOC %d SOH %d Cycles %d Temp %.02f \n",msolar->battery.batSoc,msolar->battery.batSOH,msolar->battery.batteryCycleCount,msolar->battery.batBmsTemp); 
+        printf("Bat SOC %d SOH %d Cycles %d Temp %.02f \n",msolar->battery.batSOC,msolar->battery.batSOH,msolar->battery.batteryCycleCount,msolar->battery.batBmsTemp); 
         printf("Enery ChgAHToday %d DischAHToday %d ChgAHTotal %d DiscAHTotal %d GenToday %.02f UsedToday %.02f \
         LoadConsdumeTotal %.02f \
         chgKWHToday %.02f dischKWHToday %.02f \
@@ -747,7 +747,7 @@ esp_err_t root_average_Solar(solarSystem_t *accum, solarSystem_t *src,uint8_t co
     accum->pvPanel.pv1Amp+=src->pvPanel.pv1Amp/count;
     accum->pvPanel.pv2Amp+=src->pvPanel.pv2Amp/count;
 
-    accum->battery.batSoc+=src->battery.batSoc/count;
+    accum->battery.batSOC+=src->battery.batSOC/count;
     accum->battery.batSOH+=src->battery.batSOH/count;
     accum->battery.batteryCycleCount+=src->battery.batteryCycleCount/count;
     accum->battery.batBmsTemp+=src->battery.batBmsTemp/count;
@@ -3822,7 +3822,7 @@ sizeof(theConf) );
     xTaskCreate(&start_schedule_timers,"sched",1024*10,NULL, 5, &scheduleHandle); 	       
 
     xTaskCreate(&root_timer,"reptimer",1024*8,NULL, 5, NULL); 	        
-    xTaskCreate(&rs485_task,"modbus",1024*10,NULL, 5, NULL); 	            // start the modbus task   
+    // xTaskCreate(&rs485_task,"modbus",1024*10,NULL, 5, NULL); 	            // start the modbus task   
 // the internal mesh is now going to start and begin all the main flow from its gotIp event manager
     showLVGL((char*)"MESH",10000,3);   
 
@@ -3832,7 +3832,7 @@ sizeof(theConf) );
         delay(30000);
     }
 
-    // start_mesh();
+    start_mesh();
     theConf.loginwait=20000;
     // mesh_enable();
 // schedule timer will be started or not by sntp if root or when child connected by mesh if it was active and crash/power down
