@@ -46,13 +46,14 @@ typedef struct {
  * Tracks battery health and state metrics from the BMS (Battery Management System).
  * Essential for battery life estimation and charge/discharge control.
  */
+#pragma pack(push, 1) 
 typedef struct {
-    uint8_t batSOC;             // pos 18               BMSOC
-    uint8_t batSOH;             // pos 17               BMSOH
+    uint16_t batSOC;             // pos 18               BMSOC
+    uint16_t batSOH;             // pos 17               BMSOH
     uint16_t batteryCycleCount; // pos 16               BMCC
     float batBmsTemp;           // pos 15               BMTEMP
 } battery_t;
-
+#pragma pack(pop)  
 // ============================================================================
 // Energy Tracking Data Structures
 // ============================================================================
@@ -67,6 +68,7 @@ typedef struct {
  * 
  * All values reset daily with totals accumulated over device lifetime.
  */
+#pragma pack(push, 1) 
 typedef struct {
     uint16_t batChgAHToday;     // pos 14               BMCHAH
     uint16_t batDischgAHToday;  // pos 13               BMDDAH
@@ -79,7 +81,7 @@ typedef struct {
     float batDischgkWhToday;    // pos 6                BMDDKW
     float genLoadConsumToday;   // pos 5                GENLCT
 } energy_t;
-
+#pragma pack(pop)  
 // ============================================================================
 // Environmental Sensor Data Structures
 // ============================================================================

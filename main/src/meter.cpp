@@ -871,6 +871,8 @@ esp_err_t root_send_collected_nodes(uint32_t cuantos)        //root only
     //     return ESP_OK;          //nothing to send or to do
     // }
 
+    // printf("Sending Average Solar Data to MQTT HQ size %d\n", sizeof(shrimpMsg_t)); 
+    // esp_log_buffer_hex(MESH_TAG,shmsg,sizeof(shrimpMsg_t)); 
     mqttMsg.queue=                      infoQueue;
     mqttMsg.msg=                        (char*)shmsg;                                // freed by mqtt sender
     mqttMsg.lenMsg=                     sizeof(shrimpMsg_t);

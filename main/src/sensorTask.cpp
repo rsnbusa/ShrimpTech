@@ -94,14 +94,13 @@ static void print_sensor_data(const sensor_t &sensorData, const int *errors)
     
     if (errors[0] == 0 )
     {
-        uint32_t *battery_data = (uint32_t*)&sensorData.PH;
+        uint16_t *battery_soc = (uint16_t*)&sensorData.PH;
+        uint16_t *battery_soh = battery_soc+1;
         if ((theConf.debug_flags >> dMODBUS) & 1U)
-            printf("SOC %d%% SOH %d%%",
-                *battery_data & BYTE_MASK,
-                (*battery_data >> 8) & BYTE_MASK);
+            printf("SOC %d%% SOH %d%%",*battery_soc,*battery_soh);
     
-            batteryData.batSOC=*battery_data & BYTE_MASK;
-            batteryData.batSOH=(*battery_data >> 8) & BYTE_MASK;
+            batteryData.batSOC=*battery_soc;
+            batteryData.batSOH=*battery_soh;
         }
     
     printf("\n");
@@ -149,6 +148,7 @@ void sensor_task(void *pArg)
             // Wait until rs485 task notifies us that it is done
             ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
             print_sensor_data(sensorData, errors);
+            // esp_log_buffer_hex("Sensor", (const uint8_t*)&sensorData, sizeof(sensor_t));
         }
 
         // Wait before next reading
