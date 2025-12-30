@@ -66,6 +66,8 @@ void kbd(void *pArg);
 void main_app(void *parg);
 void nimble_test(void *parg);
 void rs485_task(void *pArg);
+void rs485_task_manager(void *pArg);
+void sensor_task(void *pArg);
 void start_webserver(void *pArg);
 
 // ============================================================================

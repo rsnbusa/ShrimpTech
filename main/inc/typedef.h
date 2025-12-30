@@ -56,6 +56,14 @@ typedef struct modbus_rec{
     uint16_t crc;
 } modbus_rec_t;
 
+typedef struct rs485q_st {
+    mb_parameter_descriptor_t*  descriptors;
+    void *                      dataReceiver;      
+    uint16_t                    numCids;
+    TaskHandle_t                requester;
+    int *                       errCode;
+}
+rs485queue_t;   
 
 // ============================================================================
 // ModBus Working Structures for dynamic Descriptors

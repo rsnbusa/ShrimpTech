@@ -61,8 +61,10 @@ set(CORE_SOURCES
     src/meter.cpp
     src/nimble.cpp
     src/rs485.cpp
+    src/newrs485.cpp
     src/sendData.cpp
     src/webserver.cpp
+    src/sensorTask.cpp
 )
 
 # Combine all source files
