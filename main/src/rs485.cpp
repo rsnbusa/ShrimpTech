@@ -130,8 +130,8 @@ void rs485_task_manager(void *arg)
                     assert(temp_data_ptr);
                     uint8_t type = 0;
                     // printf("RSQueue processing cid %d final ptr %p offset %d original pointer %p\n",cid,temp_data_ptr,
-                    //         param_descriptor->param_offset,
-                    //         mensaje.dataReceiver);
+                            // param_descriptor->param_offset,
+                            // mensaje.dataReceiver);
 
         
                         // this is the actual request from matser to slave stupid name for routine

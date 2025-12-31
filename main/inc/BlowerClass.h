@@ -29,11 +29,11 @@
  * Used for tracking solar panel performance and power generation.
  */
 typedef struct {
-    uint32_t chargeCurr;
-    float pv1Volts;             // min-max array pos 20  PV1V
-    float pv2Volts;             // pos 20                PV1V
-    float pv1Amp;               // pos 19                PV1A
-    float pv2Amp;               // pos 19                PV1A
+    uint32_t chargeCurr;        // offset 0
+    float pv1Volts;             // offset 2              PV1V
+    float pv2Volts;             // offset 6              PV1V
+    float pv1Amp;               // offset 10             PV1A
+    float pv2Amp;               // offset 14             PV1A
 } pvPanel_t;
 
 // ============================================================================
@@ -48,10 +48,10 @@ typedef struct {
  */
 #pragma pack(push, 1) 
 typedef struct {
-    uint16_t batSOC;             // pos 18               BMSOC
-    uint16_t batSOH;             // pos 17               BMSOH
-    uint16_t batteryCycleCount; // pos 16               BMCC
-    float batBmsTemp;           // pos 15               BMTEMP
+    uint16_t batSOC;             // pos 0               BMSOC
+    uint16_t batSOH;             // pos 2               BMSOH
+    uint16_t batteryCycleCount; // pos 4               BMCC
+    float batBmsTemp;           // pos 6               BMTEMP
 } battery_t;
 #pragma pack(pop)  
 // ============================================================================
