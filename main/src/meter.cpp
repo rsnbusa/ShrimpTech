@@ -3831,9 +3831,10 @@ sizeof(theConf) );
     xTaskCreate(&root_timer,"reptimer",1024*8,NULL, 5, NULL); 	        
     xTaskCreate(&rs485_task_manager,"modbus",1024*10,NULL, 5, NULL); 	            // start the modbus task   
     // delay(2000);
-    // xTaskCreate(&battery_task,"modbus",1024*4,NULL, 5, NULL); 	            // start the modbus task   
-    //     xTaskCreate(&sensor_task,"sensors",1024*10,NULL, 5, NULL); 	
-        xTaskCreate(&panels_task,"panels",1024*10,NULL, 5, NULL); 	
+    // xTaskCreate(&battery_task,"battery",1024*4,NULL, 5, NULL); 	            // start the modbus task   
+    // xTaskCreate(&sensor_task,"sensors",1024*4,NULL, 5, NULL); 	
+    //    xTaskCreate(&panels_task,"panels",1024*4,NULL, 5, NULL); 	
+       xTaskCreate(&energy_task,"energy",1024*4,NULL, 5, NULL); 	
 
             // start the modbus task   
 // the internal mesh is now going to start and begin all the main flow from its gotIp event manager

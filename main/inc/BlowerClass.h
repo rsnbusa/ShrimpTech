@@ -69,17 +69,19 @@ typedef struct {
  * All values reset daily with totals accumulated over device lifetime.
  */
 #pragma pack(push, 1) 
+// offset field in the web configure section of the sensors
+
 typedef struct {
-    uint16_t batChgAHToday;     // pos 14               BMCHAH
-    uint16_t batDischgAHToday;  // pos 13               BMDDAH
-    uint16_t batChgAHTotal;     // pos 12               BMCHKT
-    uint16_t batDischgAHTotal;  // pos 11               BMDDKT
-    float generateEnergyToday;  // pos 10               GENEER
-    float usedEnergyToday;      // pos 9                USEDEN
-    float gLoadConsumLineTotal; // pos 8                LCONLI
-    float batChgkWhToday;       // pos 7                BMCHKW
-    float batDischgkWhToday;    // pos 6                BMDDKW
-    float genLoadConsumToday;   // pos 5                GENLCT
+    uint16_t batChgAHToday;     // offset 0               BMCHAH
+    uint16_t batDischgAHToday;  // offset 2               BMDDAH
+    uint16_t batChgAHTotal;     // offset 4               BMCHKT
+    uint16_t batDischgAHTotal;  // offset 6               BMDDKT
+    float generateEnergyToday;  // offset 8               GENEER
+    float usedEnergyToday;      // offset 12               USEDEN
+    float gLoadConsumLineTotal; // offset 16               LCONLI
+    float batChgkWhToday;       // offset 20               BMCHKW
+    float batDischgkWhToday;    // offset 24               BMDDKW
+    float genLoadConsumToday;   // offset 28               GENLCT
 } energy_t;
 #pragma pack(pop)  
 // ============================================================================

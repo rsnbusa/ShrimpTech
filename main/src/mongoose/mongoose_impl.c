@@ -901,8 +901,8 @@ static void http_ev_handler(struct mg_connection *c, int ev, void *ev_data) {
       mg_http_reply(c, 200, JSON_HEADERS, "true");
       memset(as, 0, sizeof(*as));
     }
-  } else if ((c->data[0] == CONN_OTA || c->data[0] == CONN_FILE_UPLOAD) &&
-             (ev == MG_EV_READ || ev == MG_EV_CLOSE)) {
+  } else if ((ev == MG_EV_READ || ev == MG_EV_CLOSE) && c->is_websocket == 0 &&
+             (c->data[0] == CONN_OTA || c->data[0] == CONN_FILE_UPLOAD)) {
     do_upload(c, ev);
   } else if (ev == MG_EV_HTTP_MSG && c->is_websocket == 0 && c->data[0] == 0) {
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
@@ -1298,7 +1298,7 @@ void mongoose_init(void) {
 
 #if WIZARD_ENABLE_MDNS
   MG_INFO(("Starting MDNS (domain name: %s.local)", s_mdns_name));
-  mg_mdns_listen(&g_mgr, NULL, s_mdns_name); // Mongoose #3351
+  mg_mdns_listen(&g_mgr, NULL, s_mdns_name);  // Mongoose #3351
 #endif
 
   glue_lock_init();
