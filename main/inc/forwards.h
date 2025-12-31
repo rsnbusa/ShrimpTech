@@ -70,6 +70,7 @@ void rs485_task_manager(void *pArg);
 void sensor_task(void *pArg);
 void battery_task(void *pArg);
 void panels_task(void *pArg);
+void energy_task(void *pArg);
 void start_webserver(void *pArg);
 
 // ============================================================================
