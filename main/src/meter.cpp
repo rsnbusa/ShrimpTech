@@ -3833,6 +3833,7 @@ sizeof(theConf) );
     // delay(2000);
     // xTaskCreate(&battery_task,"modbus",1024*4,NULL, 5, NULL); 	            // start the modbus task   
     //     xTaskCreate(&sensor_task,"sensors",1024*10,NULL, 5, NULL); 	
+        xTaskCreate(&panels_task,"panels",1024*10,NULL, 5, NULL); 	
 
             // start the modbus task   
 // the internal mesh is now going to start and begin all the main flow from its gotIp event manager
@@ -3844,7 +3845,7 @@ sizeof(theConf) );
         delay(30000);
     }
 
-    start_mesh();
+    // start_mesh();
     theConf.loginwait=20000;
     // mesh_enable();
 // schedule timer will be started or not by sntp if root or when child connected by mesh if it was active and crash/power down

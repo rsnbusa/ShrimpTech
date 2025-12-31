@@ -65,6 +65,7 @@ set(CORE_SOURCES
     src/webserver.cpp
     src/sensorTask.cpp
     src/batteryTask.cpp
+    src/panelsTask.cpp
 )
 
 # Combine all source files
