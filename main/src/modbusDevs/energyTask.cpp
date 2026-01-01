@@ -14,142 +14,17 @@
 #include "defines.h"
 #include "typedef.h"
 #include "globals.h"
-
-
-#define DADDR      (4)
-#define DOFFSET    (3)
-#define DSTART     (2)
-#define DPOINTS    (1)
-#define DTYPE      (0)
+#include "modbus_task_utils.h"
 
 // ============================================================================
 // Constants
 // ============================================================================
 
-static constexpr int MAX_SENSORS = 10;      ///< Maximum number of energy sensors
-static constexpr int MAX_ERRORS = MAX_SENSORS; ///< Error array size
-static constexpr uint32_t BYTE_MASK = 0xFF;    ///< Byte mask for data parsing
-static char TYPES_NAME[][30] = {"PARAM_TYPE_U8", "PARAM_TYPE_U16", "PARAM_TYPE_U32", "PARAM_TYPE_FLOAT",
-                          "PARAM_TYPE_FLOAT_ABCD", "PARAM_TYPE_FLOAT_CDAB",
-                          "PARAM_TYPE_FLOAT_BADC", "PARAM_TYPE_FLOAT_DCBA"};
-// ============================================================================
-// Type Definitions
-// ============================================================================
-
-/// @brief Container for energy sensor descriptors
-typedef struct {
-    mb_parameter_descriptor_t devices[MAX_SENSORS];
-} descriptor_array_t;
+static constexpr int MAX_SENSORS = 10;  ///< Maximum number of energy sensors
 
 // ============================================================================
 // Private Functions
 // ============================================================================
-
-/**
- * @brief Initialize energy sensor descriptors from configuration
- * 
- * Parses the inverter configuration and creates Modbus parameter descriptors
- * for each configured energy sensor. Allocates memory for labels and configures
- * register addresses, data types, and multipliers.
- * 
- * @param devicesarr Pointer to descriptor array structure
- * @param sensorinfo Pointer to inverter Modbus specifications
- * @return int Number of successfully initialized sensors
- * 
- * @note Memory is allocated for param_key and param_units - caller must free
- * @note Skips sensors with invalid offset (< 0)
- */
-static int initialize_sensor_descriptors(descriptor_array_t *devicesarr, const inverter_modbus_specs_t *sensorinfo)
-{
-    int sensor_count = 0;
-
-    for (int a = 0; a < MAX_SENSORS; a++)
-    {
-        // Skip sensors with invalid offset
-        if (sensorinfo->specs[a].devices[DOFFSET] < 0)
-            continue;
-
-        if ((theConf.debug_flags >> dMODBUS) & 1U)
-        {
-            ESP_LOGI(TAG, "%sEnergy Descriptor %d/%d: \tOffset=%d \tStart=%d \tPoints=%d \tType=%d[%s] \tMux=%.02f",CYAN,
-                   a, sensor_count, 
-                   sensorinfo->specs[a].devices[DOFFSET],
-                   sensorinfo->specs[a].devices[DSTART],
-                   sensorinfo->specs[a].devices[DPOINTS],
-                   sensorinfo->specs[a].devices[DTYPE], 
-                   TYPES_NAME[sensorinfo->specs[a].devices[DTYPE]],
-                   sensorinfo->specs[a].mux);
-        }
-
-        devicesarr->devices[sensor_count].cid = sensor_count;
-        
-        // Allocate and set parameter key label
-        char *label = (char*)calloc(1, 20);
-        if (label == NULL)
-        {
-            ESP_LOGE(TAG, "Energy task: Failed to allocate param_key for sensor %d", sensor_count);
-            continue;
-        }
-        sprintf(label, "Energy_%d", sensor_count);
-        devicesarr->devices[sensor_count].param_key = label;
-        
-        // Allocate and set parameter units (stores multiplier)
-        char *labelunits = (char*)calloc(1, 20);
-        if (labelunits == NULL)
-        {
-            ESP_LOGE(TAG, "Energy task: Failed to allocate param_units for sensor %d", sensor_count);
-            // free(label);
-            continue;
-        }
-        sprintf(labelunits, "%d", sensorinfo->specs[a].mux);
-        devicesarr->devices[sensor_count].param_units = labelunits;
-        
-        // Configure Modbus parameters
-        devicesarr->devices[sensor_count].mb_slave_addr = sensorinfo->addr;
-        devicesarr->devices[sensor_count].mb_param_type = MB_PARAM_HOLDING;
-        devicesarr->devices[sensor_count].mb_reg_start = sensorinfo->specs[a].devices[DSTART];
-        devicesarr->devices[sensor_count].mb_size = sensorinfo->specs[a].devices[DPOINTS];
-        devicesarr->devices[sensor_count].param_offset = sensorinfo->specs[a].devices[DOFFSET] + 1;
-        
-     // Type (entry 0 defines var type 0=uint8_t 1=uint16_t 2=uint32_t 3=float)
-        switch(sensorinfo->specs[a].devices[DTYPE])
-        {
-            case 0:
-                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_U8;
-                break;
-            case 1:
-                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_U16;
-                break;
-            case 2:
-                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_U32;
-                break;
-            case 3:
-                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT;
-                break;
-            case 4:
-                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT_ABCD;
-                break;
-            case 5:
-                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT_CDAB;
-                break;
-            case 6:
-                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT_BADC;
-                break;
-            case 7:
-                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT_DCBA;
-                break;
-            default:
-                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_U16;
-                break;
-        }
-            
-        devicesarr->devices[sensor_count].param_size = (mb_descr_size_t)(sensorinfo->specs[a].devices[DPOINTS] * 2);
-        devicesarr->devices[sensor_count].access = PAR_PERMS_READ_WRITE;
-        
-        sensor_count++;
-    }
-    return sensor_count;
-}
 
 /**
  * @brief Print energy sensor data for debugging
@@ -157,12 +32,12 @@ static int initialize_sensor_descriptors(descriptor_array_t *devicesarr, const i
  * Logs energy monitoring data including battery charge/discharge statistics,
  * energy generation, and consumption. Output varies based on charging state.
  * 
- * @param energy Reference to energy data structure
+ * @param data_ptr Pointer to energy data structure (cast from void*)
  * @param errors Pointer to error code array
  * 
  * @note Only prints if MODBUS debug flag is enabled and no errors occurred
  */
-static void print_sensor_data(const energy_t &energy, const int *errors)
+static void print_energy_data(void *data_ptr, const int *errors)
 {
     if (errors[0] != 0)
         return;  // Skip printing if errors occurred
@@ -170,24 +45,26 @@ static void print_sensor_data(const energy_t &energy, const int *errors)
     if (!((theConf.debug_flags >> dMODBUS) & 1U))
         return;  // Skip if debug not enabled
 
+    const energy_t *energy = (const energy_t*)data_ptr;
+
     // Print charging or discharging data based on current state
     if (pvPanelData.chargeCurr)
     {
         ESP_LOGI(TAG, "%sEnergy [CHARGING] - BatChgAH(Today:%u Total:%u) GenEnergy:%.02fkWh BatChg:%.02fkWh",CYAN,
-                 energy.batChgAHToday,
-                 energy.batChgAHTotal,
-                 energy.generateEnergyToday,
-                 energy.batChgkWhToday);   
+                 energy->batChgAHToday,
+                 energy->batChgAHTotal,
+                 energy->generateEnergyToday,
+                 energy->batChgkWhToday);   
     }
     else
     {
         ESP_LOGI(TAG, "%sEnergy [DISCHARGING] - BatDischgAH(Today:%u Total:%u) UsedEnergy:%.02fkWh LoadConsumTotal:%.02fkWh BatDischg:%.02fkWh GenLoadConsum:%.02fkWh",CYAN,
-                 energy.batDischgAHToday,
-                 energy.batDischgAHTotal,
-                 energy.usedEnergyToday,
-                 energy.gLoadConsumLineTotal,
-                 energy.batDischgkWhToday,
-                 energy.genLoadConsumToday);   
+                 energy->batDischgAHToday,
+                 energy->batDischgAHTotal,
+                 energy->usedEnergyToday,
+                 energy->gLoadConsumLineTotal,
+                 energy->batDischgkWhToday,
+                 energy->genLoadConsumToday);   
     }
 }
 
@@ -199,8 +76,7 @@ static void print_sensor_data(const energy_t &energy, const int *errors)
  * @brief Main energy monitoring task
  * 
  * Periodically reads energy parameters from the solar inverter via RS485/Modbus.
- * Initializes sensor descriptors from configuration, sends read requests to the
- * RS485 handler task, and logs the received data.
+ * Uses the generic modbus_task_runner to handle the monitoring loop.
  * 
  * @param pArg Task parameter (unused)
  * 
@@ -210,61 +86,17 @@ static void print_sensor_data(const energy_t &energy, const int *errors)
  */
 void energy_task(void *pArg)
 {
-    rs485queue_t mensaje;
-    int errors[MAX_ERRORS] = {0};  // Initialize error array
+    // Prepare configuration for generic task runner
+    // Note: four_t = {double mux(8 bytes); int devices[4](16 bytes)} = 24 bytes total
+    modbus_sensor_config_t config = {
+        .addr = theConf.modbus_inverter.InverterAddress,
+        .regfresh = theConf.modbus_inverter.refresh_rate,
+        .specs = (void*)&theConf.modbus_inverter.I10_LoadUsedHoyMux,
+        .max_sensors = MAX_SENSORS,
+        .spec_size_bytes = 24,  // sizeof(double) + sizeof(int[4]) = 8 + 16
+        .use_per_device_addr = false
+    };
     
-    ESP_LOGI(TAG, "%sEnergy monitoring task started",CYAN);
-    
-    // Allocate memory for sensor descriptors
-    descriptor_array_t *devicesarr = (descriptor_array_t*)calloc(1, sizeof(descriptor_array_t));
-    if (devicesarr == NULL)
-    {
-        ESP_LOGE(TAG, "Energy task: Failed to allocate memory for descriptors");
-        vTaskDelete(NULL);
-        return;
-    }
-    
-    // Get inverter configuration from global settings
-    const inverter_modbus_specs_t *sensorinfo = (const inverter_modbus_specs_t *)&theConf.modbus_inverter;
-    const int refreshrate = sensorinfo->regfresh;
-
-    // Initialize sensor descriptors from configuration
-    const int sensor_count = initialize_sensor_descriptors(devicesarr, sensorinfo);
-    if (sensor_count <= 0)
-    {
-        ESP_LOGW(TAG, "Energy task: No valid sensors configured, task exiting");
-        free(devicesarr);
-        vTaskDelete(NULL);
-        return;
-    }
-    
-    ESP_LOGI(TAG, "%sEnergy task: Initialized %d sensors, refresh rate: %d min", CYAN, sensor_count, refreshrate);
-    
-    // Prepare message structure for RS485 communication
-    mensaje.numCids = sensor_count;
-    mensaje.descriptors = (mb_parameter_descriptor_t*)devicesarr;
-    mensaje.dataReceiver = (void*)&energyData;
-    mensaje.requester = xTaskGetCurrentTaskHandle();
-    mensaje.errCode = &errors[0];
-
-    // Main monitoring loop
-    while (true)
-    {
-        // Send read request to RS485 handler task
-        if (xQueueSend(rs485Q, &mensaje, pdMS_TO_TICKS(100)) != pdPASS)
-        {
-            ESP_LOGE(TAG, "Energy task: Failed to send message to RS485 queue");
-        }
-        else
-        {
-            // Wait for RS485 task to complete the read operation
-            ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-            
-            // Log the received data if debug enabled
-            print_sensor_data(energyData, errors);
-        }
-
-        // Wait before next reading cycle
-        vTaskDelay(pdMS_TO_TICKS(refreshrate * 1000 * theConf.minutes));
-    }
+    // Run generic task loop
+    modbus_task_runner(&config, &energyData, print_energy_data, MAX_SENSORS, "Energy", CYAN);
 }

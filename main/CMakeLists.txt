@@ -77,6 +77,7 @@ set(UTILS_SOURCES
     src/utilities/crypto_utils.cpp
     src/utilities/time_utils.cpp
     src/utilities/led_utils.cpp
+    src/modbus_task_utils.cpp
     )
 #BLE Sources
 set(BLE_SOURCES
