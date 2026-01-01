@@ -17,36 +17,36 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Command handlers (MQTT/Mesh commands)
 set(CMD_SOURCES
-    src/cmd/cmdDisplay.cpp
-    src/cmd/cmdEraseMetrics.cpp
-    src/cmd/cmdFormat.cpp
-    src/cmd/cmdLock.cpp
-    src/cmd/cmdLogs.cpp
-    src/cmd/cmdMQTT.cpp
-    src/cmd/cmdNetw.cpp
-    src/cmd/cmdProd.cpp
-    src/cmd/cmdReset.cpp
-    src/cmd/cmdSendMetrics.cpp
-    src/cmd/cmdUpdate.cpp
+    src/cmdMqtt/cmdDisplay.cpp
+    src/cmdMqtt/cmdEraseMetrics.cpp
+    src/cmdMqtt/cmdFormat.cpp
+    src/cmdMqtt/cmdLock.cpp
+    src/cmdMqtt/cmdLogs.cpp
+    src/cmdMqtt/cmdMQTT.cpp
+    src/cmdMqtt/cmdNetw.cpp
+    src/cmdMqtt/cmdProd.cpp
+    src/cmdMqtt/cmdReset.cpp
+    src/cmdMqtt/cmdSendMetrics.cpp
+    src/cmdMqtt/cmdUpdate.cpp
 )
 
 # Keyboard/Console interface commands
 set(KBD_SOURCES
-    kbd/cmdApp.cpp
-    kbd/cmdBlow.cpp
-    kbd/cmdConfig.cpp
-    kbd/cmdDebug.cpp
-    kbd/cmdEnDecrypt.cpp
-    kbd/cmdErase.cpp
-    kbd/cmdFindUnit.cpp
-    kbd/cmdFram.cpp
-    kbd/cmdLog.cpp
-    kbd/cmdLogLevel.cpp
-    kbd/cmdMeter.cpp
-    kbd/cmdMetersreset.cpp
-    kbd/cmdNode.cpp
-    kbd/cmdResetConf.cpp
-    kbd/cmdSecurity.cpp
+    src/kbd/cmdApp.cpp
+    src/kbd/cmdBlow.cpp
+    src/kbd/cmdConfig.cpp
+    src/kbd/cmdDebug.cpp
+    src/kbd/cmdEnDecrypt.cpp
+    src/kbd/cmdErase.cpp
+    src/kbd/cmdFindUnit.cpp
+    src/kbd/cmdFram.cpp
+    src/kbd/cmdLog.cpp
+    src/kbd/cmdLogLevel.cpp
+    src/kbd/cmdMeter.cpp
+    src/kbd/cmdMetersreset.cpp
+    src/kbd/cmdNode.cpp
+    src/kbd/cmdResetConf.cpp
+    src/kbd/cmdSecurity.cpp
 )
 
 # Core application sources

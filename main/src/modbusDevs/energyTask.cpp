@@ -79,23 +79,24 @@ static void print_sensor_data(const energy_t &energy, const int *errors)
     {
         if((theConf.debug_flags >> dMODBUS) & 1U)
         {
-            printf("Energy Charging Data: BatChgAH(Today:%u Total:%u)"
-                   "GenEnergy:%.02fkWh "
-                   "BatChg:%.02fkWh \n",
-                     energy.batChgAHToday,
-                     energy.batChgAHTotal,
-                     energy.generateEnergyToday,
-                     energy.batChgkWhToday);   
-       
-            printf("Energy Discharging Data:BatDischgAH(Today:%u Total:%u) "
-                   "UsedEnergy:%.02fkWh LoadConsumTotal:%.02fkWh "
-                   "BatDischg:%.02fkWh GenLoadConsum:%.02fkWh\n",
-                     energy.batDischgAHToday,
-                     energy.batDischgAHTotal,
-                     energy.usedEnergyToday,
-                     energy.gLoadConsumLineTotal,
-                     energy.batDischgkWhToday,
-                     energy.genLoadConsumToday);   
+            if(pvPanelData.chargeCurr)
+                printf("Energy Charging Data: BatChgAH(Today:%u Total:%u)"
+                    "GenEnergy:%.02fkWh "
+                    "BatChg:%.02fkWh \n",
+                        energy.batChgAHToday,
+                        energy.batChgAHTotal,
+                        energy.generateEnergyToday,
+                        energy.batChgkWhToday);   
+            else
+                printf("Energy Discharging Data:BatDischgAH(Today:%u Total:%u) "
+                    "UsedEnergy:%.02fkWh LoadConsumTotal:%.02fkWh "
+                    "BatDischg:%.02fkWh GenLoadConsum:%.02fkWh\n",
+                        energy.batDischgAHToday,
+                        energy.batDischgAHTotal,
+                        energy.usedEnergyToday,
+                        energy.gLoadConsumLineTotal,
+                        energy.batDischgkWhToday,
+                        energy.genLoadConsumToday);   
         }
 
     }
