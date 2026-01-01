@@ -228,6 +228,6 @@ void energy_task(void *pArg)
         }
 
         // Wait before next reading cycle
-        vTaskDelay(pdMS_TO_TICKS(refreshrate * 1000 * MINUTES));
+        vTaskDelay(pdMS_TO_TICKS(refreshrate * 1000 * theConf.minutes));
     }
 }

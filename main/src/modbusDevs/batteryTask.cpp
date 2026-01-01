@@ -63,7 +63,7 @@ static int initialize_sensor_descriptors(descriptor_array_t *devicesarr, const b
 
         if ((theConf.debug_flags >> dMODBUS) & 1U)
         {
-            ESP_LOGI(TAG, "%sBattery Descriptor %d/%d: Offset=%d Start=0x%04X Points=%d Mux=%.02f",LRED,
+            ESP_LOGI(TAG, "%sBattery Descriptor %d/%d: Offset=%d Start=0x%04X Points=%d Mux=%.02f",GRAY,
                    a, sensor_count, 
                    sensorinfo->specs[a].devices[2],
                    sensorinfo->specs[a].devices[1],
@@ -134,7 +134,7 @@ static void print_sensor_data(const battery_t &batteryData, const int *errors)
     if (!((theConf.debug_flags >> dMODBUS) & 1U))
         return;  // Skip if debug not enabled
 
-    ESP_LOGI(TAG, "%sBattery - SOC:%d%% SOH:%d%% CycleCount:%d BmsTemp:%.02f°C",LRED,
+    ESP_LOGI(TAG, "%sBattery - SOC:%d%% SOH:%d%% CycleCount:%d BmsTemp:%.02f°C",GRAY,
              batteryData.batSOC,
              batteryData.batSOH,
              batteryData.batteryCycleCount,
@@ -164,7 +164,7 @@ void battery_task(void *pArg)
     rs485queue_t mensaje;
     int errors[MAX_ERRORS] = {0};  // Initialize error array
     
-    ESP_LOGI(TAG, "%sBattery monitoring task started",LRED);
+    ESP_LOGI(TAG, "%sBattery monitoring task started",GRAY);
     
     // Allocate memory for sensor descriptors
     descriptor_array_t *devicesarr = (descriptor_array_t*)calloc(1, sizeof(descriptor_array_t));
@@ -188,7 +188,7 @@ void battery_task(void *pArg)
         return;
     }
     
-    ESP_LOGI(TAG, "%sBattery task: Initialized %d sensors, refresh rate: %d min", LRED, sensor_count, refreshrate);
+    ESP_LOGI(TAG, "%sBattery task: Initialized %d sensors, refresh rate: %d min", GRAY, sensor_count, refreshrate);
     
     // Prepare message structure for RS485 communication
     mensaje.numCids = sensor_count;
@@ -215,6 +215,6 @@ void battery_task(void *pArg)
         }
 
         // Wait before next reading cycle
-        vTaskDelay(pdMS_TO_TICKS(refreshrate * 1000) * MINUTES);
+        vTaskDelay(pdMS_TO_TICKS(refreshrate * 1000) * theConf.minutes);
     }
 }
