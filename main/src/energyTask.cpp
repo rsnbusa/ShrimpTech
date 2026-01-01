@@ -6,7 +6,7 @@
 
 // Constants
 static constexpr int MAX_SENSORS = 10;
-static constexpr int MAX_ERRORS = 20;
+static constexpr int MAX_ERRORS = MAX_SENSORS;
 static constexpr uint32_t BYTE_MASK = 0xFF;
 
 typedef struct {
@@ -73,27 +73,32 @@ static int initialize_sensor_descriptors(descriptor_array_t *devicesarr, const i
     return sensor_count;
 }
 
-// change here the GLOBAL data variabel and type
 static void print_sensor_data(const energy_t &energy, const int *errors)
 {
     if (errors[0] == 0 )
     {
         if((theConf.debug_flags >> dMODBUS) & 1U)
-            printf("Energy data: BatChgAH(Today:%u Total:%u) BatDischgAH(Today:%u Total:%u) "
-                   "GenEnergy:%.02fkWh UsedEnergy:%.02fkWh LoadConsumTotal:%.02fkWh "
-                   "BatChg:%.02fkWh BatDischg:%.02fkWh GenLoadConsum:%.02fkWh\n",
+        {
+            printf("Energy Charging Data: BatChgAH(Today:%u Total:%u)"
+                   "GenEnergy:%.02fkWh "
+                   "BatChg:%.02fkWh \n",
                      energy.batChgAHToday,
                      energy.batChgAHTotal,
+                     energy.generateEnergyToday,
+                     energy.batChgkWhToday);   
+       
+            printf("Energy Discharging Data:BatDischgAH(Today:%u Total:%u) "
+                   "UsedEnergy:%.02fkWh LoadConsumTotal:%.02fkWh "
+                   "BatDischg:%.02fkWh GenLoadConsum:%.02fkWh\n",
                      energy.batDischgAHToday,
                      energy.batDischgAHTotal,
-                     energy.generateEnergyToday,
                      energy.usedEnergyToday,
                      energy.gLoadConsumLineTotal,
-                     energy.batChgkWhToday,
                      energy.batDischgkWhToday,
                      energy.genLoadConsumToday);   
-    }
+        }
 
+    }
 }
 
 void energy_task(void *pArg)
@@ -108,13 +113,9 @@ void energy_task(void *pArg)
         ESP_LOGE(TAG, "energy_task: Memory allocation failed for devices descriptors.");
         vTaskDelete(NULL);
     }
-// printf("Descriptor size %d\n",sizeof(mb_parameter_descriptor_t));
 // get the descriptors as saved from the web configuration and in theConf structure... thsi type is specific for the inverter_modbus_specs_t
     const inverter_modbus_specs_t *sensorinfo = (const inverter_modbus_specs_t *)&theConf.modbus_inverter;
     const int refreshrate = sensorinfo->regfresh;
-    
-    // printf("Panel Refresh %d\n",sensorinfo->regfresh);
-    // esp_log_buffer_hex("Panel Modbus Config",&theConf.modbus_panels,sizeof(theConf.modbus_panels));
 
     const int sensor_count = initialize_sensor_descriptors(devicesarr, sensorinfo);
     if (sensor_count <= 0)
@@ -122,9 +123,6 @@ void energy_task(void *pArg)
         ESP_LOGW(TAG, "Energy_task: No valid sensors configured. Task exiting.");
         vTaskDelete(NULL);
     }
-
-        // esp_log_buffer_hex("BAT",devicesarr,sizeof(descriptor_array_t));
-
     // Initialize message structure
     mensaje.numCids = sensor_count;
     mensaje.descriptors = (mb_parameter_descriptor_t*)devicesarr;
@@ -145,10 +143,9 @@ void energy_task(void *pArg)
             // Wait until rs485 task notifies us that it is done
             ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
             print_sensor_data(energyData, errors);
-            // esp_log_buffer_hex("Battery", (const uint8_t*)&batteryData, sizeof(battery_t));
         }
 
         // Wait before next reading
-        vTaskDelay(pdMS_TO_TICKS(refreshrate * 1000));
+        vTaskDelay(pdMS_TO_TICKS(refreshrate * 1000*MINUTES));
     }
 }

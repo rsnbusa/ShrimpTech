@@ -6,7 +6,7 @@
 
 // Constants
 static constexpr int MAX_SENSORS = 5;
-static constexpr int MAX_ERRORS = 20;
+static constexpr int MAX_ERRORS = MAX_SENSORS;
 static constexpr uint32_t BYTE_MASK = 0xFF;
 
 typedef struct {
@@ -38,16 +38,16 @@ static int initialize_sensor_descriptors(descriptor_array_t *devicesarr, const p
         char *label = (char*)calloc(1, 20);
         if (label == NULL)
         {
-            ESP_LOGE(TAG, "sensor_task: Memory allocation failed for param_key label.");
+            ESP_LOGE(TAG, "panels_task: Memory allocation failed for param_key label.");
             continue;
         }
-        sprintf(label, "Sensor_%d", sensor_count);
+        sprintf(label, "Panel_%d", sensor_count);
         devicesarr->devices[sensor_count].param_key = label;
         
         char *labelunits = (char*)calloc(1, 20);
         if (labelunits == NULL)
         {
-            ESP_LOGE(TAG, "sensor_task: Memory allocation failed for param_units label.");
+            ESP_LOGE(TAG, "panels_task: Memory allocation failed for param_units label.");
             free(label);
             continue;
         }
@@ -142,6 +142,6 @@ void panels_task(void *pArg)
         }
 
         // Wait before next reading
-        vTaskDelay(pdMS_TO_TICKS(refreshrate * 1000));
+        vTaskDelay(pdMS_TO_TICKS(refreshrate * 1000*MINUTES));
     }
 }

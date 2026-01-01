@@ -69,6 +69,7 @@ rs485queue_t;
 // ModBus Working Structures for dynamic Descriptors
 // ============================================================================
 
+
 typedef struct {
     double mux;
     int devices[4];

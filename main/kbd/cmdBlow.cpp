@@ -39,17 +39,25 @@ float randomFloat(float min, float max)
  */
 void seed_blower()
 {
-    theBlower.setPVPanel(randomInt(0, 1), randomFloat(340, 390), randomFloat(340, 390), 
-                         randomFloat(14, 15), randomFloat(14, 15));
-    theBlower.setBattery(batteryData.batSOC, batteryData.batSOH,  randomInt(0, 5000), 
+    theBlower.setPVPanel(pvPanelData.chargeCurr, pvPanelData.pv1Volts, pvPanelData.pv2Volts,pvPanelData.pv1Amp, pvPanelData.pv2Amp);
+    // theBlower.setPVPanel(randomInt(0, 1), randomFloat(340, 390), randomFloat(340, 390), 
+    //                      randomFloat(14, 15), randomFloat(14, 15));
+    theBlower.setBattery(batteryData.batSOC, batteryData.batSOH, batteryData.batteryCycleCount, batteryData.batBmsTemp);
     // theBlower.setBattery(randomInt(20, 80), randomInt(20, 100), randomInt(0, 5000), 
-                         randomFloat(10, 40));
-    theBlower.setEnergy(randomInt(780, 820), randomInt(720, 820), randomInt(720, 850), 
-                        randomInt(720, 820), randomFloat(40, 42), randomFloat(40, 42), 
-                        randomFloat(40, 42), randomFloat(40, 42), randomFloat(40, 42), 
-                        randomFloat(40, 42));
+                        //  randomFloat(10, 40));
+    theBlower.setEnergy(energyData.batChgAHToday, energyData.batDischgAHToday, 
+                       energyData.batChgAHTotal, energyData.batDischgAHTotal, 
+                       energyData.generateEnergyToday, energyData.usedEnergyToday, 
+                       energyData.gLoadConsumLineTotal, energyData.batChgkWhToday, 
+                       energyData.batDischgkWhToday, energyData.genLoadConsumToday);
+    // theBlower.setEnergy(randomInt(780, 820), randomInt(720, 820), randomInt(720, 850), 
+    //                     randomInt(720, 820), randomFloat(40, 42), randomFloat(40, 42), 
+    //                     randomFloat(40, 42), randomFloat(40, 42), randomFloat(40, 42), 
+    //                     randomFloat(40, 42));
     theBlower.setSensors(sensorData.WTemp, randomFloat(4, 8), sensorData.DO, 
                          randomFloat(22, 32), randomFloat(40, 99));
+    // theBlower.setSensors(sensorData.WTemp, randomFloat(4, 8), sensorData.DO, 
+    //                      randomFloat(22, 32), randomFloat(40, 99));
     // theBlower.setSensors(randomFloat(4, 8), randomFloat(4, 8), randomFloat(18, 30), 
     //                      randomFloat(22, 32), randomFloat(40, 99));
 }

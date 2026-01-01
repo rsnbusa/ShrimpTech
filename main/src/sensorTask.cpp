@@ -10,8 +10,8 @@
 
 // Constants
 static constexpr int MAX_SENSORS = 5;
-static constexpr int MAX_ERRORS = 20;
-static constexpr int BATTERY_SENSOR_ADDRESS = 100;
+static constexpr int MAX_ERRORS = MAX_SENSORS;
+// static constexpr int BATTERY_SENSOR_ADDRESS = 100;
 static constexpr uint32_t BYTE_MASK = 0xFF;
 
 typedef struct {
@@ -66,11 +66,10 @@ static int initialize_sensor_descriptors(descriptor_array_t *devicesarr, const s
         devicesarr->devices[sensor_count].mb_size = sensorinfo->specs[a].devices[0];
         devicesarr->devices[sensor_count].param_offset = sensorinfo->specs[a].devices[2] + 1;
         
-        // TODO this is for testing. we have to have clarity of the sensors (as we have of DO) of other sensors variable types
-        if (sensorinfo->specs[a].devices[3] != BATTERY_SENSOR_ADDRESS)
+        // if (sensorinfo->specs[a].devices[3] != BATTERY_SENSOR_ADDRESS)
             devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT_BADC;
-        else
-            devicesarr->devices[sensor_count].param_type = PARAM_TYPE_U16;
+        // else
+        //     devicesarr->devices[sensor_count].param_type = PARAM_TYPE_U16;
             
         devicesarr->devices[sensor_count].param_size = (mb_descr_size_t)(sensorinfo->specs[a].devices[0] * 2);
         devicesarr->devices[sensor_count].access = PAR_PERMS_READ_WRITE;
@@ -99,6 +98,8 @@ void sensor_task(void *pArg)
 {
     rs485queue_t mensaje;
     int errors[MAX_ERRORS];
+
+    esp_rom_printf("Sensor task started\n");
     // Prepare modbus descriptors for sensors
     descriptor_array_t *devicesarr = (descriptor_array_t*)calloc(1, sizeof(descriptor_array_t));
     if (devicesarr == NULL)
@@ -141,6 +142,6 @@ void sensor_task(void *pArg)
         }
 
         // Wait before next reading
-        vTaskDelay(pdMS_TO_TICKS(refreshrate * 1000));
+        vTaskDelay(pdMS_TO_TICKS(refreshrate * 1000*MINUTES));
     }
 }
