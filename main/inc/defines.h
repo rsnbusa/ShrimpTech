@@ -200,18 +200,18 @@
 // #define WEB          				    "\e[33;1m[APP]\e[0m"                  //Yellow
 
 
-// #define BLACKC							"\e[30m"
-// #define BLUE							"\e[34m"
-// #define CYAN							"\e[36m"
-// #define GRAY							"\e[90m"
-// #define GREEN							"\e[32m"
-// #define LGREEN							"\e[92m"
-// #define LRED							"\e[91m"
-// #define LYELLOW							"\e[93m"
-// #define MAGENTA							"\e[35m"
-// #define RED								"\e[31m"
-// #define RESETC							"\e[0m"
-// #define WHITEC							"\e[37m"
-// #define YELLOW							"\e[33m"
+#define BLACKC							"\e[30m"
+#define BLUE							"\e[34m"
+#define CYAN							"\e[36m"
+#define GRAY							"\e[90m"
+#define GREEN							"\e[32m"
+#define LGREEN							"\e[92m"
+#define LRED							"\e[91m"
+#define LYELLOW							"\e[93m"
+#define MAGENTA							"\e[35m"
+#define RED								"\e[31m"
+#define RESETC							"\e[0m"
+#define WHITEC							"\e[37m"
+#define YELLOW							"\e[33m"
 
 
