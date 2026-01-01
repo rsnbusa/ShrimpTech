@@ -20,7 +20,7 @@
 
 #include "includes.h"
 #include "globals.h"
-#include "mongoose/mongoose_glue.h"
+#include "mongoose_glue.h"
 
 // Configuration state constants
 #define CONF_STATE_UNCONFIGURED  0

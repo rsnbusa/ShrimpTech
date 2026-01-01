@@ -160,7 +160,7 @@ int handleResetSchedule()
 int handleResetBle()
 {
   printf("Boot Ble\n");
-  theConf.bleboot = 0;
+  // theConf.bleboot = 0;
   write_to_flash();
   esp_restart();
   return 1; // No restart needed (already restarting)

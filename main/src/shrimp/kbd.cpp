@@ -162,6 +162,7 @@ void kbd(void *pArg)
 
   blowArgs.seed = arg_str0(NULL, "seed",  "x", "Seed blower readings");
   blowArgs.init = arg_str0(NULL, "erase", "x", "Set 0 to blower readings");
+  blowArgs.minute = arg_int0(NULL, "minute", "x", "Set MINUTES value for sims");
   blowArgs.end  = arg_end(LOG_MAX_ARGUMENTS);
 
   // ===================================================================

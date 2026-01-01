@@ -86,6 +86,16 @@ int cmdBlow(int argc, char **argv)
         return 0;
     }
 
+    // Set MINUTES for simulation
+    if (blowArgs.minute->count) {
+        int minutes = blowArgs.minute->ival[0];
+        esp_rom_printf("Setting MINUTES to %d from %d\n", minutes, theConf.minutes);
+        if(minutes<0) minutes=1;
+        theConf.minutes = minutes;
+        write_to_flash();
+        return 0;
+    }
+
     // Initialize blower with zeros
     if (blowArgs.init->count) {
         theBlower.setPVPanel(0, 0, 0, 0, 0);

@@ -51,22 +51,29 @@ set(KBD_SOURCES
 
 # Core application sources
 set(CORE_SOURCES
-    src/BlowerClass.cpp
-    src/displayManager.cpp
-    src/FramI2C.cpp
-    src/kbd.cpp
-    src/lcd.cpp
-    src/logmanager.cpp
-    src/mesh_netif.c
-    src/meter.cpp
-    src/nimble.cpp
-    src/rs485.cpp
-    src/sendData.cpp
-    src/webserver.cpp
-    src/sensorTask.cpp
-    src/batteryTask.cpp
-    src/panelsTask.cpp
-    src/energyTask.cpp
+    src/shrimp/BlowerClass.cpp
+    src/shrimp/displayManager.cpp
+    src/shrimp/FramI2C.cpp
+    src/shrimp/kbd.cpp
+    src/shrimp/lcd.cpp
+    src/shrimp/logmanager.cpp
+    src/shrimp/mesh_netif.c
+    src/shrimp/shrimpmgr.cpp
+    src/shrimp/sendData.cpp
+    src/shrimp/webserver.cpp
+)
+# Modbus and Sensors
+set(MODBUS_SOURCES
+    src/modbusDevs/sensorTask.cpp
+    src/modbusDevs/batteryTask.cpp
+    src/modbusDevs/panelsTask.cpp
+    src/modbusDevs/energyTask.cpp
+    src/modbusDevs/rs485.cpp
+)   
+
+#BLE Sources
+set(BLE_SOURCES
+    src/ble/nimble.cpp
 )
 
 # Combine all source files
@@ -74,6 +81,8 @@ set(src
     ${CMD_SOURCES}
     ${KBD_SOURCES}
     ${CORE_SOURCES}
+    ${MODBUS_SOURCES}
+    ${BLE_SOURCES}
 )
 
 # ==============================================================================

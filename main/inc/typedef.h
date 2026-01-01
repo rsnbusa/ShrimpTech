@@ -212,6 +212,7 @@ typedef struct logl{
 typedef struct timerl {
     struct arg_int *first;
     struct arg_int *repeat;  // Init meter internal values
+    struct arg_int *minute;  // Init meter internal values
     struct arg_end *end;
 } timerl_t;
 
@@ -246,6 +247,7 @@ typedef struct logop{
 typedef struct blowst {
     struct arg_str *seed;
     struct arg_str *init;
+    struct arg_int *minute;
     struct arg_end *end;
 } blow_t;
 
@@ -325,7 +327,7 @@ typedef struct medbkcup {
 typedef struct config {
     time_t bornDate;
     uint32_t bootcount, lastResetCode, centinel;
-    uint8_t bleboot, masternode, unitid;
+    uint8_t minutes, masternode, unitid;
     uint32_t downtime;      // Downtime accumulator
     uint32_t mqttSlots;     // Slot number
     uint16_t loglevel;

@@ -46,6 +46,19 @@ int cmdBasetimer(int argc, char **argv)
         theConf.baset = BASETIMER = lev;  // Will take effect in NEXT timer repeat
     }
 
+    // Configure MINUTE value
+    if (basetimer.minute->count) {
+        int lev = basetimer.minute->ival[0];
+        
+        // Enforce minimum value of 10
+        if (lev < 1) {
+            lev = 1;
+        }
+        
+        printf("Minute  changed from %d to %d\n", theConf.minute, lev);
+        theConf.minute =lev;  // Will take effect in NEXT timer repeat
+    }
+
     // Configure repeat timer if provided
     if (basetimer.repeat->count) {
         int lev = basetimer.repeat->ival[0];

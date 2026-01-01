@@ -3666,7 +3666,7 @@ void find_cycle_day(uint8_t * ciclo,uint8_t*dia)
             } //cycles
             ESP_LOGW(TAG,"Production cycle ended");
             theConf.blower_mode=0;              // done Production Cycle... wait for next activation
-            theConf.bleboot=BLE_MODE;            //set ble mode to restart production cycle
+            // theConf.bleboot=BLE_MODE;            //set ble mode to restart production cycle
             theConf.dayCycle=0;                 // reset staring day
             write_to_flash();
             schedulef=false;
