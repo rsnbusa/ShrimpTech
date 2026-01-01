@@ -63,7 +63,7 @@ static int initialize_sensor_descriptors(descriptor_array_t *devicesarr, const p
 
         if ((theConf.debug_flags >> dMODBUS) & 1U)
         {
-            ESP_LOGI(TAG, "%sPanel Descriptor %d/%d: Offset=%d Start=0x%04X Points=%d Mux=%.02f",LYELLOW,
+            ESP_LOGI(TAG, "%sPanel Descriptor %d/%d: Offset=%d Start=%d Points=%d Mux=%.02f",LYELLOW,
                    a, sensor_count, 
                    sensorinfo->specs[a].devices[2],
                    sensorinfo->specs[a].devices[1],
@@ -102,7 +102,7 @@ static int initialize_sensor_descriptors(descriptor_array_t *devicesarr, const p
         devicesarr->devices[sensor_count].param_offset = sensorinfo->specs[a].devices[2] + 1;
         
         // First sensor is U32, others are FLOAT
-        if (sensor_count == 0)
+        if (sensorinfo->specs[a].devices[1] == 7)
             devicesarr->devices[sensor_count].param_type = PARAM_TYPE_U32;
         else
             devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT;
@@ -210,7 +210,6 @@ void panels_task(void *pArg)
         {
             // Wait for RS485 task to complete the read operation
             ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-            
             // Log the received data if debug enabled
             print_sensor_data(pvPanelData, errors);
         }

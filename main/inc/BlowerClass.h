@@ -30,10 +30,10 @@
  */
 typedef struct {
     uint32_t chargeCurr;        // offset 0
-    float pv1Volts;             // offset 2              PV1V
-    float pv2Volts;             // offset 6              PV1V
-    float pv1Amp;               // offset 10             PV1A
-    float pv2Amp;               // offset 14             PV1A
+    float pv1Volts;             // offset 4              PV1V
+    float pv2Volts;             // offset 8              PV1V
+    float pv1Amp;               // offset 12             PV1A
+    float pv2Amp;               // offset 16             PV1A
 } pvPanel_t;
 
 // ============================================================================
