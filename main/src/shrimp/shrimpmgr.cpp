@@ -1,9 +1,11 @@
-#ifndef TYPESmain_H_
-#define TYPESmain_H_
 #include "includes.h"
 #include "defines.h"
 #include "globals.h"
 #include "forwards.h"
+#include "crypto_utils.h"
+#include "time_utils.h"
+#include "led_utils.h"
+#include "display_utils.h"
 /**
  * ? que sera
  * ! warning
@@ -79,9 +81,16 @@ void show_lvgl(void *showLVGL)
             lv_label_cut_text(label,0,20);
             lv_obj_add_style(label, &style, 0); 
             char *tmp=(char*)calloc(1,100);
-            sprintf(tmp,"%s",msg->msg);
-            lv_label_set_text(label,tmp);
-            free(tmp);
+            if(tmp)
+            {
+                sprintf(tmp,"%s",msg->msg);
+                lv_label_set_text(label,tmp);
+                free(tmp);
+            }
+            else
+            {
+                ESP_LOGE("LVGL","Failed to allocate memory for label text");
+            }
             lv_obj_align(label,LV_ALIGN_CENTER,0,0);
             _lock_release(&lvgl_api_lock);
             delay(msg->wait);
@@ -125,7 +134,14 @@ void showLVGL(char *que, uint32_t cuanto,uint8_t bigf)
                     xTaskCreate(&show_lvgl,"sdata",1024*20,(void*)themsg, 10, &oledDisp); 
                 }
                 else
-                    free(text);
+                {
+                    ESP_LOGE("LVGL","Failed to allocate show_lvgl_t structure");
+                    free(text);  // Free text if themsg allocation fails
+                }
+            }
+            else
+            {
+                ESP_LOGE("LVGL","Failed to allocate memory for text");
             }
         } 
     }
@@ -133,61 +149,21 @@ void showLVGL(char *que, uint32_t cuanto,uint8_t bigf)
     //     ESP_LOGI(MESH_TAG,"Showlvgl no disp\n");
 }
 
-int aes_encrypt(const char* src, size_t son, char *dst,const char *cualKey)
-{
-	int theSize=son;
-	int rem= theSize % 16;
-	theSize+=16-rem;			//round to next 16 for AES
-	bzero(iv,sizeof(iv));       // global
-
-	char *donde=(char*)calloc(theSize,1);
-	if (!donde)
-		return ESP_FAIL;
-	
-	memcpy(donde,src,son);	
-
-	if(esp_aes_setkey( &actx, (const unsigned char*)cualKey, 256 )==0)
-		if(esp_aes_crypt_cbc( &actx, ESP_AES_ENCRYPT, theSize, (unsigned char*)iv, (const unsigned char*)donde, ( unsigned char*)dst )!=0)
-        {
-            free(donde);
-            return ESP_FAIL;
-        }
-
-	free(donde);
-	return theSize;
-}
-
-int aes_decrypt(const char* src, size_t son, char *dst,const unsigned char *cualKey)
-{
-	bzero(dst,son);
-	bzero(iv,sizeof(iv));           //global
-	if(esp_aes_setkey( &actx, (const unsigned char*)cualKey, 256 )!=0)
-		return ESP_FAIL;
-	else
-	{
-		if(esp_aes_crypt_cbc( &actx, ESP_AES_DECRYPT, son,(unsigned char*) iv, ( const unsigned char*)src, (unsigned char*)dst )!=0)
-			return ESP_FAIL;
-		
-	}
-	return son;
-}
-
-
-void delay(uint32_t cuanto)
-{
-    vTaskDelay(pdMS_TO_TICKS(cuanto));
-}
-
-uint32_t xmillis()
-{
-    return pdTICKS_TO_MS(xTaskGetTickCount());
-}
+// AES encryption/decryption functions moved to crypto_utils.c
+// delay() and xmillis() functions moved to time_utils.c
+// blinkRoot() and blinkConf() functions moved to led_utils.cpp
 
 // uint32_t xmillisFromISR()
 // {
 // 	return pdTICKS_TO_MS(xTaskGetTickCountFromISR());
 // }
 
+/**
+ * @brief Find the index of an internal command by name
+ * 
+ * @param cual Command name to search for
+ * @return int Index of the command in internal_cmds array, ESP_FAIL if not found
+ */
 static int findInternalCmds(const char * cual)
 {
 	for (int a=0;a<MAXINTCMDS;a++)
@@ -198,32 +174,18 @@ static int findInternalCmds(const char * cual)
 	return ESP_FAIL;
 }
 
-void blinkRoot(void *pArg)
-{
-    uint32_t cuanto=(uint32_t)pArg;
-    while(1)
-    {
-        gpio_set_level((gpio_num_t)WIFILED,1);
-        delay(cuanto);
-        gpio_set_level((gpio_num_t)WIFILED,0);
-        delay(cuanto);
-    }
-} 
+// LED blink functions moved to led_utils.cpp
 
-void blinkConf(void *pArg)
-{
-    uint32_t cuanto=(uint32_t)pArg;
-    while(1)
-    {
-        gpio_set_level((gpio_num_t)WIFILED,1);
-        gpio_set_level((gpio_num_t)BEATPIN,0);
-        delay(cuanto);
-        gpio_set_level((gpio_num_t)WIFILED,0);
-        gpio_set_level((gpio_num_t)BEATPIN,1);
-        delay(cuanto);
-    }
-} 
-
+/**
+ * @brief Get mesh routing table and store in masterNode
+ * 
+ * Retrieves the current mesh network routing table from ESP-MESH,
+ * updates node count statistics, and prepares for metric collection.
+ * Thread-safe using tableSem semaphore.
+ * 
+ * @return int ESP_OK on success, ESP_FAIL on error
+ * @note Clears previous routing data before fetching new table
+ */
 int get_routing_table()
 {
     portMUX_TYPE    xTimerLock = portMUX_INITIALIZER_UNLOCKED;
@@ -270,6 +232,14 @@ int get_routing_table()
     return ESP_FAIL;
 }
 
+/**
+ * @brief Delete and free mesh routing table data
+ * 
+ * Frees all allocated memory for routing table node data and resets
+ * the node counter. Thread-safe using tableSem semaphore.
+ * 
+ * @return int ESP_OK on success, ESP_FAIL on error
+ */
 int root_delete_routing_table()
 {
     int err;
@@ -319,6 +289,17 @@ int root_load_routing_table_mac(mesh_addr_t *who,void *ladata)
     }   //else is not really necessary I guess
 }
 
+/**
+ * @brief Send lock confirmation message via mesh network
+ * 
+ * Creates and queues a JSON confirmation message for a lock/unlock command.
+ * The message includes the meter ID and new lock state.
+ * 
+ * @param mid Meter ID string
+ * @param lstate Lock state (1=locked, 0=unlocked)
+ * @return esp_err_t ESP_OK on success, ESP_FAIL on error
+ * @note Message memory is managed by the mesh queue
+ */
 esp_err_t send_confirmation_message(char *mid, int lstate)
 {
     int                 err;
@@ -366,6 +347,16 @@ esp_err_t send_confirmation_message(char *mid, int lstate)
         return ESP_FAIL;
 }
 
+/**
+ * @brief Send device metrics response message
+ * 
+ * Creates and queues a JSON message containing device metrics including
+ * firmware version and last update timestamp.
+ * 
+ * @param mid Meter ID string
+ * @return esp_err_t ESP_OK on success, ESP_FAIL on error
+ * @note Message is sent to discoQueue for discovery responses
+ */
 esp_err_t send_metrics_message(char *mid)
 {
     int                 err;
@@ -3861,4 +3852,3 @@ ESP_LOGI(MESH_TAG,"Heap Free APP %d",esp_get_free_heap_size());
 // the mesh connecting child will be order to start also if theConf.blower_mode=1; This is set to 0 when Cycle done see start shcedule timer
 
 }
-#endif

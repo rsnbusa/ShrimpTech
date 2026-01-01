@@ -19,8 +19,7 @@
 #include "includes.h"
 #include "globals.h"
 #include "forwards.h"
-
-extern int aes_encrypt(const char* src, size_t son, char *dst,const char *cualKey);
+#include "crypto_utils.h"
 
 /**
  * @brief Console command for AES encryption testing and key generation
@@ -69,7 +68,7 @@ int cmdEnDecrypt(int argc, char **argv)
             return 0;
         }
         
-        err = aes_encrypt(SUPERSECRET, sizeof(SUPERSECRET), aca, laclave);
+        err = shrimp_aes_encrypt(SUPERSECRET, sizeof(SUPERSECRET), aca, laclave);
         if (err > 0)
         {
             printf("Encrypted result (first 4 bytes): %02x%02x%02x%02x\n", 

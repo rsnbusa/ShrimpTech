@@ -34,8 +34,8 @@
 // ===================================================================
 
 // External dependencies for solar blower system
+#include "time_utils.h"
 extern void print_blower(char *title, solarSystem_t *solarData);
-extern void delay(uint32_t milliseconds);
 extern void seed_blower();
 
 /**

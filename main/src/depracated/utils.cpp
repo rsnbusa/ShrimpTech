@@ -29,7 +29,7 @@ esp_err_t check_security(cJSON * cmd)
             chaint=strtoul(challenge->valuestring, &ptr, 16);           //from string to HEX int
             // printf("Challenge %0x\n",chaint);
             char *aca=(char*)calloc (100,1);
-            aes_encrypt(SUPERSECRET,sizeof(SUPERSECRET),aca,chKey);
+            shrimp_aes_encrypt(SUPERSECRET,sizeof(SUPERSECRET),aca,chKey);
             memcpy((uint8_t*)&rsaint,aca,4);
             uint8_t *intt=(uint8_t*)&rsaint;
             memcpy(intt++,&aca[3],1);

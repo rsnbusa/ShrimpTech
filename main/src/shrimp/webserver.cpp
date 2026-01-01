@@ -74,9 +74,9 @@ extern struct limits s_limits;				// every know limit of 22 parameters from the 
 extern struct sysset s_sysset;				// system parameters --> third sidebar
 extern uint64_t s_action_timeout_reboot;  	// Reboot button
 
-extern int aes_encrypt(const char* src, size_t son, char *dst,const char *cualKey);
+#include "crypto_utils.h"
+#include "time_utils.h"
 extern void write_to_flash();
-extern void delay(uint32_t a);
 extern char levels[6][10];			// log levels external in cmdConfig.cpp
 static bool restartf=false;
 extern 	int findLevel(char * cual);
@@ -121,7 +121,7 @@ bool check_key(uint64_t key)
 	}
 
 	// Encrypt the secret and compare with the challenge
-	int ret = aes_encrypt(SUPERSECRET, sizeof(SUPERSECRET), encrypted_challenge, encryption_key);
+	int ret = shrimp_aes_encrypt(SUPERSECRET, sizeof(SUPERSECRET), encrypted_challenge, encryption_key);
 	if (ret == ESP_FAIL)
 	{
 		ESP_LOGE("KEY", "AES encryption failed");

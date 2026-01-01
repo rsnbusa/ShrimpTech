@@ -15,8 +15,8 @@
 #include "globals.h"
 #include "forwards.h"
 #include "defines.h"
-
-extern void blinkRoot(void *parg);
+#include "time_utils.h"
+#include "led_utils.h"
 
 /**
  * @brief Console command to identify unit by blinking WiFi LED

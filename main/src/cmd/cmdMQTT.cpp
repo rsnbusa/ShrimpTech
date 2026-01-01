@@ -1,6 +1,7 @@
 #define GLOBAL
 #include "includes.h" 
 #include "globals.h"
+#include "time_utils.h"
 
 /*
  * Handles runtime MQTT reconfiguration pushed over mesh. Parses the incoming JSON payload,
@@ -10,7 +11,6 @@
 
 extern void write_to_flash();
 extern void writeLog(char* que);
-extern void delay(uint32_t cuanto);
 
 // MQTT command validation constants
 #define MQTT_SERVER_MIN_LENGTH 20

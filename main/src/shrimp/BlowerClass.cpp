@@ -17,8 +17,7 @@
 #include "includes.h"
 #include "typedef.h"
 #include "defines.h"
-
-extern void delay(uint32_t a);
+#include "time_utils.h"
 
 // ============================================================================
 // Lifecycle Management

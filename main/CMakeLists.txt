@@ -52,14 +52,17 @@ set(KBD_SOURCES
 # Core application sources
 set(CORE_SOURCES
     src/shrimp/BlowerClass.cpp
+    src/shrimp/crypto_utils.cpp
     src/shrimp/displayManager.cpp
     src/shrimp/FramI2C.cpp
     src/shrimp/kbd.cpp
     src/shrimp/lcd.cpp
+    src/shrimp/led_utils.cpp
     src/shrimp/logmanager.cpp
     src/shrimp/mesh_netif.c
     src/shrimp/shrimpmgr.cpp
     src/shrimp/sendData.cpp
+    src/shrimp/time_utils.cpp
     src/shrimp/webserver.cpp
 )
 # Modbus and Sensors

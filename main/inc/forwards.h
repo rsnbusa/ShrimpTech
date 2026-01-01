@@ -12,9 +12,8 @@
 // ============================================================================
 // SYSTEM & UTILITY FUNCTIONS
 // ============================================================================
-
-void delay(uint32_t a);
-uint32_t xmillis(void);
+// Note: delay() and xmillis() moved to time_utils.h
+// Note: AES functions moved to crypto_utils.h
 
 // ============================================================================
 // TIMER FUNCTIONS

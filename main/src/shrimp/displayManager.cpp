@@ -1,9 +1,8 @@
-#ifndef TYPESdmg_H_
-#define TYPESdmg_H_
 #define GLOBAL
 #include "includes.h"
 #include "globals.h"
 #include "forwards.h"
+#include "time_utils.h"
 
 void showData(void * pArg)
 {
@@ -101,6 +100,3 @@ void displayManager(void *arg)
 		}
 	}
 }
-
-
-#endif
