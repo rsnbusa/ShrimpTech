@@ -69,36 +69,37 @@ rs485queue_t;
 // ModBus Working Structures for dynamic Descriptors
 // ============================================================================
 
+//a "entry" representation of number of Columns in the field (OFFSET, START, POINTS, TYPE, MUX)
+// in sensor case it also has the address of the sensor
 
+typedef struct {
+    double mux;
+    int devices[5];
+} five_t;
 typedef struct {
     double mux;
     int devices[4];
 } four_t;
-typedef struct {
-    double mux;
-    int devices[3];
-} three_t;
 
-
+// each device type has its own struct
 typedef struct  {
     int regfresh,addr;
-    three_t specs[4];
+    four_t specs[4];
 } bat_modbus_specs_t;
 
 typedef struct  {
     int regfresh,addr;
-    three_t specs[5];
+    four_t specs[5];
 } panel_modbus_specs_t;
 
 typedef struct  {
     int regfresh;
-    four_t specs[5];
+    five_t specs[5];
 } sensors_modbus_specs_t;
 
 typedef struct  {
     int regfresh,addr;
-    three_t specs[10];
-
+    four_t specs[10];
 } inverter_modbus_specs_t;
 
 

@@ -15,6 +15,13 @@
 #include "typedef.h"
 #include "globals.h"
 
+
+#define DADDR      (4)
+#define DOFFSET    (3)
+#define DSTART     (2)
+#define DPOINTS    (1)
+#define DTYPE      (0)
+
 // ============================================================================
 // Constants
 // ============================================================================
@@ -22,7 +29,9 @@
 static constexpr int MAX_SENSORS = 10;      ///< Maximum number of energy sensors
 static constexpr int MAX_ERRORS = MAX_SENSORS; ///< Error array size
 static constexpr uint32_t BYTE_MASK = 0xFF;    ///< Byte mask for data parsing
-
+static char TYPES_NAME[][30] = {"PARAM_TYPE_U8", "PARAM_TYPE_U16", "PARAM_TYPE_U32", "PARAM_TYPE_FLOAT",
+                          "PARAM_TYPE_FLOAT_ABCD", "PARAM_TYPE_FLOAT_CDAB",
+                          "PARAM_TYPE_FLOAT_BADC", "PARAM_TYPE_FLOAT_DCBA"};
 // ============================================================================
 // Type Definitions
 // ============================================================================
@@ -57,16 +66,18 @@ static int initialize_sensor_descriptors(descriptor_array_t *devicesarr, const i
     for (int a = 0; a < MAX_SENSORS; a++)
     {
         // Skip sensors with invalid offset
-        if (sensorinfo->specs[a].devices[2] < 0)
+        if (sensorinfo->specs[a].devices[DOFFSET] < 0)
             continue;
 
         if ((theConf.debug_flags >> dMODBUS) & 1U)
         {
-            ESP_LOGI(TAG, "%sEnergy Descriptor %d/%d: Offset=%d Start=%d Points=%d Mux=%.02f",CYAN,
+            ESP_LOGI(TAG, "%sEnergy Descriptor %d/%d: \tOffset=%d \tStart=%d \tPoints=%d \tType=%d[%s] \tMux=%.02f",CYAN,
                    a, sensor_count, 
-                   sensorinfo->specs[a].devices[2],
-                   sensorinfo->specs[a].devices[1],
-                   sensorinfo->specs[a].devices[0],
+                   sensorinfo->specs[a].devices[DOFFSET],
+                   sensorinfo->specs[a].devices[DSTART],
+                   sensorinfo->specs[a].devices[DPOINTS],
+                   sensorinfo->specs[a].devices[DTYPE], 
+                   TYPES_NAME[sensorinfo->specs[a].devices[DTYPE]],
                    sensorinfo->specs[a].mux);
         }
 
@@ -96,17 +107,43 @@ static int initialize_sensor_descriptors(descriptor_array_t *devicesarr, const i
         // Configure Modbus parameters
         devicesarr->devices[sensor_count].mb_slave_addr = sensorinfo->addr;
         devicesarr->devices[sensor_count].mb_param_type = MB_PARAM_HOLDING;
-        devicesarr->devices[sensor_count].mb_reg_start = sensorinfo->specs[a].devices[1];
-        devicesarr->devices[sensor_count].mb_size = sensorinfo->specs[a].devices[0];
-        devicesarr->devices[sensor_count].param_offset = sensorinfo->specs[a].devices[2] + 1;
+        devicesarr->devices[sensor_count].mb_reg_start = sensorinfo->specs[a].devices[DSTART];
+        devicesarr->devices[sensor_count].mb_size = sensorinfo->specs[a].devices[DPOINTS];
+        devicesarr->devices[sensor_count].param_offset = sensorinfo->specs[a].devices[DOFFSET] + 1;
         
-        // First sensor is U32, others are FLOAT
-        if (sensor_count == 0)    
-            devicesarr->devices[sensor_count].param_type = PARAM_TYPE_U32;
-        else
-            devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT;
+     // Type (entry 0 defines var type 0=uint8_t 1=uint16_t 2=uint32_t 3=float)
+        switch(sensorinfo->specs[a].devices[DTYPE])
+        {
+            case 0:
+                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_U8;
+                break;
+            case 1:
+                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_U16;
+                break;
+            case 2:
+                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_U32;
+                break;
+            case 3:
+                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT;
+                break;
+            case 4:
+                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT_ABCD;
+                break;
+            case 5:
+                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT_CDAB;
+                break;
+            case 6:
+                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT_BADC;
+                break;
+            case 7:
+                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT_DCBA;
+                break;
+            default:
+                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_U16;
+                break;
+        }
             
-        devicesarr->devices[sensor_count].param_size = (mb_descr_size_t)(sensorinfo->specs[a].devices[0] * 2);
+        devicesarr->devices[sensor_count].param_size = (mb_descr_size_t)(sensorinfo->specs[a].devices[DPOINTS] * 2);
         devicesarr->devices[sensor_count].access = PAR_PERMS_READ_WRITE;
         
         sensor_count++;

@@ -15,6 +15,12 @@
 #include "typedef.h"
 #include "globals.h"
 
+#define DADDR      (4)
+#define DOFFSET    (3)
+#define DSTART     (2)
+#define DPOINTS    (1)
+#define DTYPE      (0)
+
 // ============================================================================
 // Constants
 // ============================================================================
@@ -59,17 +65,18 @@ static int initialize_sensor_descriptors(descriptor_array_t *devicesarr, const s
     for (int a = 0; a < MAX_SENSORS; a++)
     {
         // Skip sensors with invalid offset
-        if (sensorinfo->specs[a].devices[2] < 0)
+        if (sensorinfo->specs[a].devices[DOFFSET] < 0)
             continue;
 
         if ((theConf.debug_flags >> dMODBUS) & 1U)
         {
-            ESP_LOGI(TAG, "%sSensor Descriptor %d/%d: Addr=%d Offset=%d Start=0x%04X Points=%d Mux=%.02f",BLUE,
+            ESP_LOGI(TAG, "%sSensor Descriptor %d/%d: \tAddr=%d \tOffset=%d \tStart=%d \tPoints=%d \tType %d \tMux=%.02f",BLUE,
                    a, sensor_count, 
-                   sensorinfo->specs[a].devices[3],
-                   sensorinfo->specs[a].devices[2],
-                   sensorinfo->specs[a].devices[1],
-                   sensorinfo->specs[a].devices[0],
+                   sensorinfo->specs[a].devices[DADDR],
+                   sensorinfo->specs[a].devices[DOFFSET],
+                   sensorinfo->specs[a].devices[DSTART],
+                   sensorinfo->specs[a].devices[DPOINTS],
+                   sensorinfo->specs[a].devices[DTYPE],
                    sensorinfo->specs[a].mux);
         }
 
@@ -97,16 +104,47 @@ static int initialize_sensor_descriptors(descriptor_array_t *devicesarr, const s
         devicesarr->devices[sensor_count].param_units = labelunits;
         
         // Configure Modbus parameters (note: sensors have individual slave addresses)
-        devicesarr->devices[sensor_count].mb_slave_addr = sensorinfo->specs[a].devices[3];
+        devicesarr->devices[sensor_count].mb_slave_addr = sensorinfo->specs[a].devices[DADDR];
         devicesarr->devices[sensor_count].mb_param_type = MB_PARAM_HOLDING;
-        devicesarr->devices[sensor_count].mb_reg_start = sensorinfo->specs[a].devices[1];
-        devicesarr->devices[sensor_count].mb_size = sensorinfo->specs[a].devices[0];
-        devicesarr->devices[sensor_count].param_offset = sensorinfo->specs[a].devices[2] + 1;
+        devicesarr->devices[sensor_count].mb_reg_start = sensorinfo->specs[a].devices[DSTART];
+        devicesarr->devices[sensor_count].mb_size = sensorinfo->specs[a].devices[DPOINTS];
+        devicesarr->devices[sensor_count].param_offset = sensorinfo->specs[a].devices[DOFFSET] + 1;
         
+        switch(sensorinfo->specs[a].devices[DTYPE])
+        {
+            case 0:
+                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_U8;
+                break;
+            case 1:
+                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_U16;
+                break;
+            case 2:
+                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_U32;
+                break;
+            case 3:
+                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT;
+                break;
+            case 4:
+                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT_ABCD;
+                break;
+            case 5:
+                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT_CDAB;
+                break;
+            case 6:
+                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT_BADC;
+                break;
+            case 7:
+                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT_DCBA;
+                break;
+            default:
+                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_U16;
+                break;
+        }
+
         // Environmental sensors use FLOAT_BADC type for byte-swapped floating point
         devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT_BADC;
             
-        devicesarr->devices[sensor_count].param_size = (mb_descr_size_t)(sensorinfo->specs[a].devices[0] * 2);
+        devicesarr->devices[sensor_count].param_size = (mb_descr_size_t)(sensorinfo->specs[a].devices[DPOINTS] * 2);
         devicesarr->devices[sensor_count].access = PAR_PERMS_READ_WRITE;
         
         sensor_count++;

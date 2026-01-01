@@ -5,7 +5,7 @@
 // Default mock implementation of the API callbacks
 
 #include "mongoose_glue.h"
-struct modbInverter s_modbInverter = {10, 1, 10, 2, 61530, 0, 10, 1, 61518, 0, 10, 1, 61517, 0, 10, 2, 61528, 0, 10, 1, 61526, 0, 10, 1, 61527, 0, 10, 2, 61522, 0, 10, 2, 61520, 0, 10, 1, 61518, 0, 10, 1, 61517, 0};
+struct modbInverter s_modbInverter = {10, 1, 10, 1, 2, 61530, 0, 10, 1, 1, 61518, 0, 10, 1, 1, 61517, 0, 10, 1, 2, 61528, 0, 10, 1, 1, 61526, 0, 10, 1, 1, 61527, 0, 10, 1, 2, 61522, 0, 10, 1, 2, 61520, 0, 10, 1, 1, 61518, 0, 10, 1, 1, 61517, 0};
 void glue_get_modbInverter(struct modbInverter *data) {
   *data = s_modbInverter;  // Sync with your device
 }
@@ -13,7 +13,7 @@ void glue_set_modbInverter(struct modbInverter *data) {
   s_modbInverter = *data; // Sync with your device
 }
 
-struct modbSensors s_modbSensors = {15, 1.5, 0, 0, -1, 20, 1, 0, 0, -1, 19, 1, 0, 0, -1, 17, 1, 6, 8192, 0, 16, 1, 2, 8192, 0, 16};
+struct modbSensors s_modbSensors = {15, 1.5, 1, 0, 0, -1, 20, 1, 1, 0, 0, -1, 19, 1, 1, 0, 0, -1, 17, 1, 1, 6, 8192, 0, 16, 1, 1, 2, 8192, 0, 16};
 void glue_get_modbSensors(struct modbSensors *data) {
   *data = s_modbSensors;  // Sync with your device
 }
@@ -21,7 +21,7 @@ void glue_set_modbSensors(struct modbSensors *data) {
   s_modbSensors = *data; // Sync with your device
 }
 
-struct modbBattery s_modbBattery = {30, 3, 10, 1, 276, 0, 1, 1, 268, 0, 1, 1, 260, 0, 1, 1, 256, 0};
+struct modbBattery s_modbBattery = {30, 3, 10, 1, 1, 276, 0, 1, 1, 1, 268, 0, 1, 1, 1, 260, 0, 1, 1, 1, 256, 0};
 void glue_get_modbBattery(struct modbBattery *data) {
   *data = s_modbBattery;  // Sync with your device
 }
@@ -29,7 +29,7 @@ void glue_set_modbBattery(struct modbBattery *data) {
   s_modbBattery = *data; // Sync with your device
 }
 
-struct modbPanels s_modbPanels = {30, 4, 10, 1, 272, 0, 10, 1, 271, 0, 10, 1, 264, 0, 10, 1, 263, 0, 1, 1, 267, 0};
+struct modbPanels s_modbPanels = {30, 4, 10, 1, 1, 272, 0, 10, 1, 1, 271, 0, 10, 1, 1, 264, 0, 10, 1, 1, 263, 0, 1, 1, 1, 267, 0};
 void glue_get_modbPanels(struct modbPanels *data) {
   *data = s_modbPanels;  // Sync with your device
 }
