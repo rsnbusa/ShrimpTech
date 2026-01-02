@@ -3,6 +3,7 @@
 #include "includes.h"
 #include "defines.h"
 #include "mongoose_glue.h"  // For website definitions
+#include "mbcontroller.h"    // For mb_parameter_descriptor_t
 
 // Mongoose send double for floats so we will typedef it back to float
 
@@ -101,7 +102,30 @@ typedef struct  {
     int regfresh,addr;
     four_t specs[10];
 } inverter_modbus_specs_t;
+typedef struct  {
+    int regfresh,addr;
+    four_t specs[20];
+} general_4modbus_specs_t;
+typedef struct  {
+    int regfresh,addr;
+    five_t specs[20];
+} general_5modbus_specs_t;
 
+typedef struct {
+    mb_parameter_descriptor_t devices[20];
+} descriptor_array_t;
+
+typedef void (*printcb)(void*, int *);
+
+typedef struct {
+    char *      modbus_sensor_name;
+    uint8_t     modbus_sensor_spec_count;
+    void *      modbus_sensor_specs;
+    void *      modbus_sensor_data;
+    uint16_t    modbus_sensor_data_size;
+    printcb     modbus_print_function;
+    char *      color;
+} modbus_sensor_type_t;
 
 // ============================================================================
 // WEB STATE & DEBUG ENUMS

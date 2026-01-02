@@ -24,8 +24,8 @@ extern descriptor_array_t * initialize_sensor_descriptors(const general_4modbus_
 // Constants
 // ============================================================================
 
-static constexpr int INV_SENSORS = 10;      ///< Maximum number of energy sensors
-static constexpr int MAX_ERRORS = INV_SENSORS; ///< Error array size
+// static constexpr int INV_SENSORS = 10;      ///< Maximum number of energy sensors
+// static constexpr int MAX_ERRORS = INV_SENSORS; ///< Error array size
 static constexpr uint32_t BYTE_MASK = 0xFF;    ///< Byte mask for data parsing
 
 /**
@@ -39,34 +39,34 @@ static constexpr uint32_t BYTE_MASK = 0xFF;    ///< Byte mask for data parsing
  * 
  * @note Only prints if MODBUS debug flag is enabled and no errors occurred
  */
-// static void print_sensor_data(const energy_t &energy, const int *errors)
-// {
-//     if (errors[0] != 0)
-//         return;  // Skip printing if errors occurred
+static void print_sensor_data(const energy_t &energy, const int *errors)
+{
+    if (errors[0] != 0)
+        return;  // Skip printing if errors occurred
         
-//     if (!((theConf.debug_flags >> dMODBUS) & 1U))
-//         return;  // Skip if debug not enabled
+    if (!((theConf.debug_flags >> dMODBUS) & 1U))
+        return;  // Skip if debug not enabled
 
-//     // Print charging or discharging data based on current state
-//     if (pvPanelData.chargeCurr)
-//     {
-//         ESP_LOGI(TAG, "%sEnergy [CHARGING] - BatChgAH(Today:%u Total:%u) GenEnergy:%.02fkWh BatChg:%.02fkWh",CYAN,
-//                  energy.batChgAHToday,
-//                  energy.batChgAHTotal,
-//                  energy.generateEnergyToday,
-//                  energy.batChgkWhToday);   
-//     }
-//     else
-//     {
-//         ESP_LOGI(TAG, "%sEnergy [DISCHARGING] - BatDischgAH(Today:%u Total:%u) UsedEnergy:%.02fkWh LoadConsumTotal:%.02fkWh BatDischg:%.02fkWh GenLoadConsum:%.02fkWh",CYAN,
-//                  energy.batDischgAHToday,
-//                  energy.batDischgAHTotal,
-//                  energy.usedEnergyToday,
-//                  energy.gLoadConsumLineTotal,
-//                  energy.batDischgkWhToday,
-//                  energy.genLoadConsumToday);   
-//     }
-// }
+    // Print charging or discharging data based on current state
+    if (pvPanelData.chargeCurr)
+    {
+        ESP_LOGI(TAG, "%sEnergy [CHARGING] - BatChgAH(Today:%u Total:%u) GenEnergy:%.02fkWh BatChg:%.02fkWh",CYAN,
+                 energy.batChgAHToday,
+                 energy.batChgAHTotal,
+                 energy.generateEnergyToday,
+                 energy.batChgkWhToday);   
+    }
+    else
+    {
+        ESP_LOGI(TAG, "%sEnergy [DISCHARGING] - BatDischgAH(Today:%u Total:%u) UsedEnergy:%.02fkWh LoadConsumTotal:%.02fkWh BatDischg:%.02fkWh GenLoadConsum:%.02fkWh",CYAN,
+                 energy.batDischgAHToday,
+                 energy.batDischgAHTotal,
+                 energy.usedEnergyToday,
+                 energy.gLoadConsumLineTotal,
+                 energy.batDischgkWhToday,
+                 energy.genLoadConsumToday);   
+    }
+}
 
 // ============================================================================
 // Public Functions
@@ -85,32 +85,36 @@ static constexpr uint32_t BYTE_MASK = 0xFF;    ///< Byte mask for data parsing
  * @note Task deletes itself if initialization fails
  * @note Reading interval is configured via theConf.modbus_inverter.regfresh
  */
-void energy_task(void *pArg)
+void generic_modbus_task(void *pArg)
 {
     rs485queue_t mensaje;
-    int errors[MAX_ERRORS] = {0};  // Initialize error array
+    int errors[20] = {0};  // Initialize error array
+    // int errors[MAX_MODBUS_ERRORS] = {0};  // Initialize error array
     void *devicesarr;
     int sensor_count=0;
-
-    ESP_LOGI(TAG, "%sEnergy monitoring task started",CYAN);
+    modbus_sensor_type_t *modbus_sensor=(modbus_sensor_type_t*)pArg;
+    ESP_LOGI(TAG, "%s%s monitoring task started",modbus_sensor->color,modbus_sensor->modbus_sensor_name);
     
     // Get inverter configuration from global settings
-    const general_4modbus_specs_t *sensorinfo = (const general_4modbus_specs_t *)&theConf.modbus_inverter;
+    const general_4modbus_specs_t *sensorinfo = (const general_4modbus_specs_t *)modbus_sensor->modbus_sensor_specs;
     const int refreshrate = sensorinfo->regfresh;
 
-    devicesarr = initialize_sensor_descriptors( sensorinfo,(char*)"Inverter",INV_SENSORS,&sensor_count);
+    devicesarr = initialize_sensor_descriptors( sensorinfo,modbus_sensor->modbus_sensor_name,
+                    modbus_sensor->modbus_sensor_spec_count,&sensor_count);
     if (devicesarr == NULL )
     {
-        ESP_LOGW(TAG, "Inverter task: No valid sensors configured, task exiting");
+        ESP_LOGW(TAG, "%s task: No valid sensors configured, task exiting",modbus_sensor->modbus_sensor_name);
         vTaskDelete(NULL);
     }
 
-    ESP_LOGI(TAG, "%sInverter task: Initialized %d sensors, refresh rate: %d min", CYAN, sensor_count, refreshrate);
+    ESP_LOGI(TAG, "%s task: Initialized %d sensors, refresh rate: %d min", modbus_sensor->modbus_sensor_name, sensor_count, refreshrate);
     
     // Prepare message structure for RS485 communication
     mensaje.numCids = sensor_count;
     mensaje.descriptors = (mb_parameter_descriptor_t*)devicesarr;
-    mensaje.dataReceiver = (void*)&energyData;
+    // zeor data structure
+    bzero(modbus_sensor->modbus_sensor_data, modbus_sensor->modbus_sensor_data_size);
+    mensaje.dataReceiver = (void*)modbus_sensor->modbus_sensor_data;
     mensaje.requester = xTaskGetCurrentTaskHandle();
     mensaje.errCode = &errors[0];
 
@@ -128,9 +132,12 @@ void energy_task(void *pArg)
             ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
             
             // Log the received data if debug enabled
-            print_sensor_data(energyData, errors);
-        }
+            // print_sensor_data(energyData, errors);
+            // ESP_LOGE(TAG, "%s task finished",modbus_sensor->modbus_sensor_name);
+            if(modbus_sensor->modbus_print_function)
+                modbus_sensor->modbus_print_function(modbus_sensor->modbus_sensor_data, errors);
 
+        }
         // Wait before next reading cycle
         vTaskDelay(pdMS_TO_TICKS(refreshrate * 1000 * theConf.minutes));
     }

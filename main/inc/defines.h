@@ -187,7 +187,14 @@
 #define FCHOLDING                       (0x03)
 #define FCINPUT                         (0x01)
 
-#define MINUTES                         (1)    
+#define MINUTES                         (1)   
+// Modbus descriptor fields offsets
+#define DADDR      (4)
+#define DOFFSET    (3)
+#define DSTART     (2)
+#define DPOINTS    (1)
+#define DTYPE      (0)
+
 #define DBG_SCH						    "\e[36m[SCH]\e[0m"               //blue
 #define DBG_MESH					    "\e[35m[MESH]\e[0m"              // Magenta
 #define DBG_BLE						    "\e[32m[BLE]\e[0m]"              //Green

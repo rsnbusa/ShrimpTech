@@ -15,12 +15,6 @@
 #include "typedef.h"
 #include "globals.h"
 
-#define DADDR      (4)
-#define DOFFSET    (3)
-#define DSTART     (2)
-#define DPOINTS    (1)
-#define DTYPE      (0)
-
 // ============================================================================
 // Constants
 // ============================================================================
@@ -34,9 +28,9 @@ static constexpr uint32_t BYTE_MASK = 0xFF;    ///< Byte mask for data parsing
 // ============================================================================
 
 /// @brief Container for sensor descriptors
-typedef struct {
-    mb_parameter_descriptor_t devices[MAX_SENSORS];
-} descriptor_array_t;
+// typedef struct {
+//     mb_parameter_descriptor_t devices[MAX_SENSORS];
+// } descriptor_array_t;
 
 // ============================================================================
 // Private Functions

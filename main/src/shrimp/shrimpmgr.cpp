@@ -3036,6 +3036,8 @@ void post_root()
 
 void ip_event_handler(void *arg, esp_event_base_t event_base,int32_t event_id, void *event_data)
 {
+    modbus_sensor_type_t  sensor;
+
     if (event_id ==IP_EVENT_STA_GOT_IP)
     {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
@@ -3831,6 +3833,35 @@ sizeof(theConf) );
     // xTaskCreate(&sensor_task,"sensors",1024*4,NULL, 5, NULL); 	
     //    xTaskCreate(&panels_task,"panels",1024*4,NULL, 5, NULL); 	
     //    xTaskCreate(&energy_task,"energy",1024*4,NULL, 5, NULL); 	
+        modbus_sensor_type_t *sensor=(modbus_sensor_type_t *)calloc(1,sizeof(modbus_sensor_type_t));
+        modbus_sensor_type_t *sensor2=(modbus_sensor_type_t *)calloc(1,sizeof(modbus_sensor_type_t));
+        modbus_sensor_type_t *sensor3=(modbus_sensor_type_t *)calloc(1,sizeof(modbus_sensor_type_t));
+
+            sensor->modbus_sensor_name=(char*)"Battery";
+            sensor->modbus_sensor_spec_count=4;
+            sensor->modbus_sensor_specs=&theConf.modbus_battery;
+            sensor->modbus_sensor_data=(void*)&batteryData;
+            sensor->color=(char*)GRAY;
+            sensor->modbus_print_function=&print_battery_data;
+            sensor->modbus_sensor_data_size=sizeof(batteryData);
+            xTaskCreate(&generic_modbus_task,sensor->modbus_sensor_name,1024*4,(void*)sensor, 5, NULL); 
+            sensor2->modbus_sensor_name=(char*)"Panels";
+            sensor2->modbus_sensor_spec_count=5;
+            sensor2->modbus_sensor_specs=&theConf.modbus_panels;
+            sensor2->modbus_sensor_data=(void*)&pvPanelData;
+            sensor2->color=(char*)LYELLOW;
+            sensor2->modbus_print_function=&print_panel_data;
+            sensor2->modbus_sensor_data_size=sizeof(pvPanelData);
+            xTaskCreate(&generic_modbus_task,sensor2->modbus_sensor_name,1024*4,(void*)sensor2, 5, NULL); 	            // start the modbus task   
+            sensor3->modbus_sensor_name=(char*)"Energy";
+            sensor3->modbus_sensor_spec_count=10;
+            sensor3->modbus_sensor_specs=&theConf.modbus_inverter;
+            sensor3->modbus_sensor_data=(void*)&energyData;
+            sensor3->color=(char*)CYAN;
+            sensor3->modbus_print_function=&print_energy_data;
+            sensor3->modbus_sensor_data_size=sizeof(energyData);
+            xTaskCreate(&generic_modbus_task,sensor3->modbus_sensor_name,1024*4,(void*)sensor3, 5, NULL); 	            // start the modbus task   
+
 
             // start the modbus task   
 // the internal mesh is now going to start and begin all the main flow from its gotIp event manager
@@ -3842,7 +3873,7 @@ sizeof(theConf) );
         delay(30000);
     }
 
-    start_mesh();
+    // start_mesh();
     theConf.loginwait=20000;
     // mesh_enable();
 // schedule timer will be started or not by sntp if root or when child connected by mesh if it was active and crash/power down

@@ -66,10 +66,13 @@ set(CORE_SOURCES
 # Modbus and Sensors
 set(MODBUS_SOURCES
     src/modbusDevs/sensorTask.cpp
-    src/modbusDevs/batteryTask.cpp
-    src/modbusDevs/panelsTask.cpp
-    src/modbusDevs/energyTask.cpp
+    # src/modbusDevs/batteryTask.cpp
+    # src/modbusDevs/panelsTask.cpp
+    # src/modbusDevs/energyTask.cpp
+    src/modbusDevs/printSensors.cpp
     src/modbusDevs/rs485.cpp
+    src/modbusDevs/desc4build.cpp
+    src/modbusDevs/genericSensor.cpp
 )   
 
 #utilities functions
