@@ -152,6 +152,7 @@ void glue_set_modbInverter(struct modbInverter *);
 
 struct modbSensors {
   int refresh_rate;
+  int level;
   double humMux;
   int humType;
   int humPoints;

@@ -91,16 +91,21 @@ typedef struct  {
     int regfresh,addr;
     four_t specs[20];
 } general_4modbus_specs_t;
+typedef struct  {
+    int regfresh,addr;
+    five_t specs[20];
+} general_5modbus_specs_t;
 
 typedef struct {
     mb_parameter_descriptor_t devices[20];
 } descriptor_array_t;
 
-typedef void (*printcb)(void*, int *);
+typedef void (*printcb)(void*, int *, char * color);
 
 typedef struct {
     char *      modbus_sensor_name;
     uint8_t     modbus_sensor_spec_count;
+    uint8_t     modbus_sensor_spec_columns;
     void *      modbus_sensor_specs;
     void *      modbus_sensor_data;
     uint16_t    modbus_sensor_data_size;

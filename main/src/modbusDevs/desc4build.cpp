@@ -1,116 +1,187 @@
+/**
+ * @file desc4build.cpp
+ * @brief Modbus descriptor initialization for generic sensor configurations
+ * 
+ * Provides legacy descriptor initialization supporting both 4-column (shared address)
+ * and 5-column (per-device address) sensor specifications.
+ * 
+ * @note Part of the ShrimpIoT Modbus device monitoring system
+ */
+
 #define GLOBAL
 #include "includes.h"
 #include "defines.h"
 #include "typedef.h"
 #include "globals.h"
 
-static char TYPES_NAME[][30] = {"PARAM_TYPE_U8", "PARAM_TYPE_U16", "PARAM_TYPE_U32", "PARAM_TYPE_FLOAT",
-                          "PARAM_TYPE_FLOAT_ABCD", "PARAM_TYPE_FLOAT_CDAB",
-                          "PARAM_TYPE_FLOAT_BADC", "PARAM_TYPE_FLOAT_DCBA"};
+// Modbus parameter type names for debugging
+static char TYPES_NAME[][30] = {
+    "PARAM_TYPE_U8", 
+    "PARAM_TYPE_U16", 
+    "PARAM_TYPE_U32", 
+    "PARAM_TYPE_FLOAT",
+    "PARAM_TYPE_FLOAT_ABCD", 
+    "PARAM_TYPE_FLOAT_CDAB",
+    "PARAM_TYPE_FLOAT_BADC", 
+    "PARAM_TYPE_FLOAT_DCBA"
+};
 
- descriptor_array_t * initialize_sensor_descriptors(const general_4modbus_specs_t *sensorinfo,
-                char *whichDev,int MAXSENSORS,int *count)
+/**
+ * @brief Initialize Modbus sensor descriptors from configuration
+ * 
+ * Builds descriptor array for Modbus communication based on sensor specifications.
+ * Supports both 4-column specs (shared address) and 5-column specs (individual addresses).
+ * 
+ * @param sensorinfoin Pointer to sensor specification structure (4 or 5 column)
+ * @param whichDev Device name prefix for parameter labels
+ * @param MAXSENSORS Maximum number of sensors to process
+ * @param columns Number of columns in spec (4 or 5)
+ * @param count Output parameter for number of valid descriptors created
+ * @return descriptor_array_t* Pointer to allocated descriptor array, or NULL on failure
+ * 
+ * @note Caller is responsible for freeing allocated memory
+ * @note Skips sensors with offset < 0
+ */
+descriptor_array_t* initialize_sensor_descriptors(
+    void *sensorinfoin,
+    char *whichDev,
+    int MAXSENSORS,
+    int columns,
+    int *count)
 {
+    // Cast input to appropriate structure types
+    general_4modbus_specs_t *sensorinfo4 = (general_4modbus_specs_t*)sensorinfoin;
+    general_5modbus_specs_t *sensorinfo5 = (general_5modbus_specs_t*)sensorinfoin;
+
     int sensor_count = 0;
 
-        // Allocate memory for sensor descriptors
-    descriptor_array_t *devicesarr = (descriptor_array_t *)calloc(1, sizeof(mb_parameter_descriptor_t) * MAXSENSORS);
-    if (devicesarr == NULL)
+    // Allocate memory for sensor descriptors
+    descriptor_array_t *descriptors = (descriptor_array_t*)calloc(1, sizeof(mb_parameter_descriptor_t) * MAXSENSORS);
+    if (descriptors == NULL)
     {
-        ESP_LOGE(TAG, "Battery task: Failed to allocate memory for descriptors");
+        ESP_LOGE(TAG, "%s task: Failed to allocate memory for descriptors", whichDev);
         return NULL;
     }
 
     for (int a = 0; a < MAXSENSORS; a++)
     {
         // Skip sensors with invalid offset
-        if (sensorinfo->specs[a].devices[DOFFSET] < 0)
-            continue;
-
-        if ((theConf.debug_flags >> dMODBUS) & 1U)
+        int offset = (columns == 4) ? 
+            sensorinfo4->specs[a].devices[DOFFSET] : 
+            sensorinfo5->specs[a].devices[DOFFSET];
+            
+        if (offset < 0)
         {
-            ESP_LOGI(TAG, "%s%s Descriptor %d/%d: \tOffset=%d \tStart=%d \tPoints=%d \tType=%d[%s] \tMux=%.02f",GRAY,whichDev,
-                   a, sensor_count, 
-                   sensorinfo->specs[a].devices[DOFFSET],
-                   sensorinfo->specs[a].devices[DSTART],
-                   sensorinfo->specs[a].devices[DPOINTS],
-                   sensorinfo->specs[a].devices[DTYPE], 
-                   TYPES_NAME[sensorinfo->specs[a].devices[DTYPE]],
-                   sensorinfo->specs[a].mux);
+            continue;
         }
 
-        devicesarr->devices[sensor_count].cid = sensor_count;
+        // Extract sensor parameters based on column count
+        int start = (columns == 4) ? 
+            sensorinfo4->specs[a].devices[DSTART] : 
+            sensorinfo5->specs[a].devices[DSTART];
+            
+        int points = (columns == 4) ? 
+            sensorinfo4->specs[a].devices[DPOINTS] : 
+            sensorinfo5->specs[a].devices[DPOINTS];
+            
+        int type = (columns == 4) ? 
+            sensorinfo4->specs[a].devices[DTYPE] : 
+            sensorinfo5->specs[a].devices[DTYPE];
+            
+        double mux = (columns == 4) ? 
+            sensorinfo4->specs[a].mux : 
+            sensorinfo5->specs[a].mux;
+            
+        int address = (columns == 4) ? 
+            sensorinfo4->addr : 
+            sensorinfo5->specs[a].devices[DADDR];
+
+        // Debug logging if enabled
+        if ((theConf.debug_flags >> dMODBUS) & 1U)
+        {
+            if (columns < 5)
+            {
+                ESP_LOGI(TAG, "%s%s Descriptor %d/%d: \tOffset=%d \tStart=%d \tPoints=%d \tType=%d[%s] \tMux=%.02f",
+                    GRAY, whichDev, a, sensor_count, 
+                    offset, start, points, type, 
+                    TYPES_NAME[type], mux);
+            }
+            else
+            {
+                ESP_LOGI(TAG, "%s%s Descriptor %d/%d: \tAddress=%d \tOffset=%d \tStart=%d \tPoints=%d \tType=%d[%s] \tMux=%.02f",
+                    GRAY, whichDev, a, sensor_count, 
+                    address, offset, start, points, type, 
+                    TYPES_NAME[type], mux);
+            }
+        }
+
+        descriptors->devices[sensor_count].cid = sensor_count;
         
         // Allocate and set parameter key label
         char *label = (char*)calloc(1, 20);
         if (label == NULL)
         {
-            ESP_LOGE(TAG, "Battery task: Failed to allocate param_key for sensor %d", sensor_count);
+            ESP_LOGE(TAG, "%s task: Failed to allocate param_key for sensor %d", whichDev, sensor_count);
             continue;
         }
-        sprintf(label, "Battery_%d", sensor_count);
-        devicesarr->devices[sensor_count].param_key = label;
+        sprintf(label, "%s%d", whichDev, sensor_count);
+        descriptors->devices[sensor_count].param_key = label;
         
         // Allocate and set parameter units (stores multiplier)
-        char *labelunits = (char*)calloc(1, 20);
-        if (labelunits == NULL)
+        char *label_units = (char*)calloc(1, 20);
+        if (label_units == NULL)
         {
-            ESP_LOGE(TAG, "Battery task: Failed to allocate param_units for sensor %d", sensor_count);
-            // free(label);
+            ESP_LOGE(TAG, "%s task: Failed to allocate param_units for sensor %d", whichDev, sensor_count);
             continue;
         }
-        sprintf(labelunits, "%d", sensorinfo->specs[a].mux);
-        devicesarr->devices[sensor_count].param_units = labelunits;
+        sprintf(label_units, "%d", (int)mux);
+        descriptors->devices[sensor_count].param_units = label_units;
         
         // Configure Modbus parameters
-        devicesarr->devices[sensor_count].mb_slave_addr = sensorinfo->addr;
-        devicesarr->devices[sensor_count].mb_param_type = MB_PARAM_HOLDING;
-        devicesarr->devices[sensor_count].mb_reg_start = sensorinfo->specs[a].devices[DSTART];
-        devicesarr->devices[sensor_count].mb_size = sensorinfo->specs[a].devices[DPOINTS];
-        devicesarr->devices[sensor_count].param_offset = sensorinfo->specs[a].devices[DOFFSET] + 1;
+        descriptors->devices[sensor_count].mb_slave_addr = address;
+        descriptors->devices[sensor_count].mb_param_type = MB_PARAM_HOLDING;
+        descriptors->devices[sensor_count].mb_reg_start = start;
+        descriptors->devices[sensor_count].mb_size = points;
+        descriptors->devices[sensor_count].param_offset = offset + 1;
         
-        // Type (entry 0 defines var type 0=uint8_t 1=uint16_t 2=uint32_t 3=float)
-        switch(sensorinfo->specs[a].devices[DTYPE])
+        // Map data type from configuration to Modbus parameter type
+        switch (type)
         {
             case 0:
-                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_U8;
+                descriptors->devices[sensor_count].param_type = PARAM_TYPE_U8;
                 break;
             case 1:
-                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_U16;
+                descriptors->devices[sensor_count].param_type = PARAM_TYPE_U16;
                 break;
             case 2:
-                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_U32;
+                descriptors->devices[sensor_count].param_type = PARAM_TYPE_U32;
                 break;
             case 3:
-                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT;
+                descriptors->devices[sensor_count].param_type = PARAM_TYPE_FLOAT;
                 break;
             case 4:
-                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT_ABCD;
+                descriptors->devices[sensor_count].param_type = PARAM_TYPE_FLOAT_ABCD;
                 break;
             case 5:
-                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT_CDAB;
+                descriptors->devices[sensor_count].param_type = PARAM_TYPE_FLOAT_CDAB;
                 break;
             case 6:
-                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT_BADC;
+                descriptors->devices[sensor_count].param_type = PARAM_TYPE_FLOAT_BADC;
                 break;
             case 7:
-                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT_DCBA;
+                descriptors->devices[sensor_count].param_type = PARAM_TYPE_FLOAT_DCBA;
                 break;
             default:
-                devicesarr->devices[sensor_count].param_type = PARAM_TYPE_U16;
+                descriptors->devices[sensor_count].param_type = PARAM_TYPE_U16;
                 break;
         }
-
-        // if (sensor_count == 0)
-        //     devicesarr->devices[sensor_count].param_type = PARAM_TYPE_FLOAT;
-        // else
-        //     devicesarr->devices[sensor_count].param_type = PARAM_TYPE_U16;
             
-        devicesarr->devices[sensor_count].param_size = (mb_descr_size_t)(sensorinfo->specs[a].devices[DPOINTS] * 2);
-        devicesarr->devices[sensor_count].access = PAR_PERMS_READ_WRITE;
+        descriptors->devices[sensor_count].param_size = (mb_descr_size_t)(points * sizeof(uint16_t));
+        descriptors->devices[sensor_count].access = PAR_PERMS_READ_WRITE;
         
         sensor_count++;
     }
-    *count=sensor_count;
-    return devicesarr;
+    
+    *count = sensor_count;
+    return descriptors;
 }

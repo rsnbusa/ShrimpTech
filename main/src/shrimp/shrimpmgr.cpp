@@ -20,37 +20,64 @@ extern const uint8_t cert_end[]             asm("_binary_cloudamp_pem_end");
 // extern const uint8_t cert_start[]           asm("_binary_cert_pem_start");
 // extern const uint8_t cert_end[]             asm("_binary_cert_pem_end");
 
+modbus_sensor_type_t * setModbusSensor(char * sensor_name,
+    int numberDescriptors, int numColumns,void *descriptors,char * colores,void * theData,int dataSize,
+                    printcb printer)
+
+{
+            modbus_sensor_type_t *theSensor=(modbus_sensor_type_t *)calloc(1,sizeof(modbus_sensor_type_t));
+            if (theSensor)
+            {
+                theSensor->modbus_sensor_name=sensor_name;
+                theSensor->modbus_sensor_spec_count=numberDescriptors;
+                theSensor->modbus_sensor_spec_columns=numColumns;
+                theSensor->modbus_sensor_specs=descriptors;
+                theSensor->modbus_sensor_data=theData;
+                theSensor->color=(char*)colores;
+                theSensor->modbus_print_function=printer;
+                theSensor->modbus_sensor_data_size=dataSize;
+            }
+            return theSensor;
+}
+
 void launch_sensors()
 {
 
-        modbus_sensor_type_t *sensor=(modbus_sensor_type_t *)calloc(1,sizeof(modbus_sensor_type_t));
-        modbus_sensor_type_t *sensor2=(modbus_sensor_type_t *)calloc(1,sizeof(modbus_sensor_type_t));
-        modbus_sensor_type_t *sensor3=(modbus_sensor_type_t *)calloc(1,sizeof(modbus_sensor_type_t));
+            // Battery Modbus Device
+            modbus_sensor_type_t *battery=setModbusSensor((char*)"Battery",4,4,
+                (void*)&theConf.modbus_battery,GRAY,(void*)&batteryData,sizeof(batteryData),&print_battery_data);
 
-            sensor->modbus_sensor_name=(char*)"Battery";
-            sensor->modbus_sensor_spec_count=4;
-            sensor->modbus_sensor_specs=&theConf.modbus_battery;
-            sensor->modbus_sensor_data=(void*)&batteryData;
-            sensor->color=(char*)GRAY;
-            sensor->modbus_print_function=&print_battery_data;
-            sensor->modbus_sensor_data_size=sizeof(batteryData);
-            xTaskCreate(&generic_modbus_task,sensor->modbus_sensor_name,1024*4,(void*)sensor, 5, NULL); 
-            sensor2->modbus_sensor_name=(char*)"Panels";
-            sensor2->modbus_sensor_spec_count=5;
-            sensor2->modbus_sensor_specs=&theConf.modbus_panels;
-            sensor2->modbus_sensor_data=(void*)&pvPanelData;
-            sensor2->color=(char*)LYELLOW;
-            sensor2->modbus_print_function=&print_panel_data;
-            sensor2->modbus_sensor_data_size=sizeof(pvPanelData);
-            xTaskCreate(&generic_modbus_task,sensor2->modbus_sensor_name,1024*4,(void*)sensor2, 5, NULL); 	            // start the modbus task   
-            sensor3->modbus_sensor_name=(char*)"Energy";
-            sensor3->modbus_sensor_spec_count=10;
-            sensor3->modbus_sensor_specs=&theConf.modbus_inverter;
-            sensor3->modbus_sensor_data=(void*)&energyData;
-            sensor3->color=(char*)CYAN;
-            sensor3->modbus_print_function=&print_energy_data;
-            sensor3->modbus_sensor_data_size=sizeof(energyData);
-            xTaskCreate(&generic_modbus_task,sensor3->modbus_sensor_name,1024*4,(void*)sensor3, 5, NULL); 	            // start the modbus task   
+            // Panels Modbus Device
+            modbus_sensor_type_t *panels=setModbusSensor((char*)"Panels",5,4,
+                (void*)&theConf.modbus_panels,LYELLOW,(void*)&pvPanelData,sizeof(pvPanelData),&print_panel_data);
+
+            // Energy Modbus Device
+            modbus_sensor_type_t *energy=setModbusSensor((char*)"Energy",10,4,
+                (void*)&theConf.modbus_inverter,MAGENTA,(void*)&energyData,sizeof(energyData),&print_energy_data);
+
+            // Sensors Modbus Device
+            modbus_sensor_type_t *sensorDev=setModbusSensor((char*)"Sensors",5,5,
+                (void*)&theConf.modbus_sensors,CYAN,(void*)&sensorData,sizeof(sensorData),&print_sensor_data);
+
+            if(battery)
+                xTaskCreate(&generic_modbus_task,battery->modbus_sensor_name,1024*4,(void*)battery, 5, NULL); 
+            else
+                ESP_LOGE(TAG, "Failed to create Battery modbus sensor task due to memory allocation failure"); 
+
+            if(panels)  
+                xTaskCreate(&generic_modbus_task,panels->modbus_sensor_name,1024*4,(void*)panels, 5, NULL); 
+            else
+                ESP_LOGE(TAG, "Failed to create Panels modbus sensor task due to memory allocation failure"); 
+
+            if(energy)
+                xTaskCreate(&generic_modbus_task,energy->modbus_sensor_name,1024*4,(void*)energy, 5, NULL); 
+            else
+                ESP_LOGE(TAG, "Failed to create Energy modbus sensor task due to memory allocation failure"); 
+
+            if(sensorDev)
+                xTaskCreate(&generic_modbus_task,sensorDev->modbus_sensor_name,1024*4,(void*)sensorDev, 5, NULL); 
+            else
+                ESP_LOGE(TAG, "Failed to create Sensors modbus sensor task due to memory allocation failure"); 
 }
 
 void print_blower(char * title,solarSystem_t *msolar,bool dumphex)
@@ -2709,7 +2736,7 @@ void erase_config()
     strcpy(theConf.mqttPass,"csttpstt");
     struct limits start_limits = {90, 50, 32, 19, 31, 19, 70, 50, 70, 40, 42, 40, 42, 40, 42, 40, 42, 40, 42, 40, 42, 40, 820, 720, 850, 720, 820, 720, 820, 780, 50, 10, 5000, 0, 100, 20, 80, 20, 15, 14, 390, 340};
     theConf.milim=start_limits;
-    modbSensors local_modbSensors = {15, 1.5, 1, 0, 0, -1, 20, 1, 1, 0, 0, -1, 19, 1, 1, 0, 0, -1, 17, 1, 1, 6, 8192, 0, 16, 1, 1, 2, 8192, 0, 16};
+    modbSensors local_modbSensors =  {15, 42, 1.5, 1, 0, 0, -1, 20, 1, 1, 0, 0, -1, 19, 1, 1, 0, 0, -1, 17, 1, 1, 6, 8192, 0, 16, 1, 1, 2, 8192, 0, 16};
     modbInverter local_modbInverter = {10, 1, 10, 1, 2, 61530, 0, 10, 1, 1, 61518, 0, 10, 1, 1, 61517, 0, 10, 1, 2, 61528, 0, 10, 1, 1, 61526, 0, 10, 1, 1, 61527, 0, 10, 1, 2, 61522, 0, 10, 1, 2, 61520, 0, 10, 1, 1, 61518, 0, 10, 1, 1, 61517, 0};
     modbBattery local_modbBattery = {30, 3, 10, 1, 1, 276, 0, 1, 1, 1, 268, 0, 1, 1, 1, 260, 0, 1, 1, 1, 256, 0};
     modbPanels local_modbPanels = {30, 4, 10, 1, 1, 272, 0, 10, 1, 1, 271, 0, 10, 1, 1, 264, 0, 10, 1, 1, 263, 0, 1, 1, 1, 267, 0};
@@ -3096,21 +3123,12 @@ void ip_event_handler(void *arg, esp_event_base_t event_base,int32_t event_id, v
             if(theConf.totalnodes>0)
                 xTimerStart(loginTimer,0);          // start the login timer if more that 0 nodes
             // sprintf(prompt,"R%s",theBlower.getMID());
-            // showLVGL(prompt,10000,3);   
-
-            xTaskCreate(&sensor_task,"sensors",1024*10,NULL, 5, NULL); 	
-            // xTaskCreate(&battery_task,"battery",1024*4,NULL, 5, NULL); 	            // start the modbus task   
-            // xTaskCreate(&panels_task,"panels",1024*4,NULL, 5, NULL); 	            // start the modbus task   
-            // xTaskCreate(&energy_task,"energy",1024*4,NULL, 5, NULL); 	
+            // showLVGL(prompt,10000,3);   	
             launch_sensors();
         }
         else
         {
-            ESP_LOGE(MESH_TAG,"IP child");
-            xTaskCreate(&sensor_task,"sensors",1024*10,NULL, 5, NULL); 	
-            // xTaskCreate(&battery_task,"battery",1024*4,NULL, 5, NULL); 	            // start the modbus task  
-            // xTaskCreate(&energy_task,"energy",1024*4,NULL, 5, NULL); 	
-            // xTaskCreate(&panels_task,"panels",1024*4,NULL, 5, NULL); 	
+            ESP_LOGE(MESH_TAG,"IP child");	
             launch_sensors();
             // sprintf(prompt,"N%s",theBlower.getMID());
             // showLVGL(prompt,10000,3);   

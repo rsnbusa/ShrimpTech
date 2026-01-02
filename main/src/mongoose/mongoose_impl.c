@@ -204,6 +204,7 @@ struct attribute s_modbInverter_attributes[] = {
 };
 struct attribute s_modbSensors_attributes[] = {
   {"refresh_rate", "int", NULL, offsetof(struct modbSensors, refresh_rate), 0, false},
+  {"level", "int", NULL, offsetof(struct modbSensors, level), 0, false},
   {"humMux", "double", "%.02f", offsetof(struct modbSensors, humMux), 0, false},
   {"humType", "int", NULL, offsetof(struct modbSensors, humType), 0, false},
   {"humPoints", "int", NULL, offsetof(struct modbSensors, humPoints), 0, false},
