@@ -82,17 +82,6 @@ typedef struct {
     int devices[4];
 } four_t;
 
-// each device type has its own struct
-typedef struct  {
-    int regfresh,addr;
-    four_t specs[4];
-} bat_modbus_specs_t;
-
-typedef struct  {
-    int regfresh,addr;
-    four_t specs[5];
-} panel_modbus_specs_t;
-
 typedef struct  {
     int regfresh;
     five_t specs[5];
@@ -100,16 +89,8 @@ typedef struct  {
 
 typedef struct  {
     int regfresh,addr;
-    four_t specs[10];
-} inverter_modbus_specs_t;
-typedef struct  {
-    int regfresh,addr;
     four_t specs[20];
 } general_4modbus_specs_t;
-typedef struct  {
-    int regfresh,addr;
-    five_t specs[20];
-} general_5modbus_specs_t;
 
 typedef struct {
     mb_parameter_descriptor_t devices[20];

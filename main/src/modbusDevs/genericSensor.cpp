@@ -18,56 +18,6 @@
 extern descriptor_array_t * initialize_sensor_descriptors(const general_4modbus_specs_t *sensorinfo,
             char *whichDev,int MAXSENSORS,int *sensor_count);
 
-
-
-// ============================================================================
-// Constants
-// ============================================================================
-
-// static constexpr int INV_SENSORS = 10;      ///< Maximum number of energy sensors
-// static constexpr int MAX_ERRORS = INV_SENSORS; ///< Error array size
-static constexpr uint32_t BYTE_MASK = 0xFF;    ///< Byte mask for data parsing
-
-/**
- * @brief Print energy sensor data for debugging
- * 
- * Logs energy monitoring data including battery charge/discharge statistics,
- * energy generation, and consumption. Output varies based on charging state.
- * 
- * @param energy Reference to energy data structure
- * @param errors Pointer to error code array
- * 
- * @note Only prints if MODBUS debug flag is enabled and no errors occurred
- */
-static void print_sensor_data(const energy_t &energy, const int *errors)
-{
-    if (errors[0] != 0)
-        return;  // Skip printing if errors occurred
-        
-    if (!((theConf.debug_flags >> dMODBUS) & 1U))
-        return;  // Skip if debug not enabled
-
-    // Print charging or discharging data based on current state
-    if (pvPanelData.chargeCurr)
-    {
-        ESP_LOGI(TAG, "%sEnergy [CHARGING] - BatChgAH(Today:%u Total:%u) GenEnergy:%.02fkWh BatChg:%.02fkWh",CYAN,
-                 energy.batChgAHToday,
-                 energy.batChgAHTotal,
-                 energy.generateEnergyToday,
-                 energy.batChgkWhToday);   
-    }
-    else
-    {
-        ESP_LOGI(TAG, "%sEnergy [DISCHARGING] - BatDischgAH(Today:%u Total:%u) UsedEnergy:%.02fkWh LoadConsumTotal:%.02fkWh BatDischg:%.02fkWh GenLoadConsum:%.02fkWh",CYAN,
-                 energy.batDischgAHToday,
-                 energy.batDischgAHTotal,
-                 energy.usedEnergyToday,
-                 energy.gLoadConsumLineTotal,
-                 energy.batDischgkWhToday,
-                 energy.genLoadConsumToday);   
-    }
-}
-
 // ============================================================================
 // Public Functions
 // ============================================================================
