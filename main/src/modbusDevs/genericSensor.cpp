@@ -72,6 +72,7 @@ void generic_modbus_task(void *pArg)
     mensaje.descriptors = (mb_parameter_descriptor_t*)descriptors;
     mensaje.requester = xTaskGetCurrentTaskHandle();
     mensaje.errCode = &errors[0];
+    mensaje.numerrs=sensor_count;
     
     // Zero out data structure before use
     bzero(modbus_sensor->modbus_sensor_data, modbus_sensor->modbus_sensor_data_size);
@@ -93,7 +94,7 @@ void generic_modbus_task(void *pArg)
             // Print the received data using sensor-specific print function
             if (modbus_sensor->modbus_print_function)
             {
-                modbus_sensor->modbus_print_function(modbus_sensor->modbus_sensor_data, errors,modbus_sensor->color);
+                modbus_sensor->modbus_print_function(modbus_sensor->modbus_sensor_data, errors,modbus_sensor->color,sensor_count);
             }
         }
         

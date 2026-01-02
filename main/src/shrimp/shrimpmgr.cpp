@@ -20,10 +20,8 @@ extern const uint8_t cert_end[]             asm("_binary_cloudamp_pem_end");
 // extern const uint8_t cert_start[]           asm("_binary_cert_pem_start");
 // extern const uint8_t cert_end[]             asm("_binary_cert_pem_end");
 
-modbus_sensor_type_t * setModbusSensor(char * sensor_name,
-    int numberDescriptors, int numColumns,void *descriptors,char * colores,void * theData,int dataSize,
-                    printcb printer)
-
+modbus_sensor_type_t * setModbusSensor(char * sensor_name,int numberDescriptors, int numColumns
+            ,void *descriptors,char * colores,void * theData,int dataSize,printcb printer)
 {
             modbus_sensor_type_t *theSensor=(modbus_sensor_type_t *)calloc(1,sizeof(modbus_sensor_type_t));
             if (theSensor)
@@ -37,7 +35,7 @@ modbus_sensor_type_t * setModbusSensor(char * sensor_name,
                 theSensor->modbus_print_function=printer;
                 theSensor->modbus_sensor_data_size=dataSize;
             }
-            return theSensor;
+            return theSensor;       //null or filled
 }
 
 void launch_sensors()

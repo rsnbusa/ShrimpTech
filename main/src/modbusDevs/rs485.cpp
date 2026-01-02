@@ -1,13 +1,7 @@
-/*
- * SPDX-FileCopyrightText: 2016-2023 Espressif Systems (Shanghai) CO LTD
- *
- * SPDX-License-Identifier: Apache-2.0
- */
 #define GLOBAL
 #include "esp_log.h"
 #include "misparams.h"  // for modbus parameters structures
 #include "mbcontroller.h"
-// #include "sdkconfig.h"
 #include "defines.h"
 #include "BlowerClass.h"
 #include "typedef.h"
@@ -34,8 +28,6 @@ static esp_err_t master_init(void)
         .parity = MB_PARITY_NONE
     };
     void* master_handler = NULL;
-
-    // devicesarr=(descriptor_array_t*)calloc(1,sizeof(descriptor_array_t));
 
     esp_err_t err = mbc_master_init(MB_PORT_SERIAL_MASTER, &master_handler);
     MB_RETURN_ON_FALSE((master_handler != NULL), ESP_ERR_INVALID_STATE, TAG,
@@ -123,7 +115,6 @@ void rs485_task_manager(void *arg)
                     // printf("RSQueue processing cid %d final ptr %p offset %d original pointer %p\n",cid,temp_data_ptr,
                             // param_descriptor->param_offset,
                             // mensaje.dataReceiver);
-
         
                         // this is the actual request from matser to slave stupid name for routine
                         err = mbc_master_get_parameter(cid, (char*)param_descriptor->param_key,
@@ -140,9 +131,7 @@ void rs485_task_manager(void *arg)
                                             esp_err_to_name(err));
                             mensaje.errCode[cid] = err;   // this error
 
-                        }
-
-                    
+                        }                   
                 }
                 else
                 {
@@ -155,10 +144,8 @@ void rs485_task_manager(void *arg)
                 vTaskDelay(pdMS_TO_TICKS(POLL_DELAY_MS)); // the smallest time between polls... speed is low 9600 usually give it some time
 
             }
-            // vTaskDelay(pdMS_TO_TICKS(refreshrate*1000));
             // notify requester task that we are done
             xTaskNotifyGive(mensaje.requester);
-            // printf("RSQueue done\n");
         }
         else
         {

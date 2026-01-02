@@ -942,6 +942,7 @@ void my_set_modbPanels(struct modbPanels *data) // save limits from web to thebl
 void my_set_limits(struct limits *data) // save limits from web to theblower
 {
 	theConf.milim=*data;
+	memcpy(&theConf.limits,&theConf.milim,sizeof(theConf.limits));		//array format
 	write_to_flash();
 }
 

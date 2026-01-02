@@ -63,6 +63,7 @@ typedef struct rs485q_st {
     uint16_t                    numCids;
     TaskHandle_t                requester;
     int *                       errCode;
+    int                         numerrs;
 }
 rs485queue_t;   
 
@@ -100,7 +101,7 @@ typedef struct {
     mb_parameter_descriptor_t devices[20];
 } descriptor_array_t;
 
-typedef void (*printcb)(void*, int *, char * color);
+typedef void (*printcb)(void*, int *, char * color,int numerrs);
 
 typedef struct {
     char *      modbus_sensor_name;
@@ -133,11 +134,12 @@ enum {
     dXCMDS,
     dBLOW,
     dLOGIC,
-    dMODBUS
+    dMODBUS,
+    dLIMITS
 } debug_flags_t;
 
 typedef enum {
-AHUM,
+AHUM=0,
 ATEMP,
 WTEMP,
 LIMITPH,
@@ -211,6 +213,7 @@ typedef struct dbg {
     struct arg_str *blow;      // Blower data
     struct arg_str *logic;     // Logic data
     struct arg_str *modbus;    // modbus data
+    struct arg_str *limits;    // limits tracking
     struct arg_str *all;       // All commands on/off
     struct arg_end *end;
 } dbg_t;

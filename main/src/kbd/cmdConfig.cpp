@@ -29,7 +29,7 @@ char modb_names[][30]={
  */
 void show_mimodbus()
 {
-    printf("\n");
+    printf("%s\n",LRED);
     printf("┌═════════════════════════════════════════════════════════────────┐\n");
     printf("│                  MODBUS CONFIGURATION                           │\n");
     printf("└─────────────────────────────────────────────────────────────────┘\n\n");
@@ -147,7 +147,7 @@ void show_mimodbus()
  */
 void show_limits()
 {
-    printf("\n");
+    printf("%s\n",BLUE);
     printf("┌────────────────────────────────────────────────────┐\n");
     printf("│                 OPERATIONAL LIMITS                │\n");
     printf("├──────────────────────┬──────────┬──────────────────┤\n");
@@ -264,6 +264,7 @@ void showconf(void *pArg)
     bootdate=(time_t)theConf.lastRebootTime;    //same compiler error
 
     // ===== DEVICE INFORMATION =====
+    printf("%s",LYELLOW);
     printf("\n┌─────────────────────────────────────────────────────────────┐\n");
     printf("│                   DEVICE INFORMATION                        │\n");
     printf("├─────────────────────────────────────────────────────────────┤\n");
@@ -294,6 +295,7 @@ void showconf(void *pArg)
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
 
     // ===== PRODUCTION CONFIGURATION =====
+    printf("%s",CYAN);
     printf("┌─────────────────────────────────────────────────────────────┐\n");
     printf("│              PRODUCTION CONFIGURATION                       │\n");
     printf("├─────────────────────────────────────────────────────────────┤\n");
@@ -317,6 +319,7 @@ void showconf(void *pArg)
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
 
     // ===== MQTT CONFIGURATION =====
+    printf("%s",MAGENTA);
     printf("┌─────────────────────────────────────────────────────────────┐\n");
     printf("│                  MQTT CONFIGURATION                        │\n");
     printf("├─────────────────────────────────────────────────────────────┤\n");
@@ -330,6 +333,7 @@ void showconf(void *pArg)
     // ===== NETWORK & MESH INFO =====
     if(meshf)
     {
+       printf("%s",YELLOW);
         printf("┌─────────────────────────────────────────────────────────────┐\n");
         printf("│              NETWORK & MESH CONFIGURATION                   │\n");
         printf("├─────────────────────────────────────────────────────────────┤\n");
@@ -349,6 +353,7 @@ void showconf(void *pArg)
         printf("└─────────────────────────────────────────────────────────────┘\n\n");
 
         // ===== TIMING INFORMATION =====
+        printf("%s",WHITEC);
         printf("┌─────────────────────────────────────────────────────────────┐\n");
         printf("│                 TIMING INFORMATION                          │\n");
         printf("├─────────────────────────────────────────────────────────────┤\n");
@@ -366,6 +371,7 @@ void showconf(void *pArg)
 
         if(err==ESP_OK)
         {
+              printf("%S",LGREEN);
             printf("┌─────────────────────────────────────────────────────────────┐\n");
             printf("│                   MESH NETWORK TOPOLOGY                     │\n");
             printf("├─────────────────────────────────────────────────────────────┤\n");
@@ -391,6 +397,7 @@ void showconf(void *pArg)
         }
     }
     // ===== STATISTICS =====
+    printf("%s",BLUE);
     printf("┌─────────────────────────────────────────────────────────────┐\n");
     printf("│                    STATISTICS                              │\n");
     printf("├─────────────────────────────────────────────────────────────┤\n");
@@ -401,6 +408,7 @@ void showconf(void *pArg)
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
 
     // ===== SYSTEM CONFIGURATION =====
+    printf("%s",GRAY);
     printf("┌─────────────────────────────────────────────────────────────┐\n");
     printf("│                SYSTEM CONFIGURATION                        │\n");
     printf("├─────────────────────────────────────────────────────────────┤\n");
@@ -408,6 +416,7 @@ void showconf(void *pArg)
     printf("│ Expected Connections: %-39lu │\n", theConf.conns);
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
 
+    printf("%s",RESETC);
     print_blower("Blower",theBlower.getSolarSystem(),false);
 
     show_limits();

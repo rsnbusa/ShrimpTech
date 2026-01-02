@@ -72,10 +72,10 @@ void panels_task(void *pArg);
 void energy_task(void *pArg);
 void start_webserver(void *pArg);
 void generic_modbus_task(void *pArg);
-void print_energy_data(void* energy,  int *errors,char *color);
-void print_battery_data(void* batteryData, int *errors,char *color);
-void print_panel_data(void* pvPanel, int *errors,char * color);
-void print_sensor_data(void *sensors,  int *errors,char *color);
+void print_energy_data(void* energy,  int *errors,char *color,int numerrs);
+void print_battery_data(void* batteryData, int *errors,char *color,int numerrs);
+void print_panel_data(void* pvPanel, int *errors,char * color,int numerrs);
+void print_sensor_data(void *sensors,  int *errors,char *color,int numerrs);
  descriptor_array_t * initialize_sensor_descriptors( void *sensorinfoin,
                 char *whichDev,int MAXSENSORS,int columns,int *count);
 // ============================================================================
