@@ -328,5 +328,6 @@ EXTERN energy_t energyData;
 EXTERN battery_t batteryData;
 EXTERN pvPanel_t pvPanelData;
 EXTERN sensor_t sensorData;
+EXTERN wschedule_t scheduleData;
 
 #endif // MAIN_GLOBALS_H

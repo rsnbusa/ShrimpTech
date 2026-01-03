@@ -109,6 +109,25 @@ typedef struct {
 } sensor_t;
 #pragma pack(pop)  // Restore default packing
 
+/**
+ * @brief Environmental Blower working active schedule
+ * 
+ * will have the current working schedule for the blower operation
+ * 
+ * Note: Packed structure to match hardware data format from sensors.
+ */
+#pragma pack(push, 1)  // Ensure no padding for direct hardware mapping
+typedef struct {
+    uint16_t  currentCycle;          
+    uint16_t  currentDay;
+    uint16_t  currentHorario; 
+    uint16_t  currentStartHour;
+    uint16_t  currentEndHour;
+    uint16_t  currentPwmDuty; 
+    uint16_t status;        // 0=off, 1=on
+} wschedule_t;
+#pragma pack(pop)  // Restore default packing
+
 // ============================================================================
 // Aggregated System Data
 // ============================================================================
@@ -127,6 +146,7 @@ typedef struct {
     battery_t battery;
     energy_t  energy;
     sensor_t  sensors;
+    // wschedule_t schedule;
 } solarSystem_t;
 
 /**

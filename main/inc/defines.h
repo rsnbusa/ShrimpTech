@@ -187,6 +187,10 @@
 #define FCHOLDING                       (0x03)
 #define FCINPUT                         (0x01)
 
+#define BLOWERON                         (1)   
+#define BLOWEROFF                        (0)   
+#define BLOWERNEXT                       (2)    
+
 #define MINUTES                         (1)   
 // Modbus descriptor fields offsets
 #define DADDR      (4)

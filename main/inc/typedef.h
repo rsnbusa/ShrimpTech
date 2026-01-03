@@ -492,6 +492,7 @@ typedef struct shrimpMsg_st {
     uint16_t countnodes;
     time_t msgTime;
     solarSystem_t poolAvgMetrics;
+    wschedule_t schedule;
 } shrimpMsg_t;
 #pragma pack(pop)
 

@@ -871,7 +871,7 @@ esp_err_t root_send_collected_nodes(uint32_t cuantos)        //root only
         //     }
         // }
         // else
-        {
+        // {
             if(masterNode.theTable.thedata[a])                                  //if data present
             {
                 meshMsg=(meshunion_t*)masterNode.theTable.thedata[a];
@@ -880,7 +880,7 @@ esp_err_t root_send_collected_nodes(uint32_t cuantos)        //root only
             }
             else 
                 ESP_LOGE(MESH_TAG,"Error null data on node %d " MACSTR "\n",a,MAC2STR(masterNode.theTable.big_table[a].addr));
-        }
+        // }
     }
     // average done, set the shrimp mesasge structure
     shrimpMsg_t *shmsg=(shrimpMsg_t*)calloc(1,sizeof(shrimpMsg_t));
@@ -902,6 +902,12 @@ esp_err_t root_send_collected_nodes(uint32_t cuantos)        //root only
     shmsg->poolid=theConf.poolid;
     shmsg->countnodes=cuantos;
     shmsg->centinel=0x12345678;
+
+    // if((theConf.debug_flags >> dSCH) & 1U)  
+    //     printf("Schedule Cycle %d Day %d Horario %d Start %d End %d  Status %d PWM %d\n",scheduleData.currentCycle,scheduleData.currentDay,
+    //         scheduleData.currentHorario,scheduleData.currentStartHour,scheduleData.currentEndHour,scheduleData.status,scheduleData.currentPwmDuty);
+
+    memcpy(&shmsg->schedule,&scheduleData,sizeof(wschedule_t));
 
     free(solarPad); // not neeed anymore
     solarPad=NULL;
@@ -2563,6 +2569,9 @@ void init_process()
         // timers counters
     vanTimersStart=vanTimersEnd=0;
 
+    // memory schedule data set to zero
+    bzero(&scheduleData,sizeof(wschedule_t));
+
 //cmd and info queue names derived form the Config so do it now
     sprintf(cmdQueue,"%s/%d/%s",QUEUE,theConf.poolid,MQTTCMD);
     sprintf(infoQueue,"%s/%d/%s",QUEUE,theConf.poolid,MQTTINFO);
@@ -3573,20 +3582,28 @@ void find_cycle_day(uint8_t * ciclo,uint8_t*dia)
             schedulef=true;         // active for all production cmds
             if((theConf.debug_flags >> dSCH) & 1U)
                 ESP_LOGW(TAG,"%sStart Cycle %d Start Day %d",DBG_SCH,cyclestart,daystart);
-            for (ck=cyclestart;ck<theConf.profiles[0].numCycles;ck++)
+            for (ck=cyclestart;ck<theConf.profiles[0].numCycles;ck++)       // cycles
             {
-                // printf("Start Cycle %d\n",ck);
                 if (ck==cyclestart) 
                     desde=daystart;
                 else
                     desde=0;
-                for (ck_d=desde; ck_d<theConf.profiles[0].cycle[ck].duration;ck_d++)    // n days
+
+                scheduleData.currentCycle=ck;      // save cycle for status reporting
+
+                for (ck_d=desde; ck_d<theConf.profiles[0].cycle[ck].duration;ck_d++)    //  days
                 {
-                    for (int ck_h=0;ck_h<theConf.profiles[0].cycle[ck].numHorarios;ck_h++)
+                    scheduleData.currentDay=ck_d;           // save day for status reporting
+
+                    if((theConf.debug_flags >> dSCH) & 1U)  
+                    for (int ck_h=0;ck_h<theConf.profiles[0].cycle[ck].numHorarios;ck_h++)      // hours
                     {
                         while(pausef)
                             delay(1000);
-                        
+                        scheduleData.currentHorario=ck_h;      //save horario for status reporting
+                        scheduleData.currentStartHour=theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart;
+                        scheduleData.currentEndHour=theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen;
+
                         starttime=midn+theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart*3600;    //in seconds
                         endtime=starttime+theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen*3600;    //in seconds
                         if((theConf.debug_flags >> dSCH) & 1U)
@@ -3786,6 +3803,7 @@ void blower_start(TimerHandle_t xTimer)
 
     // esp_rom_printf("Started Timer %d\n",ulCount);
     elapsed[ulCount]=xmillis();
+    scheduleData.status=BLOWERON;
 
 }
 void blower_end(TimerHandle_t xTimer)
@@ -3800,7 +3818,11 @@ void blower_end(TimerHandle_t xTimer)
         // if((theConf.debug_flags >> dSCH) & 1U)  
         //     ESP_LOGI(TAG,"Last end timer...set for Wait For Start\n");
         xSemaphoreGive(scheduleSem);
+        scheduleData.status=BLOWEROFF;        // definitly off now
     }
+    else
+        scheduleData.status=BLOWERNEXT;           // waiting for next hour
+
 }
 
 void app_main(void)
