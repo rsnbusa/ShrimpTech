@@ -12,7 +12,6 @@
 
 #define GLOBAL
 #include "includes.h"
-#include "defines.h"
 #include "typedef.h"
 #include "globals.h"
 
@@ -66,7 +65,7 @@ void check_limits(char * who,  int *limitlocation, int count,char *color,char *n
 void print_sensor_data(void *sensors, int *errors,char *color,int numerrs)
 {
     bool hasErrors=false;
-    int limits_location[]={WTEMP,LIMITDO,LIMITPH,ATEMP,AHUM}; // map to correct location in errors array
+    int limits_location[]={WTEMP,LIMITDO,LIMITPH,ATEMP,AHUM}; // map to correct location in limits array
     int limit_count=sizeof(limits_location)/sizeof(int);
     char *limits_names[]={"WTEMP","LIMITDO","LIMITPH","ATEMP","AHUM"};
  
@@ -125,7 +124,7 @@ void print_sensor_data(void *sensors, int *errors,char *color,int numerrs)
 void print_energy_data(void *energy, int *errors,char * color,int numerrs)
 {
     bool hasErrors=false;
-    int limits_location[]={BMCHAH,BMDDAH,BMCHKT,BMDDKT,GENEER,USEDEN,LCONLI,BMCHKW,BMDDKW,GENLCT}; // map to correct location in errors array
+    int limits_location[]={BMCHAH,BMDDAH,BMCHKT,BMDDKT,GENEER,USEDEN,LCONLI,BMCHKW,BMDDKW,GENLCT}; // map to correct location in limits array
     int limit_count=sizeof(limits_location)/sizeof(int);
     char *limits_names[]={"BMCHAH","BMDDAH","BMCHKT","BMDDKT","GENEER","USEDEN","LCONLI","BMCHKW","BMDDKW","GENLCT"};
     // check errors before printing
@@ -201,7 +200,7 @@ void print_energy_data(void *energy, int *errors,char * color,int numerrs)
 void print_battery_data(void *batteryData, int *errors,char *color,int numerrs)
 {
     bool hasErrors=false;
-    int limits_location[]={BMSOC,BMSOH,BMCC,BMTEMP}; // map to correct location in errors array  
+    int limits_location[]={BMSOC,BMSOH,BMCC,BMTEMP}; // map to correct location in limits array  
     int limit_count=sizeof(limits_location)/sizeof(int);
     char *limits_names[]={"BMSOC","BMSOH","BMCC","BMTEMP"};
     // check errors before printing
@@ -262,7 +261,7 @@ void print_battery_data(void *batteryData, int *errors,char *color,int numerrs)
 void print_panel_data(void *pvPanel, int *errors,char * color,int numerrs)
 {
     bool hasErrors=false;
-    int limits_location[]={PV1V,PV1A,PV1V,PV1A}; // map to correct location in errors array
+    int limits_location[]={PV1V,PV1A,PV1V,PV1A}; // map to correct location in limits array
     int limit_count=sizeof(limits_location)/sizeof(int);
     char *limits_names[]={"PV1V","PV1A","PV2V","PV2A"};
     // check errors before printing
@@ -273,6 +272,7 @@ void print_panel_data(void *pvPanel, int *errors,char * color,int numerrs)
             if (((theConf.debug_flags >> dMODBUS) & 1U))
                 ESP_LOGE(TAG,"%sPanels Error CID %d=0x%x %s ",color,a,errors[a],esp_err_to_name(errors[a]));
             hasErrors=true;
+            // here the logic to ERROR MANAGEMNET reporting
         }
     }
 

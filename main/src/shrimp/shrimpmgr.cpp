@@ -895,7 +895,7 @@ esp_err_t root_send_collected_nodes(uint32_t cuantos)        //root only
         return ESP_FAIL;
     }
 
-    // set data and copy solarPad into shrimp message
+    // set data and copy solarPad into shrimp message to send to MAIN HOST via MQTT HQ
     memcpy(&shmsg->poolAvgMetrics,solarPad,sizeof(solarSystem_t));
     print_blower("Root Average Solar Data", &shmsg->poolAvgMetrics,false);
     shmsg->msgTime=time(NULL);
