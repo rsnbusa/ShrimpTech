@@ -137,7 +137,7 @@ static void apply_panels_config(const PanelsCommandFields *fields)
     theConf.modbus_panels.ChargeStart = fields->charge.start;
     theConf.modbus_panels.Charge_StateOffset = fields->charge.offset;
 
-    // write_to_flash();
+    write_to_flash();
 }
 
 static void log_panels_update(const PanelsCommandFields *fields)

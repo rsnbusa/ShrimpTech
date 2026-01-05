@@ -675,25 +675,16 @@ esp_err_t root_send_data_to_node(mesh_addr_t thismac)
     mqttSender_t        meshMsg;
 
     time(&now);
-    err=esp_wifi_get_config( WIFI_IF_STA,&configsta);      // get station ssid and password
-    if(!err)
-    {
+    //first send
         root=cJSON_CreateObject();
         if(root)
         {
             cJSON_AddStringToObject(root,"cmd",internal_cmds[BOOTRESP]);
-            // cJSON_AddStringToObject(root,"ssid",(char*)configsta.sta.ssid);
-            // cJSON_AddStringToObject(root,"psw",(char*)configsta.sta.password);
             cJSON_AddNumberToObject(root,"time",(uint32_t)now);
             cJSON_AddNumberToObject(root,"profile",theConf.activeProfile);
             cJSON_AddNumberToObject(root,"day",theConf.dayCycle);
             cJSON_AddNumberToObject(root,"timermux",theConf.test_timer_div);
             cJSON_AddNumberToObject(root,"start",theConf.blower_mode);      // this will determine the node to start or not
-            // cJSON_AddStringToObject(root,"mqtts",theConf.mqttServer);
-            // cJSON_AddStringToObject(root,"mqttu",theConf.mqttUser);
-            // cJSON_AddStringToObject(root,"mqttp",theConf.mqttPass);
-            // cJSON_AddBoolToObject(root,"sk",theConf.allowSkips);
-            // cJSON_AddNumberToObject(root,"skn",theConf.maxSkips);
 
             char *intmsg=cJSON_PrintUnformatted(root);
             if(intmsg)
@@ -702,7 +693,7 @@ esp_err_t root_send_data_to_node(mesh_addr_t thismac)
                 meshMsg.lenMsg=strlen(intmsg);
                 meshMsg.addr=&thismac;
                 if(xQueueSend(meshQueue,&meshMsg,0)!=pdPASS)
-                    ESP_LOGE(MESH_TAG,"Cannot queue fram");   //queue it
+                    ESP_LOGE(MESH_TAG,"Cannot queue fram");   //queue it he will free the message
             }
             else
                 ESP_LOGE(MESH_TAG,"send data node no RAM");
@@ -712,10 +703,28 @@ esp_err_t root_send_data_to_node(mesh_addr_t thismac)
         }
         else
             return ESP_FAIL;
-    }
-    else
-        return ESP_FAIL;
-}
+            delay(500);   // let time to node to process first message
+
+        // now send the theConf modbus configurations binary data
+        int big=sizeof(theConf.limits)+sizeof(theConf.modbus_battery)+
+                        sizeof(theConf.modbus_panels)+
+                        sizeof(theConf.modbus_inverter)+
+                        sizeof(theConf.modbus_sensors );
+        printf("Big Modbus data to send %d\n",big);
+        
+        meshunion_t *intMessage=(meshunion_t*)calloc(1,big+4);     // the reserving of space for the union is not the sizeof union just arbitrary 
+        void *p=(void*)intMessage+4;
+        memcpy(p,&theConf.milim,big);        //copy the message itself, offset 4 for cmd uint32 start offset is milim
+        intMessage->cmd=MESH_INT_DATA_MODBUS;
+        data.proto = MESH_PROTO_BIN;
+        data.tos = MESH_TOS_P2P;
+        data.data=(uint8_t*)intMessage;
+        data.size=big+4;
+        esp_mesh_send(meshMsg.addr, &data, meshMsg.addr==NULL? MESH_DATA_FROMDS:MESH_DATA_P2P, NULL, 0);
+        free(intMessage);
+
+    return ESP_OK;
+}   
 
 int root_sendNodeACK(void *parg)
 {
@@ -1338,6 +1347,21 @@ void process_binary_mesh_msg(mesh_addr_t *from, mesh_data_t *data,uint32_t reser
             free(aNode);
         }
     // DO NOT Free aNode its used to get the sent data by Load_table
+        return;
+    }
+    // else check other binary commands here
+    if(!esp_mesh_is_root() && reserved==MESH_INT_DATA_MODBUS)         // check out for meter data                             //only ROOT is central manager. ONE connection to MQTT
+    {
+        // update modbus data all nodes
+        printf("Child Node got Modbus data from Root\n");
+        aNode=(meshunion_t *)calloc(data->size,1);                 // allocate buffer
+        if(!aNode)
+        {
+            ESP_LOGE(MESH_TAG,"mesh binary RECV Modbus Failed calloc");
+            return; 
+        }
+        // do something with modbus data
+        free(aNode);
         return;
     }
 

@@ -129,7 +129,7 @@ static void apply_battery_config(const BatteryCommandFields *fields)
     theConf.modbus_battery.SOCStart = fields->soc.start;
     theConf.modbus_battery.SOCOffset = fields->soc.offset;
 
-    // write_to_flash();
+    write_to_flash();
 }
 
 static void log_battery_update(const BatteryCommandFields *fields)

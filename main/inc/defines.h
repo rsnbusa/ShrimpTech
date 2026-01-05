@@ -167,6 +167,7 @@
 
 #define MESH_INT_DATA_BIN               (0x88995566)
 #define MESH_INT_DATA_CJSON             (0x33221144)
+#define MESH_INT_DATA_MODBUS            (0x33221155)
 
 #define DEFAULT_SSID                    "NETLIFE-RSNCasa"
 #define DEFAULT_PSWD                    "csttpstt"

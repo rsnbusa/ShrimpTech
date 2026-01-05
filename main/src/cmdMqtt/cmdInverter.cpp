@@ -81,10 +81,10 @@ static bool validate_inverter_command(cJSON *inverterCommand, InverterCommandFie
         return false;
     }
 
-    cJSON *loadUsedHoy = cJSON_GetObjectItem(inverterCommand,"LoadUsedHoy");
+    cJSON *loadUsedHoy = cJSON_GetObjectItem(inverterCommand,"LoadUsedHoy"); //
     cJSON *batDscHoy = cJSON_GetObjectItem(inverterCommand,"BatDscHoy");
     cJSON *batChdHoy = cJSON_GetObjectItem(inverterCommand,"BatChdHoy");
-    cJSON *loadUsedTotal = cJSON_GetObjectItem(inverterCommand,"LoadUsedTotal");
+    cJSON *loadUsedTotal = cJSON_GetObjectItem(inverterCommand,"LoadUsedTotal"); //
     cJSON *usedkwhHoy = cJSON_GetObjectItem(inverterCommand,"UsedkwhHoy");
     cJSON *genkWhHoy = cJSON_GetObjectItem(inverterCommand,"GenkWhHoy");
     cJSON *batDscTotal = cJSON_GetObjectItem(inverterCommand,"BatDscTotal");
@@ -175,7 +175,7 @@ static void apply_inverter_config(const InverterCommandFields *fields)
     theConf.modbus_inverter.I1_BatChHoyStart = fields->batChHoy.start;
     theConf.modbus_inverter.I1_BatChHoyOff = fields->batChHoy.offset;
 
-    // write_to_flash();
+    write_to_flash();
 }
 
 static void log_inverter_update(const InverterCommandFields *fields)

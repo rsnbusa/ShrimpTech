@@ -39,7 +39,7 @@ waitall()
         # echo " Variable [$var] ${#var}"
             if [ ${#var} -gt 1 ]
             then
-                printf "."
+                # echo -n "."
                 nada=0
                 # echo "$ppid is running"
                 # Do something knowing the pid exists, i.e. the process with $PID is running
@@ -52,6 +52,7 @@ waitall()
             fi
         sleep 0.5
         done
+        printf "."
 done
 # echo "Done all Flashing"
 
@@ -75,11 +76,8 @@ var="$(ps aux |grep /dev/tty.u |grep -v grep | grep esp_idf_monitor| awk '{print
 if [ ${#var} -gt 0 ]; then
     kill -9 $var 
 fi
+    #  kill -9 $(ps  u |grep /dev/tty.u |grep -v grep | grep esp_idf_monitor| awk '{print $2}') 
 var="$(ps aux |grep "CoolTerm" |grep -v "grep"|awk '{print $2}')"
-if [ ${#var} -gt 0 ]; then
-    kill -9 $var 
-fi
-var="$(ps aux |grep "screen" |grep -v "grep"|awk '{print $2}')"
 if [ ${#var} -gt 0 ]; then
     kill -9 $var 
 fi
@@ -146,20 +144,15 @@ declare -a lospids          #add to pids under work
 
 #important to change directory
 cd build
-if [ "$erase" == "Y" ]; then
-eraseit="erase_flash"
-echo "willl erase before burning..."
-else
-eraseit=""
-fi
-# skip section
+
+# skip section >/tmp/f$num 2>/dev/null &
 sizesk=${#skip} 
 if [ $sizesk -eq 0 ]; then
 printf "Burning firmware..."
 for (( i=0;i<$cnt;i++)); do
     portt="${devs[$i]}"
-# /Users/rsn/.espressif/python_env/idf5.5_py3.9_env/bin/python /Users/rsn/esp/v5.5.1/esp-idf/components/esptool_py/esptool/esptool.py -p /dev/tty.usbserial-0001 -b 1500000 --before default_reset --after hard_reset --chip esp32s3 write_flash --flash_mode dio --flash_freq 80m --flash_size 4MB 0x0 bootloader/bootloader.bin 0x10000 shrimpiot.bin 0x8000 partition_table/partition-table.bin 
-lvar="$PYTHON $IDF_PATH/components/esptool_py/esptool/esptool.py -p "/dev/$portt" -b 1500000 --before default_reset --after hard_reset --chip $IDF_TARGET  write_flash --flash_mode dio --flash_freq 80m --flash_size 4MB 0x0 bootloader/bootloader.bin 0x10000 $projname 0x8000 partition_table/partition-table.bin  >/tmp/f$num 2>/dev/null &"
+    # 
+lvar="$PYTHON $IDF_PATH/components/esptool_py/esptool/esptool.py -p "/dev/$portt" -b 1500000 --before default_reset --after hard_reset --chip $IDF_TARGET write_flash --flash_mode dio --flash_freq 80m --flash_size 4MB 0x0 bootloader/bootloader.bin 0x10000 $projname 0x8000 partition_table/partition-table.bin  >/tmp/f$num 2>/dev/null &"
 # echo $lvar
 eval $lvar      #execute it
     lospids+="$! "  # need the space is just a bunch of letters now

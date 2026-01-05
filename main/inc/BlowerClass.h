@@ -146,7 +146,6 @@ typedef struct {
     battery_t battery;
     energy_t  energy;
     sensor_t  sensors;
-    // wschedule_t schedule;
 } solarSystem_t;
 
 /**

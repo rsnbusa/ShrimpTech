@@ -141,7 +141,7 @@ static void apply_sensors_config(const SensorsCommandFields *fields)
     theConf.modbus_sensors.HumOffset = fields->humidityCh.offset;
     theConf.modbus_sensors.HAddress = fields->humidityCh.address;
 
-    // write_to_flash();
+    write_to_flash();
 }
 
 static void log_sensors_update(const SensorsCommandFields *fields)
