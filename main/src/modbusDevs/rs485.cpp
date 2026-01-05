@@ -12,7 +12,7 @@ static constexpr int MODBUS_PORT = 1;
 static constexpr int MODBUS_BAUD = 9600;
 static constexpr mb_mode_type_t MODBUS_MODE = (mb_mode_type_t)0;
 static constexpr uart_mode_t MODBUS_UART_MODE = UART_MODE_RS485_HALF_DUPLEX;
-static constexpr TickType_t POLL_DELAY_MS = 350;
+static constexpr TickType_t POLL_DELAY_MS = 500;
 static constexpr uint8_t ERROR_FILL = 0xFF;
 static constexpr size_t ERROR_BUF_LEN = 20;
 

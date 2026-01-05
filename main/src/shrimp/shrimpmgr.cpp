@@ -1908,7 +1908,7 @@ static void root_mqtt_event_handler(void *handler_args, esp_event_base_t base, i
                 bzero(eltopic,sizeof(eltopic));
                 memcpy(eltopic,event->topic,event->topic_len);
                 if(xQueueSend( mqttQ,&mqttHandle,0 )!=pdTRUE)
-                    ESP_LOGE(MESH_TAG,"Cannot add msgd mqtt");
+                    ESP_LOGE(MESH_TAG,"Cannot add msgd mqtt");  // TODO free msg 
 
                     // delete retained
                 if(strcmp(eltopic,cmdQueue)==0)
@@ -2066,7 +2066,7 @@ void root_mqttMgr(void *pArg)
                 if(monton)
                 {
                     int son=cJSON_GetArraySize(monton);
-                    // printf("cmds in %d\n",son);
+                    printf("cmds in %d\n",son);
                     for (int a=0;a<son;a++)
                     {
                         cJSON *cmditem 	=cJSON_GetArrayItem(monton, a);//next item
@@ -2085,20 +2085,20 @@ void root_mqttMgr(void *pArg)
                                 else    
                                 {
                                     ESP_LOGE(MESH_TAG,"Invalid cmd received %s",order->valuestring);
-                                    mqttMsg.queue=emergencyQueue;   // fall thru  
-                                    char *message=(char*)calloc(1,strlen((char*)mqttHandle.message));   //will be freed by mqttsender at delivery confirmation
-                                    // char *message=(char*)calloc(1,strlen((char*)mqttHandle.message)+50);   //will be freed by mqttsender at delivery confirmation
-                                    sprintf(message,"Invalid Cmd [%s] in Node %d",(char*)mqttHandle.message,theConf.unitid);
-                                    mqttMsg.msg=message;
-                                    mqttMsg.lenMsg=strlen(message);
-                                    mqttMsg.code=NULL;
-                                    mqttMsg.param=NULL; 
-                                    if(xQueueSend(mqttSender,&mqttMsg,0)!=pdTRUE)      //will free message malloc
-                                    {
-                                        ESP_LOGE(MESH_TAG,"Error mqttmgr queueing msg invalid cmd");
-                                        if(mqttMsg.msg)
-                                            free(mqttMsg.msg);  //due to failure
-                                    }
+                                    // mqttMsg.queue=emergencyQueue;   // fall thru  
+                                    // char *message=(char*)calloc(1,strlen((char*)mqttHandle.message));   //will be freed by mqttsender at delivery confirmation
+                                    // // char *message=(char*)calloc(1,strlen((char*)mqttHandle.message)+50);   //will be freed by mqttsender at delivery confirmation
+                                    // sprintf(message,"Invalid Cmd [%s] in Node %d",(char*)mqttHandle.message,theConf.unitid);
+                                    // mqttMsg.msg=message;
+                                    // mqttMsg.lenMsg=strlen(message);
+                                    // mqttMsg.code=NULL;
+                                    // mqttMsg.param=NULL; 
+                                    // if(xQueueSend(mqttSender,&mqttMsg,0)!=pdTRUE)      //will free message malloc
+                                    // {
+                                    //     ESP_LOGE(MESH_TAG,"Error mqttmgr queueing msg invalid cmd");
+                                    //     if(mqttMsg.msg)
+                                    //         free(mqttMsg.msg);  //due to failure
+                                    // }
                                 }
                             }
                             else
@@ -2117,7 +2117,10 @@ void root_mqttMgr(void *pArg)
                 ESP_LOGE(MESH_TAG,"Cmd received not parsable [%s]",mqttHandle.message);
 
             if(mqttHandle.message)
+            {
+                printf("Delete mqtt message\n");
                 free(mqttHandle.message);
+            }
         }
     }
 }
@@ -2614,6 +2617,10 @@ void init_process()
     strcpy((char*)&cmds[++x].comando,       "display");		            cmds[x].code=cmdDisplay;        strcpy((char*)&cmds[x].abr,         "DISP");		
     strcpy((char*)&cmds[++x].comando,       "log");		                cmds[x].code=cmdLogs;           strcpy((char*)&cmds[x].abr,         "LOGG");		
     strcpy((char*)&cmds[++x].comando,       "reset");		            cmds[x].code=cmdReset;          strcpy((char*)&cmds[x].abr,         "REST");		
+    strcpy((char*)&cmds[++x].comando,       "Panels");		            cmds[x].code=cmdPanels;         strcpy((char*)&cmds[x].abr,         "PANE");		
+    strcpy((char*)&cmds[++x].comando,       "Battery");		            cmds[x].code=cmdBattery;        strcpy((char*)&cmds[x].abr,         "BATT");		
+    strcpy((char*)&cmds[++x].comando,       "Sensors");		            cmds[x].code=cmdSensors;        strcpy((char*)&cmds[x].abr,         "SENS");		
+    strcpy((char*)&cmds[++x].comando,       "Inverter");		        cmds[x].code=cmdInverter;       strcpy((char*)&cmds[x].abr,         "INVR");		
   
 // Lock gpio PIN 
     bzero(&io_conf,sizeof(io_conf));
@@ -3636,9 +3643,9 @@ void find_cycle_day(uint8_t * ciclo,uint8_t*dia)
                         else
                         {
                             son=starttime-now;
-                            // printf("Start timer in %ld secs %ld %ld millis %ld\n",(long)son,(long)starttime,(long)now);
+                            printf("Start timer in %ld secs %ld %ld millis %ld\n",(long)son,(long)starttime,(long)now);
                             sone=endtime-now;
-                            // printf("End timer in %d sec %ld %ld\n",(long)sone,(long)endtime,(long)now);
+                            printf("End timer in %d sec %ld %ld\n",(long)sone,(long)endtime,(long)now);
 
                             start_timers[vanTimersStart]=xTimerCreate(NULL,pdMS_TO_TICKS(son/TEST),pdFALSE,(void*)vanTimersStart, blower_start);
                             if(!start_timers[vanTimersStart])
@@ -3646,7 +3653,9 @@ void find_cycle_day(uint8_t * ciclo,uint8_t*dia)
                                 ESP_LOGE(MESH_TAG,"Start Timer not created %d",vanTimersStart);
                                 //do something drastic
                             }
-                            end_timers[vanTimersEnd]=xTimerCreate(NULL,pdMS_TO_TICKS(sone/TEST),pdFALSE,ck_h==theConf.profiles[0].cycle[0].numHorarios-1?(void*)0xFFFFFFFF:( void * ) vanTimersEnd, blower_end);
+                            // for simulation, end timers takes longer to see the effect of blower status reporting
+                            end_timers[vanTimersEnd]=xTimerCreate(NULL,pdMS_TO_TICKS(sone),pdFALSE,ck_h==theConf.profiles[0].cycle[0].numHorarios-1?(void*)0xFFFFFFFF:( void * ) vanTimersEnd, blower_end);
+                            // end_timers[vanTimersEnd]=xTimerCreate(NULL,pdMS_TO_TICKS(sone/TEST),pdFALSE,ck_h==theConf.profiles[0].cycle[0].numHorarios-1?(void*)0xFFFFFFFF:( void * ) vanTimersEnd, blower_end);
                             if(!end_timers[vanTimersEnd])
                             {
                                 ESP_LOGE(MESH_TAG,"End Timer not created %d",vanTimersEnd);

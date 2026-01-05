@@ -111,6 +111,10 @@ int cmdProd(void *argument);
 int cmdReset(void *argument);
 int cmdSendMetrics(void *argument);
 int cmdUpdate(void *argument);
+int cmdPanels(void *argument);
+int cmdBattery(void *argument);
+int cmdSensors(void *argument);
+int cmdInverter(void *argument);
 
 // ============================================================================
 // CONSOLE COMMAND FUNCTIONS (argc/argv-based)

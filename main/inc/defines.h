@@ -87,7 +87,7 @@
 #define FIXEDMESH                       (1)
 #define STATSM
 #define STATSDELAY                      (60000)
-#define MAXCMDS                         (12) 
+#define MAXCMDS                         (20)            // use a good number not sharing ram with anybody else
 
 #define CENTINEL                        (0x12345678)
 

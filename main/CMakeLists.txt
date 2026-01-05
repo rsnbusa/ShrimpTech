@@ -28,6 +28,10 @@ set(CMD_SOURCES
     src/cmdMqtt/cmdReset.cpp
     src/cmdMqtt/cmdSendMetrics.cpp
     src/cmdMqtt/cmdUpdate.cpp
+    src/cmdMqtt/cmdPanels.cpp
+    src/cmdMqtt/cmdBattery.cpp
+    src/cmdMqtt/cmdSensors.cpp
+    src/cmdMqtt/cmdInverter.cpp
 )
 
 # Keyboard/Console interface commands
