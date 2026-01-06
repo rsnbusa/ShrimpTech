@@ -911,7 +911,8 @@ esp_err_t root_send_collected_nodes(uint32_t cuantos)        //root only
     shmsg->poolid=theConf.poolid;
     shmsg->countnodes=cuantos;
     shmsg->centinel=0x12345678;
-
+    shmsg->lim_errs=globalErrors;
+    // printf("Global Errors %d\n",globalErrors);
     // if((theConf.debug_flags >> dSCH) & 1U)  
     //     printf("Schedule Cycle %d Day %d Horario %d Start %d End %d  Status %d PWM %d\n",scheduleData.currentCycle,scheduleData.currentDay,
     //         scheduleData.currentHorario,scheduleData.currentStartHour,scheduleData.currentEndHour,scheduleData.status,scheduleData.currentPwmDuty);

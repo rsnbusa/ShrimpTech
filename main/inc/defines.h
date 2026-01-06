@@ -199,6 +199,16 @@
 #define DSTART     (2)
 #define DPOINTS    (1)
 #define DTYPE      (0)
+#define SENSOR_ERROR_BIT               (0) // Bit 0 for sensor errors
+#define PANELS_ERROR_BIT                (1) // Bit 1 for panel errors
+#define BATTERY_ERROR_BIT              (2) // Bit 2 for battery errors
+#define ENERGY_ERROR_BIT               (3) // Bit 3 for energy errors
+
+#define SENSOR_LIMIT_ERROR_BIT         (4) // Bit 4 for limit errors
+#define PANELS_LIMIT_ERROR_BIT          (5) // Bit 5 for limit errors
+#define BATTERY_LIMIT_ERROR_BIT        (6) // Bit 6 for limit errors
+#define ENERGY_LIMIT_ERROR_BIT         (7) // Bit 7 for limit errors
+
 
 #define DBG_SCH						    "\e[36m[SCH]\e[0m"               //blue
 #define DBG_MESH					    "\e[35m[MESH]\e[0m"              // Magenta

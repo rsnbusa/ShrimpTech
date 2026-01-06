@@ -15,9 +15,11 @@
 #include "typedef.h"
 #include "globals.h"
 
-void check_limits(char * who,  int *limitlocation, int count,char *color,char *names[], ...){
+bool check_limits(char * who,  int *limitlocation, int count,char *color,char *names[], ...){
     va_list args;
     va_start(args, names);
+    bool limits_exceeded=false;
+
     // printf("Checking limits for %s son %d\n",who,count);
 
     for (int i=0;i<count;i++)
@@ -31,17 +33,20 @@ void check_limits(char * who,  int *limitlocation, int count,char *color,char *n
         {
             if (value<min)
             {
+                limits_exceeded=true;
                 if (((theConf.debug_flags >> dLIMITS) & 1U))
                     ESP_LOGW(TAG,"%s%s below minimum limit %d < %d",color,names[i],value,min);
             }
             else if (value>max)
             {
+                limits_exceeded=true;
                 if (((theConf.debug_flags >> dLIMITS) & 1U))
                     ESP_LOGW(TAG,"%s%s above maximum limit %d > %d",color,names[i],value,max);
             }
         }
     }
     va_end(args);
+    return limits_exceeded;
 }
 
 // ============================================================================
@@ -65,6 +70,7 @@ void check_limits(char * who,  int *limitlocation, int count,char *color,char *n
 void print_sensor_data(void *sensors, int *errors,char *color,int numerrs)
 {
     bool hasErrors=false;
+    bool didit;
     int limits_location[]={WTEMP,LIMITDO,LIMITPH,ATEMP,AHUM}; // map to correct location in limits array
     int limit_count=sizeof(limits_location)/sizeof(int);
     char *limits_names[]={"WTEMP","LIMITDO","LIMITPH","ATEMP","AHUM"};
@@ -82,18 +88,25 @@ void print_sensor_data(void *sensors, int *errors,char *color,int numerrs)
 
     if (hasErrors)
     {
+        globalErrors|= (1U << SENSOR_ERROR_BIT); // set sensor error bit
         if (((theConf.debug_flags >> dMODBUS) & 1U))
             printf("\n");
         return;
     }   
+
+    globalErrors &= ~(1U << SENSOR_ERROR_BIT); // clear the error bit
      
         // should check Limits here too
     sensor_t *data = (sensor_t*)sensors;
 
-    check_limits("Sensors",limits_location,limit_count,color,limits_names,
+    didit=check_limits("Sensors",limits_location,limit_count,color,limits_names,
                 (int)data->WTemp,(int)data->DO*10,
                 (int)data->PH,(int)data->ATemp,(int)data->AHum); 
-
+    if (didit)
+        globalErrors|= (1U << SENSOR_LIMIT_ERROR_BIT); // set sensor limit error bit
+    else
+        globalErrors &= ~(1U << SENSOR_LIMIT_ERROR_BIT); // clear the limit error bit
+        
     if (!((theConf.debug_flags >> dMODBUS) & 1U))
         return;
 
@@ -123,7 +136,7 @@ void print_sensor_data(void *sensors, int *errors,char *color,int numerrs)
  */
 void print_energy_data(void *energy, int *errors,char * color,int numerrs)
 {
-    bool hasErrors=false;
+    bool hasErrors=false,didit;
     int limits_location[]={BMCHAH,BMDDAH,BMCHKT,BMDDKT,GENEER,USEDEN,LCONLI,BMCHKW,BMDDKW,GENLCT}; // map to correct location in limits array
     int limit_count=sizeof(limits_location)/sizeof(int);
     char *limits_names[]={"BMCHAH","BMDDAH","BMCHKT","BMDDKT","GENEER","USEDEN","LCONLI","BMCHKW","BMDDKW","GENLCT"};
@@ -140,21 +153,26 @@ void print_energy_data(void *energy, int *errors,char * color,int numerrs)
 
     if (hasErrors)
     {
+        globalErrors|= (1U << ENERGY_ERROR_BIT); // set energy error bit
+
         if (((theConf.debug_flags >> dMODBUS) & 1U))
             printf("\n");
         return;
     }   
-     
-        // should check Limits here too
 
-
-
-
+    globalErrors &= ~(1U << ENERGY_ERROR_BIT); // clear the error bit
+        
+    
     energy_t *data = (energy_t*)energy;
-    check_limits("Energy",limits_location,limit_count,color,limits_names, (int)data->batChgAHToday,
+    didit=check_limits("Energy",limits_location,limit_count,color,limits_names, (int)data->batChgAHToday,
                 (int)data->batChgAHTotal,(int)data->batChgAHTotal,(int)data->batDischgAHTotal,
                 (int)data->generateEnergyToday,(int)data->usedEnergyToday,(int)data->gLoadConsumLineTotal,
                 (int)data->batChgkWhToday,(int)data->batDischgkWhToday,(int)data->genLoadConsumToday); 
+
+    if (didit)
+        globalErrors|= (1U << ENERGY_LIMIT_ERROR_BIT); // set energy limit error bit
+    else
+        globalErrors &= ~(1U << ENERGY_LIMIT_ERROR_BIT); // clear the limit error bit
 
     if (!((theConf.debug_flags >> dMODBUS) & 1U))
         return;
@@ -199,7 +217,7 @@ void print_energy_data(void *energy, int *errors,char * color,int numerrs)
  */
 void print_battery_data(void *batteryData, int *errors,char *color,int numerrs)
 {
-    bool hasErrors=false;
+    bool hasErrors=false,didit;
     int limits_location[]={BMSOC,BMSOH,BMCC,BMTEMP}; // map to correct location in limits array  
     int limit_count=sizeof(limits_location)/sizeof(int);
     char *limits_names[]={"BMSOC","BMSOH","BMCC","BMTEMP"};
@@ -216,20 +234,24 @@ void print_battery_data(void *batteryData, int *errors,char *color,int numerrs)
 
     if (hasErrors)
     {
+        globalErrors|= (1U << BATTERY_ERROR_BIT); // set battery error bit
         if (((theConf.debug_flags >> dMODBUS) & 1U))
             printf("\n");
         return;
     }   
      
-        // should check Limits here too
-
+    globalErrors &= ~(1U << BATTERY_ERROR_BIT); // clear the error bit
 
     battery_t *data = (battery_t*)batteryData;
 
 
-    check_limits("Battery",limits_location,limit_count,color,limits_names, (int)data->batSOC, (int)data->batSOH,
+    didit=check_limits("Battery",limits_location,limit_count,color,limits_names, (int)data->batSOC, (int)data->batSOH,
                 (int)data->batteryCycleCount, (int)data->batBmsTemp);
 
+    if (didit)
+        globalErrors|= (1U << BATTERY_LIMIT_ERROR_BIT); // set battery limit error bit
+    else
+        globalErrors &= ~(1U << BATTERY_LIMIT_ERROR_BIT); // clear the limit error bit                
 
     if (!((theConf.debug_flags >> dMODBUS) & 1U))
         return;
@@ -260,7 +282,7 @@ void print_battery_data(void *batteryData, int *errors,char *color,int numerrs)
  */
 void print_panel_data(void *pvPanel, int *errors,char * color,int numerrs)
 {
-    bool hasErrors=false;
+    bool hasErrors=false,didit;
     int limits_location[]={PV1V,PV1A,PV1V,PV1A}; // map to correct location in limits array
     int limit_count=sizeof(limits_location)/sizeof(int);
     char *limits_names[]={"PV1V","PV1A","PV2V","PV2A"};
@@ -278,19 +300,26 @@ void print_panel_data(void *pvPanel, int *errors,char * color,int numerrs)
 
     if (hasErrors)
     {
+        globalErrors|= (1U << PANELS_ERROR_BIT); // set panels error bit
+
         if (((theConf.debug_flags >> dMODBUS) & 1U))
             printf("\n");
         return;
     }   
+    globalErrors &= ~(1U << PANELS_ERROR_BIT); // clear the error bit
 
     pvPanel_t *data = (pvPanel_t*)pvPanel;
 
     // should check Limits here too
 
-    check_limits("Panels",limits_location,limit_count,color,limits_names,(int)data->pv1Volts, (int)data->pv1Amp,(int) data->pv2Volts,
+    didit=check_limits("Panels",limits_location,limit_count,color,limits_names,(int)data->pv1Volts, (int)data->pv1Amp,(int) data->pv2Volts,
                 (int)data->pv2Amp);
 
-                        
+    if (didit)
+        globalErrors|= (1U << PANELS_LIMIT_ERROR_BIT); // set panels limit error bit
+    else
+        globalErrors &= ~(1U << PANELS_LIMIT_ERROR_BIT); // clear the limit error bit 
+
     if (!((theConf.debug_flags >> dMODBUS) & 1U))
         return;
 

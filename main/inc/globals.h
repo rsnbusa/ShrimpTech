@@ -317,7 +317,7 @@ EXTERN modbus_generic_t genericParams;
 EXTERN modbus_rec_t modbusRecord;
 EXTERN answer_t reply;
 EXTERN modbus_array_t modbusArray[MAXMODBUS];
-
+EXTERN uint16_t globalErrors;           // 8 bits, upper 4 are limits and lower 4 are errors; 16 bits variable for alignment
 // ============================================================================
 // SOLAR SYSTEM DATA
 // ============================================================================
