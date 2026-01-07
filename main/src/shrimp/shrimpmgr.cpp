@@ -2091,7 +2091,6 @@ void root_mqttMgr(void *pArg)
                 if(monton)
                 {
                     int son=cJSON_GetArraySize(monton);
-                    printf("cmds in %d\n",son);
                     for (int a=0;a<son;a++)
                     {
                         cJSON *cmditem 	=cJSON_GetArrayItem(monton, a);//next item
@@ -2143,7 +2142,6 @@ void root_mqttMgr(void *pArg)
 
             if(mqttHandle.message)
             {
-                printf("Delete mqtt message\n");
                 free(mqttHandle.message);
             }
         }
@@ -2604,6 +2602,7 @@ void init_process()
     sprintf(cmdQueue,"%s/%d/%s",QUEUE,theConf.poolid,MQTTCMD);
     sprintf(infoQueue,"%s/%d/%s",QUEUE,theConf.poolid,MQTTINFO);
     sprintf(alarmQueue,"%s/%d/%s",QUEUE,theConf.poolid,MQTTALARM);
+    sprintf(limitsQueue,"%s/%d/%s",QUEUE,theConf.poolid,MQTTLIMITS);
     // sprintf(emergencyQueue,"%s/%s",QUEUE,MQTTEMER);
     // sprintf(cmdBroadcast,"%s/%s",QUEUE,MQTTBROADCAST);
     // sprintf(discoQueue,"%s/%s",QUEUE,MQTTDISCO);
@@ -2646,6 +2645,8 @@ void init_process()
     strcpy((char*)&cmds[++x].comando,       "Battery");		            cmds[x].code=cmdBattery;        strcpy((char*)&cmds[x].abr,         "BATT");		
     strcpy((char*)&cmds[++x].comando,       "Sensors");		            cmds[x].code=cmdSensors;        strcpy((char*)&cmds[x].abr,         "SENS");		
     strcpy((char*)&cmds[++x].comando,       "Inverter");		        cmds[x].code=cmdInverter;       strcpy((char*)&cmds[x].abr,         "INVR");		
+    strcpy((char*)&cmds[++x].comando,       "limits");		            cmds[x].code=cmdLimits;         strcpy((char*)&cmds[x].abr,         "LMTS");		
+    strcpy((char*)&cmds[++x].comando,       "rlimits");		            cmds[x].code=cmdReadLimits;     strcpy((char*)&cmds[x].abr,         "RLIM");		
   
 // Lock gpio PIN 
     bzero(&io_conf,sizeof(io_conf));

@@ -160,6 +160,7 @@
 #define MQTTCMD                         "cmd"
 #define MQTTINFO                        "info"
 #define MQTTALARM                       "alarm"
+#define MQTTLIMITS                      "limits"
 #define MQTTEMER                        "911"
 #define MQTTBROADCAST                   "broadcast"
 #define MQTTDISCO                       "answer"

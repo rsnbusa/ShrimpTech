@@ -24,9 +24,10 @@ bool check_limits(char * who,  int *limitlocation, int count,char *color,char *n
 
     for (int i=0;i<count;i++)
     {
+        memcpy(&theConf.limits,&theConf.milim,sizeof(theConf.milim));
         int value=va_arg(args, int);
         int loc=limitlocation[i];
-        // printf("Limit %s Min %d Max %d Loc %d\n",names[i],theConf.limits[loc][1],theConf.limits[loc][0],loc);
+        // printf("Value %d Limit %s Min %d Max %d Loc %d\n",value,names[i],theConf.limits[loc][0],theConf.limits[loc][1],loc);
         int min=theConf.limits[loc][1];
         int max=theConf.limits[loc][0];
         if (min!=max) // limits defined

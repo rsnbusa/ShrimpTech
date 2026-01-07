@@ -115,6 +115,8 @@ int cmdPanels(void *argument);
 int cmdBattery(void *argument);
 int cmdSensors(void *argument);
 int cmdInverter(void *argument);
+int cmdLimits(void *argument);
+int cmdReadLimits(void *argument);
 
 // ============================================================================
 // CONSOLE COMMAND FUNCTIONS (argc/argv-based)
