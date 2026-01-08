@@ -908,17 +908,20 @@ esp_err_t root_send_collected_nodes(uint32_t cuantos)        //root only
 
     // set data and copy solarPad into shrimp message to send to MAIN HOST via MQTT HQ
     memcpy(&shmsg->poolAvgMetrics,solarPad,sizeof(solarSystem_t));
+    // update the current schedule data that is lost during averaging
+    wschedule_t *scheduleData=theBlower.getSchedulePtr();
+    memcpy(&shmsg->poolAvgMetrics.wschedule,scheduleData,sizeof(wschedule_t));
     print_blower("Root Average Solar Data", &shmsg->poolAvgMetrics,false);
     shmsg->msgTime=time(NULL);
     shmsg->poolid=theConf.poolid;
     shmsg->countnodes=cuantos;
     shmsg->centinel=0x12345678;
     shmsg->lim_errs=globalErrors;
-    printf("Global Errors %d\n",globalErrors);
-    esp_log_buffer_hex("Shrmsg",shmsg,sizeof(shrimpMsg_t));
+    // printf("Schedule status %d\n",shmsg->poolAvgMetrics.wschedule.status);
+    // printf("Global Errors %d\n",globalErrors);
     // if((theConf.debug_flags >> dSCH) & 1U)  
-    //     printf("Schedule Cycle %d Day %d Horario %d Start %d End %d  Status %d PWM %d\n",scheduleData.currentCycle,scheduleData.currentDay,
-    //         scheduleData.currentHorario,scheduleData.currentStartHour,scheduleData.currentEndHour,scheduleData.status,scheduleData.currentPwmDuty);
+    //     printf("Schedule Cycle %d Day %d Horario %d Start %d End %d  Status %d PWM %d\n",scheduleData->currentCycle,scheduleData->currentDay,
+    //         scheduleData->currentHorario,scheduleData->currentStartHour,scheduleData->currentEndHour,scheduleData->status,scheduleData->currentPwmDuty);
 
     // memcpy(&shmsg->schedule,&scheduleData,sizeof(wschedule_t));
 
@@ -3633,11 +3636,11 @@ void find_cycle_day(uint8_t * ciclo,uint8_t*dia)
                 {
                     // scheduleData.currentDay=ck_d;           // save day for status reporting
 
-                    if((theConf.debug_flags >> dSCH) & 1U)  
+                    // if((theConf.debug_flags >> dSCH) & 1U)  
                     for (int ck_h=0;ck_h<theConf.profiles[0].cycle[ck].numHorarios;ck_h++)      // hours
                     {
                         while(pausef)
-                            delay(1000);
+                            delay(1000);            // todo make it less fatal
                         // scheduleData.currentHorario=ck_h;      //save horario for status reporting
                         // scheduleData.currentStartHour=theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart;
                         // scheduleData.currentEndHour=theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen;

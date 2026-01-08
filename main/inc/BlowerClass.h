@@ -214,7 +214,13 @@ typedef struct {
  * All data access is synchronized using a semaphore for thread safety.
  */
 class BlowerClass final {
+    /**
+     * @brief Get pointer to internal schedule data (wschedule_t)
+     * @return Pointer to wschedule_t
+     */
 public:
+    wschedule_t* getSchedulePtr();
+
     // ========================================================================
     // Lifecycle Management
     // ========================================================================

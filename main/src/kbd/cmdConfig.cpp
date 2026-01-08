@@ -313,7 +313,7 @@ void showconf(void *pArg)
     if((theConf.debug_flags >> dMODBUS) & 1U) printf("Modbus ");
     printf("              │\n");
     if(theBlower.getScheduleStatus()==BLOWERON)
-        printf("│ Cycle: %d | Day: %d | Timer Div: %d                              │\n", ck, ck_d, theConf.test_timer_div);
+        printf("│ Cycle: %d | Day: %d | Timer Div: %d Status %d                             │\n", ck, ck_d, theConf.test_timer_div,theBlower.getScheduleStatus());
     else
         printf("│ Status: Waiting for Production Cycle start    %d               │\n",theBlower.getScheduleStatus());
     printf("└─────────────────────────────────────────────────────────────┘\n\n");

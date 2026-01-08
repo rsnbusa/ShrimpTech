@@ -492,7 +492,6 @@ typedef struct shrimpMsg_st {
     uint16_t countnodes;                 // offset 6
     time_t msgTime;                      // offset 8
     solarSystem_t poolAvgMetrics;        // offset 16 size 100
-    // wschedule_t schedule;
     uint16_t lim_errs;          // offset 116
 } shrimpMsg_t;                  // totla size 118
 #pragma pack(pop)

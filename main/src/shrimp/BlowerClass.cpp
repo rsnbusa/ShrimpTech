@@ -1,3 +1,4 @@
+
 /**
  * @file BlowerClass.cpp
  * @brief Implementation of BlowerClass for solar system data management
@@ -18,6 +19,11 @@
 #include "typedef.h"
 #include "defines.h"
 #include "time_utils.h"
+
+wschedule_t* BlowerClass::getSchedulePtr()
+{
+    return &framConfig.solarSystem.wschedule;
+}
 
 // ============================================================================
 // Lifecycle Management
