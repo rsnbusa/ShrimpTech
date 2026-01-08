@@ -312,10 +312,10 @@ void showconf(void *pArg)
     if((theConf.debug_flags >> dLOGIC) & 1U) printf("Logic ");
     if((theConf.debug_flags >> dMODBUS) & 1U) printf("Modbus ");
     printf("              │\n");
-    if(theConf.blower_mode)
+    if(theBlower.getScheduleStatus()==BLOWERON)
         printf("│ Cycle: %d | Day: %d | Timer Div: %d                              │\n", ck, ck_d, theConf.test_timer_div);
     else
-        printf("│ Status: Waiting for Production Cycle start                   │\n");
+        printf("│ Status: Waiting for Production Cycle start    %d               │\n",theBlower.getScheduleStatus());
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
 
     // ===== MQTT CONFIGURATION =====

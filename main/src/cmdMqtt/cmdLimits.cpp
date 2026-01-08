@@ -213,7 +213,7 @@ static void apply_limits_config(const LimitsCommandFields *fields)
     theConf.milim.btempmin = fields->batteryTempMin;
     theConf.milim.btempmax = fields->batteryTempMax;
 
-    de
+
     // Amps
     theConf.milim.bcAhoymin = fields->chargeTodayMin;
     theConf.milim.bcAhoymax = fields->chargeTodayMax;

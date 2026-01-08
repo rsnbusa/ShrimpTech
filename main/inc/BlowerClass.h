@@ -146,6 +146,7 @@ typedef struct {
     battery_t battery;
     energy_t  energy;
     sensor_t  sensors;
+    wschedule_t wschedule;
 } solarSystem_t;
 
 /**
@@ -447,6 +448,82 @@ public:
      * @param[out] AHum Air humidity
      */
     void getSensors(float *DO, float *PH, float *WTemp, float *ATemp, float *AHum);
+
+    // ============================================================================
+    // Schedule Management
+    // ============================================================================
+
+    /**
+     * @brief Set schedule parameters
+     * 
+     * Updates the current working schedule for blower operation
+     * 
+     * @param currentCycle Current cycle number
+     * @param currentDay Current day in cycle
+     * @param currentHorario Current horario (time slot) index
+     * @param currentStartHour Start hour of current schedule
+     * @param currentEndHour End hour of current schedule
+     * @param currentPwmDuty Current PWM duty cycle percentage
+     * @param status Schedule status (0=off, 1=on)
+     */
+    void setSchedule(uint16_t currentCycle, uint16_t currentDay, uint16_t currentHorario,
+                     uint16_t currentStartHour, uint16_t currentEndHour, uint16_t currentPwmDuty, uint16_t status);
+
+    /**
+     * @brief Set schedule status only
+     * 
+     * Quickly update just the schedule status (0=off, 1=on)
+     * without affecting other schedule parameters
+     * 
+     * @param status Schedule status (0=off, 1=on)
+     */
+    // void setScheduleStatus(uint16_t status);
+
+    /**
+     * @brief Get schedule parameters
+     * 
+     * Retrieves the current working schedule for blower operation
+     * 
+     * @param currentCycle Pointer to cycle number storage
+     * @param currentDay Pointer to day storage
+     * @param currentHorario Pointer to horario index storage
+     * @param currentStartHour Pointer to start hour storage
+     * @param currentEndHour Pointer to end hour storage
+     * @param currentPwmDuty Pointer to PWM duty cycle storage
+     * @param status Pointer to status storage (0=off, 1=on)
+     */
+    void getSchedule(uint16_t *currentCycle, uint16_t *currentDay, uint16_t *currentHorario,
+                     uint16_t *currentStartHour, uint16_t *currentEndHour, uint16_t *currentPwmDuty, uint16_t *status);
+
+    /**
+     * @brief Set entire schedule structure
+     * 
+     * Replaces the complete schedule structure with provided data
+     * 
+     * @param sched Reference to wschedule_t structure to copy
+     */
+    void setScheduleStruct(const wschedule_t &sched);
+
+    /**
+     * @brief Get entire schedule structure
+     * 
+     * Retrieves a copy of the complete schedule structure
+     * 
+     * @param sched Pointer to wschedule_t structure to fill
+     */
+    void getScheduleStruct(wschedule_t *sched);
+
+    /**
+     * @brief Set only the schedule status field (0=off, 1=on)
+     * @param status New status value
+     */
+    void setScheduleStatus(uint16_t status);
+
+    /**
+     * @brief Get only the schedule status field (0=off, 1=on)
+     * @return Current status value
+     */
+    uint16_t getScheduleStatus() const;
 
     // ========================================================================
     // Direct System Data Access

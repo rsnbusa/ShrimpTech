@@ -420,3 +420,72 @@ void BlowerClass::setSensors(float DO, float PH, float WTemp, float ATemp, float
     framConfig.lastUpdateSensors = time(NULL);
     saveBlower();
 }
+
+// ============================================================================
+// Schedule Management
+// ============================================================================
+
+void BlowerClass::setSchedule(uint16_t currentCycle, uint16_t currentDay, uint16_t currentHorario,
+                              uint16_t currentStartHour, uint16_t currentEndHour, uint16_t currentPwmDuty, uint16_t status)
+{
+    framConfig.solarSystem.wschedule.currentCycle = currentCycle;
+    framConfig.solarSystem.wschedule.currentDay = currentDay;
+    framConfig.solarSystem.wschedule.currentHorario = currentHorario;
+    framConfig.solarSystem.wschedule.currentStartHour = currentStartHour;
+    framConfig.solarSystem.wschedule.currentEndHour = currentEndHour;
+    framConfig.solarSystem.wschedule.currentPwmDuty = currentPwmDuty;
+    framConfig.solarSystem.wschedule.status = status;
+    framConfig.lastUpdate = time(NULL);
+    saveBlower();
+}
+
+// void BlowerClass::setScheduleStatus(uint16_t status)
+// {
+//     framConfig.solarSystem.wschedule.status = status;
+//     framConfig.lastUpdate = time(NULL);
+//     saveBlower();
+// }
+
+void BlowerClass::getSchedule(uint16_t *currentCycle, uint16_t *currentDay, uint16_t *currentHorario,
+                              uint16_t *currentStartHour, uint16_t *currentEndHour, uint16_t *currentPwmDuty, uint16_t *status)
+{
+    if (!currentCycle || !currentDay || !currentHorario || !currentStartHour || !currentEndHour || !currentPwmDuty || !status) {
+        ESP_LOGE(MESH_TAG, "getSchedule: null pointer argument");
+        return;
+    }
+    *currentCycle = framConfig.solarSystem.wschedule.currentCycle;
+    *currentDay = framConfig.solarSystem.wschedule.currentDay;
+    *currentHorario = framConfig.solarSystem.wschedule.currentHorario;
+    *currentStartHour = framConfig.solarSystem.wschedule.currentStartHour;
+    *currentEndHour = framConfig.solarSystem.wschedule.currentEndHour;
+    *currentPwmDuty = framConfig.solarSystem.wschedule.currentPwmDuty;
+    *status = framConfig.solarSystem.wschedule.status;
+}
+
+void BlowerClass::setScheduleStruct(const wschedule_t &sched)
+{
+    memcpy(&framConfig.solarSystem.wschedule, &sched, sizeof(wschedule_t));
+    framConfig.lastUpdate = time(NULL);
+    saveBlower();
+}
+
+void BlowerClass::getScheduleStruct(wschedule_t *sched)
+{
+    if (!sched) {
+        ESP_LOGE(MESH_TAG, "getScheduleStruct: null pointer argument");
+        return;
+    }
+    memcpy(sched, &framConfig.solarSystem.wschedule, sizeof(wschedule_t));
+}
+
+void BlowerClass::setScheduleStatus(uint16_t status)
+{
+    framConfig.solarSystem.wschedule.status = status;
+    framConfig.lastUpdate = time(NULL);
+    saveBlower();
+}
+
+uint16_t BlowerClass::getScheduleStatus() const
+{
+    return framConfig.solarSystem.wschedule.status;
+}

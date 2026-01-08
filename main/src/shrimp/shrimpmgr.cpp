@@ -684,7 +684,9 @@ esp_err_t root_send_data_to_node(mesh_addr_t thismac)
             cJSON_AddNumberToObject(root,"profile",theConf.activeProfile);
             cJSON_AddNumberToObject(root,"day",theConf.dayCycle);
             cJSON_AddNumberToObject(root,"timermux",theConf.test_timer_div);
-            cJSON_AddNumberToObject(root,"start",theConf.blower_mode);      // this will determine the node to start or not
+
+            cJSON_AddNumberToObject(root,"start",theBlower.getScheduleStatus());      // this will determine the node to start or not
+            // cJSON_AddNumberToObject(root,"start",theConf.blower_mode);      // this will determine the node to start or not
 
             char *intmsg=cJSON_PrintUnformatted(root);
             if(intmsg)
@@ -917,7 +919,7 @@ esp_err_t root_send_collected_nodes(uint32_t cuantos)        //root only
     //     printf("Schedule Cycle %d Day %d Horario %d Start %d End %d  Status %d PWM %d\n",scheduleData.currentCycle,scheduleData.currentDay,
     //         scheduleData.currentHorario,scheduleData.currentStartHour,scheduleData.currentEndHour,scheduleData.status,scheduleData.currentPwmDuty);
 
-    memcpy(&shmsg->schedule,&scheduleData,sizeof(wschedule_t));
+    // memcpy(&shmsg->schedule,&scheduleData,sizeof(wschedule_t));
 
     free(solarPad); // not neeed anymore
     solarPad=NULL;
@@ -1176,7 +1178,8 @@ void set_sta_cmd(char *cjText)      //message from Root giving stations ids and 
         {
             // xTaskCreate(&start_schedule_timers,"sched",1024*10,NULL, 5, &scheduleHandle);
             xSemaphoreGive(workTaskSem);    //activate task
-            theConf.blower_mode=1;
+            theBlower.setScheduleStatus(BLOWERON);
+            // theConf.blower_mode=1;
         }	       
 
         // if(skip)
@@ -1769,7 +1772,8 @@ void root_sntpget(void *pArg)
 
         ESP_LOGI(MESH_TAG,"SNTP Date %s",ctime((time_t*)&now));
         // this means mesh is ready also
-        if (theConf.blower_mode==1 )
+        if (theBlower.getScheduleStatus()==BLOWERON )
+        // if (theConf.blower_mode==1 )
             xSemaphoreGive(workTaskSem);
             // we apparently are restarting for some reason else wait for activation command
 
@@ -2596,7 +2600,7 @@ void init_process()
     vanTimersStart=vanTimersEnd=0;
 
     // memory schedule data set to zero
-    bzero(&scheduleData,sizeof(wschedule_t));
+    // bzero(&scheduleData,sizeof(wschedule_t));
 
 //cmd and info queue names derived form the Config so do it now
     sprintf(cmdQueue,"%s/%d/%s",QUEUE,theConf.poolid,MQTTCMD);
@@ -3622,21 +3626,21 @@ void find_cycle_day(uint8_t * ciclo,uint8_t*dia)
                 else
                     desde=0;
 
-                scheduleData.currentCycle=ck;      // save cycle for status reporting
+                // scheduleData.currentCycle=ck;      // save cycle for status reporting
 
                 for (ck_d=desde; ck_d<theConf.profiles[0].cycle[ck].duration;ck_d++)    //  days
                 {
-                    scheduleData.currentDay=ck_d;           // save day for status reporting
+                    // scheduleData.currentDay=ck_d;           // save day for status reporting
 
                     if((theConf.debug_flags >> dSCH) & 1U)  
                     for (int ck_h=0;ck_h<theConf.profiles[0].cycle[ck].numHorarios;ck_h++)      // hours
                     {
                         while(pausef)
                             delay(1000);
-                        scheduleData.currentHorario=ck_h;      //save horario for status reporting
-                        scheduleData.currentStartHour=theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart;
-                        scheduleData.currentEndHour=theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen;
-
+                        // scheduleData.currentHorario=ck_h;      //save horario for status reporting
+                        // scheduleData.currentStartHour=theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart;
+                        // scheduleData.currentEndHour=theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen;
+                        theBlower.setSchedule(ck,ck_d,ck_h,theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart,theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen,theConf.profiles[0].cycle[ck].horarios[ck_h].pwmDuty,1);    // update blower with schedule info
                         starttime=midn+theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart*3600;    //in seconds
                         endtime=starttime+theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen*3600;    //in seconds
                         if((theConf.debug_flags >> dSCH) & 1U)
@@ -3759,10 +3763,11 @@ void find_cycle_day(uint8_t * ciclo,uint8_t*dia)
 
             } //cycles
             ESP_LOGW(TAG,"Production cycle ended");
-            theConf.blower_mode=0;              // done Production Cycle... wait for next activation
+            theBlower.setScheduleStatus(BLOWEROFF);
+            // theConf.blower_mode=0;              // done Production Cycle... wait for next activation
             // theConf.bleboot=BLE_MODE;            //set ble mode to restart production cycle
             theConf.dayCycle=0;                 // reset staring day
-            write_to_flash();
+            // write_to_flash();
             schedulef=false;
         } // start process semaphore
     } //task loop forever
@@ -3838,7 +3843,7 @@ void blower_start(TimerHandle_t xTimer)
 
     // esp_rom_printf("Started Timer %d\n",ulCount);
     elapsed[ulCount]=xmillis();
-    scheduleData.status=BLOWERON;
+    theBlower.setScheduleStatus(BLOWERON);
 
 }
 void blower_end(TimerHandle_t xTimer)
@@ -3853,10 +3858,14 @@ void blower_end(TimerHandle_t xTimer)
         // if((theConf.debug_flags >> dSCH) & 1U)  
         //     ESP_LOGI(TAG,"Last end timer...set for Wait For Start\n");
         xSemaphoreGive(scheduleSem);
-        scheduleData.status=BLOWEROFF;        // definitly off now
+            theBlower.setScheduleStatus(BLOWEROFF);
+
+        // scheduleData.status=BLOWEROFF;        // definitly off now
     }
     else
-        scheduleData.status=BLOWERNEXT;           // waiting for next hour
+        theBlower.setScheduleStatus(BLOWERNEXT);
+
+        // scheduleData.status=BLOWERNEXT;           // waiting for next hour
 
 }
 

@@ -22,6 +22,8 @@ typedef enum {
     ORDER_STOP = 1,
     ORDER_PAUSE = 2,
     ORDER_RESUME = 3,
+    ORDER_CROP=4,
+    ORDER_PARK=5,
     ORDER_INVALID = -1
 } ProductionOrderType;
 
@@ -128,6 +130,10 @@ static bool validate_production_command(cJSON *productionCommand, ProductionComm
         outFields->orderType = ORDER_PAUSE;
     else if(strcmp(outFields->orderCommand, "resume") == 0)
         outFields->orderType = ORDER_RESUME;
+    else if(strcmp(outFields->orderCommand, "crop") == 0)
+        outFields->orderType = ORDER_RESUME;
+    else if(strcmp(outFields->orderCommand, "park") == 0)
+        outFields->orderType = ORDER_RESUME;
     else
         outFields->orderType = ORDER_INVALID;
     
@@ -199,6 +205,8 @@ static int handle_production_stop(const ProductionCommandFields *fields, char *l
     send_start_production(fields->profileIndex, fields->dayIndex, 
                          theConf.test_timer_div, (char*)fields->orderCommand);
     schedulef = false;
+    theBlower.setSchedule(0, 0, 0,0,0,0,ORDER_STOP);
+        //TODO should stop all timer
     return ESP_OK;
 }
 
@@ -220,6 +228,9 @@ static int handle_production_pause(const ProductionCommandFields *fields, char *
     
     send_start_production(fields->profileIndex, fields->dayIndex, 
                          theConf.test_timer_div, (char*)fields->orderCommand);
+
+    theBlower.setSchedule(0, 0, 0,0,0,0,ORDER_CROP);
+        //TODO should stop all timer                        
     pausef = true;
     return ESP_OK;
 }
@@ -238,6 +249,51 @@ static int handle_production_resume(const ProductionCommandFields *fields, char 
         ESP_LOGI(MESH_TAG, "%sCMd Prod Resumed %s", DBG_XCMDS, fields->orderCommand);
     
     snprintf(logBuffer, PRODUCTION_LOG_BUFFER_SIZE, "CMd Prod Resume %s", fields->orderCommand);
+    pausef = false;
+    send_start_production(fields->profileIndex, fields->dayIndex, 
+                         theConf.test_timer_div, (char*)fields->orderCommand);
+    writeLog(logBuffer);
+
+    theBlower.setSchedule(0, 0, 0,0,0,0,ORDER_PARK);
+        //TODO should stop all timer
+    return ESP_OK;
+}
+
+/* Handles production crop operation. */
+static int handle_production_crop(const ProductionCommandFields *fields, char *logBuffer)
+{
+    // if(!schedulef) 
+    // {
+    //     if((theConf.debug_flags >> dXCMDS) & 1U)  
+    //         ESP_LOGI(MESH_TAG, "%sCMd Prod Crop but not scheduling %s", DBG_XCMDS, fields->orderCommand);
+    //     return ESP_OK;
+    // }
+    
+    if((theConf.debug_flags >> dXCMDS) & 1U)  
+        ESP_LOGI(MESH_TAG, "%sCMd Prod set to Crop %s", DBG_XCMDS, fields->orderCommand);
+    
+    snprintf(logBuffer, PRODUCTION_LOG_BUFFER_SIZE, "CMd Prod Crop %s", fields->orderCommand);
+    pausef = false;
+    send_start_production(fields->profileIndex, fields->dayIndex, 
+                         theConf.test_timer_div, (char*)fields->orderCommand);
+    writeLog(logBuffer);
+    return ESP_OK;
+}
+
+/* Handles production Park operation. */
+static int handle_production_park(const ProductionCommandFields *fields, char *logBuffer)
+{
+    // if(!schedulef) 
+    // {
+    //     if((theConf.debug_flags >> dXCMDS) & 1U)  
+    //         ESP_LOGI(MESH_TAG, "%sCMd Prod Crop but not scheduling %s", DBG_XCMDS, fields->orderCommand);
+    //     return ESP_OK;
+    // }
+    
+    if((theConf.debug_flags >> dXCMDS) & 1U)  
+        ESP_LOGI(MESH_TAG, "%sCMd Prod set to Park %s", DBG_XCMDS, fields->orderCommand);
+    
+    snprintf(logBuffer, PRODUCTION_LOG_BUFFER_SIZE, "CMd Prod Park %s", fields->orderCommand);
     pausef = false;
     send_start_production(fields->profileIndex, fields->dayIndex, 
                          theConf.test_timer_div, (char*)fields->orderCommand);
@@ -295,6 +351,14 @@ int cmdProd(void *argument)
             
         case ORDER_RESUME:
             result = handle_production_resume(&fields, logBuffer);
+            break;
+            
+        case ORDER_CROP:
+            result = handle_production_crop(&fields, logBuffer);
+            break;
+            
+        case ORDER_PARK:
+            result = handle_production_park(&fields, logBuffer);
             break;
             
         default:
