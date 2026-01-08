@@ -189,9 +189,11 @@
 #define FCHOLDING                       (0x03)
 #define FCINPUT                         (0x01)
 
-#define BLOWERON                         (1)   
-#define BLOWEROFF                        (0)   
-#define BLOWERNEXT                       (2)    
+#define BLOWEROFF                        (0)   // stopped but active pool
+#define BLOWERON                         (1)   // actually blowing
+#define BLOWERNEXT                       (2)    // in cycle waitng next hour scheule
+#define BLOWERCROP                       (3)    // currently beign harvbested
+#define BLOWERPARK                       (4)    // not being used
 
 #define MINUTES                         (1)   
 // Modbus descriptor fields offsets

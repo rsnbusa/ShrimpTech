@@ -421,6 +421,7 @@ void showconf(void *pArg)
 
     show_limits();
     show_mimodbus();
+    printf("%s",RESETC);
     vTaskDelete(NULL);
 }
 

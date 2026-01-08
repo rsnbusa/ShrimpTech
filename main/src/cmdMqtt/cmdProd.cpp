@@ -170,8 +170,7 @@ static int handle_production_start(const ProductionCommandFields *fields, char *
         ESP_LOGI(MESH_TAG, "%sCMd Prod Start %s", DBG_XCMDS, fields->orderCommand);
     writeLog(logBuffer);
     
-    theConf.blower_mode = 1;
-    write_to_flash();
+    theBlower.setSchedule(0, 0, 0,0,0,0,BLOWERON);
     xSemaphoreGive(workTaskSem);
     
     send_start_production(fields->profileIndex, fields->dayIndex, 
@@ -205,7 +204,7 @@ static int handle_production_stop(const ProductionCommandFields *fields, char *l
     send_start_production(fields->profileIndex, fields->dayIndex, 
                          theConf.test_timer_div, (char*)fields->orderCommand);
     schedulef = false;
-    theBlower.setSchedule(0, 0, 0,0,0,0,ORDER_STOP);
+    theBlower.setSchedule(0, 0, 0,0,0,0,BLOWEROFF);
         //TODO should stop all timer
     return ESP_OK;
 }
@@ -228,9 +227,6 @@ static int handle_production_pause(const ProductionCommandFields *fields, char *
     
     send_start_production(fields->profileIndex, fields->dayIndex, 
                          theConf.test_timer_div, (char*)fields->orderCommand);
-
-    theBlower.setSchedule(0, 0, 0,0,0,0,ORDER_CROP);
-        //TODO should stop all timer                        
     pausef = true;
     return ESP_OK;
 }
@@ -253,10 +249,6 @@ static int handle_production_resume(const ProductionCommandFields *fields, char 
     send_start_production(fields->profileIndex, fields->dayIndex, 
                          theConf.test_timer_div, (char*)fields->orderCommand);
     writeLog(logBuffer);
-
-    theBlower.setSchedule(0, 0, 0,0,0,0,ORDER_RESUME);
-        //TODO should stop all timer
-        printf("State %d\n",theBlower.getScheduleStatus());
     return ESP_OK;
 }
 
@@ -279,9 +271,8 @@ static int handle_production_crop(const ProductionCommandFields *fields, char *l
                          theConf.test_timer_div, (char*)fields->orderCommand);
     writeLog(logBuffer);
 
-    theBlower.setSchedule(0, 0, 0,0,0,0,ORDER_CROP);
+    theBlower.setSchedule(0, 0, 0,0,0,0,BLOWERCROP);
         //TODO should stop all timer
-        printf("State %d\n",theBlower.getScheduleStatus());
     return ESP_OK;
 }
 
@@ -304,11 +295,8 @@ static int handle_production_park(const ProductionCommandFields *fields, char *l
                          theConf.test_timer_div, (char*)fields->orderCommand);
     writeLog(logBuffer);
 
-    theBlower.setSchedule(0, 0, 0,0,0,0,ORDER_PARK);
+    theBlower.setSchedule(0, 0, 0,0,0,0,BLOWERPARK);
         //TODO should stop all timer
-        printf("State %d\n",theBlower.getScheduleStatus());
-            printf("State %d\n",theBlower.getScheduleStatus());
-
     return ESP_OK;
 }
 
@@ -317,7 +305,7 @@ int cmdProd(void *argument)
     /*
      * Expected JSON format:
      * {"cmd":"prod","prof":1,"day":1,"mux":30,"order":"start"}
-     * order values: "start", "stop", "pause", "resume"
+     * order values: "start", "stop", "pause", "resume","crop","park"
      */
     
     if((theConf.debug_flags >> dXCMDS) & 1U)  
