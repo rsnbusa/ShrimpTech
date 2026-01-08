@@ -1,0 +1,61 @@
+shrimpMsg_t structure offsets (fully expanded):
+
+// struct shrimpMsg_t
+centinel:        offset 0        (uint32_t)
+poolid:          offset 4        (uint16_t)
+countnodes:      offset 6        (uint16_t)
+msgTime:         offset 8        (time_t)
+
+// poolAvgMetrics: solarSystem_t (offset 16, size 100)
+// solarSystem_t fields:
+  // pvPanel_t (offset 0 in solarSystem_t, offset 16 in shrimpMsg_t)
+    chargeCurr:   offset 16      (uint32_t)
+    pv1Volts:     offset 20      (float)
+    pv2Volts:     offset 24      (float)
+    pv1Amp:       offset 28      (float)
+    pv2Amp:       offset 32      (float)
+
+  // battery_t (offset 20 in solarSystem_t, offset 36 in shrimpMsg_t)
+    batSOC:       offset 36      (uint16_t)
+    batSOH:       offset 38      (uint16_t)
+    batteryCycleCount: offset 40 (uint16_t)
+    batBmsTemp:   offset 42      (float)
+
+  // energy_t (offset 32 in solarSystem_t, offset 48 in shrimpMsg_t)
+    batChgAHToday:      offset 48   (uint16_t)
+    batDischgAHToday:   offset 50   (uint16_t)
+    batChgAHTotal:      offset 52   (uint16_t)
+    batDischgAHTotal:   offset 54   (uint16_t)
+    generateEnergyToday:offset 56   (float)
+    usedEnergyToday:    offset 60   (float)
+    gLoadConsumLineTotal:offset 64  (float)
+    batChgkWhToday:     offset 68   (float)
+    batDischgkWhToday:  offset 72   (float)
+    genLoadConsumToday: offset 76   (float)
+
+  // sensor_t (offset 64 in solarSystem_t, offset 80 in shrimpMsg_t)
+    WTemp:        offset 80      (float)
+    percentDO:    offset 84      (float)
+    DO:           offset 88      (float)
+    PH:           offset 92      (float)
+    ATemp:        offset 96      (float)
+    AHum:         offset 100     (float)
+
+  // wschedule_t (offset 88 in solarSystem_t, offset 104 in shrimpMsg_t)
+    currentCycle:     offset 104  (uint16_t)
+    currentDay:       offset 106  (uint16_t)
+    currentHorario:   offset 108  (uint16_t)
+    currentStartHour: offset 110  (uint16_t)
+    currentEndHour:   offset 112  (uint16_t)
+    currentPwmDuty:   offset 114  (uint16_t)
+    status:           offset 116  (uint16_t)
+
+lim_errs:        offset 116      (uint16_t)
+
+// Total size: 118 bytes
+
+// Notes:
+// - All offsets are calculated assuming default alignment and packing as in the provided typedefs.
+// - time_t is assumed to be 8 bytes (typical for ESP32 toolchain).
+// - float is 4 bytes, uint16_t is 2 bytes, uint32_t is 4 bytes.
+// - If your platform uses different sizes, adjust accordingly.

@@ -487,14 +487,14 @@ typedef struct lvg {
  * Packed to 2-byte alignment for network efficiency.
  */
 typedef struct shrimpMsg_st {
-    uint32_t centinel;
-    uint16_t poolid;
-    uint16_t countnodes;
-    time_t msgTime;
-    solarSystem_t poolAvgMetrics;
+    uint32_t centinel;                  // offset 0
+    uint16_t poolid;                     // offset 4    
+    uint16_t countnodes;                 // offset 6
+    time_t msgTime;                      // offset 8
+    solarSystem_t poolAvgMetrics;        // offset 16 size 100
     // wschedule_t schedule;
-    uint16_t lim_errs;
-} shrimpMsg_t;
+    uint16_t lim_errs;          // offset 116
+} shrimpMsg_t;                  // totla size 118
 #pragma pack(pop)
 
 #endif // TYPEDEF_H

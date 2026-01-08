@@ -131,9 +131,9 @@ static bool validate_production_command(cJSON *productionCommand, ProductionComm
     else if(strcmp(outFields->orderCommand, "resume") == 0)
         outFields->orderType = ORDER_RESUME;
     else if(strcmp(outFields->orderCommand, "crop") == 0)
-        outFields->orderType = ORDER_RESUME;
+        outFields->orderType = ORDER_CROP;
     else if(strcmp(outFields->orderCommand, "park") == 0)
-        outFields->orderType = ORDER_RESUME;
+        outFields->orderType = ORDER_PARK;
     else
         outFields->orderType = ORDER_INVALID;
     
@@ -254,8 +254,9 @@ static int handle_production_resume(const ProductionCommandFields *fields, char 
                          theConf.test_timer_div, (char*)fields->orderCommand);
     writeLog(logBuffer);
 
-    theBlower.setSchedule(0, 0, 0,0,0,0,ORDER_PARK);
+    theBlower.setSchedule(0, 0, 0,0,0,0,ORDER_RESUME);
         //TODO should stop all timer
+        printf("State %d\n",theBlower.getScheduleStatus());
     return ESP_OK;
 }
 
@@ -277,6 +278,10 @@ static int handle_production_crop(const ProductionCommandFields *fields, char *l
     send_start_production(fields->profileIndex, fields->dayIndex, 
                          theConf.test_timer_div, (char*)fields->orderCommand);
     writeLog(logBuffer);
+
+    theBlower.setSchedule(0, 0, 0,0,0,0,ORDER_CROP);
+        //TODO should stop all timer
+        printf("State %d\n",theBlower.getScheduleStatus());
     return ESP_OK;
 }
 
@@ -298,6 +303,12 @@ static int handle_production_park(const ProductionCommandFields *fields, char *l
     send_start_production(fields->profileIndex, fields->dayIndex, 
                          theConf.test_timer_div, (char*)fields->orderCommand);
     writeLog(logBuffer);
+
+    theBlower.setSchedule(0, 0, 0,0,0,0,ORDER_PARK);
+        //TODO should stop all timer
+        printf("State %d\n",theBlower.getScheduleStatus());
+            printf("State %d\n",theBlower.getScheduleStatus());
+
     return ESP_OK;
 }
 

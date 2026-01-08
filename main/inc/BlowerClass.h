@@ -142,11 +142,11 @@ typedef struct {
  * - Environmental sensors
  */
 typedef struct {
-    pvPanel_t pvPanel;
-    battery_t battery;
-    energy_t  energy;
-    sensor_t  sensors;
-    wschedule_t wschedule;
+    pvPanel_t pvPanel;      // offset 0 + message header 16 size 20
+    battery_t battery;      // offset 20 + 16 =36 size 10
+    energy_t  energy;       // offset 30 + 16 = 46 size 32
+    sensor_t  sensors;      // offset 62 + 16 = 78 size 24
+    wschedule_t wschedule;  // offset 86 + 16 = 102 size 14
 } solarSystem_t;
 
 /**
