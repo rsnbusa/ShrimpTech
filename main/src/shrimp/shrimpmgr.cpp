@@ -3959,7 +3959,7 @@ sizeof(theConf) );
         delay(30000);
     }
 
-    start_mesh();
+    // start_mesh();
     theConf.loginwait=20000;
     // mesh_enable();
 // schedule timer will be started or not by sntp if root or when child connected by mesh if it was active and crash/power down

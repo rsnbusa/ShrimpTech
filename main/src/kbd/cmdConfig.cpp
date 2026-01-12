@@ -30,106 +30,106 @@ char modb_names[][30]={
 void show_modbus()
 {
     printf("%s\n",LRED);
-    printf("┌═════════════════════════════════════════════════════════────────┐\n");
+    printf("┌─────────────────────────────────────────────────────────────────┐\n");
     printf("│                  MODBUS CONFIGURATION                           │\n");
     printf("└─────────────────────────────────────────────────────────────────┘\n\n");
 
     // ===== PV PANELS =====
-    printf("  ┌─ PV Panels (Addr: %02d | Refresh: %dms) ────────────────┐\n", 
+    printf("  ┌─ PV Panels (Addr: %3d | Refresh: %3dms) ────────────┐\n", 
            theConf.modbus_panels.PVAddress, theConf.modbus_panels.refresh_rate);
-    printf("  │ %-16s │ Offset │ Start  │ Points │  Mux   │\n", "Name");
+    printf("  │ %-15s │ Offset │ Start  │ Points │  Mux   │\n", "Name");
     printf("  ├─────────────────┼────────┼────────┼────────┼────────┤\n");
-    printf("  │ %-16s │ %6d │ %3d │ %6d │ %.2f  │\n", modb_names[0], 
+    printf("  │ %-15s │ %6d │ %5d  │ %6d  │ %4.2f  │\n", modb_names[0], 
            theConf.modbus_panels.Charge_StateOffset, theConf.modbus_panels.ChargeStart, 
            theConf.modbus_panels.ChargePoints, theConf.modbus_panels.ChargeMux);
-    printf("  │ %-16s │ %6d │ %3d │ %6d │ %.2f  │\n", modb_names[1], 
+    printf("  │ %-15s │ %6d │ %5d  │ %6d  │ %4.2f  │\n", modb_names[1], 
            theConf.modbus_panels.PV1VoltsOffset, theConf.modbus_panels.PV1VStart, 
            theConf.modbus_panels.PV1VPoints, theConf.modbus_panels.PV1VMux);
-    printf("  │ %-16s │ %6d │ %3d │ %6d │ %.2f  │\n", modb_names[2], 
+    printf("  │ %-15s │ %6d │ %5d  │ %6d  │ %4.2f  │\n", modb_names[2], 
            theConf.modbus_panels.PV2VoltsOffset, theConf.modbus_panels.PV2VStart, 
            theConf.modbus_panels.PV2VPoints, theConf.modbus_panels.PV2VMux);
-    printf("  │ %-16s │ %6d │ %3d │ %6d │ %.2f  │\n", modb_names[3], 
+    printf("  │ %-15s │ %6d │ %5d  │ %6d  │ %4.2f  │\n", modb_names[3], 
            theConf.modbus_panels.PV1_AmpsOffset, theConf.modbus_panels.PV1AmpsStart, 
            theConf.modbus_panels.PV1AmpsPoints, theConf.modbus_panels.PV1AmpsMux);
-    printf("  │ %-16s │ %6d │ %3d │ %6d │ %.2f  │\n", modb_names[4], 
+    printf("  │ %-15s │ %6d │ %5d  │ %6d  │ %4.2f  │\n", modb_names[4], 
            theConf.modbus_panels.PV2AmpsOffset, theConf.modbus_panels.PV2AmpsStart, 
            theConf.modbus_panels.PV2AmpsPoints, theConf.modbus_panels.PV2AmpsMux);
     printf("  └─────────────────┴────────┴────────┴────────┴────────┘\n\n");
 
     // ===== BATTERY =====
-    printf("  ┌─ Battery (Addr: %02d | Refresh: %dms) ────────────────┐\n", 
+    printf("  ┌─ Battery (Addr: %3d | Refresh: %3dms) ──────────────┐\n", 
            theConf.modbus_battery.batAddress, theConf.modbus_battery.refresh_rate);
-    printf("  │ %-16s │ Offset │ Start  │ Points │  Mux   │\n", "Name");
+    printf("  │ %-15s │ Offset │ Start  │ Points │  Mux   │\n", "Name");
     printf("  ├─────────────────┼────────┼────────┼────────┼────────┤\n");
-    printf("  │ %-16s │ %6d │ %3d │ %6d │ %.2f  │\n", modb_names[5], 
+    printf("  │ %-15s │ %6d │ %5d  │ %6d │ %4.2f   │\n", modb_names[5], 
            theConf.modbus_battery.SOCOffset, theConf.modbus_battery.SOCStart, 
            theConf.modbus_battery.SOCPoints, theConf.modbus_battery.SOCMux);
-    printf("  │ %-16s │ %6d │ %3d │ %6d │ %.2f  │\n", modb_names[6], 
+    printf("  │ %-15s │ %6d │ %5d  │ %6d │ %4.2f   │\n", modb_names[6], 
            theConf.modbus_battery.SOHOffset, theConf.modbus_battery.SOHStart, 
            theConf.modbus_battery.SOHPoints, theConf.modbus_battery.SOHMux);
-    printf("  │ %-16s │ %6d │ %3d │ %6d │ %.2f  │\n", modb_names[7], 
+    printf("  │ %-15s │ %6d │ %5d  │ %6d │ %4.2f   │\n", modb_names[7], 
            theConf.modbus_battery.cycleOffset, theConf.modbus_battery.cycleStart, 
            theConf.modbus_battery.cyclePoints, theConf.modbus_battery.cycleMux);
-    printf("  │ %-16s │ %6d │ %3d │ %6d │ %.2f  │\n", modb_names[8], 
+    printf("  │ %-15s │ %6d │ %5d  │ %6d │ %4.2f   │\n", modb_names[8], 
            theConf.modbus_battery.tempOffset, theConf.modbus_battery.tempStart, 
            theConf.modbus_battery.tempPoints, theConf.modbus_battery.tempMux);
     printf("  └─────────────────┴────────┴────────┴────────┴────────┘\n\n");
 
     // ===== SENSORS =====
-    printf("  ┌─ Sensors (Refresh: %dms) ─────────────────────────────┐\n", 
+    printf("  ┌─ Sensors (Refresh: %2dms) ─────────────────────────────────┐\n", 
            theConf.modbus_sensors.refresh_rate);
-    printf("  │ %-16s │ Addr │ Offset │ Start  │ Points │  Mux   │\n", "Name");
-    printf("  ├─────────────────┼──────┼────────┼────────┼────────┼────────┤\n");
-    printf("  │ %-16s │ %4d │ %6d │ %3d │ %6d │ %.2f  │\n", modb_names[9], 
+    printf("  │ %-15s │ Addr │ Offset │ Start  │ Points │  Mux  │\n", "Name");
+    printf("  ├─────────────────┼──────┼────────┼────────┼────────┼───────┤\n");
+    printf("  │ %-15s │ %4d │ %6d │ %5d  │ %6d │ %4.2f  │\n", modb_names[9], 
            theConf.modbus_sensors.DOAddress, theConf.modbus_sensors.DOOffset, 
            theConf.modbus_sensors.DOStart, theConf.modbus_sensors.DOPoints, theConf.modbus_sensors.DOMux);
-    printf("  │ %-16s │ %4d │ %6d │ %3d │ %6d │ %.2f  │\n", modb_names[10], 
+    printf("  │ %-15s │ %4d │ %6d │ %5d  │ %6d │ %4.2f  │\n", modb_names[10], 
            theConf.modbus_sensors.PHAddress, theConf.modbus_sensors.PHOffset, 
            theConf.modbus_sensors.PHStart, theConf.modbus_sensors.PHPoints, theConf.modbus_sensors.PHMux);
-    printf("  │ %-16s │ %4d │ %6d │ %3d │ %6d │ %.2f  │\n", modb_names[11], 
+    printf("  │ %-15s │ %4d │ %6d │ %5d  │ %6d │ %4.2f  │\n", modb_names[11], 
            theConf.modbus_sensors.WAddress, theConf.modbus_sensors.WOffset, 
            theConf.modbus_sensors.WStart, theConf.modbus_sensors.WPoints, theConf.modbus_sensors.WMux);
-    printf("  │ %-16s │ %4d │ %6d │ %3d │ %6d │ %.2f  │\n", modb_names[12], 
+    printf("  │ %-15s │ %4d │ %6d │ %5d  │ %6d │ %4.2f  │\n", modb_names[12], 
            theConf.modbus_sensors.AAddress, theConf.modbus_sensors.AOffset, 
            theConf.modbus_sensors.AStart, theConf.modbus_sensors.APoints, theConf.modbus_sensors.AMux);
-    printf("  │ %-16s │ %4d │ %6d │ %3d │ %6d │ %.2f  │\n", modb_names[13], 
+    printf("  │ %-15s │ %4d │ %6d │ %5d  │ %6d │ %4.2f  │\n", modb_names[13], 
            theConf.modbus_sensors.HAddress, theConf.modbus_sensors.HumOffset, 
            theConf.modbus_sensors.humStart, theConf.modbus_sensors.humPoints, theConf.modbus_sensors.humMux);
-    printf("  └─────────────────┴──────┴────────┴────────┴────────┴────────┘\n\n");
+    printf("  └─────────────────┴──────┴────────┴────────┴────────┴───────┘\n\n");
 
     // ===== INVERTER =====
-    printf("  ┌─ Inverter (Addr: %02d | Refresh: %dms) ────────────────┐\n", 
+    printf("  ┌─ Inverter (Addr: %3d | Refresh: %3dms) ─────────────┐\n", 
            theConf.modbus_inverter.InverterAddress, theConf.modbus_inverter.refresh_rate);
-    printf("  │ %-16s │ Offset │ Start  │ Points │  Mux   │\n", "Name");
+    printf("  │ %-15s │ Offset │ Start  │ Points │  Mux   │\n", "Name");
     printf("  ├─────────────────┼────────┼────────┼────────┼────────┤\n");
-    printf("  │ %-16s │ %6d │ %3d │ %6d │ %.2f  │\n", modb_names[14], 
+    printf("  │ %-15s │ %6d │ %5d  │ %6d │ %4.2f   │\n", modb_names[14], 
            theConf.modbus_inverter.I1_BatChHoyOff, theConf.modbus_inverter.I1_BatChHoyStart, 
            theConf.modbus_inverter.I1_BatChHoyPoints, theConf.modbus_inverter.I1_BatChHoyMux);
-    printf("  │ %-16s │ %6d │ %3d │ %6d │ %.2f  │\n", modb_names[15], 
+    printf("  │ %-15s │ %6d │ %5d  │ %6d │ %4.2f   │\n", modb_names[15], 
            theConf.modbus_inverter.I2_BatDscHoyOff, theConf.modbus_inverter.I2_BatDscHoyStart, 
            theConf.modbus_inverter.I2_BatDscHoyPoints, theConf.modbus_inverter.I2_BatDscHoyMux);
-    printf("  │ %-16s │ %6d │ %3d │ %6d │ %.2f  │\n", modb_names[16], 
+    printf("  │ %-15s │ %6d │ %5d  │ %6d │ %4.2f   │\n", modb_names[16], 
            theConf.modbus_inverter.I3_BatChgTotalOff, theConf.modbus_inverter.I3_BatChgTotalStart, 
            theConf.modbus_inverter.I3_BatChgTotalPoints, theConf.modbus_inverter.I3_BatChgTotalMux);
-    printf("  │ %-16s │ %6d │ %3d │ %6d │ %.2f  │\n", modb_names[17], 
+    printf("  │ %-15s │ %6d │ %5d  │ %6d │ %4.2f   │\n", modb_names[17], 
            theConf.modbus_inverter.I4_BatDscTotalOff, theConf.modbus_inverter.I4_BatDscTotalStart, 
            theConf.modbus_inverter.I4_BatDscTotalPoints, theConf.modbus_inverter.I4_BatDscTotalMux);
-    printf("  │ %-16s │ %6d │ %3d │ %6d │ %.2f  │\n", modb_names[18], 
+    printf("  │ %-15s │ %6d │ %5d  │ %6d │ %4.2f   │\n", modb_names[18], 
            theConf.modbus_inverter.I5_GenkWhHoyOff, theConf.modbus_inverter.I5_GenkWhHoyStart, 
            theConf.modbus_inverter.I5_GenkWhHoyPoints, theConf.modbus_inverter.I5_GenkWhHoyMux);
-    printf("  │ %-16s │ %6d │ %3d │ %6d │ %.2f  │\n", modb_names[19], 
+    printf("  │ %-15s │ %6d │ %5d  │ %6d │ %4.2f   │\n", modb_names[19], 
            theConf.modbus_inverter.I6_UsedkwhHoyOff, theConf.modbus_inverter.I6_UsedkwhHoyStart, 
            theConf.modbus_inverter.I6_UsedkwhHoyPoints, theConf.modbus_inverter.I6_UsedkwhHoyMux);
-    printf("  │ %-16s │ %6d │ %3d │ %6d │ %.2f  │\n", modb_names[20], 
+    printf("  │ %-15s │ %6d │ %5d  │ %6d │ %4.2f   │\n", modb_names[20], 
            theConf.modbus_inverter.I7_LoadUsedTotalOff, theConf.modbus_inverter.I7_LoadUsedTotalStart, 
            theConf.modbus_inverter.I7_LoadUsedTotalPoints, theConf.modbus_inverter.I7_LoadUsedTotalMux);
-    printf("  │ %-16s │ %6d │ %3d │ %6d │ %.2f  │\n", modb_names[21], 
+    printf("  │ %-15s │ %6d │ %5d  │ %6d │ %4.2f   │\n", modb_names[21], 
            theConf.modbus_inverter.I8_BatChdHoyOff, theConf.modbus_inverter.I8_BatChdHoyStart, 
            theConf.modbus_inverter.I8_BatChdHoyPoints, theConf.modbus_inverter.I8_BatChdHoyMux);
-    printf("  │ %-16s │ %6d │ %3d │ %6d │ %.2f  │\n", modb_names[22], 
+    printf("  │ %-15s │ %6d │ %5d  │ %6d │ %4.2f   │\n", modb_names[22], 
            theConf.modbus_inverter.I9_BatDscHoyOff, theConf.modbus_inverter.I9_BatDscHoyStart, 
            theConf.modbus_inverter.I9_BatDscHoyPoints, theConf.modbus_inverter.I9_BatDscHoyMux);
-    printf("  │ %-16s │ %6d │ %3d │ %6d │ %.2f  │\n", modb_names[23], 
+    printf("  │ %-15s │ %6d │ %5d  │ %6d │ %4.2f   │\n", modb_names[23], 
            theConf.modbus_inverter.I10_LoadUsedHoyOff, theConf.modbus_inverter.I10_LoadUsedHoyStart, 
            theConf.modbus_inverter.I10_LoadUsedHoyPoints, theConf.modbus_inverter.I10_LoadUsedHoyMux);
     printf("  └─────────────────┴────────┴────────┴────────┴────────┘\n\n");
@@ -189,33 +189,26 @@ void show_limits()
  */
 void show_schedule_info()
 {
-    printf("%s\n", CYAN);
-    printf("┌────────────────────────────────────────────────────┐\n");
-    printf("│              SCHEDULE INFORMATION                 │\n");
-    printf("├────────────────────────────────────────────────────┤\n");
-    printf("│ Active Profile:      %-28d │\n", theConf.activeProfile);
-    printf("│ Current Day Cycle:   %-28d │\n", theConf.dayCycle);
-    
-    char date_buf[30];
-    struct tm timeinfo;
-    
-    if (theConf.dateProfile > 0) {
-        localtime_r(&theConf.dateProfile, &timeinfo);
-        strftime(date_buf, sizeof(date_buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
-        printf("│ Profile Start Date:  %-28s │\n", date_buf);
-    } else {
-        printf("│ Profile Start Date:  %-28s │\n", "Not Set");
-    }
-    
-    if (theConf.dateDayCycle > 0) {
-        localtime_r(&theConf.dateDayCycle, &timeinfo);
-        strftime(date_buf, sizeof(date_buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
-        printf("│ Day Cycle Start:     %-28s │\n", date_buf);
-    } else {
-        printf("│ Day Cycle Start:     %-28s │\n", "Not Set");
-    }
-    
-    printf("└────────────────────────────────────────────────────┘\n\n");
+       char date_buf[30];
+       struct tm timeinfo;
+       wschedule_t wsched;
+
+       theBlower.setScheduleStruct(wsched);
+
+       printf("%s\n", CYAN);
+       printf("┌────────────────────────────────────────────────────┐\n");
+       printf("│              SCHEDULE INFORMATION                  │\n");
+       printf("├────────────────────────────────────────────────────┤\n");
+       printf("│ Current Cycle :      %-28d  │\n", theConf.activeProfile);
+       printf("│ Current Cycle:       %-28d  │\n", wsched.currentCycle);
+       printf("│ Current Day:         %-28d  │\n", wsched.currentDay);
+       printf("│ Current Horario:     %-28d  │\n", wsched.currentHorario);
+       printf("│ Current Start Hour:  %-28d  │\n", wsched.currentStartHour);
+       printf("│ Current End Hour:    %-28d  │\n", wsched.currentEndHour);
+       printf("│ Current PWM Duty:    %-28d  │\n", wsched.currentPwmDuty);
+       printf("│ Schedule Status:     %-28d  │\n", wsched.status);
+
+       printf("└────────────────────────────────────────────────────┘\n\n");
 }
 
 /**
@@ -237,7 +230,7 @@ void show_device_info(time_t bootdate, time_t guardDate)
     printf("│ Last Reset & Reason:                                        │\n");
     printf("│   Reset: %-6d  Reason: %-34d │\n", theConf.lastResetCode, theConf.lastResetCode);
     printf("│ Log Level & Down Time:                                      │\n");
-    printf("│   Level: %-6d  Down Time: %-28lus │\n", theConf.loglevel, theConf.downtime);
+    printf("│   Level: %-6d  Down Time: %-28lus   │\n", theConf.loglevel, theConf.downtime);
     printf("│ Last Reboot:                                                │\n");
     char reboot_str[60];
     strftime(reboot_str, sizeof(reboot_str), "  %Y-%m-%d %H:%M:%S", localtime((time_t*)&bootdate));
@@ -248,14 +241,14 @@ void show_device_info(time_t bootdate, time_t guardDate)
     strftime(reboot_str, sizeof(reboot_str), "  %Y-%m-%d %H:%M:%S", localtime(&guardDate));
     printf("│ %-59s │\n", reboot_str);
     printf("│ Display & System Status:                                    │\n");
-    printf("│   Display Active: %-42s │\n", gdispf?"Yes":"No");
+    printf("│   Display Active: %-42s│\n", gdispf?"Yes":"No");
     printf("│ Version Information:                                        │\n");
-    printf("│   App: %-11s  IDF: %-33s │\n", mip->version, mip->idf_ver);
+    printf("│   App: %-11s  IDF: %-33s│\n", mip->version, mip->idf_ver);
     printf("│   Project: %-48s │\n", mip->project_name);
-    printf("│   Compiled: %s @ %-36s │\n", mip->date, mip->time);
+    printf("│   Compiled: %s @ %-34s│\n", mip->date, mip->time);
     printf("│   Latest Sent: %-44s │\n", theConf.lastVersion);
     printf("│ Network Settings:                                           │\n");
-    printf("│   Mesh Delay: %-10s  Login Wait: %-23d │\n", theConf.delay_mesh?"Yes":"No", theConf.loginwait);
+    printf("│   Mesh Delay: %-10s  Login Wait: %-22d│\n", theConf.delay_mesh?"Yes":"No", theConf.loginwait);
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
 }
 
@@ -266,13 +259,13 @@ void show_device_info(time_t bootdate, time_t guardDate)
  */
 void show_production_config()
 {
-    printf("%s", CYAN);
+    printf("%s", CYAN);     // 63
     printf("┌─────────────────────────────────────────────────────────────┐\n");
-    printf("│              PRODUCTION CONFIGURATION                       │\n");
+    printf("│               WORKING   CONFIGURATION                       │\n");
     printf("├─────────────────────────────────────────────────────────────┤\n");
-    printf("│ Blower Mode: %d                                            │\n", theConf.blower_mode);
-    printf("│ Active Profile: %d | Start Day: %d%%                         │\n", theConf.activeProfile, theConf.dayCycle);
-    printf("│ Is Master Node: %s                                          │\n", theConf.masternode?"Yes":"No");
+//     printf("│ Blower Mode: %-47d│\n", theConf.blower_mode);
+//     printf("│ Active Profile: %1d | Start Day: %-33d│\n", theConf.activeProfile, theConf.dayCycle);
+    printf("│ Is Master Node: %-44s│\n", theConf.masternode?"Yes":"No ");
     printf("│ Debug Flags (0x%X): ", theConf.debug_flags);
     if((theConf.debug_flags >> dSCH) & 1U)   printf("Schedule ");
     if((theConf.debug_flags >> dMESH) & 1U)  printf("Mesh ");
@@ -282,11 +275,11 @@ void show_production_config()
     if((theConf.debug_flags >> dBLOW) & 1U)  printf("Blower ");
     if((theConf.debug_flags >> dLOGIC) & 1U) printf("Logic ");
     if((theConf.debug_flags >> dMODBUS) & 1U) printf("Modbus ");
-    printf("              │\n");
-    if(theBlower.getScheduleStatus()==BLOWERON)
-        printf("│ Cycle: %d | Day: %d | Timer Div: %d Status %d                             │\n", ck, ck_d, theConf.test_timer_div, theBlower.getScheduleStatus());
-    else
-        printf("│ Status: Waiting for Production Cycle start    %d               │\n", theBlower.getScheduleStatus());
+    printf("│\n");
+//     if(theBlower.getScheduleStatus()==BLOWERON)
+//         printf("│ Cycle: %1d | Day: %3d | Timer Div: %3d Status %2d│\n", ck, ck_d, theConf.test_timer_div, theBlower.getScheduleStatus());
+//     else
+//         printf("│ Status: Waiting for Production Cycle start    %d│\n", theBlower.getScheduleStatus());
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
 }
 
@@ -298,14 +291,14 @@ void show_production_config()
 void show_mqtt_config()
 {
     printf("%s", MAGENTA);
-    printf("┌─────────────────────────────────────────────────────────────┐\n");
-    printf("│                  MQTT CONFIGURATION                        │\n");
-    printf("├─────────────────────────────────────────────────────────────┤\n");
-    printf("│ Command Topic: %-47s │\n", cmdQueue);
-    printf("│ Info Topic:    %-47s │\n", infoQueue);
-    printf("│ Alarm Topic:   %-47s │\n", alarmQueue);
-    printf("│ Server: [%s] | User: [%s] | Pass: [%s] │\n", theConf.mqttServer, theConf.mqttUser, theConf.mqttPass);
-    printf("└─────────────────────────────────────────────────────────────┘\n\n");
+    printf("┌─────────────────────────────────────────────────────────────────────────────────┐\n");
+    printf("│                               MQTT CONFIGURATION                                │\n");
+    printf("├─────────────────────────────────────────────────────────────────────────────────┤\n");
+    printf("│ Command Topic: %-65s│\n", cmdQueue);
+    printf("│ Info Topic:    %-65s│\n", infoQueue);
+    printf("│ Alarm Topic:   %-65s│\n", alarmQueue);
+    printf("│ Server: [%-30s] | User: [%-10s] | Pass: [%-8s]│\n", theConf.mqttServer, theConf.mqttUser, theConf.mqttPass);
+    printf("└─────────────────────────────────────────────────────────────────────────────────┘\n\n");
 }
 
 /**
@@ -391,11 +384,11 @@ void show_statistics(time_t now)
 {
     printf("%s", BLUE);
     printf("┌─────────────────────────────────────────────────────────────┐\n");
-    printf("│                    STATISTICS                              │\n");
+    printf("│                    STATISTICS                               │\n");
     printf("├─────────────────────────────────────────────────────────────┤\n");
-    printf("│ Bytes Out: %-14d │ Bytes In: %-16d │\n", theBlower.getStatsBytesOut(), theBlower.getStatsBytesIn());
-    printf("│ Messages In: %-13d │ Messages Out: %-15d │\n", theBlower.getStatsMsgIn(), theBlower.getStatsMsgOut());
-    printf("│ STA Connections: %-11d │ STA Disconnections: %-14d │\n", theBlower.getStatsStaConns(), theBlower.getStatsStaDiscos());
+    printf("│ Bytes Out: %-16d │  Bytes In: %-18d │\n", theBlower.getStatsBytesOut(), theBlower.getStatsBytesIn());
+    printf("│ Messages In: %-14d │ Messages Out: %-15d │\n", theBlower.getStatsMsgIn(), theBlower.getStatsMsgOut());
+    printf("│ STA Connections: %-10d │ STA Disconnections: %-9d │\n", theBlower.getStatsStaConns(), theBlower.getStatsStaDiscos());
     printf("│ Last Activity: %s", ctime(&now));
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
 }
@@ -409,10 +402,10 @@ void show_system_config()
 {
     printf("%s", GRAY);
     printf("┌─────────────────────────────────────────────────────────────┐\n");
-    printf("│                SYSTEM CONFIGURATION                        │\n");
+    printf("│                 SYSTEM CONFIGURATION                        │\n");
     printf("├─────────────────────────────────────────────────────────────┤\n");
     printf("│ Expected Nodes: %-43lu │\n", theConf.totalnodes);
-    printf("│ Expected Connections: %-39lu │\n", theConf.conns);
+    printf("│ Expected Connections: %-37lu │\n", theConf.conns);
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
 }
 
@@ -434,8 +427,8 @@ void show_first_profile()
     printf("┌──────────────────────────────────────────────────────────────────┐\n");
     printf("│                      FIRST PROFILE DETAILS                       │\n");
     printf("├──────────────────────────────────────────────────────────────────┤\n");
-    printf("│ Name:            %-48s │\n", profile->name);
-    printf("│ Version:         %-48s │\n", profile->version);
+    printf("│ Name:            %-47s │\n", profile->name);
+    printf("│ Version:         %-47s │\n", profile->version);
     
     char date_buf[30];
     struct tm timeinfo;
@@ -443,34 +436,34 @@ void show_first_profile()
     if (profile->issued > 0) {
         localtime_r(&profile->issued, &timeinfo);
         strftime(date_buf, sizeof(date_buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
-        printf("│ Issued:          %-48s │\n", date_buf);
+        printf("│ Issued:          %-47s │\n", date_buf);
     } else {
-        printf("│ Issued:          %-48s │\n", "Not Set");
+        printf("│ Issued:          %-47s │\n", "Not Set");
     }
     
     if (profile->expires > 0) {
         localtime_r(&profile->expires, &timeinfo);
         strftime(date_buf, sizeof(date_buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
-        printf("│ Expires:         %-48s │\n", date_buf);
+        printf("│ Expires:         %-47s │\n", date_buf);
     } else {
-        printf("│ Expires:         %-48s │\n", "Not Set");
+        printf("│ Expires:         %-47s │\n", "Not Set");
     }
     
-    printf("│ Number of Cycles: %-47d │\n", profile->numCycles);
+    printf("│ Number of Cycles: %-46d │\n", profile->numCycles);
     printf("└──────────────────────────────────────────────────────────────────┘\n\n");
     
     // Display each cycle
     for (int i = 0; i < profile->numCycles && i < MAXCICLOS; i++) {
         ciclo_t *cycle = &profile->cycle[i];
         
-        printf("  ┌─ Cycle %d ─────────────────────────────────────────────────┐\n", i);
-        printf("  │ Day:             %-44d │\n", cycle->day);
-        printf("  │ Duration:        %-44d │\n", cycle->duration);
-        printf("  │ Num Schedules:   %-44d │\n", cycle->numHorarios);
-        printf("  └────────────────────────────────────────────────────────────┘\n");
+        printf("  ┌─ Cycle %1d ───────────────────────────────────────────────────┐\n", i);
+        printf("  │ Day:             %-42d │\n", cycle->day);
+        printf("  │ Duration:        %-42d │\n", cycle->duration);
+        printf("  │ Num Schedules:   %-42d │\n", cycle->numHorarios);
+        printf("  └─────────────────────────────────────────────────────────────┘\n");
         
         if (cycle->numHorarios > 0) {
-            printf("    ┌────────────────────────────────────────────────────────┐\n");
+            printf("    ┌───────────────────────────────────────────────────────────┐\n");
             printf("    │ %-10s │ %-15s │ %-15s │ %-8s │\n", "Schedule", "Start Hour", "Duration", "PWM Duty");
             printf("    ├────────────┼─────────────────┼─────────────────┼──────────┤\n");
             
