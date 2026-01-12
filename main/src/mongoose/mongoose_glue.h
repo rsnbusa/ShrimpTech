@@ -73,7 +73,8 @@ void mongoose_set_sntp_server(const char *url);
 
 void mongoose_set_auth_handler(int (*fn)(const char *user, const char *pass));
 
-void mongoose_add_custom_handler(const char *url_pattern, mg_event_handler_t);
+void mongoose_add_custom_handler(const char *url_pattern, mg_event_handler_t,
+                                 int read_level, int write_level);
 
 #if WIZARD_ENABLE_MQTT
 void glue_lock_init(void);  // Initialise global Mongoose mutex

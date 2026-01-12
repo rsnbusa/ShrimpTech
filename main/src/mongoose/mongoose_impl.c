@@ -144,6 +144,8 @@ struct custom_api_handler {
   struct custom_api_handler *next;
   struct mg_str url_pattern;
   mg_event_handler_t handler;
+  int read_level;
+  int write_level;
 };
 static struct custom_api_handler *s_custom_handlers;
 
@@ -874,11 +876,14 @@ void glue_update_state(void) {
 }
 
 void mongoose_add_custom_handler(const char *url_pattern,
-                                 mg_event_handler_t handler) {
+                                 mg_event_handler_t handler, int read_level,
+                                 int write_level) {
   struct custom_api_handler *ch =
       (struct custom_api_handler *) mg_calloc(1, sizeof(*ch));
   ch->url_pattern = mg_strdup(mg_str(url_pattern));
   ch->handler = handler;
+  ch->read_level = read_level;
+  ch->write_level = write_level;
   ch->next = s_custom_handlers;
   s_custom_handlers = ch;
 }
@@ -895,14 +900,19 @@ struct custom_api_handler *find_custom_handler(struct mg_http_message *hm) {
 static void http_ev_handler(struct mg_connection *c, int ev, void *ev_data) {
   if (ev == MG_EV_HTTP_HDRS && c->data[0] == 0) {
 #if WIZARD_ENABLE_HTTP_UI_LOGIN
+    // Send "Not Authorised" for unauthorised API endpoint accesses
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-    if (mg_match(hm->uri, mg_str("/api/#"), NULL) ||
+    struct custom_api_handler *ch = find_custom_handler(hm);
+    if (ch != NULL || mg_match(hm->uri, mg_str("/api/#"), NULL) ||
         mg_match(hm->uri, mg_str("/websocket"), NULL)) {
       struct apihandler *h = find_handler(hm);
       struct user *u = authenticate(hm);
       if ((u == NULL ||
            (h != NULL && (u->level < h->read_level ||
-                          (hm->body.len > 0 && u->level < h->write_level))))) {
+                          (hm->body.len > 0 && u->level < h->write_level))) ||
+           (ch != NULL &&
+            (u->level < ch->read_level ||
+             (hm->body.len > 0 && u->level < ch->write_level))))) {
         mg_http_reply(c, 403, JSON_HEADERS, "Not Authorised\n");
         c->data[0] = CONN_HANDLED;  // Mark this connection as handled
       }

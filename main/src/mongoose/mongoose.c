@@ -625,7 +625,7 @@ static void handle_mdns_record(struct mg_connection *c) {
       p = build_name(respname, p);
       p = build_a_record(c, p);
     }
-    if (!req.is_unicast) memcpy(&c->rem, &c->loc, sizeof(c->rem));
+    if (!req.is_unicast) mg_multicast_restore(c, (uint8_t *) &c->loc);
     mg_send(c, buf, (size_t) (p - buf));  // And send it!
     MG_DEBUG(("mDNS %c response sent", req.is_unicast ? 'U' : 'M'));
   }
@@ -4806,6 +4806,16 @@ void mg_mgr_init(struct mg_mgr *mgr) {
                                        : "custom"));
 }
 
+#if MG_ENABLE_TCPIP
+void mg_tcpip_mapip(struct mg_connection *, struct mg_addr *);
+#endif
+void mg_multicast_restore(struct mg_connection *c, uint8_t *from) {
+  memcpy(&c->rem, from, sizeof(c->rem));
+#if MG_ENABLE_TCPIP
+  mg_tcpip_mapip(c, &c->rem);
+#endif
+}
+
 #ifdef MG_ENABLE_LINES
 #line 1 "src/net_builtin.c"
 #endif
@@ -4816,15 +4826,18 @@ void mg_mgr_init(struct mg_mgr *mgr) {
 #define MG_EPHEMERAL_PORT_BASE 32768
 #define PDIFF(a, b) ((size_t) (((char *) (b)) - ((char *) (a))))
 
-#ifndef MIP_TCP_KEEPALIVE_MS
-#define MIP_TCP_KEEPALIVE_MS 45000  // TCP keep-alive period, ms
+#ifndef MG_TCPIP_KEEPALIVE_MS
+#define MG_TCPIP_KEEPALIVE_MS 45000  // TCP keep-alive period, ms
 #endif
 
-#define MIP_TCP_ACK_MS 150    // Timeout for ACKing
-#define MIP_ARP_RESP_MS 100   // Timeout for ARP response
-#define MIP_TCP_SYN_MS 15000  // Timeout for connection establishment
-#define MIP_TCP_FIN_MS 1000   // Timeout for closing connection
-#define MIP_TCP_WIN 6000      // TCP window size
+#define MG_TCPIP_ACK_MS 150    // Timeout for ACKing
+#define MG_TCPIP_ARP_MS 100    // Timeout for ARP response
+#define MG_TCPIP_SYN_MS 15000  // Timeout for connection establishment
+#define MG_TCPIP_FIN_MS 1000   // Timeout for closing connection
+
+#ifndef MG_TCPIP_WIN
+#define MG_TCPIP_WIN 6000  // TCP window size
+#endif
 
 struct connstate {
   uint32_t seq, ack;                      // TCP seq/ack counters
@@ -5072,11 +5085,11 @@ static const struct mg_addr ip6_allnodes = {
 static void settmout(struct mg_connection *c, uint8_t type) {
   struct mg_tcpip_if *ifp = c->mgr->ifp;
   struct connstate *s = (struct connstate *) (c + 1);
-  unsigned n = type == MIP_TTYPE_ACK   ? MIP_TCP_ACK_MS
-               : type == MIP_TTYPE_ARP ? MIP_ARP_RESP_MS
-               : type == MIP_TTYPE_SYN ? MIP_TCP_SYN_MS
-               : type == MIP_TTYPE_FIN ? MIP_TCP_FIN_MS
-                                       : MIP_TCP_KEEPALIVE_MS;
+  unsigned n = type == MIP_TTYPE_ACK   ? MG_TCPIP_ACK_MS
+               : type == MIP_TTYPE_ARP ? MG_TCPIP_ARP_MS
+               : type == MIP_TTYPE_SYN ? MG_TCPIP_SYN_MS
+               : type == MIP_TTYPE_FIN ? MG_TCPIP_FIN_MS
+                                       : MG_TCPIP_KEEPALIVE_MS;
   if (s->ttype == MIP_TTYPE_FIN) return;  // skip if 3-way closing
   s->timer = ifp->now + n;
   s->ttype = type;
@@ -5525,7 +5538,8 @@ static void tx_ndp_na(struct mg_tcpip_if *ifp, uint8_t *l2_dst,
   memcpy(data + 4, ip_src, 16);                         // Target address
   data[20] = 2;                                         // 4.6.1, target hwaddr
   data[21] = mg_l2_ip6put(ifp->l2type, l2, data + 22);  // option length / 8
-  tx_icmp6(ifp, l2_dst, ip_src, ip_dst, 136, 0, data, 20 + (size_t)(8 * data[21]));
+  tx_icmp6(ifp, l2_dst, ip_src, ip_dst, 136, 0, data,
+           20 + (size_t) (8 * data[21]));
 }
 
 static void onstate6change(struct mg_tcpip_if *ifp);
@@ -5565,13 +5579,13 @@ static void rx_ndp_ns(struct mg_tcpip_if *ifp, struct pkt *pkt) {
   if (pkt->pay.len < sizeof(target)) return;
   memcpy(target, pkt->pay.buf + 4, sizeof(target));
   if (MG_IP6MATCH(target, ifp->ip6ll) || MG_IP6MATCH(target, ifp->ip6)) {
-    uint64_t req[2]; // requester address
+    uint64_t req[2];  // requester address
     uint8_t l2[sizeof(struct mg_l2addr)];
     uint8_t len, *opts = (uint8_t *) pkt->pay.buf + 20;
     if (*opts++ != 1) return;  // no requester hwaddr (source)
     len = *opts++;             // check valid hwaddr and get it
     if (!mg_l2_ip6get(ifp->l2type, l2, opts, len)) return;
-    req[0] = pkt->ip6->src[0], req[1] = pkt->ip6->src[1]; // align to 64-bit
+    req[0] = pkt->ip6->src[0], req[1] = pkt->ip6->src[1];  // align to 64-bit
     tx_ndp_na(ifp, l2, target, req, true, ifp->mac);
   }
 }
@@ -5745,8 +5759,7 @@ static void rx_icmp6(struct mg_tcpip_if *ifp, struct pkt *pkt) {
           return;                      // safety net for lousy networks
         if (plen > room) plen = room;  // Copy (truncated) RX payload to TX
         // Echo Reply, 4.2
-        tx_icmp6(ifp, l2addr, target, ips.addr.ip6, 129, 0,
-                 pkt->pay.buf, plen);
+        tx_icmp6(ifp, l2addr, target, ips.addr.ip6, 129, 0, pkt->pay.buf, plen);
       }
     } break;
     case 134:  // Router Advertisement
@@ -5778,32 +5791,43 @@ static void onstate6change(struct mg_tcpip_if *ifp) {
 }
 #endif
 
-static uint8_t *get_return_l2addr(struct mg_tcpip_if *ifp, struct mg_addr *rem,
-                                  bool is_udp, struct pkt *pkt) {
+static uint8_t *tcpip_mapip(struct mg_tcpip_if *ifp, struct mg_addr *ip) {
 #if MG_ENABLE_IPV6
-  if (rem->is_ip6) {
-    if (is_udp &&
-        MG_IP6MATCH(rem->addr.ip6, ip6_allnodes.addr.ip6))  // local bcast
+  if (ip->is_ip6) {
+    if (MG_IP6MATCH(ip->addr.ip6, ip6_allnodes.addr.ip6))  // local broadcast
       return mg_l2_mapip(ifp->l2type, MG_TCPIP_L2ADDR_MCAST6,
                          (struct mg_addr *) &ip6_allnodes);
+    if (*ip->addr.ip == 0xFF)  // multicast
+      return mg_l2_mapip(ifp->l2type, MG_TCPIP_L2ADDR_MCAST6, ip);
+  } else
+#endif
+  {  // global/local broadcast
+    if (ip->addr.ip4 == 0xffffffff || ip->addr.ip4 == (ifp->ip | ~ifp->mask))
+      return mg_l2_mapip(ifp->l2type, MG_TCPIP_L2ADDR_BCAST, NULL);
+    if ((*ip->addr.ip & 0xE0) == 0xE0)  // 224 ~ 239 = E0 ~ EF, multicast
+      return mg_l2_mapip(ifp->l2type, MG_TCPIP_L2ADDR_MCAST, ip);
+  }
+  return NULL;
+}
+
+static uint8_t *get_return_l2addr(struct mg_tcpip_if *ifp, struct mg_addr *rem,
+                                  bool is_udp, struct pkt *pkt) {
+  uint8_t *l2addr;
+  if (is_udp && (l2addr = tcpip_mapip(ifp, rem)) != NULL)
+    return l2addr;  // broadcast or multicast
+#if MG_ENABLE_IPV6
+  if (rem->is_ip6) {
     if (rem->addr.ip6[0] == ifp->ip6ll[0] ||
         match_prefix((uint8_t *) rem->addr.ip6, ifp->prefix, ifp->prefix_len))
       return mg_l2_getaddr(ifp->l2type, pkt->l2);  // same LAN, get from frame
-    if (is_udp && *((uint8_t *) rem->addr.ip6) == 0xFF)  // multicast
-      return mg_l2_mapip(ifp->l2type, MG_TCPIP_L2ADDR_MCAST6, rem);
-    if (ifp->gw6_ready)    // use the router
+    if (ifp->gw6_ready)                            // use the router
       return ifp->gw6mac;  // ignore source address in frame
   } else
 #endif
   {
-    uint32_t rem_ip = rem->addr.ip4;
-    if (is_udp && (rem_ip == 0xffffffff || rem_ip == (ifp->ip | ~ifp->mask)))
-      return mg_l2_mapip(ifp->l2type, MG_TCPIP_L2ADDR_BCAST, NULL);
-    if (ifp->ip != 0 && ((rem_ip & ifp->mask) == (ifp->ip & ifp->mask)))
+    if (ifp->ip != 0 && ((rem->addr.ip4 & ifp->mask) == (ifp->ip & ifp->mask)))
       return mg_l2_getaddr(ifp->l2type, pkt->l2);  // same LAN, get from frame
-    if (is_udp && (*((uint8_t *) &rem_ip) & 0xE0) == 0xE0)  // 224~239 = E0~EF
-      return mg_l2_mapip(ifp->l2type, MG_TCPIP_L2ADDR_MCAST, rem);
-    if (ifp->gw_ready)    // use the router
+    if (ifp->gw_ready)                             // use the router
       return ifp->gwmac;  // ignore source address in frame
   }
   MG_ERROR(("%M %s: No way back, can't respond", mg_print_ip_port, rem,
@@ -5882,7 +5906,7 @@ static size_t tx_tcp(struct mg_tcpip_if *ifp, uint8_t *l2_dst,
   tcp->seq = seq;
   tcp->ack = ack;
   tcp->flags = flags;
-  tcp->win = mg_htons(MIP_TCP_WIN);
+  tcp->win = mg_htons(MG_TCPIP_WIN);
   tcp->off = (uint8_t) (sizeof(*tcp) / 4 << 4);
   if (flags & TH_SYN) tcp->off += (uint8_t) (sizeof(opts) / 4 << 4);
   {
@@ -6153,7 +6177,7 @@ static void read_conn(struct mg_connection *c, struct pkt *pkt) {
   s->ack = (uint32_t) (mg_htonl(pkt->tcp->seq) + pkt->pay.len);
   s->unacked += pkt->pay.len;
   // size_t diff = s->acked <= s->ack ? s->ack - s->acked : s->ack;
-  if (s->unacked > MIP_TCP_WIN / 2 && s->acked != s->ack) {
+  if (s->unacked > MG_TCPIP_WIN / 2 && s->acked != s->ack) {
     // Send ACK immediately
     MG_VERBOSE(("%lu imm ACK %lu", c->id, s->acked));
     tx_tcp(c->mgr->ifp, s->mac, &c->loc, &c->rem, TH_ACK, mg_htonl(s->seq),
@@ -6416,9 +6440,7 @@ static void rx_ip6(struct mg_tcpip_if *ifp, struct pkt *pkt) {
       case 59:  // No Next Header 4.7
         return;
       case 50:  // IPsec ESP RFC-4303, unsupported
-      default:
-        loop = false;
-        break;
+      default: loop = false; break;
     }
   }
   if (len >= plen) return;
@@ -6626,8 +6648,8 @@ static void mg_tcpip_poll(struct mg_tcpip_if *ifp, uint64_t now) {
     }
   } else {  // Complex poll / Interrupt-based driver. Queues recvd frames
     char *buf;
-    size_t len = mg_queue_next(&ifp->recv_queue, &buf);
-    if (len > 0) {
+    size_t len, cnt = 7;  // Max 7 packets to fetch
+    while (cnt-- > 0 && (len = mg_queue_next(&ifp->recv_queue, &buf)) > 0) {
       mg_tcpip_rx(ifp, buf, len);
       mg_queue_del(&ifp->recv_queue, len);
     }
@@ -6744,6 +6766,7 @@ static void l2addr_resolved(struct mg_connection *c) {
 
 void mg_connect_resolved(struct mg_connection *c) {
   struct mg_tcpip_if *ifp = c->mgr->ifp;
+  uint8_t *l2addr;
   c->is_resolving = 0;
   if (ifp->eport < MG_EPHEMERAL_PORT_BASE) ifp->eport = MG_EPHEMERAL_PORT_BASE;
   c->loc.port = mg_htons(ifp->eport++);
@@ -6760,31 +6783,21 @@ void mg_connect_resolved(struct mg_connection *c) {
             &c->rem));
   mg_call(c, MG_EV_RESOLVE, NULL);
   c->is_connecting = 1;
+  if (c->is_udp && (l2addr = tcpip_mapip(ifp, &c->rem)) != NULL) {
+    struct connstate *s = (struct connstate *) (c + 1);
+    memcpy(s->mac, l2addr, sizeof(s->mac));
+    l2addr_resolved(c);  // broadcast or multicast
 #if MG_ENABLE_IPV6
-  if (c->rem.is_ip6) {
-    if (c->is_udp &&  // local broadcast
-        MG_IP6MATCH(c->rem.addr.ip6, ip6_allnodes.addr.ip6)) {
-      struct connstate *s = (struct connstate *) (c + 1);
-      memcpy(s->mac,
-             mg_l2_mapip(ifp->l2type, MG_TCPIP_L2ADDR_MCAST6,
-                         (struct mg_addr *) &ip6_allnodes),
-             sizeof(s->mac));
-      l2addr_resolved(c);
-    } else if (match_prefix((uint8_t *) c->rem.addr.ip6, ifp->prefix,
-                            ifp->prefix_len)            // same global LAN
-               || (c->rem.addr.ip6[0] == ifp->ip6ll[0]  // same local LAN
-                   && !MG_IP6MATCH(c->rem.addr.ip6, ifp->gw6))) {  // and not gw
+  } else if (c->rem.is_ip6) {
+    if (match_prefix((uint8_t *) c->rem.addr.ip6, ifp->prefix,
+                     ifp->prefix_len)                       // same global LAN
+        || (c->rem.addr.ip6[0] == ifp->ip6ll[0]             // same local LAN
+            && !MG_IP6MATCH(c->rem.addr.ip6, ifp->gw6))) {  // and not gw
       // If we're in the same LAN, fire a Neighbor Solicitation
       MG_DEBUG(("%lu NS lookup...", c->id));
       tx_ndp_ns(ifp, c->rem.addr.ip6, NULL);  // RFC-4861 4.3, requesting
       settmout(c, MIP_TTYPE_ARP);
       c->is_arplooking = 1;
-    } else if (c->is_udp &&
-               *((uint8_t *) c->rem.addr.ip6) == 0xFF) {  // multicast
-      struct connstate *s = (struct connstate *) (c + 1);
-      memcpy(s->mac, mg_l2_mapip(ifp->l2type, MG_TCPIP_L2ADDR_MCAST6, &c->rem),
-             sizeof(s->mac));
-      l2addr_resolved(c);
     } else if (ifp->gw6_ready) {
       struct connstate *s = (struct connstate *) (c + 1);
       memcpy(s->mac, ifp->gw6mac, sizeof(s->mac));
@@ -6792,28 +6805,16 @@ void mg_connect_resolved(struct mg_connection *c) {
     } else {
       MG_ERROR(("No IPv6 gateway, can't connect"));
     }
-  } else
 #endif
-  {
+  } else {
     uint32_t rem_ip = c->rem.addr.ip4;
-    if (c->is_udp &&  // global or local broadcast
-        (rem_ip == 0xffffffff || rem_ip == (ifp->ip | ~ifp->mask))) {
-      struct connstate *s = (struct connstate *) (c + 1);
-      memcpy(s->mac, mg_l2_mapip(ifp->l2type, MG_TCPIP_L2ADDR_BCAST, NULL),
-             sizeof(s->mac));
-      l2addr_resolved(c);
-    } else if (ifp->ip && ((rem_ip & ifp->mask) == (ifp->ip & ifp->mask)) &&
-               rem_ip != ifp->gw) {  // skip if gw (onstatechange -> ARP)
+    if (ifp->ip && ((rem_ip & ifp->mask) == (ifp->ip & ifp->mask)) &&
+        rem_ip != ifp->gw) {  // skip if gw (onstatechange -> ARP)
       // If we're in the same LAN, fire an ARP lookup.
       MG_DEBUG(("%lu ARP lookup...", c->id));
       mg_tcpip_arp_request(ifp, rem_ip, NULL);
       settmout(c, MIP_TTYPE_ARP);
       c->is_arplooking = 1;
-    } else if (c->is_udp && (*((uint8_t *) &rem_ip) & 0xE0) == 0xE0) {
-      struct connstate *s = (struct connstate *) (c + 1);  // 224~239, E0 EF
-      memcpy(s->mac, mg_l2_mapip(ifp->l2type, MG_TCPIP_L2ADDR_MCAST, &c->rem),
-             sizeof(s->mac));
-      l2addr_resolved(c);
     } else if (ifp->gw_ready) {
       struct connstate *s = (struct connstate *) (c + 1);
       memcpy(s->mac, ifp->gwmac, sizeof(s->mac));
@@ -6942,6 +6943,13 @@ static void setdns4(struct mg_tcpip_if *ifp, uint32_t *ip) {
   if (dnsc->c != NULL) mg_close_conn(dnsc->c);
   if (!mg_dnsc_init(ifp->mgr, dnsc))  // create DNS connection
     MG_ERROR(("DNS connection creation failed"));
+}
+
+void mg_tcpip_mapip(struct mg_connection *c, struct mg_addr *ip) {
+  struct connstate *s = (struct connstate *) (c + 1);
+  uint8_t *l2addr = tcpip_mapip(c->mgr->ifp, ip);
+  if (l2addr == NULL) return;
+  memcpy(s->mac, l2addr, sizeof(s->mac));
 }
 
 #endif  // MG_ENABLE_TCPIP
@@ -11164,7 +11172,7 @@ bool mg_match(struct mg_str s, struct mg_str p, struct mg_str *caps) {
     } else if (i < p.len && (p.buf[i] == '*' || p.buf[i] == '#')) {
       if (caps && !caps->buf) caps->len = 0, caps->buf = &s.buf[j];  // Init cap
       ni = i++, nj = j + 1;
-    } else if (nj > 0 && nj <= s.len && (p.buf[ni] == '#' || s.buf[j] != '/')) {
+    } else if (nj > 0 && nj <= s.len && ((ni < p.len && p.buf[ni] == '#') || s.buf[j] != '/')) {
       i = ni, j = nj;
       if (caps && caps->buf == NULL && caps->len == 0) {
         caps--, caps->len = 0;  // Restart previous cap
@@ -15744,10 +15752,9 @@ void mg_tls_free(struct mg_connection *c) {
 #ifdef MBEDTLS_SSL_SESSION_TICKETS
     mbedtls_ssl_ticket_free(&tls->ticket);
 #endif
-#if defined(MBEDTLS_VERSION_NUMBER) && MBEDTLS_VERSION_NUMBER >= 0x03000000 && \
-    defined(MBEDTLS_PSA_CRYPTO_C)
-    mbedtls_psa_crypto_free();  // https://github.com/Mbed-TLS/mbedtls/issues/9223#issuecomment-2144898336
-#endif
+    // PSA has global data. Do not call mbedtls_psa_crypto_free() here,
+    // it will free all global resources. Call it when actually freeing all
+    // application resources (main() exits)
     mg_free(tls);
     c->tls = NULL;
   }
@@ -15807,6 +15814,7 @@ void mg_tls_init(struct mg_connection *c, const struct mg_tls_opts *opts) {
 #if defined(MBEDTLS_VERSION_NUMBER) && MBEDTLS_VERSION_NUMBER >= 0x03000000 && \
     defined(MBEDTLS_PSA_CRYPTO_C)
   psa_crypto_init();  // https://github.com/Mbed-TLS/mbedtls/issues/9072#issuecomment-2084845711
+  // this initializes global resources and then just returns when called again
 #endif
   mbedtls_ssl_init(&tls->ssl);
   mbedtls_ssl_config_init(&tls->conf);
@@ -15837,11 +15845,16 @@ void mg_tls_init(struct mg_connection *c, const struct mg_tls_opts *opts) {
   } else {
     if (mg_load_cert(opts->ca, &tls->ca) == false) goto fail;
     mbedtls_ssl_conf_ca_chain(&tls->conf, &tls->ca, NULL);
-    if (c->is_client && opts->name.buf != NULL && opts->name.buf[0] != '\0') {
-      char *host = mg_mprintf("%.*s", opts->name.len, opts->name.buf);
-      mbedtls_ssl_set_hostname(&tls->ssl, host);
-      MG_DEBUG(("%lu hostname verification: %s", c->id, host));
-      mg_free(host);
+    if (c->is_client) {
+      if (opts->name.buf != NULL && opts->name.buf[0] != '\0') {
+        char *host = mg_mprintf("%.*s", opts->name.len, opts->name.buf);
+        mbedtls_ssl_set_hostname(&tls->ssl, host);
+        MG_DEBUG(("%lu hostname verification: %s", c->id, host));
+        mg_free(host);
+      } else {
+        MG_DEBUG(("%lu skipping hostname verification", c->id));
+        mbedtls_ssl_set_hostname(&tls->ssl, NULL);
+      }
     }
     mbedtls_ssl_conf_authmode(&tls->conf, MBEDTLS_SSL_VERIFY_REQUIRED);
   }
@@ -25735,8 +25748,26 @@ struct mg_tcpip_driver mg_tcpip_driver_stm32f = {
 #if MG_ENABLE_TCPIP && (MG_ENABLE_DRIVER_STM32H || MG_ENABLE_DRIVER_MCXN || \
                         MG_ENABLE_DRIVER_STM32N)
 // STM32H: vendor modded single-queue Synopsys v4.2
-// STM32N, MCXNx4x: dual-queue Synopsys v5.2 with no hash table option
-// RT1170 ENET_QOS: quad-queue Synopsys v5.1
+// STM32N: dual-queue GbE Synopsys v5.2 with no hash table option, 64-bit AXI
+// MCXNx4x: dual-queue Synopsys v5.2 with no hash table option
+// RT1170: ENET_QOS: quad-queue Synopsys v5.1
+#if MG_ENABLE_DRIVER_STM32H
+#define SYNOPSYS_ENET_V5 0
+#define SYNOPSYS_ENET_SINGLEQ 1
+#define SYNOPSYS_ENET_NOHASHTABLE 0
+#define SYNOPSYS_ENET_GbE 0
+#elif MG_ENABLE_DRIVER_STM32N
+#define SYNOPSYS_ENET_V5 1
+#define SYNOPSYS_ENET_SINGLEQ 0
+#define SYNOPSYS_ENET_NOHASHTABLE 1
+#define SYNOPSYS_ENET_GbE 1
+#elif MG_ENABLE_DRIVER_MCXN
+#define SYNOPSYS_ENET_V5 1
+#define SYNOPSYS_ENET_SINGLEQ 0
+#define SYNOPSYS_ENET_NOHASHTABLE 1
+#define SYNOPSYS_ENET_GbE 0
+#endif
+
 struct synopsys_enet_qos {
   volatile uint32_t MACCR, MACECR, MACPFR, MACWTR, MACHT0R, MACHT1R,
       RESERVED1[14], MACVTR, RESERVED2, MACVHTR, RESERVED3, MACVIR, MACIVIR,
@@ -25769,25 +25800,84 @@ struct synopsys_enet_qos {
 };
 #undef ETH
 #if MG_ENABLE_DRIVER_STM32H
-#define ETH                                                                \
-  ((struct synopsys_enet_qos *) (uintptr_t) (0x40000000UL + 0x00020000UL + \
-                                             0x8000UL))
-#elif MG_ENABLE_DRIVER_MCXN
-#define ETH ((struct synopsys_enet_qos *) (uintptr_t) 0x40100000UL)
+#define ETH ((struct synopsys_enet_qos *) (uintptr_t) 0x40028000UL)
 #elif MG_ENABLE_DRIVER_STM32N
 #define ETH ((struct synopsys_enet_qos *) (uintptr_t) 0x48036000UL)
+#elif MG_ENABLE_DRIVER_MCXN
+#define ETH ((struct synopsys_enet_qos *) (uintptr_t) 0x40100000UL)
 #endif
 
 #define ETH_PKT_SIZE 1540  // Max frame size
 #define ETH_DESC_CNT 4     // Descriptors count
 #define ETH_DS 4           // Descriptor size (words)
 
-static volatile uint32_t s_rxdesc[ETH_DESC_CNT][ETH_DS] MG_ETH_RAM
-    MG_8BYTE_ALIGNED;
-static volatile uint32_t s_txdesc[ETH_DESC_CNT][ETH_DS] MG_ETH_RAM
-    MG_8BYTE_ALIGNED;
-static uint8_t s_rxbuf[ETH_DESC_CNT][ETH_PKT_SIZE] MG_ETH_RAM MG_8BYTE_ALIGNED;
-static uint8_t s_txbuf[ETH_DESC_CNT][ETH_PKT_SIZE] MG_ETH_RAM MG_8BYTE_ALIGNED;
+#if MG_ENABLE_DRIVER_STM32H || MG_ENABLE_DRIVER_STM32N
+#define CACHE_LINESZ 32  // must be a whole number of (d)words (see DESC_SZW)
+#ifndef SCB
+struct m7_scb {
+  volatile uint32_t CPUID, RESERVED1[4], CCR, RESERVED2[145], DCIMVAC, DCISW,
+      DCCMVAU, DCCMVAC, DCCSW, DCCIMVAC, DCCISW, RESERVED3[10], CACR,
+      RESERVED4[3];
+};
+#define SCB ((struct m7_scb *) (uintptr_t) 0xE000ED00UL)
+#endif
+// ending ISB is not needed because we don't cache instructions in data space
+static inline void MG_CACHE_INVAL(uint8_t *addr, int32_t len) {
+#if MG_ENABLE_DRIVER_STM32H
+  if ((SCB->CPUID & 0xfff0) != 0xc270) return;  // not a Cortex-M7 => not an H7
+#endif
+  if ((SCB->CCR & MG_BIT(16)) == 0) return;     // cache not enabled
+  MG_DSB();
+  while (len > 0) {
+    SCB->DCIMVAC = (uint32_t) addr;
+    addr += CACHE_LINESZ;
+    len -= CACHE_LINESZ;
+  }
+  MG_DSB();
+}
+static inline void MG_CACHE_FLUSH(uint8_t *addr, int32_t len) {
+#if MG_ENABLE_DRIVER_STM32H
+  if ((SCB->CPUID & 0xfff0) != 0xc270) return;  // not a Cortex-M7 => not an H7
+#endif
+  if ((SCB->CCR & MG_BIT(16)) == 0) return;     // cache not enabled
+  MG_DSB();
+  while (len > 0) {
+    SCB->DCCMVAC = (uint32_t) addr;
+    addr += CACHE_LINESZ;
+    len -= CACHE_LINESZ;
+  }
+  MG_DSB();
+}
+#define ETH_RAM_ALIGNED MG_32BYTE_ALIGNED  // depends on CACHE_LINESZ and ETH
+#define CACHE_ALIGN(x) \
+  ((((size_t) (x)) + CACHE_LINESZ - 1) & ~(CACHE_LINESZ - 1))
+#define DESC_SZ CACHE_ALIGN(4 * ETH_DS)  // grow descriptors to fit a line
+#define DESC_SZW (DESC_SZ / 4)
+#define BUFF_SZ CACHE_ALIGN(ETH_PKT_SIZE)  // grow buffers to fit n lines
+#if MG_ENABLE_DRIVER_STM32H
+#define DESC_SKIPW (DESC_SZW - ETH_DS)  // tell DMA the descriptor size, words
+#else
+// MG_ENABLE_DRIVER_STM32N, DMA is AXI and specs skip in 64-bit double-words
+#define DESC_SKIPW ((DESC_SZW - ETH_DS) / 2)
+#endif
+#else
+#define MG_CACHE_FLUSH(a, b)
+#define MG_CACHE_INVAL(a, b)
+#define ETH_RAM_ALIGNED MG_8BYTE_ALIGNED  // depends on ETH DMA alone
+#define DESC_SZ 0
+#define DESC_SZW ETH_DS
+#define BUFF_SZ ETH_PKT_SIZE
+#define DESC_SKIPW 0  // no need to skip, as we're not aligning to cache lines
+#endif
+
+// array[rows][cols] = coldata coldata ... for all rows, keeps alignment
+static volatile uint32_t s_rxdesc[ETH_DESC_CNT][DESC_SZW] MG_ETH_RAM
+    ETH_RAM_ALIGNED;
+static volatile uint32_t s_txdesc[ETH_DESC_CNT][DESC_SZW] MG_ETH_RAM
+    ETH_RAM_ALIGNED;
+static uint8_t s_rxbuf[ETH_DESC_CNT][BUFF_SZ] MG_ETH_RAM ETH_RAM_ALIGNED;
+static uint8_t s_txbuf[ETH_DESC_CNT][BUFF_SZ] MG_ETH_RAM ETH_RAM_ALIGNED;
+
 static struct mg_tcpip_if *s_ifp;  // MIP interface
 
 static uint16_t eth_read_phy(uint8_t addr, uint8_t reg) {
@@ -25819,12 +25909,14 @@ static bool mg_tcpip_driver_stm32h_init(struct mg_tcpip_if *ifp) {
     s_rxdesc[i][0] = (uint32_t) (uintptr_t) s_rxbuf[i];  // Point to data buffer
     s_rxdesc[i][3] = MG_BIT(31) | MG_BIT(30) | MG_BIT(24);  // OWN, IOC, BUF1V
   }
+  MG_CACHE_FLUSH((uint8_t *) s_rxdesc, sizeof(s_rxdesc));
 
   // Init TX descriptors
   memset((char *) s_txdesc, 0, sizeof(s_txdesc));  // manual init
   for (int i = 0; i < ETH_DESC_CNT; i++) {
     s_txdesc[i][0] = (uint32_t) (uintptr_t) s_txbuf[i];  // Buf pointer
   }
+  MG_CACHE_FLUSH((uint8_t *) s_txdesc, sizeof(s_txdesc));
 
   ETH->DMAMR |= MG_BIT(0);  // Software reset
   for (int i = 0; i < 4; i++)
@@ -25841,7 +25933,7 @@ static bool mg_tcpip_driver_stm32h_init(struct mg_tcpip_if *ifp) {
   ETH->DMASBMR |= MG_BIT(12);  // AAL NOTE(scaprile): is this actually needed
   ETH->MACIER = 0;  // Do not enable additional irq sources (reset value)
   ETH->MACTFCR = MG_BIT(7);  // Disable zero-quanta pause
-#if MG_ENABLE_DRIVER_STM32H
+#if !SYNOPSYS_ENET_V5
   ETH->MACPFR = MG_BIT(10);  // Perfect filtering
 #endif
   struct mg_phy phy = {eth_read_phy, eth_write_phy};
@@ -25857,15 +25949,15 @@ static bool mg_tcpip_driver_stm32h_init(struct mg_tcpip_if *ifp) {
   ETH->DMACTDRLR = ETH_DESC_CNT - 1;    // ring length
   ETH->DMACTDTPR =
       (uint32_t) (uintptr_t) s_txdesc;  // first available descriptor address
-  ETH->DMACCR = 0;  // DSL = 0 (contiguous descriptor table) (reset value)
-#if !MG_ENABLE_DRIVER_STM32H
+  ETH->DMACCR = DESC_SKIPW << 18;  // DSL (contiguous/sparse descriptor table)
+#if SYNOPSYS_ENET_V5
   MG_SET_BITS(ETH->DMACTCR, 0x3F << 16, MG_BIT(16));
   MG_SET_BITS(ETH->DMACRCR, 0x3F << 16, MG_BIT(16));
 #endif
   ETH->DMACIER = MG_BIT(6) | MG_BIT(15);  // RIE, NIE
   ETH->MACCR = MG_BIT(0) | MG_BIT(1) | MG_BIT(13) | MG_BIT(14) |
                MG_BIT(15);  // RE, TE, Duplex, Fast, (10/100)/Reserved
-#if MG_ENABLE_DRIVER_STM32H
+#if SYNOPSYS_ENET_SINGLEQ
   ETH->MTLTQOMR |= MG_BIT(1);  // TSF
   ETH->MTLRQOMR |= MG_BIT(5);  // RSF
 #else
@@ -25889,18 +25981,23 @@ static size_t mg_tcpip_driver_stm32h_tx(const void *buf, size_t len,
                                         struct mg_tcpip_if *ifp) {
   if (len > sizeof(s_txbuf[s_txno])) {
     MG_ERROR(("Frame too big, %ld", (long) len));
-    len = 0;  // Frame is too big
-  } else if ((s_txdesc[s_txno][3] & MG_BIT(31))) {
+    return 0;  // Frame is too big
+  }
+  MG_CACHE_INVAL((uint8_t *) &s_txdesc[s_txno], DESC_SZ);
+  if ((s_txdesc[s_txno][3] & MG_BIT(31))) {
     ifp->nerr++;
     MG_ERROR(("No free descriptors: %u %08X %08X %08X", s_txno,
               s_txdesc[s_txno][3], ETH->DMACSR, ETH->DMACTCR));
+    MG_CACHE_INVAL((uint8_t *) s_txdesc, sizeof(s_txdesc));
     for (int i = 0; i < ETH_DESC_CNT; i++) MG_ERROR(("%08X", s_txdesc[i][3]));
     len = 0;  // All descriptors are busy, fail
   } else {
-    memcpy(s_txbuf[s_txno], buf, len);              // Copy data
+    memcpy(s_txbuf[s_txno], buf, len);  // Copy data
+    MG_CACHE_FLUSH((uint8_t *) &s_txbuf[s_txno], BUFF_SZ);
     s_txdesc[s_txno][2] = (uint32_t) len;           // Set data len
     s_txdesc[s_txno][3] = MG_BIT(28) | MG_BIT(29);  // FD, LD
     s_txdesc[s_txno][3] |= MG_BIT(31);  // Set OWN bit - let DMA take over
+    MG_CACHE_FLUSH((uint8_t *) &s_txdesc[s_txno], DESC_SZ);
     if (++s_txno >= ETH_DESC_CNT) s_txno = 0;
   }
   ETH->DMACSR |= MG_BIT(2) | MG_BIT(1);  // Clear any prior TBU, TPS
@@ -25910,7 +26007,7 @@ static size_t mg_tcpip_driver_stm32h_tx(const void *buf, size_t len,
 }
 
 static void mg_tcpip_driver_stm32h_update_hash_table(struct mg_tcpip_if *ifp) {
-#if MG_ENABLE_DRIVER_MCXN || MG_ENABLE_DRIVER_STM32N
+#if SYNOPSYS_ENET_NOHASHTABLE
   ETH->MACPFR = MG_BIT(4);  // Pass Multicast (pass all multicast frames)
 #else
   // TODO(): read database, rebuild hash table
@@ -25942,7 +26039,7 @@ static bool mg_tcpip_driver_stm32h_poll(struct mg_tcpip_if *ifp, bool s1) {
     // if(link is slow or half) set flags otherwise
     // reg = tmp
     uint32_t maccr = ETH->MACCR | MG_BIT(14) | MG_BIT(13);  // 100M, Full-duplex
-#if MG_ENABLE_DRIVER_STM32N
+#if SYNOPSYS_ENET_GbE
     if (speed == MG_PHY_SPEED_1000M) maccr &= ~MG_BIT(15);  // 1000M
 #endif
     if (speed == MG_PHY_SPEED_10M) maccr &= ~MG_BIT(14);  // 10M
@@ -25968,6 +26065,7 @@ void ETH1_IRQHandler(void) {
   if (ETH->DMACSR & MG_BIT(6)) {           // Frame received, loop
     ETH->DMACSR = MG_BIT(15) | MG_BIT(6);  // Clear flag
     for (uint32_t i = 0; i < 10; i++) {  // read as they arrive but not forever
+      MG_CACHE_INVAL((uint8_t *) &s_rxdesc[s_rxno], DESC_SZ);
       if (s_rxdesc[s_rxno][3] & MG_BIT(31)) break;  // exit when done
       if (((s_rxdesc[s_rxno][3] & (MG_BIT(28) | MG_BIT(29))) ==
            (MG_BIT(28) | MG_BIT(29))) &&
@@ -25975,10 +26073,12 @@ void ETH1_IRQHandler(void) {
         uint32_t len = s_rxdesc[s_rxno][3] & (MG_BIT(15) - 1);
         // MG_DEBUG(("%lx %lu %lx %08lx", s_rxno, len, s_rxdesc[s_rxno][3],
         // ETH->DMACSR));
+        MG_CACHE_INVAL((uint8_t *) &s_rxbuf[s_rxno], BUFF_SZ);
         mg_tcpip_qwrite(s_rxbuf[s_rxno], len > 4 ? len - 4 : len, s_ifp);
       }
       s_rxdesc[s_rxno][3] =
           MG_BIT(31) | MG_BIT(30) | MG_BIT(24);  // OWN, IOC, BUF1V
+      MG_CACHE_FLUSH((uint8_t *) &s_rxdesc[s_rxno], DESC_SZ);
       if (++s_rxno >= ETH_DESC_CNT) s_rxno = 0;
     }
   }

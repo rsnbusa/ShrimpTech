@@ -179,6 +179,116 @@ void show_limits()
 }
 
 /**
+ * @brief Display schedule information including active profile and day cycle
+ * 
+ * Shows current scheduling status:
+ * - Active profile index
+ * - Current day cycle
+ * - Profile activation date
+ * - Day cycle start date
+ */
+void show_schedule_info()
+{
+    printf("%s\n", CYAN);
+    printf("┌────────────────────────────────────────────────────┐\n");
+    printf("│              SCHEDULE INFORMATION                 │\n");
+    printf("├────────────────────────────────────────────────────┤\n");
+    printf("│ Active Profile:      %-28d │\n", theConf.activeProfile);
+    printf("│ Current Day Cycle:   %-28d │\n", theConf.dayCycle);
+    
+    char date_buf[30];
+    struct tm timeinfo;
+    
+    if (theConf.dateProfile > 0) {
+        localtime_r(&theConf.dateProfile, &timeinfo);
+        strftime(date_buf, sizeof(date_buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
+        printf("│ Profile Start Date:  %-28s │\n", date_buf);
+    } else {
+        printf("│ Profile Start Date:  %-28s │\n", "Not Set");
+    }
+    
+    if (theConf.dateDayCycle > 0) {
+        localtime_r(&theConf.dateDayCycle, &timeinfo);
+        strftime(date_buf, sizeof(date_buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
+        printf("│ Day Cycle Start:     %-28s │\n", date_buf);
+    } else {
+        printf("│ Day Cycle Start:     %-28s │\n", "Not Set");
+    }
+    
+    printf("└────────────────────────────────────────────────────┘\n\n");
+}
+
+/**
+ * @brief Display detailed information for the first profile
+ * 
+ * Shows complete profile structure including:
+ * - Profile name and version
+ * - Issue and expiration dates
+ * - Number of cycles
+ * - For each cycle: day, duration, number of schedules (horarios)
+ * - For each horario: start hour, duration, PWM duty cycle
+ */
+void show_first_profile()
+{
+    profile_t *profile = &theConf.profiles[0];
+    
+    printf("%s\n", MAGENTA);
+    printf("┌──────────────────────────────────────────────────────────────────┐\n");
+    printf("│                      FIRST PROFILE DETAILS                       │\n");
+    printf("├──────────────────────────────────────────────────────────────────┤\n");
+    printf("│ Name:            %-48s │\n", profile->name);
+    printf("│ Version:         %-48s │\n", profile->version);
+    
+    char date_buf[30];
+    struct tm timeinfo;
+    
+    if (profile->issued > 0) {
+        localtime_r(&profile->issued, &timeinfo);
+        strftime(date_buf, sizeof(date_buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
+        printf("│ Issued:          %-48s │\n", date_buf);
+    } else {
+        printf("│ Issued:          %-48s │\n", "Not Set");
+    }
+    
+    if (profile->expires > 0) {
+        localtime_r(&profile->expires, &timeinfo);
+        strftime(date_buf, sizeof(date_buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
+        printf("│ Expires:         %-48s │\n", date_buf);
+    } else {
+        printf("│ Expires:         %-48s │\n", "Not Set");
+    }
+    
+    printf("│ Number of Cycles: %-47d │\n", profile->numCycles);
+    printf("└──────────────────────────────────────────────────────────────────┘\n\n");
+    
+    // Display each cycle
+    for (int i = 0; i < profile->numCycles && i < MAXCICLOS; i++) {
+        ciclo_t *cycle = &profile->cycle[i];
+        
+        printf("  ┌─ Cycle %d ─────────────────────────────────────────────────┐\n", i);
+        printf("  │ Day:             %-44d │\n", cycle->day);
+        printf("  │ Duration:        %-44d │\n", cycle->duration);
+        printf("  │ Num Schedules:   %-44d │\n", cycle->numHorarios);
+        printf("  └────────────────────────────────────────────────────────────┘\n");
+        
+        if (cycle->numHorarios > 0) {
+            printf("    ┌────────────────────────────────────────────────────────┐\n");
+            printf("    │ %-10s │ %-15s │ %-15s │ %-8s │\n", "Schedule", "Start Hour", "Duration", "PWM Duty");
+            printf("    ├────────────┼─────────────────┼─────────────────┼──────────┤\n");
+            
+            for (int j = 0; j < cycle->numHorarios && j < MAXHORARIOS; j++) {
+                horario_t *horario = &cycle->horarios[j];
+                printf("    │ %-10d │ %-15d │ %-15u │ %-8d │\n", 
+                       j, horario->hourStart, horario->horarioLen, horario->pwmDuty);
+            }
+            
+            printf("    └────────────┴─────────────────┴─────────────────┴──────────┘\n");
+        }
+        printf("\n");
+    }
+}
+
+/**
  * @brief Display comprehensive system configuration (runs as FreeRTOS task)
  * 
  * This function displays complete system status and configuration including:
@@ -419,6 +529,8 @@ void showconf(void *pArg)
     printf("%s",RESETC);
     print_blower("Blower",theBlower.getSolarSystem(),false);
 
+    show_schedule_info();
+    show_first_profile();
     show_limits();
     show_mimodbus();
     printf("%s",RESETC);
