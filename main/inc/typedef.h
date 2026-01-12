@@ -218,6 +218,21 @@ typedef struct dbg {
     struct arg_end *end;
 } dbg_t;
 
+typedef struct cfg {
+    struct arg_lit *sch;        // All configuration x
+    struct arg_lit *meshnet;     // Mesh related x
+    struct arg_lit *mqtt;       // MQTT related x
+    struct arg_lit *profile;    // Profile data x
+    struct arg_lit *blow;       // Blower data x
+    struct arg_lit *modbus;     // modbus data x
+    struct arg_lit *limits;     // BLE related x
+    struct arg_lit *prod  ;     // production data x
+    struct arg_lit *stats  ;    // statistics data x
+    struct arg_lit *system  ;    // system data x
+    struct arg_lit *all;       // All commands on/off
+    struct arg_end *end;
+} cfg_t;
+
 typedef struct logl{
     struct arg_str *level;        
     struct arg_end *end;

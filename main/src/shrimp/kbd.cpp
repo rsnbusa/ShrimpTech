@@ -32,6 +32,7 @@
 #define DEBUG_MAX_ARGUMENTS         8
 #define SECURITY_MAX_ARGUMENTS      3
 #define LOG_MAX_ARGUMENTS           2
+#define CONFIG_MAX_ARGUMENTS        11
 
 // ===================================================================
 // Helper Functions
@@ -126,6 +127,23 @@ void kbd(void *pArg)
   dbgArg.end      = arg_end(DEBUG_MAX_ARGUMENTS);
 
   // ===================================================================
+  // Define Command Arguments - Configuration Display
+  // ===================================================================
+  
+  configArgs.sch      = arg_lit0(NULL, "sch",       "Show Schedule configuration");
+  configArgs.meshnet  = arg_lit0(NULL, "mesh",      "Show Mesh & Network configuration");
+  configArgs.mqtt     = arg_lit0(NULL, "mqtt",      "Show MQTT configuration ");
+  configArgs.profile  = arg_lit0(NULL, "profile",   "Show Profile configuration");
+  configArgs.blow     = arg_lit0(NULL, "blow",      "Show Blower data");
+  configArgs.modbus   = arg_lit0(NULL, "modbus",    "Show modbus configuration");
+  configArgs.limits   = arg_lit0(NULL, "limits",    "Show limits configuration");
+  configArgs.prod     = arg_lit0(NULL, "produc",    "Show Porduction configuration");
+  configArgs.stats    = arg_lit0(NULL, "stats",     "Show stats");
+  configArgs.system   = arg_lit0(NULL, "sys",       "Show system configuration");
+  configArgs.all      = arg_lit0(NULL, "all",       "Show all sections");
+  configArgs.end      = arg_end(CONFIG_MAX_ARGUMENTS);
+
+  // ===================================================================
   // Define Command Arguments - Log Level & Reset
   // ===================================================================
   
@@ -199,7 +217,7 @@ void kbd(void *pArg)
         .help = "Show Configuration",
         .hint = NULL,
         .func = &cmdConfig,
-        .argtable = NULL
+        .argtable = &configArgs
     };
 
   erase_cmd = {

@@ -27,7 +27,7 @@ char modb_names[][30]={
  * Each section displays: device address, refresh rate, register offsets,
  * start addresses, point counts, and multiplexer values.
  */
-void show_mimodbus()
+void show_modbus()
 {
     printf("%s\n",LRED);
     printf("┌═════════════════════════════════════════════════════════────────┐\n");
@@ -219,6 +219,204 @@ void show_schedule_info()
 }
 
 /**
+ * @brief Display device information section
+ * 
+ * Shows boot count, reset reasons, version info, guard date,
+ * display status, and network settings.
+ */
+void show_device_info(time_t bootdate, time_t guardDate)
+{
+    const esp_app_desc_t *mip = esp_app_get_description();
+    
+    printf("%s", LYELLOW);
+    printf("\n┌─────────────────────────────────────────────────────────────┐\n");
+    printf("│                   DEVICE INFORMATION                        │\n");
+    printf("├─────────────────────────────────────────────────────────────┤\n");
+    printf("│ Boot Count:                                                 │\n");
+    printf("│   %-57d │\n", theConf.bootcount);
+    printf("│ Last Reset & Reason:                                        │\n");
+    printf("│   Reset: %-6d  Reason: %-34d │\n", theConf.lastResetCode, theConf.lastResetCode);
+    printf("│ Log Level & Down Time:                                      │\n");
+    printf("│   Level: %-6d  Down Time: %-28lus │\n", theConf.loglevel, theConf.downtime);
+    printf("│ Last Reboot:                                                │\n");
+    char reboot_str[60];
+    strftime(reboot_str, sizeof(reboot_str), "  %Y-%m-%d %H:%M:%S", localtime((time_t*)&bootdate));
+    printf("│ %-59s │\n", reboot_str);
+    printf("│ Configuration Flags:                                        │\n");
+    printf("│   Meter: %-6d  MQTT: %-6d  Send Meter: %-16d │\n", theConf.meterconf, mqttf, sendMeterf);
+    printf("│ Guard Date:                                                 │\n");
+    strftime(reboot_str, sizeof(reboot_str), "  %Y-%m-%d %H:%M:%S", localtime(&guardDate));
+    printf("│ %-59s │\n", reboot_str);
+    printf("│ Display & System Status:                                    │\n");
+    printf("│   Display Active: %-42s │\n", gdispf?"Yes":"No");
+    printf("│ Version Information:                                        │\n");
+    printf("│   App: %-11s  IDF: %-33s │\n", mip->version, mip->idf_ver);
+    printf("│   Project: %-48s │\n", mip->project_name);
+    printf("│   Compiled: %s @ %-36s │\n", mip->date, mip->time);
+    printf("│   Latest Sent: %-44s │\n", theConf.lastVersion);
+    printf("│ Network Settings:                                           │\n");
+    printf("│   Mesh Delay: %-10s  Login Wait: %-23d │\n", theConf.delay_mesh?"Yes":"No", theConf.loginwait);
+    printf("└─────────────────────────────────────────────────────────────┘\n\n");
+}
+
+/**
+ * @brief Display production configuration section
+ * 
+ * Shows blower mode, active profile, debug flags, and cycle status.
+ */
+void show_production_config()
+{
+    printf("%s", CYAN);
+    printf("┌─────────────────────────────────────────────────────────────┐\n");
+    printf("│              PRODUCTION CONFIGURATION                       │\n");
+    printf("├─────────────────────────────────────────────────────────────┤\n");
+    printf("│ Blower Mode: %d                                            │\n", theConf.blower_mode);
+    printf("│ Active Profile: %d | Start Day: %d%%                         │\n", theConf.activeProfile, theConf.dayCycle);
+    printf("│ Is Master Node: %s                                          │\n", theConf.masternode?"Yes":"No");
+    printf("│ Debug Flags (0x%X): ", theConf.debug_flags);
+    if((theConf.debug_flags >> dSCH) & 1U)   printf("Schedule ");
+    if((theConf.debug_flags >> dMESH) & 1U)  printf("Mesh ");
+    if((theConf.debug_flags >> dBLE) & 1U)   printf("Ble ");
+    if((theConf.debug_flags >> dMQTT) & 1U)  printf("Mqtt ");
+    if((theConf.debug_flags >> dXCMDS) & 1U) printf("Xcmds ");
+    if((theConf.debug_flags >> dBLOW) & 1U)  printf("Blower ");
+    if((theConf.debug_flags >> dLOGIC) & 1U) printf("Logic ");
+    if((theConf.debug_flags >> dMODBUS) & 1U) printf("Modbus ");
+    printf("              │\n");
+    if(theBlower.getScheduleStatus()==BLOWERON)
+        printf("│ Cycle: %d | Day: %d | Timer Div: %d Status %d                             │\n", ck, ck_d, theConf.test_timer_div, theBlower.getScheduleStatus());
+    else
+        printf("│ Status: Waiting for Production Cycle start    %d               │\n", theBlower.getScheduleStatus());
+    printf("└─────────────────────────────────────────────────────────────┘\n\n");
+}
+
+/**
+ * @brief Display MQTT configuration section
+ * 
+ * Shows MQTT topics and server credentials.
+ */
+void show_mqtt_config()
+{
+    printf("%s", MAGENTA);
+    printf("┌─────────────────────────────────────────────────────────────┐\n");
+    printf("│                  MQTT CONFIGURATION                        │\n");
+    printf("├─────────────────────────────────────────────────────────────┤\n");
+    printf("│ Command Topic: %-47s │\n", cmdQueue);
+    printf("│ Info Topic:    %-47s │\n", infoQueue);
+    printf("│ Alarm Topic:   %-47s │\n", alarmQueue);
+    printf("│ Server: [%s] | User: [%s] | Pass: [%s] │\n", theConf.mqttServer, theConf.mqttUser, theConf.mqttPass);
+    printf("└─────────────────────────────────────────────────────────────┘\n\n");
+}
+
+/**
+ * @brief Display network and mesh configuration section
+ * 
+ * Shows mesh topology, routing table, and timing information.
+ * Only displays if mesh is enabled.
+ */
+void show_network_mesh(wifi_config_t conf, mesh_addr_t bssid, unsigned char *mac_base, 
+                       mesh_type_t typ, char *my_mac, TickType_t xRemainingTime)
+{
+    if(!meshf)
+        return;
+        
+    char *tipo[]={"Idle", "ROOT", "NODE", "LEAF", "STA"};
+    int routet;
+    
+    printf("%s", YELLOW);
+    printf("┌─────────────────────────────────────────────────────────────┐\n");
+    printf("│              NETWORK & MESH CONFIGURATION                   │\n");
+    printf("├─────────────────────────────────────────────────────────────┤\n");
+    printf("│ Mesh ID: " MACSTR " (SubNode: %d | Pool: %d | Unit: %d)    │\n", 
+           MAC2STR(MESH_ID), theConf.subnode, theConf.poolid, theConf.unitid);
+    printf("│ STA Mode: [SSID: %s] [Pass: %s]             │\n", conf.sta.ssid, conf.sta.password);
+    printf("│ Flash Config: [SSID: %s] [Pass: %s]         │\n", theConf.thessid, theConf.thepass);
+    printf("│ Parent BSSID: " MACSTR "                                │\n", MAC2STR(bssid.addr));
+    printf("│ AP Mode: [SSID: %s] [Pass: %s]              │\n", conf.ap.ssid, conf.ap.password);
+    
+    mesh_addr_t mmeshid;
+    esp_mesh_get_id(&mmeshid);
+    printf("│ Node Type: %-40s │\n", tipo[typ]);
+    printf("│ MAC Address: " MACSTR "                                  │\n", MAC2STR(mac_base));
+    printf("│ Mesh ID: " MACSTR "                                    │\n", MAC2STR(mmeshid.addr));
+    printf("│ Device State: %s                                         │\n", esp_mesh_is_device_active?"UP":"DOWN");
+    printf("└─────────────────────────────────────────────────────────────┘\n\n");
+
+    // ===== TIMING INFORMATION =====
+    printf("%s", WHITEC);
+    printf("┌─────────────────────────────────────────────────────────────┐\n");
+    printf("│                 TIMING INFORMATION                          │\n");
+    printf("├─────────────────────────────────────────────────────────────┤\n");
+    printf("│ Next Send Data: %dms | Base Time: %d | Repeat Timer: %d    │\n", 
+           xRemainingTime, theConf.baset, theConf.repeat);
+    printf("└─────────────────────────────────────────────────────────────┘\n\n");
+
+    // ===== MESH ROUTING TABLE =====
+    esp_err_t err = esp_mesh_get_routing_table((mesh_addr_t *) &s_route_table, CONFIG_MESH_ROUTE_TABLE_SIZE * 6, &routet);
+
+    if(err == ESP_OK)
+    {
+        printf("%S", LGREEN);
+        printf("┌─────────────────────────────────────────────────────────────┐\n");
+        printf("│                   MESH NETWORK TOPOLOGY                     │\n");
+        printf("├─────────────────────────────────────────────────────────────┤\n");
+        if(routet < 11)
+        {
+            printf("│ Total Nodes: %-51d │\n", routet);
+            printf("├─────────────────────────────────────────────────────────────┤\n");
+            for (int a = 0; a < routet; a++)
+            {
+                printf("│ [%2d] MAC: " MACSTR " %2s | Meter: %-15s | Send: %s | Power: %s │\n",
+                       a, MAC2STR(s_route_table[a].addr),
+                       MAC_ADDR_EQUAL(s_route_table[a].addr, my_mac)?"*ME":"",
+                       masterNode.theTable.meterName[a],
+                       masterNode.theTable.sendit[a]?"Y":"N",
+                       masterNode.theTable.onoff[a]?"ON":"OFF");
+            }
+        }
+        else
+        {
+            printf("│ Total Nodes: %-51d │\n", routet);
+        }
+        printf("└─────────────────────────────────────────────────────────────┘\n\n");
+    }
+}
+
+/**
+ * @brief Display statistics section
+ * 
+ * Shows bytes/messages in/out, connection stats, and last activity.
+ */
+void show_statistics(time_t now)
+{
+    printf("%s", BLUE);
+    printf("┌─────────────────────────────────────────────────────────────┐\n");
+    printf("│                    STATISTICS                              │\n");
+    printf("├─────────────────────────────────────────────────────────────┤\n");
+    printf("│ Bytes Out: %-14d │ Bytes In: %-16d │\n", theBlower.getStatsBytesOut(), theBlower.getStatsBytesIn());
+    printf("│ Messages In: %-13d │ Messages Out: %-15d │\n", theBlower.getStatsMsgIn(), theBlower.getStatsMsgOut());
+    printf("│ STA Connections: %-11d │ STA Disconnections: %-14d │\n", theBlower.getStatsStaConns(), theBlower.getStatsStaDiscos());
+    printf("│ Last Activity: %s", ctime(&now));
+    printf("└─────────────────────────────────────────────────────────────┘\n\n");
+}
+
+/**
+ * @brief Display system configuration section
+ * 
+ * Shows expected nodes and connection settings.
+ */
+void show_system_config()
+{
+    printf("%s", GRAY);
+    printf("┌─────────────────────────────────────────────────────────────┐\n");
+    printf("│                SYSTEM CONFIGURATION                        │\n");
+    printf("├─────────────────────────────────────────────────────────────┤\n");
+    printf("│ Expected Nodes: %-43lu │\n", theConf.totalnodes);
+    printf("│ Expected Connections: %-39lu │\n", theConf.conns);
+    printf("└─────────────────────────────────────────────────────────────┘\n\n");
+}
+
+/**
  * @brief Display detailed information for the first profile
  * 
  * Shows complete profile structure including:
@@ -306,236 +504,6 @@ void show_first_profile()
  * @param pArg Unused task parameter (required by FreeRTOS task signature)
  * @note Deletes itself after completion using vTaskDelete(NULL)
  */
-void showconf(void *pArg)
-{
-
-    char            buf[50],buf2[50],fecha[60],myssid[20];
-    time_t          lastwrite,now;
-    struct tm       timeinfo;
-    // portMUX_TYPE    xTimerLock = portMUX_INITIALIZER_UNLOCKED;
-    TickType_t      xRemainingTime;
-    int             routet;
-    mesh_type_t     typ;
-    char            my_mac[8]={0};
-    uint8_t         min,secs;
-    mesh_addr_t     bssid;
-    time_t         guardDate,bootdate;
-
-    time(&now);
-    localtime_r(&now, &timeinfo);
-
-    bzero(myssid,sizeof(myssid));
-
-
-    char *tipo[]={"Idle","ROOT","NODE","LEAF","STA"};
-    wifi_config_t conf;
-
-    unsigned char mac_base[6] = {0};
-    esp_efuse_mac_get_default(mac_base);
-    esp_read_mac(mac_base, ESP_MAC_WIFI_STA);
-
-    if(mesh_started)
-    {
-        memcpy(my_mac,mesh_netif_get_station_mac(),6);
-        if(esp_wifi_get_config(WIFI_IF_STA, &conf)==ESP_OK)
-        {
-            strcpy(myssid,(char*)conf.sta.ssid);
-        }
-        else
-        {
-            printf("Error reading wifi config\n");
-        }
-
-        typ=esp_mesh_get_type();
-    }
-
-    min=10;
-    secs=10*2-(min*60);
-
-    timeinfo.tm_min=min;
-    timeinfo.tm_sec=secs; 
-    time_t nexthour = mktime(&timeinfo);
-    int faltan=nexthour-now;
-
-    esp_mesh_get_parent_bssid(&bssid);
-    const esp_app_desc_t *mip=esp_app_get_description();
-    if(mip)
-        printf("\t\t Mesh Configuration Date %s ",ctime(&now));
-
-    if(!theConf.ptch)
-        printf("Virgin Chip\n");
-
-    uint32_t nada;    // this is compiler error, it goes crazy if done directly like fram.read_fdate(uint8_t*)&guarddate)
-
-    nada=theBlower.getLastUpdate();
-    // fram.read_fdate((uint8_t*)&nada);				// read last saved datetime.
-    guardDate=(time_t)nada;
-
-    bootdate=(time_t)theConf.lastRebootTime;    //same compiler error
-
-    // ===== DEVICE INFORMATION =====
-    printf("%s",LYELLOW);
-    printf("\n┌─────────────────────────────────────────────────────────────┐\n");
-    printf("│                   DEVICE INFORMATION                        │\n");
-    printf("├─────────────────────────────────────────────────────────────┤\n");
-    printf("│ Boot Count:                                                 │\n");
-    printf("│   %-57d │\n", theConf.bootcount);
-    printf("│ Last Reset & Reason:                                        │\n");
-    printf("│   Reset: %-6d  Reason: %-34d │\n", theConf.lastResetCode, theConf.lastResetCode);
-    printf("│ Log Level & Down Time:                                      │\n");
-    printf("│   Level: %-6d  Down Time: %-28lus │\n", theConf.loglevel, theConf.downtime);
-    printf("│ Last Reboot:                                                │\n");
-    char reboot_str[60];
-    strftime(reboot_str, sizeof(reboot_str), "  %Y-%m-%d %H:%M:%S", localtime((time_t*)&bootdate));
-    printf("│ %-59s │\n", reboot_str);
-    printf("│ Configuration Flags:                                        │\n");
-    printf("│   Meter: %-6d  MQTT: %-6d  Send Meter: %-16d │\n", theConf.meterconf, mqttf, sendMeterf);
-    printf("│ Guard Date:                                                 │\n");
-    strftime(reboot_str, sizeof(reboot_str), "  %Y-%m-%d %H:%M:%S", localtime(&guardDate));
-    printf("│ %-59s │\n", reboot_str);
-    printf("│ Display & System Status:                                    │\n");
-    printf("│   Display Active: %-42s │\n", gdispf?"Yes":"No");
-    printf("│ Version Information:                                        │\n");
-    printf("│   App: %-11s  IDF: %-33s │\n", mip->version, mip->idf_ver);
-    printf("│   Project: %-48s │\n", mip->project_name);
-    printf("│   Compiled: %s @ %-36s │\n", mip->date, mip->time);
-    printf("│   Latest Sent: %-44s │\n", theConf.lastVersion);
-    printf("│ Network Settings:                                           │\n");
-    printf("│   Mesh Delay: %-10s  Login Wait: %-23d │\n", theConf.delay_mesh?"Yes":"No", theConf.loginwait);
-    printf("└─────────────────────────────────────────────────────────────┘\n\n");
-
-    // ===== PRODUCTION CONFIGURATION =====
-    printf("%s",CYAN);
-    printf("┌─────────────────────────────────────────────────────────────┐\n");
-    printf("│              PRODUCTION CONFIGURATION                       │\n");
-    printf("├─────────────────────────────────────────────────────────────┤\n");
-    printf("│ Blower Mode: %d                                            │\n", theConf.blower_mode);
-    printf("│ Active Profile: %d | Start Day: %d%%                         │\n", theConf.activeProfile, theConf.dayCycle);
-    printf("│ Is Master Node: %s                                          │\n", theConf.masternode?"Yes":"No");
-    printf("│ Debug Flags (0x%X): ", theConf.debug_flags);
-    if((theConf.debug_flags >> dSCH) & 1U)   printf("Schedule ");
-    if((theConf.debug_flags >> dMESH) & 1U)  printf("Mesh ");
-    if((theConf.debug_flags >> dBLE) & 1U)   printf("Ble ");
-    if((theConf.debug_flags >> dMQTT) & 1U)  printf("Mqtt ");
-    if((theConf.debug_flags >> dXCMDS) & 1U) printf("Xcmds ");
-    if((theConf.debug_flags >> dBLOW) & 1U)  printf("Blower ");
-    if((theConf.debug_flags >> dLOGIC) & 1U) printf("Logic ");
-    if((theConf.debug_flags >> dMODBUS) & 1U) printf("Modbus ");
-    printf("              │\n");
-    if(theBlower.getScheduleStatus()==BLOWERON)
-        printf("│ Cycle: %d | Day: %d | Timer Div: %d Status %d                             │\n", ck, ck_d, theConf.test_timer_div,theBlower.getScheduleStatus());
-    else
-        printf("│ Status: Waiting for Production Cycle start    %d               │\n",theBlower.getScheduleStatus());
-    printf("└─────────────────────────────────────────────────────────────┘\n\n");
-
-    // ===== MQTT CONFIGURATION =====
-    printf("%s",MAGENTA);
-    printf("┌─────────────────────────────────────────────────────────────┐\n");
-    printf("│                  MQTT CONFIGURATION                        │\n");
-    printf("├─────────────────────────────────────────────────────────────┤\n");
-    printf("│ Command Topic: %-47s │\n", cmdQueue);
-    printf("│ Info Topic:    %-47s │\n", infoQueue);
-    printf("│ Alarm Topic:   %-47s │\n", alarmQueue);
-    printf("│ Server: [%s] | User: [%s] | Pass: [%s] │\n", theConf.mqttServer, theConf.mqttUser, theConf.mqttPass);
-    printf("└─────────────────────────────────────────────────────────────┘\n\n");
-
-
-    // ===== NETWORK & MESH INFO =====
-    if(meshf)
-    {
-       printf("%s",YELLOW);
-        printf("┌─────────────────────────────────────────────────────────────┐\n");
-        printf("│              NETWORK & MESH CONFIGURATION                   │\n");
-        printf("├─────────────────────────────────────────────────────────────┤\n");
-        printf("│ Mesh ID: " MACSTR " (SubNode: %d | Pool: %d | Unit: %d)    │\n", 
-               MAC2STR(MESH_ID), theConf.subnode, theConf.poolid, theConf.unitid);
-        printf("│ STA Mode: [SSID: %s] [Pass: %s]             │\n", conf.sta.ssid, conf.sta.password);
-        printf("│ Flash Config: [SSID: %s] [Pass: %s]         │\n", theConf.thessid, theConf.thepass);
-        printf("│ Parent BSSID: " MACSTR "                                │\n", MAC2STR(bssid.addr));
-        printf("│ AP Mode: [SSID: %s] [Pass: %s]              │\n", conf.ap.ssid, conf.ap.password);
-        
-        mesh_addr_t mmeshid;
-        esp_mesh_get_id(&mmeshid);
-        printf("│ Node Type: %-40s │\n", tipo[typ]);
-        printf("│ MAC Address: " MACSTR "                                  │\n", MAC2STR(mac_base));
-        printf("│ Mesh ID: " MACSTR "                                    │\n", MAC2STR(mmeshid.addr));
-        printf("│ Device State: %s                                         │\n", esp_mesh_is_device_active?"UP":"DOWN");
-        printf("└─────────────────────────────────────────────────────────────┘\n\n");
-
-        // ===== TIMING INFORMATION =====
-        printf("%s",WHITEC);
-        printf("┌─────────────────────────────────────────────────────────────┐\n");
-        printf("│                 TIMING INFORMATION                          │\n");
-        printf("├─────────────────────────────────────────────────────────────┤\n");
-        if(collectTimer)
-          if(xTimerIsTimerActive(collectTimer))
-          {
-            xRemainingTime = xTimerGetExpiryTime( collectTimer ) - xTaskGetTickCount();
-          }
-        printf("│ Next Send Data: %dms | Base Time: %d | Repeat Timer: %d    │\n", 
-               xRemainingTime, theConf.baset, theConf.repeat);
-        printf("└─────────────────────────────────────────────────────────────┘\n\n");
-
-        // ===== MESH ROUTING TABLE =====
-        esp_err_t err=esp_mesh_get_routing_table((mesh_addr_t *) &s_route_table,CONFIG_MESH_ROUTE_TABLE_SIZE * 6, &routet);
-
-        if(err==ESP_OK)
-        {
-              printf("%S",LGREEN);
-            printf("┌─────────────────────────────────────────────────────────────┐\n");
-            printf("│                   MESH NETWORK TOPOLOGY                     │\n");
-            printf("├─────────────────────────────────────────────────────────────┤\n");
-            if(routet<11)
-            {
-                printf("│ Total Nodes: %-51d │\n", routet);
-                printf("├─────────────────────────────────────────────────────────────┤\n");
-                for (int a=0;a<routet;a++)
-                {
-                    printf("│ [%2d] MAC: " MACSTR " %2s | Meter: %-15s | Send: %s | Power: %s │\n",
-                           a, MAC2STR(s_route_table[a].addr),
-                           MAC_ADDR_EQUAL(s_route_table[a].addr, my_mac)?"*ME":"",
-                           masterNode.theTable.meterName[a],
-                           masterNode.theTable.sendit[a]?"Y":"N",
-                           masterNode.theTable.onoff[a]?"ON":"OFF");
-                }
-            }
-            else
-            {
-                printf("│ Total Nodes: %-51d │\n", routet);
-            }
-            printf("└─────────────────────────────────────────────────────────────┘\n\n");
-        }
-    }
-    // ===== STATISTICS =====
-    printf("%s",BLUE);
-    printf("┌─────────────────────────────────────────────────────────────┐\n");
-    printf("│                    STATISTICS                              │\n");
-    printf("├─────────────────────────────────────────────────────────────┤\n");
-    printf("│ Bytes Out: %-14d │ Bytes In: %-16d │\n", theBlower.getStatsBytesOut(), theBlower.getStatsBytesIn());
-    printf("│ Messages In: %-13d │ Messages Out: %-15d │\n", theBlower.getStatsMsgIn(), theBlower.getStatsMsgOut());
-    printf("│ STA Connections: %-11d │ STA Disconnections: %-14d │\n", theBlower.getStatsStaConns(), theBlower.getStatsStaDiscos());
-    printf("│ Last Activity: %s", ctime(&now));
-    printf("└─────────────────────────────────────────────────────────────┘\n\n");
-
-    // ===== SYSTEM CONFIGURATION =====
-    printf("%s",GRAY);
-    printf("┌─────────────────────────────────────────────────────────────┐\n");
-    printf("│                SYSTEM CONFIGURATION                        │\n");
-    printf("├─────────────────────────────────────────────────────────────┤\n");
-    printf("│ Expected Nodes: %-43lu │\n", theConf.totalnodes);
-    printf("│ Expected Connections: %-39lu │\n", theConf.conns);
-    printf("└─────────────────────────────────────────────────────────────┘\n\n");
-
-    printf("%s",RESETC);
-    print_blower("Blower",theBlower.getSolarSystem(),false);
-
-    show_schedule_info();
-    show_first_profile();
-    show_limits();
-    show_mimodbus();
-    printf("%s",RESETC);
-    vTaskDelete(NULL);
-}
 
 /**
  * @brief Console command to display complete system configuration
@@ -553,7 +521,96 @@ void showconf(void *pArg)
  */
 int cmdConfig(int argc, char **argv)
 {
+    char            myssid[20];
+    time_t          now;
+    struct tm       timeinfo;
+    TickType_t      xRemainingTime = 0;
+    mesh_type_t     typ = MESH_IDLE;
+    char            my_mac[8] = {0};
+    uint8_t         min, secs;
+    mesh_addr_t     bssid;
+    time_t          guardDate, bootdate;
+    wifi_config_t   conf;
+    unsigned char   mac_base[6] = {0};
 
-    xTaskCreate(&showconf,"show",4096,NULL, 10, NULL); 	        // long display allow for others to do stuff
+        // Parse command line arguments
+    int nerrors = arg_parse(argc, argv, (void **)&configArgs);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, configArgs.end, argv[0]);
+        return 0;
+    }
+
+    time(&now);
+    localtime_r(&now, &timeinfo);
+    bzero(myssid, sizeof(myssid));
+
+    esp_efuse_mac_get_default(mac_base);
+    esp_read_mac(mac_base, ESP_MAC_WIFI_STA);
+
+    if(mesh_started)
+    {
+        memcpy(my_mac, mesh_netif_get_station_mac(), 6);
+        if(esp_wifi_get_config(WIFI_IF_STA, &conf) == ESP_OK)
+        {
+            strcpy(myssid, (char*)conf.sta.ssid);
+        }
+        else
+        {
+            printf("Error reading wifi config\n");
+        }
+        typ = esp_mesh_get_type();
+    }
+
+    min = 10;
+    secs = 10 * 2 - (min * 60);
+    timeinfo.tm_min = min;
+    timeinfo.tm_sec = secs; 
+    time_t nexthour = mktime(&timeinfo);
+    int faltan = nexthour - now;
+
+    esp_mesh_get_parent_bssid(&bssid);
+    const esp_app_desc_t *mip = esp_app_get_description();
+    if(mip)
+        printf("\t\t Mesh Configuration Date %s ", ctime(&now));
+
+    if(!theConf.ptch)
+        printf("Virgin Chip\n");
+    printf("%s", RESETC);
+
+    uint32_t nada = theBlower.getLastUpdate();
+    guardDate = (time_t)nada;
+    bootdate = (time_t)theConf.lastRebootTime;
+
+    // Calculate timing information
+    if(collectTimer && xTimerIsTimerActive(collectTimer))
+    {
+        xRemainingTime = xTimerGetExpiryTime(collectTimer) - xTaskGetTickCount();
+    }
+
+    // Display all configuration sections
+//     if (configArgs.all->count || configArgs.device->count)  
+       show_device_info(bootdate, guardDate);
+    if (configArgs.all->count || configArgs.prod->count)         
+       show_production_config();
+    if (configArgs.all->count || configArgs.mqtt->count)         
+       show_mqtt_config();
+    if (configArgs.all->count || configArgs.meshnet->count)         
+       show_network_mesh(conf, bssid, mac_base, typ, my_mac, xRemainingTime);
+    if (configArgs.all->count || configArgs.stats->count)         
+       show_statistics(now);
+    if (configArgs.all->count || configArgs.system->count)         
+       show_system_config();
+    if (configArgs.all->count || configArgs.blow->count)         
+       print_blower("Blower", theBlower.getSolarSystem(), false);
+    if (configArgs.all->count || configArgs.sch->count)         
+       show_schedule_info();
+    if (configArgs.all->count || configArgs.profile->count)         
+           show_first_profile();
+    if (configArgs.all->count || configArgs.limits->count)         
+           show_limits();
+    if (configArgs.all->count || configArgs.modbus->count)         
+           show_modbus();
+    
+    printf("%s", RESETC);
     return 0;
 }

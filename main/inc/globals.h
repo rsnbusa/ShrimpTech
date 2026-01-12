@@ -261,6 +261,7 @@ EXTERN securit_t appNode;
 EXTERN securit_t appSkip;
 EXTERN logargs_t logArgs;
 EXTERN blow_t blowArgs;
+EXTERN cfg_t  configArgs;
 EXTERN aes_en_dec_t endec;
 
 // ============================================================================
