@@ -239,4 +239,15 @@
 #define WHITEC							"\e[37m"
 #define YELLOW							"\e[33m"
 
+#define BK_BLACKC						"\e[40m"
+#define BK_BLUE							"\e[44m"
+#define BK_CYAN							"\e[46m"
+#define BK_GREEN						"\e[42m"
+#define BK_YELLOW						"\e[43m"
+#define BK_MAGENTA						"\e[45m"
+#define BK_RED							"\e[41m"
+#define BK_WHITEC						"\e[47m"
+#define BK_GRAY 						"\e[100m"
+
+#define BK_
 

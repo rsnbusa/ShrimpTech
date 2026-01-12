@@ -3959,12 +3959,12 @@ sizeof(theConf) );
         delay(30000);
     }
 
-    // start_mesh();
+    start_mesh();
     theConf.loginwait=20000;
     // mesh_enable();
 // schedule timer will be started or not by sntp if root or when child connected by mesh if it was active and crash/power down
     
-ESP_LOGI(MESH_TAG,"Heap Free APP %d",esp_get_free_heap_size());
+ESP_LOGI(MESH_TAG,"APP Free Heap %d",esp_get_free_heap_size());
 // if system has resetted and restarting, the sntpget routine will be in charge of starting the schedule timer again
 // the mesh connecting child will be order to start also if theConf.blower_mode=1; This is set to 0 when Cycle done see start shcedule timer
 

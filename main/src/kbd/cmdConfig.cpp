@@ -29,14 +29,14 @@ char modb_names[][30]={
  */
 void show_modbus()
 {
-    printf("%s\n",LRED);
+//     printf("%s\n",LRED);
     printf("┌─────────────────────────────────────────────────────────────────┐\n");
-    printf("│                  MODBUS CONFIGURATION                           │\n");
+    printf("│%s%s                  MODBUS CONFIGURATION                           %s│\n",RESETC,BK_RED,RESETC);
     printf("└─────────────────────────────────────────────────────────────────┘\n\n");
 
     // ===== PV PANELS =====
-    printf("  ┌─ PV Panels (Addr: %3d | Refresh: %3dms) ────────────┐\n", 
-           theConf.modbus_panels.PVAddress, theConf.modbus_panels.refresh_rate);
+    printf("  ┌─ %sPV Panels (Addr: %3d | Refresh: %3dms) %s────────────┐\n",BK_BLUE, 
+           theConf.modbus_panels.PVAddress, theConf.modbus_panels.refresh_rate,RESETC);
     printf("  │ %-15s │ Offset │ Start  │ Points │  Mux   │\n", "Name");
     printf("  ├─────────────────┼────────┼────────┼────────┼────────┤\n");
     printf("  │ %-15s │ %6d │ %5d  │ %6d  │ %4.2f  │\n", modb_names[0], 
@@ -57,8 +57,8 @@ void show_modbus()
     printf("  └─────────────────┴────────┴────────┴────────┴────────┘\n\n");
 
     // ===== BATTERY =====
-    printf("  ┌─ Battery (Addr: %3d | Refresh: %3dms) ──────────────┐\n", 
-           theConf.modbus_battery.batAddress, theConf.modbus_battery.refresh_rate);
+    printf("  ┌─ %sBattery (Addr: %3d | Refresh: %3dms) %s ─────────────┐\n", BK_GREEN,
+           theConf.modbus_battery.batAddress, theConf.modbus_battery.refresh_rate, RESETC);
     printf("  │ %-15s │ Offset │ Start  │ Points │  Mux   │\n", "Name");
     printf("  ├─────────────────┼────────┼────────┼────────┼────────┤\n");
     printf("  │ %-15s │ %6d │ %5d  │ %6d │ %4.2f   │\n", modb_names[5], 
@@ -76,8 +76,8 @@ void show_modbus()
     printf("  └─────────────────┴────────┴────────┴────────┴────────┘\n\n");
 
     // ===== SENSORS =====
-    printf("  ┌─ Sensors (Refresh: %2dms) ─────────────────────────────────┐\n", 
-           theConf.modbus_sensors.refresh_rate);
+    printf("  ┌─ %sSensors (Refresh: %2dms) %s─────────────────────────────────┐\n", BK_YELLOW,
+           theConf.modbus_sensors.refresh_rate, RESETC);
     printf("  │ %-15s │ Addr │ Offset │ Start  │ Points │  Mux  │\n", "Name");
     printf("  ├─────────────────┼──────┼────────┼────────┼────────┼───────┤\n");
     printf("  │ %-15s │ %4d │ %6d │ %5d  │ %6d │ %4.2f  │\n", modb_names[9], 
@@ -98,8 +98,8 @@ void show_modbus()
     printf("  └─────────────────┴──────┴────────┴────────┴────────┴───────┘\n\n");
 
     // ===== INVERTER =====
-    printf("  ┌─ Inverter (Addr: %3d | Refresh: %3dms) ─────────────┐\n", 
-           theConf.modbus_inverter.InverterAddress, theConf.modbus_inverter.refresh_rate);
+    printf("  ┌─ %sInverter (Addr: %3d | Refresh: %3dms) %s ────────────┐\n", BK_MAGENTA,
+           theConf.modbus_inverter.InverterAddress, theConf.modbus_inverter.refresh_rate, RESETC);
     printf("  │ %-15s │ Offset │ Start  │ Points │  Mux   │\n", "Name");
     printf("  ├─────────────────┼────────┼────────┼────────┼────────┤\n");
     printf("  │ %-15s │ %6d │ %5d  │ %6d │ %4.2f   │\n", modb_names[14], 
@@ -147,33 +147,35 @@ void show_modbus()
  */
 void show_limits()
 {
-    printf("%s\n",BLUE);
+
+//     printf("%s\n",BLUE);
     printf("┌────────────────────────────────────────────────────┐\n");
-    printf("│                 OPERATIONAL LIMITS                │\n");
+    printf("│%s%s                 OPERATIONAL LIMITS                 %s│\n",RESETC,BK_GREEN,RESETC);
     printf("├──────────────────────┬──────────┬──────────────────┤\n");
+// printf("%s", RESETC);
     printf("│ %-20s │   Min    │       Max        │\n", "Parameter");
     printf("├──────────────────────┼──────────┼──────────────────┤\n");
-    printf("│ %-20s │ %8d │ %16d │\n", lims[0], theConf.milim.hummin, theConf.milim.hummax);
+    printf("│%s %-20s%s │ %8d │ %16d │\n",BK_GRAY, lims[0], RESETC, theConf.milim.hummin, theConf.milim.hummax);
     printf("│ %-20s │ %8d │ %16d │\n", lims[1], theConf.milim.atempmin, theConf.milim.atempmax);
-    printf("│ %-20s │ %8d │ %16d │\n", lims[2], theConf.milim.wtempmin, theConf.milim.wtempmax);
+    printf("│%s %-20s %s│ %8d │ %16d │\n", BK_GRAY, lims[2], RESETC, theConf.milim.wtempmin, theConf.milim.wtempmax);
     printf("│ %-20s │ %8d │ %16d │\n", lims[3], theConf.milim.phmin, theConf.milim.phmax);
-    printf("│ %-20s │ %8d │ %16d │\n", lims[4], theConf.milim.domin, theConf.milim.domax);
+    printf("│%s %-20s %s│ %8d │ %16d │\n", BK_GRAY, lims[4], RESETC, theConf.milim.domin, theConf.milim.domax);
     printf("│ %-20s │ %8d │ %16d │\n", lims[5], theConf.milim.kwchoymin, theConf.milim.kwchoymax);
-    printf("│ %-20s │ %8d │ %16d │\n", lims[6], theConf.milim.kwbatdhoymin, theConf.milim.kwbatdhoymax);
+    printf("│ %s%-20s%s │ %8d │ %16d │\n", BK_GRAY, lims[6], RESETC, theConf.milim.kwbatdhoymin, theConf.milim.kwbatdhoymax);
     printf("│ %-20s │ %8d │ %16d │\n", lims[7], theConf.milim.kwbatchoymin, theConf.milim.kwbatchoymax);
-    printf("│ %-20s │ %8d │ %16d │\n", lims[8], theConf.milim.kwloadhoymin, theConf.milim.kwloadhoymax);
+    printf("│ %s%-20s%s │ %8d │ %16d │\n", BK_GRAY, lims[8], RESETC, theConf.milim.kwloadhoymin, theConf.milim.kwloadhoymax);
     printf("│ %-20s │ %8d │ %16d │\n", lims[9], theConf.milim.kwctodaymin, theConf.milim.kwctodaymax);
-    printf("│ %-20s │ %8d │ %16d │\n", lims[10], theConf.milim.kwgtodaymin, theConf.milim.kwgtodaymax);
+    printf("│ %s%-20s %s│ %8d │ %16d │\n", BK_GRAY, lims[10], RESETC, theConf.milim.kwgtodaymin, theConf.milim.kwgtodaymax);
     printf("│ %-20s │ %8d │ %16d │\n", lims[11], theConf.milim.bdATotmin, theConf.milim.bdATotmax);
-    printf("│ %-20s │ %8d │ %16d │\n", lims[12], theConf.milim.bcATotmin, theConf.milim.bcATotmax);
+    printf("│ %s%-20s %s│ %8d │ %16d │\n", BK_GRAY, lims[12], RESETC, theConf.milim.bcATotmin, theConf.milim.bcATotmax);
     printf("│ %-20s │ %8d │ %16d │\n", lims[13], theConf.milim.bdAhoymin, theConf.milim.bcAhoymax);
-    printf("│ %-20s │ %8d │ %16d │\n", lims[14], theConf.milim.btempmin, theConf.milim.btempmax);
+    printf("│ %s%-20s%s │ %8d │ %16d │\n", BK_GRAY, lims[14], RESETC, theConf.milim.btempmin, theConf.milim.btempmax);
     printf("│ %-20s │ %8d │ %16d │\n", lims[15], theConf.milim.bcyclemin, theConf.milim.bcyclemax);
-    printf("│ %-20s │ %8d │ %16d │\n", lims[16], theConf.milim.bSOHmin, theConf.milim.bSOHmax);
+    printf("│ %s%-20s%s │ %8d │ %16d │\n", BK_GRAY, lims[16], RESETC, theConf.milim.bSOHmin, theConf.milim.bSOHmax);
     printf("│ %-20s │ %8d │ %16d │\n", lims[17], theConf.milim.bSOCmin, theConf.milim.bSOCmax);
-    printf("│ %-20s │ %8d │ %16d │\n", lims[18], theConf.milim.amin, theConf.milim.amax);
+    printf("│ %s%-20s%s │ %8d │ %16d │\n", BK_GRAY, lims[18], RESETC, theConf.milim.amin, theConf.milim.amax);
     printf("│ %-20s │ %8d │ %16d │\n", lims[19], theConf.milim.vmin, theConf.milim.vmax);
-    printf("│ %-20s │ %8d │ %16d │\n", lims[20], theConf.milim.amin, theConf.milim.amax);
+    printf("│ %s%-20s%s │ %8d │ %16d │\n", BK_GRAY, lims[20], RESETC, theConf.milim.amin, theConf.milim.amax);
     printf("│ %-20s │ %8d │ %16d │\n", lims[21], theConf.milim.vmin, theConf.milim.vmax);
     printf("└──────────────────────┴──────────┴──────────────────┘\n\n");
 }
@@ -195,10 +197,11 @@ void show_schedule_info()
 
        theBlower.setScheduleStruct(wsched);
 
-       printf("%s\n", CYAN);
+       // printf("%s\n", CYAN);
        printf("┌────────────────────────────────────────────────────┐\n");
-       printf("│              SCHEDULE INFORMATION                  │\n");
+       printf("│%s%s              SCHEDULE INFORMATION                  %s│\n",RESETC,BK_BLUE,RESETC);
        printf("├────────────────────────────────────────────────────┤\n");
+       //     printf("%s", RESETC);
        printf("│ Current Cycle :      %-28d  │\n", theConf.activeProfile);
        printf("│ Current Cycle:       %-28d  │\n", wsched.currentCycle);
        printf("│ Current Day:         %-28d  │\n", wsched.currentDay);
@@ -221,33 +224,34 @@ void show_device_info(time_t bootdate, time_t guardDate)
 {
     const esp_app_desc_t *mip = esp_app_get_description();
     
-    printf("%s", LYELLOW);
+//     printf("%s", LYELLOW);
     printf("\n┌─────────────────────────────────────────────────────────────┐\n");
-    printf("│                   DEVICE INFORMATION                        │\n");
+    printf("│%s%s                   DEVICE INFORMATION                        %s│\n",RESETC,BK_YELLOW,RESETC);
     printf("├─────────────────────────────────────────────────────────────┤\n");
-    printf("│ Boot Count:                                                 │\n");
+       //  printf("%s", RESETC);
+    printf("│ %sBoot Count: %s                                                │\n",BK_GRAY,RESETC);
     printf("│   %-57d │\n", theConf.bootcount);
-    printf("│ Last Reset & Reason:                                        │\n");
+    printf("│ %sLast Reset & Reason:%s                                        │\n",BK_GRAY,RESETC);
     printf("│   Reset: %-6d  Reason: %-34d │\n", theConf.lastResetCode, theConf.lastResetCode);
-    printf("│ Log Level & Down Time:                                      │\n");
-    printf("│   Level: %-6d  Down Time: %-28lus   │\n", theConf.loglevel, theConf.downtime);
-    printf("│ Last Reboot:                                                │\n");
+    printf("│ %sLog Level & Down Time:%s                                      │\n",BK_GRAY,RESETC);
+    printf("│   Level: %-6d  Down Time: %-28lu    │\n", theConf.loglevel, theConf.downtime);
+    printf("│ %sLast Reboot:%s                                                │\n",BK_GRAY,RESETC);
     char reboot_str[60];
     strftime(reboot_str, sizeof(reboot_str), "  %Y-%m-%d %H:%M:%S", localtime((time_t*)&bootdate));
     printf("│ %-59s │\n", reboot_str);
-    printf("│ Configuration Flags:                                        │\n");
+    printf("│ %sConfiguration Flags:%s                                        │\n",BK_GRAY,RESETC);
     printf("│   Meter: %-6d  MQTT: %-6d  Send Meter: %-16d │\n", theConf.meterconf, mqttf, sendMeterf);
-    printf("│ Guard Date:                                                 │\n");
+    printf("│ %sGuard Date:%s                                                 │\n",BK_GRAY,RESETC);
     strftime(reboot_str, sizeof(reboot_str), "  %Y-%m-%d %H:%M:%S", localtime(&guardDate));
     printf("│ %-59s │\n", reboot_str);
-    printf("│ Display & System Status:                                    │\n");
+    printf("│ %sDisplay & System Status:%s                                    │\n",BK_GRAY,RESETC);
     printf("│   Display Active: %-42s│\n", gdispf?"Yes":"No");
-    printf("│ Version Information:                                        │\n");
+    printf("│ %sVersion Information:%s                                        │\n",BK_GRAY,RESETC);
     printf("│   App: %-11s  IDF: %-33s│\n", mip->version, mip->idf_ver);
     printf("│   Project: %-48s │\n", mip->project_name);
     printf("│   Compiled: %s @ %-34s│\n", mip->date, mip->time);
     printf("│   Latest Sent: %-44s │\n", theConf.lastVersion);
-    printf("│ Network Settings:                                           │\n");
+    printf("│ %sNetwork Settings:%s                                           │\n",BK_GRAY,RESETC);
     printf("│   Mesh Delay: %-10s  Login Wait: %-22d│\n", theConf.delay_mesh?"Yes":"No", theConf.loginwait);
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
 }
@@ -259,10 +263,11 @@ void show_device_info(time_t bootdate, time_t guardDate)
  */
 void show_production_config()
 {
-    printf("%s", CYAN);     // 63
+//     printf("%s", CYAN);     // 63
     printf("┌─────────────────────────────────────────────────────────────┐\n");
-    printf("│               WORKING   CONFIGURATION                       │\n");
+    printf("│%s%s              WORKING   CONFIGURATION                        %s│\n",RESETC,BK_CYAN,RESETC);
     printf("├─────────────────────────────────────────────────────────────┤\n");
+       //  printf("%s", RESETC);
 //     printf("│ Blower Mode: %-47d│\n", theConf.blower_mode);
 //     printf("│ Active Profile: %1d | Start Day: %-33d│\n", theConf.activeProfile, theConf.dayCycle);
     printf("│ Is Master Node: %-44s│\n", theConf.masternode?"Yes":"No ");
@@ -290,10 +295,11 @@ void show_production_config()
  */
 void show_mqtt_config()
 {
-    printf("%s", MAGENTA);
+//     printf("%s", MAGENTA);
     printf("┌─────────────────────────────────────────────────────────────────────────────────┐\n");
-    printf("│                               MQTT CONFIGURATION                                │\n");
+    printf("│%s%s                               MQTT CONFIGURATION                                %s│\n",RESETC,BK_MAGENTA,RESETC);
     printf("├─────────────────────────────────────────────────────────────────────────────────┤\n");
+       //  printf("%s", RESETC);
     printf("│ Command Topic: %-65s│\n", cmdQueue);
     printf("│ Info Topic:    %-65s│\n", infoQueue);
     printf("│ Alarm Topic:   %-65s│\n", alarmQueue);
@@ -315,31 +321,33 @@ void show_network_mesh(wifi_config_t conf, mesh_addr_t bssid, unsigned char *mac
         
     char *tipo[]={"Idle", "ROOT", "NODE", "LEAF", "STA"};
     int routet;
-    
-    printf("%s", YELLOW);
-    printf("┌─────────────────────────────────────────────────────────────┐\n");
-    printf("│              NETWORK & MESH CONFIGURATION                   │\n");
-    printf("├─────────────────────────────────────────────────────────────┤\n");
-    printf("│ Mesh ID: " MACSTR " (SubNode: %d | Pool: %d | Unit: %d)    │\n", 
-           MAC2STR(MESH_ID), theConf.subnode, theConf.poolid, theConf.unitid);
-    printf("│ STA Mode: [SSID: %s] [Pass: %s]             │\n", conf.sta.ssid, conf.sta.password);
-    printf("│ Flash Config: [SSID: %s] [Pass: %s]         │\n", theConf.thessid, theConf.thepass);
-    printf("│ Parent BSSID: " MACSTR "                                │\n", MAC2STR(bssid.addr));
-    printf("│ AP Mode: [SSID: %s] [Pass: %s]              │\n", conf.ap.ssid, conf.ap.password);
-    
+        
     mesh_addr_t mmeshid;
     esp_mesh_get_id(&mmeshid);
-    printf("│ Node Type: %-40s │\n", tipo[typ]);
-    printf("│ MAC Address: " MACSTR "                                  │\n", MAC2STR(mac_base));
-    printf("│ Mesh ID: " MACSTR "                                    │\n", MAC2STR(mmeshid.addr));
-    printf("│ Device State: %s                                         │\n", esp_mesh_is_device_active?"UP":"DOWN");
-    printf("└─────────────────────────────────────────────────────────────┘\n\n");
+
+//     printf("%s", YELLOW);
+    printf("┌──────────────────────────────────────────────────────────────────┐\n");
+    printf("│%s%s                 NETWORK & MESH CONFIGURATION                     %s│\n",RESETC,BK_YELLOW,RESETC);
+    printf("├──────────────────────────────────────────────────────────────────┤\n");
+       //  printf("%s", RESETC);
+    printf("│ %sMesh ID:%s " MACSTR "  SubNode: %2d | Pool: %3d | Unit: %2d   │\n", BK_GRAY,RESETC,
+           MAC2STR(MESH_ID), theConf.subnode, theConf.poolid, theConf.unitid);
+    printf("│ STA Mode:  SSID: %-27s   Pass: %-10s  │\n", conf.sta.ssid, conf.sta.password);
+    printf("│ %sFlash Config:%s  SSID: %-23s   Pass: %-10s  │\n", BK_GRAY,RESETC, theConf.thessid, theConf.thepass);
+    printf("│ Parent BSSID: " MACSTR " %-32s │\n", MAC2STR(bssid.addr)," ");
+    printf("│ %sAP Mode:%s  SSID: %-28s   Pass: %-10s  │\n",BK_GRAY,RESETC, conf.ap.ssid, conf.ap.password);
+    printf("│ Node Type: %-53s │\n", tipo[typ]);
+    printf("│ %sMAC Address:%s " MACSTR " %-34s│\n",BK_GRAY,RESETC, MAC2STR(mac_base)," ");
+    printf("│ Mesh ID: " MACSTR " %-37s │\n", MAC2STR(mmeshid.addr)," ");
+    printf("│ %sDevice State:%s %-50s │\n", BK_GRAY,RESETC,esp_mesh_is_device_active?"UP":"DOWN");
+    printf("└──────────────────────────────────────────────────────────────────┘\n\n");
 
     // ===== TIMING INFORMATION =====
-    printf("%s", WHITEC);
+//     printf("%s", WHITEC);
     printf("┌─────────────────────────────────────────────────────────────┐\n");
-    printf("│                 TIMING INFORMATION                          │\n");
+    printf("│%s%s               TIMING INFORMATION                            %s│\n",RESETC,BK_GREEN,RESETC);
     printf("├─────────────────────────────────────────────────────────────┤\n");
+       //  printf("%s", RESETC);
     printf("│ Next Send Data: %dms | Base Time: %d | Repeat Timer: %d    │\n", 
            xRemainingTime, theConf.baset, theConf.repeat);
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
@@ -349,29 +357,30 @@ void show_network_mesh(wifi_config_t conf, mesh_addr_t bssid, unsigned char *mac
 
     if(err == ESP_OK)
     {
-        printf("%S", LGREEN);
-        printf("┌─────────────────────────────────────────────────────────────┐\n");
-        printf("│                   MESH NETWORK TOPOLOGY                     │\n");
-        printf("├─────────────────────────────────────────────────────────────┤\n");
+       //  printf("%S", LGREEN);
+        printf("┌─────────────────────────────────────────────────────────────────────┐\n");
+        printf("│%s%s                       MESH NETWORK TOPOLOGY                         %s│\n",RESETC,BK_RED,RESETC);
+        printf("├─────────────────────────────────────────────────────────────────────┤\n");
+       //      printf("%s", RESETC);
         if(routet < 11)
         {
-            printf("│ Total Nodes: %-51d │\n", routet);
-            printf("├─────────────────────────────────────────────────────────────┤\n");
+            printf("│ Total Nodes: %-54d │\n", routet);
+            printf("├─────────────────────────────────────────────────────────────────────┤\n");
             for (int a = 0; a < routet; a++)
             {
-                printf("│ [%2d] MAC: " MACSTR " %2s | Meter: %-15s | Send: %s | Power: %s │\n",
+                printf("│ [%2d] MAC: " MACSTR " %3s |  Unit: %-3s | Send: %-1s | Power: %-3s │\n",
                        a, MAC2STR(s_route_table[a].addr),
-                       MAC_ADDR_EQUAL(s_route_table[a].addr, my_mac)?"*ME":"",
+                       MAC_ADDR_EQUAL(s_route_table[a].addr, my_mac)?"*ME":"   ",
                        masterNode.theTable.meterName[a],
                        masterNode.theTable.sendit[a]?"Y":"N",
-                       masterNode.theTable.onoff[a]?"ON":"OFF");
+                       masterNode.theTable.onoff[a]?"ON ":"OFF");
             }
         }
         else
         {
-            printf("│ Total Nodes: %-51d │\n", routet);
+            printf("│ Total Nodes: %-55d │\n", routet);
         }
-        printf("└─────────────────────────────────────────────────────────────┘\n\n");
+        printf("└─────────────────────────────────────────────────────────────────────┘\n\n");
     }
 }
 
@@ -382,10 +391,11 @@ void show_network_mesh(wifi_config_t conf, mesh_addr_t bssid, unsigned char *mac
  */
 void show_statistics(time_t now)
 {
-    printf("%s", BLUE);
+//     printf("%s", BLUE);
     printf("┌─────────────────────────────────────────────────────────────┐\n");
-    printf("│                    STATISTICS                               │\n");
+    printf("│%s%s                    STATISTICS                               %s│\n",RESETC,BK_BLUE,RESETC);
     printf("├─────────────────────────────────────────────────────────────┤\n");
+       //  printf("%s", RESETC);
     printf("│ Bytes Out: %-16d │  Bytes In: %-18d │\n", theBlower.getStatsBytesOut(), theBlower.getStatsBytesIn());
     printf("│ Messages In: %-14d │ Messages Out: %-15d │\n", theBlower.getStatsMsgIn(), theBlower.getStatsMsgOut());
     printf("│ STA Connections: %-10d │ STA Disconnections: %-9d │\n", theBlower.getStatsStaConns(), theBlower.getStatsStaDiscos());
@@ -400,10 +410,11 @@ void show_statistics(time_t now)
  */
 void show_system_config()
 {
-    printf("%s", GRAY);
+//     printf("%s", GRAY);
     printf("┌─────────────────────────────────────────────────────────────┐\n");
-    printf("│                 SYSTEM CONFIGURATION                        │\n");
+    printf("│%s%s                 SYSTEM CONFIGURATION                        %s│\n",RESETC,BK_CYAN,RESETC);
     printf("├─────────────────────────────────────────────────────────────┤\n");
+       //  printf("%s", RESETC);
     printf("│ Expected Nodes: %-43lu │\n", theConf.totalnodes);
     printf("│ Expected Connections: %-37lu │\n", theConf.conns);
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
@@ -423,10 +434,11 @@ void show_first_profile()
 {
     profile_t *profile = &theConf.profiles[0];
     
-    printf("%s\n", MAGENTA);
+//     printf("%s\n", MAGENTA);
     printf("┌──────────────────────────────────────────────────────────────────┐\n");
-    printf("│                      FIRST PROFILE DETAILS                       │\n");
+    printf("│%s%s                      FIRST PROFILE DETAILS                       %s│\n",RESETC,BK_MAGENTA,RESETC);
     printf("├──────────────────────────────────────────────────────────────────┤\n");
+       //  printf("%s", RESETC);
     printf("│ Name:            %-47s │\n", profile->name);
     printf("│ Version:         %-47s │\n", profile->version);
     
@@ -456,7 +468,7 @@ void show_first_profile()
     for (int i = 0; i < profile->numCycles && i < MAXCICLOS; i++) {
         ciclo_t *cycle = &profile->cycle[i];
         
-        printf("  ┌─ Cycle %1d ───────────────────────────────────────────────────┐\n", i);
+        printf("  ┌─ %sCycle %1d%s ───────────────────────────────────────────────────┐\n", BK_GRAY, i, RESETC);
         printf("  │ Day:             %-42d │\n", cycle->day);
         printf("  │ Duration:        %-42d │\n", cycle->duration);
         printf("  │ Num Schedules:   %-42d │\n", cycle->numHorarios);
@@ -464,7 +476,7 @@ void show_first_profile()
         
         if (cycle->numHorarios > 0) {
             printf("    ┌───────────────────────────────────────────────────────────┐\n");
-            printf("    │ %-10s │ %-15s │ %-15s │ %-8s │\n", "Schedule", "Start Hour", "Duration", "PWM Duty");
+            printf("    │%s %-10s │ %-15s │ %-15s │ %-8s %s│\n",BK_BLUE, "Schedule", "Start Hour", "Duration", "PWM Duty",RESETC);
             printf("    ├────────────┼─────────────────┼─────────────────┼──────────┤\n");
             
             for (int j = 0; j < cycle->numHorarios && j < MAXHORARIOS; j++) {
