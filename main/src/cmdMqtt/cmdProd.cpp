@@ -206,7 +206,18 @@ static int handle_production_stop(const ProductionCommandFields *fields, char *l
                          theConf.test_timer_div, (char*)fields->orderCommand);
     schedulef = false;
     theBlower.setSchedule(0, 0, 0,0,0,0,BLOWEROFF);
-        //TODO should stop all timer
+
+    // stop all timers
+
+    for (int a=0;a<vanTimersStart;a++)
+        if(start_timers[a])
+            xTimerStop(start_timers[a],10);
+    for (int a=0;a<vanTimersEnd;a++)
+        if(end_timers[a])
+            xTimerStop(end_timers[a],10);
+
+    vanTimersStart=vanTimersEnd=0;
+
     return ESP_OK;
 }
 

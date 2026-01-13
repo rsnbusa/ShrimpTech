@@ -197,7 +197,8 @@ EXTERN mesh_addr_t GroupID;
 EXTERN esp_ip4_addr_t s_current_ip;
 EXTERN master_node_t masterNode;
 EXTERN meshp_t param;
-
+EXTERN mesh_addr_t poolNodes[MAXNODES];
+EXTERN int countPoolNodes;
 // ============================================================================
 // MQTT
 // ============================================================================

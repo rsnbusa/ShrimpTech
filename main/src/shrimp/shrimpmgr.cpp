@@ -1457,6 +1457,16 @@ void child_production(cJSON *elcmd)
             if((theConf.debug_flags >> dMESH) & 1U)  
                 ESP_LOGI(MESH_TAG, "%sProduction missing parameter ",DBG_MESH);
 }
+int findPoolNode(mesh_addr_t *este)
+{
+    for (int a=0;a<countPoolNodes;a++)
+    {
+         if (MAC_ADDR_EQUAL(poolNodes[a].addr, este->addr)) 
+            return a;
+    }
+    return ESP_FAIL;
+}
+
 //here we received all mesh traffic data
 void static mesh_manager(mesh_addr_t *from, mesh_data_t *data)
 {
@@ -1520,16 +1530,22 @@ void static mesh_manager(mesh_addr_t *from, mesh_data_t *data)
             {
                 // ESP_LOGI(MESH_TAG,"Found %d",cualf);
                 // TODO redo this. Make direct call not a fall thru
-                case EMERGENCY: //911 call
-                        ESP_LOGI(MESH_TAG,"Mesh 911 call");
-                        // mqttMsg.queue=emergencyQueue;   // fall thru  --. LAST PART OF ROUTINE, another alternative????`
-                        // message=(char*)calloc(data->size,1);   //will be freed by mqttsender at delivery confirmation
-                        // memcpy(message,data->data,data->size);
-                        // mqttMsg.msg=message;
-                        // mqttMsg.lenMsg=data->size;
-                        // mqttMsg.code=NULL;
-                        // mqttMsg.param=NULL; 
-                        break;                             
+                case SCHEDULE: //Schedule start confimration form all nodes 
+                {
+                    if(esp_mesh_is_root())      // only root checks this for highest level of monitoring
+                    {
+                        int cualp=findPoolNode(from);
+                        cJSON *cualunit=       cJSON_GetObjectItem(elcmd,"unit");
+                        cJSON *cualcycle=      cJSON_GetObjectItem(elcmd,"cycle");
+                        cJSON *cualday=        cJSON_GetObjectItem(elcmd,"day");
+                        cJSON *cualhora=       cJSON_GetObjectItem(elcmd,"hora");
+                        ESP_LOGI(TAG,"Schedule Start Unit %d Cycle %d Day %d horario %d Pool %d " MACSTR,
+                            cualunit->valueint,cualcycle->valueint,cualday->valueint,cualhora->valueint,cualp,MAC2STR(from->addr));
+                        
+                    }
+                    cJSON_Delete(elcmd);
+                    return;        
+                }                     
                 case BOOTRESP: // a msg from Root giving the current ssid/pswd bootresp
                         // ESP_LOGI(MESH_TAG,"Mesh Boot response");
                         if(!esp_mesh_is_root()) //only non ROOT 
@@ -2618,7 +2634,7 @@ printf("Loaded Mux %d\n",theConf.test_timer_div);
 
 // internal mesh commands 
 
-    strcpy(internal_cmds[EMERGENCY],        "911");
+    strcpy(internal_cmds[SCHEDULE],        "schstart");
     strcpy(internal_cmds[BOOTRESP],         "bootresp");
     strcpy(internal_cmds[SENDMETRICS],      "sendmetrics");
     strcpy(internal_cmds[METERSDATA],       "meterdata");
@@ -3605,7 +3621,41 @@ void find_cycle_day(uint8_t * ciclo,uint8_t*dia)
     ESP_LOGE(TAG,"Invalid Profile %d or Day Start %d",theConf.activeProfile,theConf.dayCycle);
 }
 
- void start_schedule_timers(void * pArg)
+esp_err_t root_check_schedule(mesh_addr_t *who, void* ladata)
+{
+    mqttSender_t        mqttMsg;
+    esp_err_t           err;
+
+    if(root_load_routing_table_mac(who,ladata)==ESP_OK)      //save messages in our masternode table
+    {
+        counting_nodes--;
+
+        if(counting_nodes==0)                           //when we reach existing node count, start sending process
+        {
+            //stop watchdog timer
+            // if(xTimerIsTimerActive(sendMeterTimer))
+            // {
+                if( xTimerStop(sendMeterTimer, 0 ) != pdPASS )
+                    ESP_LOGE(MESH_TAG,"Failed to stop SendMeter Timer");
+            // }
+            // printf("Sending data \n");
+            err= root_send_collected_nodes(masterNode.existing_nodes);        //all existing nodes
+            if(err)
+            {
+                    ESP_LOGE(MESH_TAG,"Error sending mqtt msg");
+                    return ESP_FAIL;
+            }
+            else
+                return ESP_OK;   
+        }
+        else
+            return ESP_OK;
+    }
+    else
+        return ESP_FAIL;
+}
+
+void start_schedule_timers(void * pArg)
  {
     time_t now = time(NULL);
     time_t midn=get_today_midnight();
@@ -3619,6 +3669,8 @@ void find_cycle_day(uint8_t * ciclo,uint8_t*dia)
         again:
         if(xSemaphoreTake(workTaskSem, portMAX_DELAY))	// start the active profile
         {
+            vanTimersEnd=0;
+            vanTimersStart=0;
             ESP_LOGW(TAG,"Started Production cycles");
             find_cycle_day(&cyclestart,&daystart);
             schedulef=true;         // active for all production cmds
@@ -3631,20 +3683,14 @@ void find_cycle_day(uint8_t * ciclo,uint8_t*dia)
                 else
                     desde=0;
 
-                // scheduleData.currentCycle=ck;      // save cycle for status reporting
-
                 for (ck_d=desde; ck_d<theConf.profiles[0].cycle[ck].duration;ck_d++)    //  days
                 {
-                    // scheduleData.currentDay=ck_d;           // save day for status reporting
 
                     // if((theConf.debug_flags >> dSCH) & 1U)  
                     for (int ck_h=0;ck_h<theConf.profiles[0].cycle[ck].numHorarios;ck_h++)      // hours
                     {
                         while(pausef)
                             delay(1000);            // todo make it less fatal
-                        // scheduleData.currentHorario=ck_h;      //save horario for status reporting
-                        // scheduleData.currentStartHour=theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart;
-                        // scheduleData.currentEndHour=theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen;
                         //fill the internal strucute with schedule info for this start timer
                         start_timer_ctx_t* start_timer_ctx=(start_timer_ctx_t*)calloc(1,sizeof(start_timer_ctx_t));
                         if(!start_timer_ctx)
@@ -3661,7 +3707,6 @@ void find_cycle_day(uint8_t * ciclo,uint8_t*dia)
                             start_timer_ctx->pwm=theConf.profiles[0].cycle[ck].horarios[ck_h].pwmDuty;
                         }
 
-                        // printf("Cycle %d Day %d Hora %d Start %d Horas %d PW %d\n",ck,ck_d,ck_h,theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart,theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen,theConf.profiles[0].cycle[ck].horarios[ck_h].pwmDuty);    // update blower with schedule info
                         // printf("Ctx Cycle %d Day %d Hora %d Start %d Horas %d PW %d\n",start_timer_ctx->cycle,start_timer_ctx->day,start_timer_ctx->horario,start_timer_ctx->tostart,start_timer_ctx->horaslen,start_timer_ctx->pwm );    // update blower with schedule info
                         // theBlower.setSchedule(ck,ck_d,ck_h,theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart,theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen,theConf.profiles[0].cycle[ck].horarios[ck_h].pwmDuty,1);    // update blower with schedule info
                         starttime=midn+theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart*3600;    //in seconds
@@ -3696,13 +3741,14 @@ void find_cycle_day(uint8_t * ciclo,uint8_t*dia)
                         else
                         {
                             son=starttime-now;
-                            // printf("Start timer in %ld secs %ld  millis %ld Mux %d\n",(long)son,(long)starttime,(long)now,theConf.test_timer_div);
                             sone=endtime-now;
-                            // printf("End timer in %d sec %ld %ld\n",(long)sone,(long)endtime,(long)now);
                             son=son/theConf.test_timer_div*1000;
                             sone=sone/theConf.test_timer_div*1000;
+                            // esp_rom_printf("Start timer in %ld secs %ld  millis %ld Mux %d\n",(long)son,(long)starttime,(long)now,theConf.test_timer_div);
+                            // esp_rom_printf("End timer in %d sec %ld %ld\n",(long)sone,(long)endtime,(long)now);
+
                             // guards due to the MUX tester should not be used in production the MUX 
-                            if (son<10000 || son <10000) //to secs
+                            if (son<1000 || son <1000) //to secs
                             {
                                 ESP_LOGE(TAG,"MUX to big %d",theConf.test_timer_div);
                                 goto again;
@@ -3752,8 +3798,12 @@ void find_cycle_day(uint8_t * ciclo,uint8_t*dia)
                         struct tm *tm_infofirst = localtime(&now);  // this is the date we started with
                         if((theConf.debug_flags >> dSCH) & 1U)
                         {
-                            ESP_LOGI(TAG,"%sFirst Now %s",DBG_SCH,ctime(&now));
-                            ESP_LOGI(TAG,"%sNew day %s",DBG_SCH,ctime(&nnow));
+                            char *tiempo=ctime(&nnow);
+                            char *tiempo2=ctime(&now);
+                            tiempo[strcspn(tiempo, "\n")] = '\0';
+                            tiempo2[strcspn(tiempo2, "\n")] = '\0';
+                            ESP_LOGI(TAG,"%sFirst Now %s",DBG_SCH,tiempo2);
+                            ESP_LOGI(TAG,"%sNew day %s",DBG_SCH,tiempo);
                         }
                         if(tm_info->tm_mday==tm_infofirst->tm_mday && tm_info->tm_mon==tm_infofirst->tm_mon)
                         {
@@ -3770,7 +3820,9 @@ void find_cycle_day(uint8_t * ciclo,uint8_t*dia)
                                 // printf("New day Mes %d Day %d Year %d\n",tm_info->tm_mon,tm_info->tm_mday,tm_info->tm_year);
                                 if((theConf.debug_flags >> dSCH) & 1U)
                                 {
-                                    ESP_LOGI(TAG,"%sNew day %s",DBG_SCH,ctime(&nextd));
+                                    char *tiempo=ctime(&nextd);
+                                    tiempo[strcspn(tiempo, "\n")] = '\0';
+                                    ESP_LOGI(TAG,"%sNew day %s",DBG_SCH,tiempo);
                                     ESP_LOGI(TAG,"%sDistance to midnight next day %d",DBG_SCH,long(nextd-now));
                                 }
 
@@ -3787,7 +3839,7 @@ void find_cycle_day(uint8_t * ciclo,uint8_t*dia)
                     theConf.work_cycle=ck;
                     theConf.dayCycle++;     // for recovery
                     if((theConf.debug_flags >> dSCH) & 1U)
-                        ESP_LOGI(TAG,"%sSave day %d\n",DBG_SCH,theConf.dayCycle);
+                        ESP_LOGI(TAG,"%sSave day %d",DBG_SCH,theConf.dayCycle);
                     write_to_flash();
                 } //days
 
@@ -3872,17 +3924,50 @@ void blower_start(TimerHandle_t xTimer)
     start_timer_ctx_t *start_timer_ctx = ( start_timer_ctx_t * ) pvTimerGetTimerID( xTimer );           // to set the schedule inmfo accordingly
     gpio_set_level((gpio_num_t)BEATPIN,0);          //before configuring it decide level we want it to be at start, in this case LOW
 
-    printf("Start Blower Ctx Cycle %d Day %d Hora %d Start %d Horas %d PW %d\n",start_timer_ctx->cycle,start_timer_ctx->day,start_timer_ctx->horario,start_timer_ctx->tostart,start_timer_ctx->horaslen,start_timer_ctx->pwm );    // update blower with schedule info
+    if(esp_mesh_is_root())
+    {
+                int err=esp_mesh_get_routing_table((mesh_addr_t *) &poolNodes,MAXNODES * 6, &countPoolNodes);
+                if(err!=ESP_OK)
+                {
+                    ESP_LOGE(MESH_TAG,"Failed to get routing table %d",err);
+                }
+                esp_rom_printf("Hay %d/%d nodes\n",countPoolNodes, theConf.totalnodes);
+    }
+    esp_rom_printf("Start Blower Ctx Cycle %d Day %d Hora %d Start %d Horas %d PW %d\n",start_timer_ctx->cycle,start_timer_ctx->day,start_timer_ctx->horario,start_timer_ctx->tostart,start_timer_ctx->horaslen,start_timer_ctx->pwm );    // update blower with schedule info
     // theBlower.setSchedule(ck,ck_d,ck_h,theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart,theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen,theConf.profiles[0].cycle[ck].horarios[ck_h].pwmDuty,1);    // update blower with schedule info
     theBlower.setSchedule(start_timer_ctx->cycle,start_timer_ctx->day,start_timer_ctx->horario,start_timer_ctx->tostart,start_timer_ctx->horaslen,start_timer_ctx->pwm,BLOWERON);
     // theBlower.setScheduleStatus(BLOWERON);
+
+        mqttSender_t meshMsg;
+        bzero(&meshMsg,sizeof(meshMsg));            //have to zero it for the callback and param
+        cJSON *root=cJSON_CreateObject();
+        if(root)
+        {
+            cJSON_AddStringToObject(root,"cmd","schstart");
+            cJSON_AddNumberToObject(root,"unit",theConf.unitid);
+            cJSON_AddNumberToObject(root,"cycle",start_timer_ctx->cycle);
+            cJSON_AddNumberToObject(root,"day",start_timer_ctx->day);
+            cJSON_AddNumberToObject(root,"hora",start_timer_ctx->horario);
+            char *intmsg=cJSON_PrintUnformatted(root);
+            if(intmsg)
+            {
+                // esp_rom_printf("ScvhStart [%s]\n",intmsg);
+                meshMsg.queue=emergencyQueue;
+                meshMsg.msg=intmsg;
+                meshMsg.lenMsg=strlen(intmsg);
+                meshMsg.addr=NULL;          // root
+                if(xQueueSend(meshQueue,&meshMsg,0)!=pdPASS)
+                    ESP_LOGE(MESH_TAG,"Cannot queue fram");   //queue it
+            }
+            cJSON_Delete(root);
+        }
     free(start_timer_ctx);
 
 }
 void blower_end(TimerHandle_t xTimer)
 {
     uint32_t ulCount = ( uint32_t ) pvTimerGetTimerID( xTimer );
-    // esp_rom_printf("Timer Ended %d Elapsed %ld\n",ulCount,xmillis()-elapsed[ulCount]);
+    esp_rom_printf("Timer Ended %d Elapsed %ld\n",ulCount,xmillis()-elapsed[ulCount]);
     elapsed[ulCount]=0;
     gpio_set_level((gpio_num_t)BEATPIN,1);          //before configuring it decide level we want it to be at start, in this case LOW
 

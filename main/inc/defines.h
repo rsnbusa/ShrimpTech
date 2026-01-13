@@ -127,7 +127,7 @@
 
 
 #define MAXMQTTERR                      (2)
-#define EMERGENCY                       (0)
+#define SCHEDULE                        (0)
 #define BOOTRESP                        (1)
 #define SENDMETRICS                     (2)
 #define METERSDATA                      (3)
