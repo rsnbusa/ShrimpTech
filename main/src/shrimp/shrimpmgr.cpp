@@ -2557,9 +2557,9 @@ void init_process()
     esp_log_level_set("*",(esp_log_level_t)theConf.loglevel);   //set log level
     esp_log_level_set("mqtt_client",(esp_log_level_t)0);   //set log level
     if (theConf.test_timer_div==0)
-        TEST=10;
-    else
-        TEST=theConf.test_timer_div;
+        theConf.test_timer_div=10;
+printf("Loaded Mux %d\n",theConf.test_timer_div);
+    
 
 
 	theConf.lastResetCode=esp_rom_get_reset_reason(0);              //store reset reason and reboot count
@@ -3616,6 +3616,7 @@ void find_cycle_day(uint8_t * ciclo,uint8_t*dia)
 
     while(true)
     {
+        again:
         if(xSemaphoreTake(workTaskSem, portMAX_DELAY))	// start the active profile
         {
             ESP_LOGW(TAG,"Started Production cycles");
@@ -3644,7 +3645,25 @@ void find_cycle_day(uint8_t * ciclo,uint8_t*dia)
                         // scheduleData.currentHorario=ck_h;      //save horario for status reporting
                         // scheduleData.currentStartHour=theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart;
                         // scheduleData.currentEndHour=theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen;
-                        theBlower.setSchedule(ck,ck_d,ck_h,theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart,theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen,theConf.profiles[0].cycle[ck].horarios[ck_h].pwmDuty,1);    // update blower with schedule info
+                        //fill the internal strucute with schedule info for this start timer
+                        start_timer_ctx_t* start_timer_ctx=(start_timer_ctx_t*)calloc(1,sizeof(start_timer_ctx_t));
+                        if(!start_timer_ctx)
+                        {
+                            ESP_LOGE(MESH_TAG,"No ram for start timer context");
+                            // continue;       // skip this horario
+                        }
+                        else{
+                            start_timer_ctx->cycle=ck;
+                            start_timer_ctx->day=ck_d;
+                            start_timer_ctx->horario=ck_h;
+                            start_timer_ctx->tostart=theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart;
+                            start_timer_ctx->horaslen=theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen;
+                            start_timer_ctx->pwm=theConf.profiles[0].cycle[ck].horarios[ck_h].pwmDuty;
+                        }
+
+                        // printf("Cycle %d Day %d Hora %d Start %d Horas %d PW %d\n",ck,ck_d,ck_h,theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart,theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen,theConf.profiles[0].cycle[ck].horarios[ck_h].pwmDuty);    // update blower with schedule info
+                        // printf("Ctx Cycle %d Day %d Hora %d Start %d Horas %d PW %d\n",start_timer_ctx->cycle,start_timer_ctx->day,start_timer_ctx->horario,start_timer_ctx->tostart,start_timer_ctx->horaslen,start_timer_ctx->pwm );    // update blower with schedule info
+                        // theBlower.setSchedule(ck,ck_d,ck_h,theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart,theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen,theConf.profiles[0].cycle[ck].horarios[ck_h].pwmDuty,1);    // update blower with schedule info
                         starttime=midn+theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart*3600;    //in seconds
                         endtime=starttime+theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen*3600;    //in seconds
                         if((theConf.debug_flags >> dSCH) & 1U)
@@ -3677,11 +3696,19 @@ void find_cycle_day(uint8_t * ciclo,uint8_t*dia)
                         else
                         {
                             son=starttime-now;
-                            printf("Start timer in %ld secs %ld %ld millis %ld\n",(long)son,(long)starttime,(long)now);
+                            // printf("Start timer in %ld secs %ld  millis %ld Mux %d\n",(long)son,(long)starttime,(long)now,theConf.test_timer_div);
                             sone=endtime-now;
-                            printf("End timer in %d sec %ld %ld\n",(long)sone,(long)endtime,(long)now);
-
-                            start_timers[vanTimersStart]=xTimerCreate(NULL,pdMS_TO_TICKS(son/TEST),pdFALSE,(void*)vanTimersStart, blower_start);
+                            // printf("End timer in %d sec %ld %ld\n",(long)sone,(long)endtime,(long)now);
+                            son=son/theConf.test_timer_div*1000;
+                            sone=sone/theConf.test_timer_div*1000;
+                            // guards due to the MUX tester should not be used in production the MUX 
+                            if (son<10000 || son <10000) //to secs
+                            {
+                                ESP_LOGE(TAG,"MUX to big %d",theConf.test_timer_div);
+                                goto again;
+                            }
+                            start_timers[vanTimersStart]=xTimerCreate(NULL,pdMS_TO_TICKS(son),pdFALSE,(void*)start_timer_ctx, blower_start);       // start timer ctx should be freed by the blower_start
+                            // start_timers[vanTimersStart]=xTimerCreate(NULL,pdMS_TO_TICKS(son/TEST),pdFALSE,(void*)vanTimersStart, blower_start);
                             if(!start_timers[vanTimersStart])
                             {
                                 ESP_LOGE(MESH_TAG,"Start Timer not created %d",vanTimersStart);
@@ -3842,12 +3869,14 @@ void app_spiffs_log(void)
 }
 void blower_start(TimerHandle_t xTimer)
 {
-    uint32_t ulCount = ( uint32_t ) pvTimerGetTimerID( xTimer );
+    start_timer_ctx_t *start_timer_ctx = ( start_timer_ctx_t * ) pvTimerGetTimerID( xTimer );           // to set the schedule inmfo accordingly
     gpio_set_level((gpio_num_t)BEATPIN,0);          //before configuring it decide level we want it to be at start, in this case LOW
 
-    // esp_rom_printf("Started Timer %d\n",ulCount);
-    elapsed[ulCount]=xmillis();
-    theBlower.setScheduleStatus(BLOWERON);
+    printf("Start Blower Ctx Cycle %d Day %d Hora %d Start %d Horas %d PW %d\n",start_timer_ctx->cycle,start_timer_ctx->day,start_timer_ctx->horario,start_timer_ctx->tostart,start_timer_ctx->horaslen,start_timer_ctx->pwm );    // update blower with schedule info
+    // theBlower.setSchedule(ck,ck_d,ck_h,theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart,theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen,theConf.profiles[0].cycle[ck].horarios[ck_h].pwmDuty,1);    // update blower with schedule info
+    theBlower.setSchedule(start_timer_ctx->cycle,start_timer_ctx->day,start_timer_ctx->horario,start_timer_ctx->tostart,start_timer_ctx->horaslen,start_timer_ctx->pwm,BLOWERON);
+    // theBlower.setScheduleStatus(BLOWERON);
+    free(start_timer_ctx);
 
 }
 void blower_end(TimerHandle_t xTimer)

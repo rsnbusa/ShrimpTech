@@ -30,21 +30,21 @@ typedef enum {
 typedef struct {
     uint8_t profileIndex;
     uint8_t dayIndex;
-    uint8_t muxTime;
+    uint32_t muxTime;
     ProductionOrderType orderType;
     char orderCommand[ORDER_COMMAND_MAX_LENGTH];
 } ProductionCommandFields;
 
 /* Broadcasts production control message to all mesh nodes. */
-void send_start_production(uint8_t profileIndex, uint8_t dayIndex, uint8_t muxTime, char* orderCommand)
+void send_start_production(uint8_t profileIndex, uint8_t dayIndex, uint32_t muxTime, char* orderCommand)
 {
     cJSON *root = cJSON_CreateObject();
-    if(root)
+    if (root)
     {
         cJSON_AddStringToObject(root, "cmd", internal_cmds[PRODUCTION]);
         cJSON_AddNumberToObject(root, "prof", profileIndex);
         cJSON_AddNumberToObject(root, "day", dayIndex);
-        cJSON_AddNumberToObject(root, "mux", muxTime);
+        cJSON_AddNumberToObject(root, "mux", (uint32_t)muxTime);
         cJSON_AddStringToObject(root, "order", orderCommand);
         char *mensaje = cJSON_PrintUnformatted(root);
         if(!mensaje)
@@ -105,6 +105,7 @@ static bool validate_production_command(cJSON *productionCommand, ProductionComm
     outFields->profileIndex = profileNode->valueint - 1;
     outFields->dayIndex = dayNode->valueint - 1;
     outFields->muxTime = muxNode->valueint;
+
     
     if(outFields->profileIndex >= MAXPROFILES)
     {
@@ -170,7 +171,7 @@ static int handle_production_start(const ProductionCommandFields *fields, char *
         ESP_LOGI(MESH_TAG, "%sCMd Prod Start %s", DBG_XCMDS, fields->orderCommand);
     writeLog(logBuffer);
     
-    theBlower.setSchedule(0, 0, 0,0,0,0,BLOWERON);
+    // theBlower.setSchedule(0, 0, 0,0,0,0,BLOWERON);
     xSemaphoreGive(workTaskSem);
     
     send_start_production(fields->profileIndex, fields->dayIndex, 

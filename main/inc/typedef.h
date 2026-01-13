@@ -188,6 +188,16 @@ typedef struct {
     ciclo_t cycle[MAXCICLOS];
 } profile_t;
 
+typedef struct {
+    uint8_t cycle;
+    uint8_t day;
+    uint8_t horario;
+    uint8_t tostart;
+    uint8_t horaslen;
+    uint8_t pwm;
+} start_timer_ctx_t;
+
+
 // ============================================================================
 // COMMAND LINE ARGUMENT TYPES
 // ============================================================================
