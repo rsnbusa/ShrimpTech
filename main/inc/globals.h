@@ -102,6 +102,7 @@ EXTERN TimerHandle_t recoverTimer;
 EXTERN TimerHandle_t loginTimer;
 EXTERN TimerHandle_t start_timers[MAXHORARIOS];
 EXTERN TimerHandle_t end_timers[MAXHORARIOS];
+EXTERN TimerHandle_t scheduleTimer;
 
 // ============================================================================
 // CONFIGURATION & STORAGE
@@ -199,6 +200,7 @@ EXTERN master_node_t masterNode;
 EXTERN meshp_t param;
 EXTERN mesh_addr_t poolNodes[MAXNODES];
 EXTERN int countPoolNodes;
+EXTERN poolNodes_t poolNodesTable;
 // ============================================================================
 // MQTT
 // ============================================================================

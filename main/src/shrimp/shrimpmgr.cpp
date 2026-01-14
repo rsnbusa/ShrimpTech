@@ -216,6 +216,14 @@ void showLVGL(char *que, uint32_t cuanto,uint8_t bigf)
 // 	return pdTICKS_TO_MS(xTaskGetTickCountFromISR());
 // }
 
+
+
+void schedule_timeout(TimerHandle_t xTimer)
+{
+    esp_rom_printf("Schedule Timeout \n");
+
+}   
+
 /**
  * @brief Find the index of an internal command by name
  * 
@@ -334,7 +342,6 @@ int root_load_routing_table_mac(mesh_addr_t *who,void *ladata)
                 if(masterNode.theTable.thedata[a])
                     free(masterNode.theTable.thedata[a]);           //erase old data
                 masterNode.theTable.thedata[a]=ladata;              //new pointer
-                masterNode.theTable.sendit[a]=true;     //default send it
                 xSemaphoreGive(tableSem);
                 return ESP_OK;
             }
@@ -1459,9 +1466,9 @@ void child_production(cJSON *elcmd)
 }
 int findPoolNode(mesh_addr_t *este)
 {
-    for (int a=0;a<countPoolNodes;a++)
+    for (int a=0;a<poolNodesTable.existing_nodes;a++)
     {
-         if (MAC_ADDR_EQUAL(poolNodes[a].addr, este->addr)) 
+         if (MAC_ADDR_EQUAL(poolNodesTable.address_table[a].addr, este->addr)) 
             return a;
     }
     return ESP_FAIL;
@@ -1541,7 +1548,13 @@ void static mesh_manager(mesh_addr_t *from, mesh_data_t *data)
                         cJSON *cualhora=       cJSON_GetObjectItem(elcmd,"hora");
                         ESP_LOGI(TAG,"Schedule Start Unit %d Cycle %d Day %d horario %d Pool %d " MACSTR,
                             cualunit->valueint,cualcycle->valueint,cualday->valueint,cualhora->valueint,cualp,MAC2STR(from->addr));
-                        
+                        if (cualp>=0)
+                            poolNodesTable.existing_nodes--;
+                        if(poolNodesTable.existing_nodes==0)
+                        {
+                            ESP_LOGI(TAG,"All pool nodes confirmed schedule start");
+                            xTimerStop(scheduleTimer,0);
+                        }
                     }
                     cJSON_Delete(elcmd);
                     return;        
@@ -2716,6 +2729,8 @@ printf("Loaded Mux %d\n",theConf.test_timer_div);
 
 
 //timing stuff and timers
+
+    scheduleTimer=xTimerCreate("scht",pdMS_TO_TICKS(500),pdFALSE,( void * ) 0, schedule_timeout);    
 
     uint32_t permanent_time=(theConf.totalnodes/theConf.conns)*EXPECTED_DELIVERY_TIME;
     // printf("Repeat time nodes %d conns %d permanent %d repeat %d finaltime %d\n",theConf.totalnodes,theConf.conns,permanent_time,theConf.repeat,
@@ -3919,51 +3934,56 @@ void app_spiffs_log(void)
     }
 
 }
+
+
 void blower_start(TimerHandle_t xTimer)
 {
+    mqttSender_t meshMsg;
+
     start_timer_ctx_t *start_timer_ctx = ( start_timer_ctx_t * ) pvTimerGetTimerID( xTimer );           // to set the schedule inmfo accordingly
     gpio_set_level((gpio_num_t)BEATPIN,0);          //before configuring it decide level we want it to be at start, in this case LOW
 
     if(esp_mesh_is_root())
     {
-                int err=esp_mesh_get_routing_table((mesh_addr_t *) &poolNodes,MAXNODES * 6, &countPoolNodes);
-                if(err!=ESP_OK)
-                {
-                    ESP_LOGE(MESH_TAG,"Failed to get routing table %d",err);
-                }
-                esp_rom_printf("Hay %d/%d nodes\n",countPoolNodes, theConf.totalnodes);
-    }
-    esp_rom_printf("Start Blower Ctx Cycle %d Day %d Hora %d Start %d Horas %d PW %d\n",start_timer_ctx->cycle,start_timer_ctx->day,start_timer_ctx->horario,start_timer_ctx->tostart,start_timer_ctx->horaslen,start_timer_ctx->pwm );    // update blower with schedule info
-    // theBlower.setSchedule(ck,ck_d,ck_h,theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart,theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen,theConf.profiles[0].cycle[ck].horarios[ck_h].pwmDuty,1);    // update blower with schedule info
-    theBlower.setSchedule(start_timer_ctx->cycle,start_timer_ctx->day,start_timer_ctx->horario,start_timer_ctx->tostart,start_timer_ctx->horaslen,start_timer_ctx->pwm,BLOWERON);
-    // theBlower.setScheduleStatus(BLOWERON);
-
-        mqttSender_t meshMsg;
-        bzero(&meshMsg,sizeof(meshMsg));            //have to zero it for the callback and param
-        cJSON *root=cJSON_CreateObject();
-        if(root)
+        int err=esp_mesh_get_routing_table((mesh_addr_t *) &poolNodesTable.address_table,MAXNODES * 6, &poolNodesTable.existing_nodes);
+        if(err!=ESP_OK)
         {
-            cJSON_AddStringToObject(root,"cmd","schstart");
-            cJSON_AddNumberToObject(root,"unit",theConf.unitid);
-            cJSON_AddNumberToObject(root,"cycle",start_timer_ctx->cycle);
-            cJSON_AddNumberToObject(root,"day",start_timer_ctx->day);
-            cJSON_AddNumberToObject(root,"hora",start_timer_ctx->horario);
-            char *intmsg=cJSON_PrintUnformatted(root);
-            if(intmsg)
-            {
-                // esp_rom_printf("ScvhStart [%s]\n",intmsg);
-                meshMsg.queue=emergencyQueue;
-                meshMsg.msg=intmsg;
-                meshMsg.lenMsg=strlen(intmsg);
-                meshMsg.addr=NULL;          // root
-                if(xQueueSend(meshQueue,&meshMsg,0)!=pdPASS)
-                    ESP_LOGE(MESH_TAG,"Cannot queue fram");   //queue it
-            }
-            cJSON_Delete(root);
+            ESP_LOGE(MESH_TAG,"Failed to get routing table %d",err);
         }
-    free(start_timer_ctx);
+        esp_rom_printf("Hay %d/%d nodes\n",poolNodesTable.existing_nodes, theConf.totalnodes);
+        poolNodesTable.existing_nodes=theConf.totalnodes;      // override with config value
+        xTimerStart(scheduleTimer,1);
+    }
 
+    esp_rom_printf("Start Blower Ctx Cycle %d Day %d Hora %d Start %d Horas %d PW %d\n",start_timer_ctx->cycle,start_timer_ctx->day,start_timer_ctx->horario,start_timer_ctx->tostart,start_timer_ctx->horaslen,start_timer_ctx->pwm );    // update blower with schedule info
+    theBlower.setSchedule(start_timer_ctx->cycle,start_timer_ctx->day,start_timer_ctx->horario,start_timer_ctx->tostart,start_timer_ctx->horaslen,start_timer_ctx->pwm,BLOWERON);
+
+    bzero(&meshMsg,sizeof(meshMsg));            //have to zero it for the callback and param
+    cJSON *root=cJSON_CreateObject();
+    if(root)
+    {
+        cJSON_AddStringToObject(root,"cmd","schstart");
+        cJSON_AddNumberToObject(root,"unit",theConf.unitid);
+        cJSON_AddNumberToObject(root,"cycle",start_timer_ctx->cycle);
+        cJSON_AddNumberToObject(root,"day",start_timer_ctx->day);
+        cJSON_AddNumberToObject(root,"hora",start_timer_ctx->horario);
+        char *intmsg=cJSON_PrintUnformatted(root);
+        if(intmsg)
+        {
+            // esp_rom_printf("ScvhStart [%s]\n",intmsg);
+            meshMsg.queue=emergencyQueue;
+            meshMsg.msg=intmsg;
+            meshMsg.lenMsg=strlen(intmsg);
+            meshMsg.addr=NULL;          // root
+            if(xQueueSend(meshQueue,&meshMsg,0)!=pdPASS)
+                ESP_LOGE(MESH_TAG,"Cannot queue fram");   //queue it
+        }
+        cJSON_Delete(root);
+    }
+
+    free(start_timer_ctx);
 }
+
 void blower_end(TimerHandle_t xTimer)
 {
     uint32_t ulCount = ( uint32_t ) pvTimerGetTimerID( xTimer );

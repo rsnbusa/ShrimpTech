@@ -371,9 +371,9 @@ void show_network_mesh(wifi_config_t conf, mesh_addr_t bssid, unsigned char *mac
                 printf("│ [%2d] MAC: " MACSTR " %3s |  Unit: %-3s | Send: %-1s | Power: %-3s │\n",
                        a, MAC2STR(s_route_table[a].addr),
                        MAC_ADDR_EQUAL(s_route_table[a].addr, my_mac)?"*ME":"   ",
-                       masterNode.theTable.meterName[a],
-                       masterNode.theTable.sendit[a]?"Y":"N",
-                       masterNode.theTable.onoff[a]?"ON ":"OFF");
+                       " ",
+                       "Y",
+                       "ON");
             }
         }
         else

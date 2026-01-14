@@ -23,7 +23,7 @@ typedef struct
         int points;
         int start;
         int offset;
-    } loadUsedHoy, batDscHoy, batChdHoy, loadUsedTotal, usedkwhHoy, genkWhHoy, batDscTotal, batChgTotal, batChHoy;
+    } loadUsedHoy, batDscHoy, batChdHoy, loadUsedTotal, usedkwhHoy, genkWhHoy, batDscTotal, batChgTotal, batChHoy, batChHoya, batDscHoya;
 } InverterCommandFields;
 
 static bool parse_channel(cJSON *node, double *mux, int *type, int *points, int *start, int *offset)
@@ -73,33 +73,34 @@ static bool validate_inverter_command(cJSON *inverterCommand, InverterCommandFie
         return false;
     }
 
-    cJSON *refreshNode = cJSON_GetObjectItem(general,"refresh");
-    cJSON *addrNode = cJSON_GetObjectItem(general,"InverterAddress");
+    cJSON *refreshNode = cJSON_GetObjectItem(general,"refresh"); 
+    cJSON *addrNode = cJSON_GetObjectItem(general,"InverterAddress"); 
     if(!refreshNode || !addrNode || !cJSON_IsNumber(refreshNode) || !cJSON_IsNumber(addrNode))
     {
         ESP_LOGE(MESH_TAG,"Inverter General block incomplete");
         return false;
     }
 
-    cJSON *loadUsedHoy = cJSON_GetObjectItem(inverterCommand,"LoadUsedHoy"); //
-    cJSON *batDscHoy = cJSON_GetObjectItem(inverterCommand,"BatDscHoy");
-    cJSON *batChdHoy = cJSON_GetObjectItem(inverterCommand,"BatChdHoy");
-    cJSON *loadUsedTotal = cJSON_GetObjectItem(inverterCommand,"LoadUsedTotal"); //
-    cJSON *usedkwhHoy = cJSON_GetObjectItem(inverterCommand,"UsedkwhHoy");
-    cJSON *genkWhHoy = cJSON_GetObjectItem(inverterCommand,"GenkWhHoy");
-    cJSON *batDscTotal = cJSON_GetObjectItem(inverterCommand,"BatDscTotal");
-    cJSON *batChgTotal = cJSON_GetObjectItem(inverterCommand,"BatChgTotal");
-    cJSON *batChHoy = cJSON_GetObjectItem(inverterCommand,"BatChHoy");
+    cJSON *batChHoy = cJSON_GetObjectItem(inverterCommand,"BatChHoy"); 
+    cJSON *batDscHoy = cJSON_GetObjectItem(inverterCommand,"BatDscHoy"); 
+    cJSON *batChgTotal = cJSON_GetObjectItem(inverterCommand,"BatChgTotal"); 
+    cJSON *batDscTotal = cJSON_GetObjectItem(inverterCommand,"BatDscTotal"); //
+    cJSON *genkWhHoy = cJSON_GetObjectItem(inverterCommand,"GenkWhHoy"); 
+    cJSON *usedkwhHoy = cJSON_GetObjectItem(inverterCommand,"UsedkwhHoy"); 
+    cJSON *loadUsedTotal = cJSON_GetObjectItem(inverterCommand,"LoadUsedTotal"); 
+    cJSON *batChHoya = cJSON_GetObjectItem(inverterCommand,"BatChHoyAmps");
+    cJSON *batDscHoya = cJSON_GetObjectItem(inverterCommand,"BatDscHoyAmps");
 
-    if(!parse_channel(loadUsedHoy,&out->loadUsedHoy.mux,&out->loadUsedHoy.type,&out->loadUsedHoy.points,&out->loadUsedHoy.start,&out->loadUsedHoy.offset) ||
+    if(!parse_channel(batChHoy,&out->loadUsedHoy.mux,&out->loadUsedHoy.type,&out->loadUsedHoy.points,&out->loadUsedHoy.start,&out->loadUsedHoy.offset) ||
        !parse_channel(batDscHoy,&out->batDscHoy.mux,&out->batDscHoy.type,&out->batDscHoy.points,&out->batDscHoy.start,&out->batDscHoy.offset) ||
-       !parse_channel(batChdHoy,&out->batChdHoy.mux,&out->batChdHoy.type,&out->batChdHoy.points,&out->batChdHoy.start,&out->batChdHoy.offset) ||
-       !parse_channel(loadUsedTotal,&out->loadUsedTotal.mux,&out->loadUsedTotal.type,&out->loadUsedTotal.points,&out->loadUsedTotal.start,&out->loadUsedTotal.offset) ||
-       !parse_channel(usedkwhHoy,&out->usedkwhHoy.mux,&out->usedkwhHoy.type,&out->usedkwhHoy.points,&out->usedkwhHoy.start,&out->usedkwhHoy.offset) ||
-       !parse_channel(genkWhHoy,&out->genkWhHoy.mux,&out->genkWhHoy.type,&out->genkWhHoy.points,&out->genkWhHoy.start,&out->genkWhHoy.offset) ||
-       !parse_channel(batDscTotal,&out->batDscTotal.mux,&out->batDscTotal.type,&out->batDscTotal.points,&out->batDscTotal.start,&out->batDscTotal.offset) ||
-       !parse_channel(batChgTotal,&out->batChgTotal.mux,&out->batChgTotal.type,&out->batChgTotal.points,&out->batChgTotal.start,&out->batChgTotal.offset) ||
-       !parse_channel(batChHoy,&out->batChHoy.mux,&out->batChHoy.type,&out->batChHoy.points,&out->batChHoy.start,&out->batChHoy.offset))
+       !parse_channel(batChgTotal,&out->batChdHoy.mux,&out->batChdHoy.type,&out->batChdHoy.points,&out->batChdHoy.start,&out->batChdHoy.offset) ||
+       !parse_channel(batDscTotal,&out->loadUsedTotal.mux,&out->loadUsedTotal.type,&out->loadUsedTotal.points,&out->loadUsedTotal.start,&out->loadUsedTotal.offset) ||
+       !parse_channel(genkWhHoy,&out->usedkwhHoy.mux,&out->usedkwhHoy.type,&out->usedkwhHoy.points,&out->usedkwhHoy.start,&out->usedkwhHoy.offset) ||
+       !parse_channel(usedkwhHoy,&out->genkWhHoy.mux,&out->genkWhHoy.type,&out->genkWhHoy.points,&out->genkWhHoy.start,&out->genkWhHoy.offset) ||
+       !parse_channel(loadUsedTotal,&out->batDscTotal.mux,&out->batDscTotal.type,&out->batDscTotal.points,&out->batDscTotal.start,&out->batDscTotal.offset) ||
+       !parse_channel(batChHoya,&out->batChgTotal.mux,&out->batChgTotal.type,&out->batChgTotal.points,&out->batChgTotal.start,&out->batChgTotal.offset) ||
+       !parse_channel(batChHoya,&out->batChHoya.mux,&out->batChHoya.type,&out->batChHoya.points,&out->batChHoya.start,&out->batChHoya.offset) ||
+        !parse_channel(batDscHoya,&out->batDscHoya.mux,&out->batDscHoya.type,&out->batDscHoya.points,&out->batDscHoya.start,&out->batDscHoya.offset))
     {
         ESP_LOGE(MESH_TAG,"Inverter command missing or invalid channel blocks");
         return false;
@@ -163,17 +164,17 @@ static void apply_inverter_config(const InverterCommandFields *fields)
     theConf.modbus_inverter.I3_BatChgTotalStart = fields->batChgTotal.start;
     theConf.modbus_inverter.I3_BatChgTotalOff = fields->batChgTotal.offset;
 
-    theConf.modbus_inverter.I2_BatDscHoyMux = fields->batDscHoy.mux;
-    theConf.modbus_inverter.I2_BatDscHoyType = fields->batDscHoy.type;
-    theConf.modbus_inverter.I2_BatDscHoyPoints = fields->batDscHoy.points;
-    theConf.modbus_inverter.I2_BatDscHoyStart = fields->batDscHoy.start;
-    theConf.modbus_inverter.I2_BatDscHoyOff = fields->batDscHoy.offset;
+    theConf.modbus_inverter.I2_BatDscHoyMux = fields->batDscHoya.mux;
+    theConf.modbus_inverter.I2_BatDscHoyType = fields->batDscHoya.type;
+    theConf.modbus_inverter.I2_BatDscHoyPoints = fields->batDscHoya.points;
+    theConf.modbus_inverter.I2_BatDscHoyStart = fields->batDscHoya.start;
+    theConf.modbus_inverter.I2_BatDscHoyOff = fields->batDscHoya.offset;
 
-    theConf.modbus_inverter.I1_BatChHoyMux = fields->batChHoy.mux;
-    theConf.modbus_inverter.I1_BatChHoyType = fields->batChHoy.type;
-    theConf.modbus_inverter.I1_BatChHoyPoints = fields->batChHoy.points;
-    theConf.modbus_inverter.I1_BatChHoyStart = fields->batChHoy.start;
-    theConf.modbus_inverter.I1_BatChHoyOff = fields->batChHoy.offset;
+    theConf.modbus_inverter.I1_BatChHoyMux = fields->batChHoya.mux;
+    theConf.modbus_inverter.I1_BatChHoyType = fields->batChHoya.type;
+    theConf.modbus_inverter.I1_BatChHoyPoints = fields->batChHoya.points;
+    theConf.modbus_inverter.I1_BatChHoyStart = fields->batChHoya.start;
+    theConf.modbus_inverter.I1_BatChHoyOff = fields->batChHoya.offset;
 
     write_to_flash();
 }

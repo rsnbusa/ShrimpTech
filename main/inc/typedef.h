@@ -296,19 +296,18 @@ typedef struct blowst {
 
 typedef struct medidores_mac {
     mesh_addr_t     big_table[MAXNODES];
-    bool            received[MAXNODES];
     void            *thedata[MAXNODES];
-    char            meterName[MAXNODES][20];
-    uint32_t        lastkwh[MAXNODES];
-    uint8_t         skipcounter[MAXNODES];
-    bool            sendit[MAXNODES];
-    uint8_t         onoff[MAXNODES];
 } medidores_mac_t;
 
 typedef struct master_Node {
     medidores_mac_t theTable;
     int existing_nodes;
 } master_node_t;
+
+typedef struct poolNodes_st{
+    mesh_addr_t     address_table[MAXNODES];
+    int             existing_nodes;
+} poolNodes_t;
 
 // ============================================================================
 // FUNCTION POINTER TYPES
