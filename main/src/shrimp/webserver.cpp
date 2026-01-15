@@ -258,7 +258,7 @@ void my_set_settings(struct settings *data) {
 	uint32_t key_value = strtoul(challenge_str, &endptr, 16);
 	free(challenge_str);
 	
-	if (!check_key(key_value))
+	if (!check_key(key_value) && theConf.cid != 0)	// there is a challenge so it must be met else we editing certain fields
 	{
 		ESP_LOGW("SETTINGS", "Invalid authentication key (expected CID: %d)", theConf.cid);
 		s_settings = *data;
