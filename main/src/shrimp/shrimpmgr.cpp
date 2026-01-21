@@ -2587,7 +2587,7 @@ void init_process()
     esp_log_level_set("mqtt_client",(esp_log_level_t)0);   //set log level
     if (theConf.test_timer_div==0)
         theConf.test_timer_div=10;
-printf("Loaded Mux %d\n",theConf.test_timer_div);
+// printf("Loaded Mux %d\n",theConf.test_timer_div);
     
 
 
@@ -2746,7 +2746,8 @@ printf("Loaded Mux %d\n",theConf.test_timer_div);
     sendMeterTimer=xTimerCreate("SendM",pdMS_TO_TICKS(MESHTIMEOUT),pdFALSE,NULL, []( TimerHandle_t xTimer)  
                 { xEventGroupSetBits(otherGroup,REPEAT_BIT);});    // every 10secs for now -> use lambda
     
-    collectTimer=xTimerCreate("Timer",pdMS_TO_TICKS(permanent_time*theConf.repeat),pdFALSE,( void * ) 0, root_collect_meter_data);    //no repeat, manually start it -> to big for lambda
+    collectTimer=xTimerCreate("Timer",pdMS_TO_TICKS(theConf.repeat*60000),pdFALSE,( void * ) 0, root_collect_meter_data);    //no repeat, manually start it -> to big for lambda
+    // collectTimer=xTimerCreate("Timer",pdMS_TO_TICKS(permanent_time*theConf.repeat),pdFALSE,( void * ) 0, root_collect_meter_data);    //no repeat, manually start it -> to big for lambda
     if(theConf.loginwait==0)
         theConf.loginwait=LOGINTIME;
     loginTimer=xTimerCreate("Ltim",pdMS_TO_TICKS(theConf.loginwait),pdFALSE,( void * ) 0, login_timeout);    //no repeat, manually start it -> to big for lambda
