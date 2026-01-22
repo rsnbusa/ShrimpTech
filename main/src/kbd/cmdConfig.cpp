@@ -254,6 +254,18 @@ void show_device_info(time_t bootdate, time_t guardDate)
     printf("│ %sNetwork Settings:%s                                           │\n",BK_GRAY,RESETC);
     printf("│   Mesh Delay: %-10s  Login Wait: %-22d│\n", theConf.delay_mesh?"Yes":"No", theConf.loginwait);
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
+
+
+    // ===== TIMING INFORMATION =====
+//     printf("%s", WHITEC);
+    printf("┌─────────────────────────────────────────────────────────────┐\n");
+    printf("│%s%s               TIMING INFORMATION                            %s│\n",RESETC,BK_GREEN,RESETC);
+    printf("├─────────────────────────────────────────────────────────────┤\n");
+       //  printf("%s", RESETC);
+    printf("│ Network: %-2s | MeshW: %c | Base Time: %2d | Repeat Timer: %2d   │\n", 
+           theConf.wifi_mode?"M ":"W ", theConf.mesh_wifi?'Y':'N', theConf.baset, theConf.repeat);
+    printf("└─────────────────────────────────────────────────────────────┘\n\n");
+
 }
 
 /**
@@ -307,6 +319,7 @@ void show_mqtt_config()
     printf("└─────────────────────────────────────────────────────────────────────────────────┘\n\n");
 }
 
+
 /**
  * @brief Display network and mesh configuration section
  * 
@@ -341,16 +354,6 @@ void show_network_mesh(wifi_config_t conf, mesh_addr_t bssid, unsigned char *mac
     printf("│ Mesh ID: " MACSTR " %-37s │\n", MAC2STR(mmeshid.addr)," ");
     printf("│ %sDevice State:%s %-50s │\n", BK_GRAY,RESETC,esp_mesh_is_device_active?"UP":"DOWN");
     printf("└──────────────────────────────────────────────────────────────────┘\n\n");
-
-    // ===== TIMING INFORMATION =====
-//     printf("%s", WHITEC);
-    printf("┌─────────────────────────────────────────────────────────────┐\n");
-    printf("│%s%s               TIMING INFORMATION                            %s│\n",RESETC,BK_GREEN,RESETC);
-    printf("├─────────────────────────────────────────────────────────────┤\n");
-       //  printf("%s", RESETC);
-    printf("│ Next Send Data: %dms | Base Time: %d | Repeat Timer: %d    │\n", 
-           xRemainingTime, theConf.baset, theConf.repeat);
-    printf("└─────────────────────────────────────────────────────────────┘\n\n");
 
     // ===== MESH ROUTING TABLE =====
     esp_err_t err = esp_mesh_get_routing_table((mesh_addr_t *) &s_route_table, CONFIG_MESH_ROUTE_TABLE_SIZE * 6, &routet);

@@ -33,8 +33,12 @@ extern "C" {
 #define WIZARD_MDNS_NAME "mongoose"
 
 #define WIZARD_ENABLE_WIFI 0
+#ifndef WIZARD_WIFI_NAME  // Allow to set WIZARD_WIFI_NAME from build params
 #define WIZARD_WIFI_NAME "MyNet"
+#endif
+#ifndef WIZARD_WIFI_PASS  // Allow to set WIZARD_WIFI_PASS from build params
 #define WIZARD_WIFI_PASS "MyPass"
+#endif
 #define WIZARD_ENABLE_WIFI_AP 0
 #define WIZARD_WIFI_AP_NAME "MyAp"
 #define WIZARD_WIFI_AP_PASS "MyApPass"
@@ -304,6 +308,8 @@ void glue_get_profile(struct profile *);
 void glue_set_profile(struct profile *);
 
 struct settings {
+  bool meshwifi_val;
+  bool wifi_val;
   bool delay_val;
   int nodes_val;
   int unit_val;

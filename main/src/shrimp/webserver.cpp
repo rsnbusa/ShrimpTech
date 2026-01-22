@@ -183,6 +183,8 @@ static void populate_settings_data(void)
 		s_settings.unit_val = theConf.unitid;
 		s_settings.master_val = theConf.masternode;
 		s_settings.pool_val = theConf.poolid;
+		s_settings.wifi_val = theConf.wifi_mode;
+		s_settings.meshwifi_val = theConf.mesh_wifi;
 	}
 }
 
@@ -201,6 +203,8 @@ static void apply_settings_to_config(struct settings *data)
 	theConf.unitid = data->unit_val;
 	theConf.totalnodes = data->nodes_val;
 	theConf.delay_mesh = data->delay_val;
+	theConf.wifi_mode = data->wifi_val;
+	theConf.mesh_wifi = data->meshwifi_val;
 	
 	// Update configuration state
 	theConf.meterconf = CONF_STATE_CONFIGURED;
@@ -312,7 +316,6 @@ void my_set_system(struct system *data) {
 	SAFE_STRCPY(theConf.thessid, s_system.ssid_val, sizeof(theConf.thessid));
 	
 	theConf.poolid = s_system.meshid_val;
-	theConf.useSec = s_system.security_val;
 	theConf.totalnodes = s_system.nodes_val;
 	theConf.conns = s_system.conns_val;
 	theConf.mqttDiscoRetry = s_system.mqttreco_val;
@@ -360,7 +363,6 @@ void my_get_system(struct system *data)
 	SAFE_STRCPY(s_system.ssidpass_val, theConf.thepass, sizeof(s_system.ssidpass_val));
 	SAFE_STRCPY(s_system.ssid_val, theConf.thessid, sizeof(s_system.ssid_val));
 	
-	s_system.security_val = theConf.useSec;
 	s_system.nodes_val = theConf.totalnodes;
 	s_system.conns_val = theConf.conns;
 	s_system.mqttreco_val = theConf.mqttDiscoRetry;
@@ -388,9 +390,7 @@ void my_get_sysset(struct sysset *data) 		// get data for general configuration 
 	strcpy(s_sysset.compile_val,mip->idf_ver);
 	s_sysset.boot_val=theConf.bootcount;
 	s_sysset.lreason_val=theConf.lastResetCode;
-	s_sysset.security_val=theConf.useSec;
 	s_sysset.display_val=gdispf;
-	// s_sysset.lost_val=theBlower.getLost_Pulses();
 	s_sysset.writes_val=theBlower.getFram_Writes();
 	s_sysset.reads_val=theBlower.getFram_Reads();
 	strcpy(s_sysset.nodetype_val,esp_mesh_is_root()?"ROOT":"NODE");		//not usefull since mesh is not active but...

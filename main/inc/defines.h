@@ -147,12 +147,18 @@
 #define CONFIRMTIMER                    (1000)
 #define METER_NOT_FOUND                 (0x1234)
 
+#define DEFAULT_SSID                    "NETLIFE-RSNCasa"
+#define DEFAULT_PSWD                    "csttpstt"
 #define DEFAULT_MESH_SSID              "NETLIFE-RSNCasa"
 #define DEFAULT_MESH_PASSW             "csttpstt"
 #define NORETAIN                        (0)
 #define RETAIN                          (1)
 #define QOS1                            (1)
 #define ALL
+
+#define DEFAULTMQTT                     "mqtt://64.23.180.233:1883"
+#define DEFAULTMQTTUSER                 "robert"
+#define DEFAULTMQTTPASS                 "csttpstt"
 
 #define SSIDBLINKTIME                   (80)
 
@@ -169,9 +175,6 @@
 #define MESH_INT_DATA_BIN               (0x88995566)
 #define MESH_INT_DATA_CJSON             (0x33221144)
 #define MESH_INT_DATA_MODBUS            (0x33221155)
-
-#define DEFAULT_SSID                    "NETLIFE-RSNCasa"
-#define DEFAULT_PSWD                    "csttpstt"
 
 #define MAXHORARIOS                     (10)
 #define MAXCICLOS                       (10)
@@ -212,6 +215,7 @@
 #define BATTERY_LIMIT_ERROR_BIT        (6) // Bit 6 for limit errors
 #define ENERGY_LIMIT_ERROR_BIT         (7) // Bit 7 for limit errors
 
+#define WIFI_MESH                      (0)
 
 #define DBG_SCH						    "\e[36m[SCH]\e[0m"               //blue
 #define DBG_MESH					    "\e[35m[MESH]\e[0m"              // Magenta

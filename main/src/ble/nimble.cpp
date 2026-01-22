@@ -149,7 +149,7 @@ char *data;
             data[ctxt->om->om_len]=0;
             theConf.test_timer_div=atoi(data);
             printf("Start Cycle Profile # %d Day Start %d Divisors %d\n",theConf.activeProfile,theConf.dayCycle,theConf.test_timer_div);
-            theConf.blower_mode=1;
+            // theConf.blower_mode=1;
             // theConf.bleboot=MESH_MODE;      // mesh mode
             write_to_flash();
             esp_restart();

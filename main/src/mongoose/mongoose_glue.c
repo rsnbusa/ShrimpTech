@@ -62,7 +62,7 @@ void glue_set_profile(struct profile *data) {
   s_profile = *data; // Sync with your device
 }
 
-struct settings s_settings = {false, 0, 0, 0, "", "", false, 0, ""};
+struct settings s_settings = {false, false, false, 0, 0, 0, "", "", false, 0, ""};
 void glue_get_settings(struct settings *data) {
   *data = s_settings;  // Sync with your device
 }

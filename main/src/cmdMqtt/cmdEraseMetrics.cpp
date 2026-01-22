@@ -221,7 +221,8 @@ int cmdEraseMetrics(void *argument)
     }
     
     // Send command to mesh network
-    err = sendEraseCommandToMesh(meshMessage, strlen(jsonString), meterIdNode);
+    if(!theConf.wifi_mode)    
+        err = sendEraseCommandToMesh(meshMessage, strlen(jsonString), meterIdNode);
     
     // Cleanup
     free(jsonString);

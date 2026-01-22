@@ -195,6 +195,7 @@ typedef struct {
     uint8_t tostart;
     uint8_t horaslen;
     uint8_t pwm;
+    uint8_t timerNum;
 } start_timer_ctx_t;
 
 
@@ -363,43 +364,40 @@ typedef struct medbkcup {
  * WiFi parameters, profiles, and Modbus device configurations.
  */
 typedef struct config {
-    time_t bornDate;
-    uint32_t bootcount, lastResetCode, centinel;
-    uint8_t minutes, masternode, unitid;
-    uint32_t downtime;      // Downtime accumulator
-    uint32_t mqttSlots;     // Slot number
-    uint16_t loglevel;
-    uint8_t meterconf, ptch;
-    uint32_t lastRebootTime, meterconfdate, baset, cid, subnode, poolid;
-    char mqttServer[100];
-    char mqttUser[50];
-    char mqttPass[50];
-    char thessid[40], thepass[20];
-    uint32_t totalnodes;  // Exact number of nodes in this pool
-    uint16_t conns;       // Time to wait before sending metrics in ms
-    uint16_t    repeat;
-    char        kpass[20];
-    time_t      lastKnownDate;
-    int         mqttcertlen;
-    char        mqttcert[2100];
-    uint8_t     useSec;
-    char        lastVersion[20];
-    uint32_t    mqttDiscoRetry;
-    profile_t profiles[MAXPROFILES];
-    uint8_t activeProfile, dayCycle;
-    time_t dateProfile, dateDayCycle;
-    uint8_t blower_mode;           // 0=off, 1=activated for power loss cases
-    uint32_t debug_flags, test_timer_div;
-    uint8_t work_cycle, work_day, unit_num, delay_mesh;
-    uint32_t loginwait;
-    int limits[21][2];             // For 21 variables: [0]=min, [1]=max
-    uint16_t    baud;
-    uart_port_t port;
-    struct limits milim;
+    time_t              bornDate;
+    uint32_t            bootcount, lastResetCode, centinel;
+    uint8_t             minutes, masternode, unitid;
+    uint32_t            downtime;      // Downtime accumulator
+    uint32_t            mqttSlots;     // Slot number
+    uint16_t            loglevel;
+    uint8_t             meterconf, ptch;
+    uint32_t            lastRebootTime, meterconfdate, baset, cid, subnode, poolid;
+    char                mqttServer[100], mqttUser[50],mqttPass[50],thessid[40], thepass[20];
+    uint32_t            totalnodes;  // Exact number of nodes in this pool
+    uint16_t            conns;       // Time to wait before sending metrics in ms
+    uint16_t            repeat;
+    char                kpass[20];
+    time_t              lastKnownDate;
+    int                 mqttcertlen;
+    char                mqttcert[2100];
+    uint8_t             mesh_wifi;
+    char                lastVersion[20];
+    uint32_t            mqttDiscoRetry;
+    profile_t           profiles[MAXPROFILES];
+    uint8_t             activeProfile, dayCycle;
+    time_t              dateProfile, dateDayCycle;
+    uint8_t             wifi_mode;           // 0=off, 1=activated for power loss cases
+    uint32_t            debug_flags, test_timer_div;
+    uint8_t             work_cycle, work_day, unit_num, delay_mesh;
+    uint32_t            loginwait;
+    int                 limits[21][2];             // For 21 variables: [0]=min, [1]=max
+    uint16_t            baud;
+    uart_port_t         port;
+    struct limits       milim;
     struct modbInverter modbus_inverter;
     struct modbSensors  modbus_sensors;
     struct modbBattery  modbus_battery;
-    struct modbPanels modbus_panels;
+    struct modbPanels   modbus_panels;
 } config_flash;
 
 // ============================================================================

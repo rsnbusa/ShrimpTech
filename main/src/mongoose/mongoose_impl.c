@@ -344,6 +344,8 @@ struct attribute s_profile_attributes[] = {
   {NULL, NULL, NULL, 0, 0, false}
 };
 struct attribute s_settings_attributes[] = {
+  {"meshwifi_val", "bool", NULL, offsetof(struct settings, meshwifi_val), 0, false},
+  {"wifi_val", "bool", NULL, offsetof(struct settings, wifi_val), 0, false},
   {"delay_val", "bool", NULL, offsetof(struct settings, delay_val), 0, false},
   {"nodes_val", "int", NULL, offsetof(struct settings, nodes_val), 0, false},
   {"unit_val", "int", NULL, offsetof(struct settings, unit_val), 0, false},

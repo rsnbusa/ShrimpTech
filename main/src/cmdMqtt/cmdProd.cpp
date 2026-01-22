@@ -171,10 +171,9 @@ static int handle_production_start(const ProductionCommandFields *fields, char *
         ESP_LOGI(MESH_TAG, "%sCMd Prod Start %s", DBG_XCMDS, fields->orderCommand);
     writeLog(logBuffer);
     
-    // theBlower.setSchedule(0, 0, 0,0,0,0,BLOWERON);
     xSemaphoreGive(workTaskSem);
-    
-    send_start_production(fields->profileIndex, fields->dayIndex, 
+    if(theConf.wifi_mode)
+        send_start_production(fields->profileIndex, fields->dayIndex, 
                          theConf.test_timer_div, (char*)fields->orderCommand);
     return ESP_OK;
 }
@@ -190,7 +189,7 @@ static int handle_production_stop(const ProductionCommandFields *fields, char *l
     }
     
     theConf.dayCycle = 0;
-    theConf.blower_mode = 0;
+    // theConf.blower_mode = 0;
     write_to_flash();
     
     snprintf(logBuffer, PRODUCTION_LOG_BUFFER_SIZE, "CMd Prod Stop %s", fields->orderCommand);
@@ -201,8 +200,9 @@ static int handle_production_stop(const ProductionCommandFields *fields, char *l
     
     vTaskDelete(scheduleHandle);
     xTaskCreate(&start_schedule_timers, "sched", 1024*10, NULL, 5, &scheduleHandle);
-    
-    send_start_production(fields->profileIndex, fields->dayIndex, 
+
+    if(theConf.wifi_mode)
+        send_start_production(fields->profileIndex, fields->dayIndex, 
                          theConf.test_timer_div, (char*)fields->orderCommand);
     schedulef = false;
     theBlower.setSchedule(0, 0, 0,0,0,0,BLOWEROFF);
@@ -236,8 +236,9 @@ static int handle_production_pause(const ProductionCommandFields *fields, char *
     
     snprintf(logBuffer, PRODUCTION_LOG_BUFFER_SIZE, "CMd Prod Pause %s", fields->orderCommand);
     writeLog(logBuffer);
-    
-    send_start_production(fields->profileIndex, fields->dayIndex, 
+
+    if(theConf.wifi_mode)    
+        send_start_production(fields->profileIndex, fields->dayIndex, 
                          theConf.test_timer_div, (char*)fields->orderCommand);
     pausef = true;
     return ESP_OK;
@@ -258,7 +259,9 @@ static int handle_production_resume(const ProductionCommandFields *fields, char 
     
     snprintf(logBuffer, PRODUCTION_LOG_BUFFER_SIZE, "CMd Prod Resume %s", fields->orderCommand);
     pausef = false;
-    send_start_production(fields->profileIndex, fields->dayIndex, 
+
+    if(theConf.wifi_mode)    
+        send_start_production(fields->profileIndex, fields->dayIndex, 
                          theConf.test_timer_div, (char*)fields->orderCommand);
     writeLog(logBuffer);
     return ESP_OK;
@@ -279,7 +282,9 @@ static int handle_production_crop(const ProductionCommandFields *fields, char *l
     
     snprintf(logBuffer, PRODUCTION_LOG_BUFFER_SIZE, "CMd Prod Crop %s", fields->orderCommand);
     pausef = false;
-    send_start_production(fields->profileIndex, fields->dayIndex, 
+
+    if(theConf.wifi_mode)    
+        send_start_production(fields->profileIndex, fields->dayIndex, 
                          theConf.test_timer_div, (char*)fields->orderCommand);
     writeLog(logBuffer);
 
@@ -303,7 +308,9 @@ static int handle_production_park(const ProductionCommandFields *fields, char *l
     
     snprintf(logBuffer, PRODUCTION_LOG_BUFFER_SIZE, "CMd Prod Park %s", fields->orderCommand);
     pausef = false;
-    send_start_production(fields->profileIndex, fields->dayIndex, 
+
+    if(theConf.wifi_mode)    
+        send_start_production(fields->profileIndex, fields->dayIndex, 
                          theConf.test_timer_div, (char*)fields->orderCommand);
     writeLog(logBuffer);
 

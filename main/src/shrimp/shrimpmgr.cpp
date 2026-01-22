@@ -217,6 +217,7 @@ void showLVGL(char *que, uint32_t cuanto,uint8_t bigf)
 // }
 
 
+// pending to iumplemnent loigic to tiuem out and account for confirmation from child nodes
 
 void schedule_timeout(TimerHandle_t xTimer)
 {
@@ -328,30 +329,35 @@ int root_delete_routing_table()
 }
 
 //ladata is  meshunion_t * myNode
-int root_load_routing_table_mac(mesh_addr_t *who,void *ladata)
+int root_load_routing_table_mac(mesh_addr_t *who, void *ladata)
 {
-    int err;
-    meshunion_t* aNode=(meshunion_t*)ladata;
-    print_blower("load routing", &aNode->nodedata.solarData.solarSystem,true);
-    if(xSemaphoreTake(tableSem, portMAX_DELAY))		
-    {  
-        for (int a=0;a<masterNode.existing_nodes;a++)
-        {
-            if (MAC_ADDR_EQUAL(masterNode.theTable.big_table[a].addr, who->addr)) 
-            {
-                if(masterNode.theTable.thedata[a])
-                    free(masterNode.theTable.thedata[a]);           //erase old data
-                masterNode.theTable.thedata[a]=ladata;              //new pointer
-                xSemaphoreGive(tableSem);
-                return ESP_OK;
-            }
-            // else
-            //     ESP_LOGE(TAG,"Check mac %d " MACSTR " vs " MACSTR ,a,MAC2STR(masterNode.theTable.big_table[a].addr),MAC2STR(who->addr));
-        }
-        xSemaphoreGive(tableSem);
-        ESP_LOGE(MESH_TAG,"Did not find mac addr " MACSTR ,who->addr);
+    if (!who || !ladata) {
+        ESP_LOGE(MESH_TAG, "load routing missing args");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    meshunion_t *aNode = (meshunion_t*)ladata;
+    print_blower("load routing", &aNode->nodedata.solarData.solarSystem, true);
+
+    if (!xSemaphoreTake(tableSem, portMAX_DELAY)) {
+        ESP_LOGE(MESH_TAG, "load routing failed to take tableSem");
         return ESP_FAIL;
-    }   //else is not really necessary I guess
+    }
+
+    for (int a = 0; a < masterNode.existing_nodes; a++) {
+        if (MAC_ADDR_EQUAL(masterNode.theTable.big_table[a].addr, who->addr)) {
+            if (masterNode.theTable.thedata[a])
+                free(masterNode.theTable.thedata[a]);           // erase old data
+
+            masterNode.theTable.thedata[a] = ladata;            // new pointer ownership transferred
+            xSemaphoreGive(tableSem);
+            return ESP_OK;
+        }
+    }
+
+    xSemaphoreGive(tableSem);
+    ESP_LOGE(MESH_TAG, "Did not find mac addr " MACSTR, who->addr);
+    return ESP_FAIL;
 }
 
 /**
@@ -367,49 +373,44 @@ int root_load_routing_table_mac(mesh_addr_t *who,void *ladata)
  */
 esp_err_t send_confirmation_message(char *mid, int lstate)
 {
-    int                 err;
-    mesh_data_t         datas;
-    cJSON               *root;
-    mqttSender_t        meshMsg;
+    if (!mid || mid[0] == '\0') {
+        ESP_LOGE(MESH_TAG, "Confirm message missing mid");
+        return ESP_ERR_INVALID_ARG;
+    }
 
-
-        root=cJSON_CreateObject();
-        if(root)
-        {
-            cJSON_AddStringToObject(root,"cmd",internal_cmds[CONFIRMLOCK]);
-            cJSON_AddStringToObject(root,"mid",mid);
-            cJSON_AddNumberToObject(root,"state",lstate);
-
-            char *intmsg=cJSON_PrintUnformatted(root);
-            if(intmsg)
-            {  
-                meshMsg.msg=intmsg;
-                meshMsg.lenMsg=strlen(intmsg);
-                meshMsg.queue=NULL;
-                meshMsg.addr=NULL;
-                if(xQueueSend(meshQueue,&meshMsg,0)!=pdTRUE)      //will free todo 
-                {
-                    ESP_LOGE(MESH_TAG,"Error queueing confirm msg");
-                    if(meshMsg.msg)         //already checked but ....
-                        free(meshMsg.msg);  //due to failure
-                    cJSON_Delete(root); 
-                    return ESP_FAIL;
-                }
-                ESP_LOGI(MESH_TAG,"Confirmation sent for Meter [%s]",mid);
-            }
-            else
-            {
-                ESP_LOGE(MESH_TAG,"No RAM Confirm");
-                cJSON_Delete(root); 
-                return ESP_FAIL;
-            }
-            cJSON_Delete(root); 
-            return ESP_OK;
-        }
-        else
-            ESP_LOGE(MESH_TAG,"No Root Confirm");
-
+    cJSON *root = cJSON_CreateObject();
+    if (!root) {
+        ESP_LOGE(MESH_TAG, "No RAM creating confirm message");
         return ESP_FAIL;
+    }
+
+    cJSON_AddStringToObject(root, "cmd", internal_cmds[CONFIRMLOCK]);
+    cJSON_AddStringToObject(root, "mid", mid);
+    cJSON_AddNumberToObject(root, "state", lstate);
+
+    char *intmsg = cJSON_PrintUnformatted(root);
+    if (!intmsg) {
+        ESP_LOGE(MESH_TAG, "No RAM building confirm message");
+        cJSON_Delete(root);
+        return ESP_FAIL;
+    }
+
+    mqttSender_t meshMsg = {0};
+    meshMsg.msg    = intmsg;
+    meshMsg.lenMsg = strlen(intmsg);
+    meshMsg.queue  = NULL;
+    meshMsg.addr   = NULL;
+
+    if (xQueueSend(meshQueue, &meshMsg, 0) != pdTRUE) {  // queue frees msg
+        ESP_LOGE(MESH_TAG, "Error queueing confirm msg");
+        free(meshMsg.msg);
+        cJSON_Delete(root);
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(MESH_TAG, "Confirmation queued for Meter [%s]", mid);
+    cJSON_Delete(root);
+    return ESP_OK;
 }
 
 /**
@@ -424,244 +425,245 @@ esp_err_t send_confirmation_message(char *mid, int lstate)
  */
 esp_err_t send_metrics_message(char *mid)
 {
-    int                 err;
-    mesh_data_t         datas;
-    cJSON               *root;
-    mqttSender_t        meshMsg;
-    char                *buff;
+    if (!mid || mid[0] == '\0') {
+        ESP_LOGE(MESH_TAG, "Metrics message missing mid");
+        return ESP_ERR_INVALID_ARG;
+    }
 
-        root=cJSON_CreateObject();
-        if(root)
-        {
-            const esp_app_desc_t *mip=esp_app_get_description();
-            if(mip)
-                cJSON_AddStringToObject(root,"version",mip->version);
-            cJSON_AddStringToObject(root,"cmd",internal_cmds[METRICRESP]);
-            cJSON_AddStringToObject(root,"mid",mid);
-            // cJSON_AddNumberToObject(root,"kwh",theBlower.getLkwh());
-            // cJSON_AddNumberToObject(root,"beat",theBlower.getBeats());
-            // cJSON_AddNumberToObject(root,"maxamp",theBlower.getMaxamp());
-            // cJSON_AddNumberToObject(root,"minamp",theBlower.getMinamp());
+    cJSON *root = cJSON_CreateObject();
+    if (!root) {
+        ESP_LOGE(MESH_TAG, "No RAM creating metrics response");
+        return ESP_FAIL;
+    }
 
-            buff=(char*)calloc(30,1);
-            if(buff)
-            {
-                time_t lastup=theBlower.getLastUpdate();
-                strftime(buff, 20, "%Y-%m-%d %H:%M:%S", localtime(&lastup));
-                cJSON_AddStringToObject(root,"update",buff);
-                free(buff);
-            }
+    const esp_app_desc_t *mip = esp_app_get_description();
+    if (mip)
+        cJSON_AddStringToObject(root, "version", mip->version);
 
-            char *intmsg=cJSON_PrintUnformatted(root);
-            if(intmsg)
-            {  
-                meshMsg.msg=intmsg;
-                meshMsg.lenMsg=strlen(intmsg);
-                meshMsg.queue=discoQueue;
-                meshMsg.addr=NULL;
-                if(xQueueSend(meshQueue,&meshMsg,0)!=pdTRUE)      //will free todo 
-                {
-                    ESP_LOGE(MESH_TAG,"Error queueing confirm msg");
-                    if(meshMsg.msg)                 // already checked but ...
-                        free(meshMsg.msg);          //due to failure
-                    cJSON_Delete(root); 
-                    return ESP_FAIL;
-                }
-                ESP_LOGI(MESH_TAG,"Confirmation sent for Meter [%s]",mid);
-            }
-            else
-            {
-                ESP_LOGE(MESH_TAG,"No RAM Send Metrics");
-                cJSON_Delete(root); 
+    cJSON_AddStringToObject(root, "cmd", internal_cmds[METRICRESP]);
+    cJSON_AddStringToObject(root, "mid", mid);
+
+    char time_buf[20] = {0};
+    time_t lastup = theBlower.getLastUpdate();
+    struct tm tm_info;
+    if (localtime_r(&lastup, &tm_info) && strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", &tm_info) > 0)
+        cJSON_AddStringToObject(root, "update", time_buf);
+
+    char *intmsg = cJSON_PrintUnformatted(root);
+    if (!intmsg) {
+        ESP_LOGE(MESH_TAG, "No RAM building metrics message");
+        cJSON_Delete(root);
+        return ESP_FAIL;
+    }
+
+    mqttSender_t meshMsg = {0};
+    meshMsg.msg    = intmsg;
+    meshMsg.lenMsg = strlen(intmsg);
+    meshMsg.queue  = discoQueue;
+    meshMsg.addr   = NULL;
+
+    if (xQueueSend(meshQueue, &meshMsg, 0) != pdTRUE) {      // queue frees msg
+        ESP_LOGE(MESH_TAG, "Error queueing metrics msg");
+        free(meshMsg.msg);
+        cJSON_Delete(root);
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(MESH_TAG, "Metrics response queued for Meter [%s]", mid);
+    cJSON_Delete(root);
+    return ESP_OK;
+}
+
+int turn_display(char *cmd)
+{
+    if (!gdispf) {
+        ESP_LOGW(MESH_TAG, "Display disabled; ignoring turn_display");
+        return ESP_FAIL;
+    }
+
+    if (!cmd) {
+        ESP_LOGE(MESH_TAG, "Turn display called with null cmd");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    cJSON *elcmd = cJSON_Parse(cmd);
+    if (!elcmd) {
+        ESP_LOGE(MESH_TAG, "Turn display: command not parsable");
+        return ESP_FAIL;
+    }
+
+    cJSON *cualm = cJSON_GetObjectItem(elcmd, "mid");
+    if (!cJSON_IsString(cualm) || cualm->valuestring == nullptr) {
+        ESP_LOGE(MESH_TAG, "Display cmd missing mid");
+        cJSON_Delete(elcmd);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    // if (strcmp(cualm->valuestring, theBlower.getMID()) == 0)
+    if (true) {
+        cJSON *ltime = cJSON_GetObjectItem(elcmd, "time");
+        if (!cJSON_IsNumber(ltime)) {
+            ESP_LOGE(MESH_TAG, "Display cmd missing time");
+            esp_lcd_panel_disp_on_off(panel_handle, false);
+            cJSON_Delete(elcmd);
+            return ESP_ERR_INVALID_ARG;
+        }
+
+        const int duration_ms = ltime->valueint * 1000;
+        ESP_LOGW(MESH_TAG, "Display MId [%s me] Time [%d]", cualm->valuestring, ltime->valueint);
+
+        if (!showHandle && duration_ms > 0) {
+            esp_lcd_panel_disp_on_off(panel_handle, true);
+
+            const BaseType_t task_ok = xTaskCreate(&showData, "sdata", 1024 * 3, NULL, 5, &showHandle);
+            if (task_ok != pdPASS) {
+                ESP_LOGE(MESH_TAG, "Failed to create display task");
+                esp_lcd_panel_disp_on_off(panel_handle, false);
+                cJSON_Delete(elcmd);
                 return ESP_FAIL;
             }
-            cJSON_Delete(root); 
-            return ESP_OK;
+
+            dispTimer = xTimerCreate("DispT", pdMS_TO_TICKS(duration_ms), pdFALSE, NULL, [](TimerHandle_t /*xTimer*/) {
+                vTaskDelete(showHandle);
+                showHandle = NULL;
+                esp_lcd_panel_disp_on_off(panel_handle, false);
+            });
+
+            if (!dispTimer) {
+                ESP_LOGE(MESH_TAG, "Failed to create display timer");
+                vTaskDelete(showHandle);
+                showHandle = NULL;
+                esp_lcd_panel_disp_on_off(panel_handle, false);
+                cJSON_Delete(elcmd);
+                return ESP_FAIL;
+            }
+
+            if (xTimerStart(dispTimer, 0) != pdPASS) {
+                ESP_LOGE(MESH_TAG, "Failed to start display timer");
+                xTimerDelete(dispTimer, 0);
+                dispTimer = NULL;
+                vTaskDelete(showHandle);
+                showHandle = NULL;
+                esp_lcd_panel_disp_on_off(panel_handle, false);
+                cJSON_Delete(elcmd);
+                return ESP_FAIL;
+            }
+        } else if (duration_ms == 0) {
+            esp_lcd_panel_disp_on_off(panel_handle, false);
+            if (showHandle)
+                vTaskDelete(showHandle);
+            showHandle = NULL;
+            if (dispTimer)
+                xTimerStop(dispTimer, 0);
         }
-        else
-            ESP_LOGE(MESH_TAG,"No Root Metrics");
-
-        return ESP_FAIL;
-}
-
-int  turn_display(char *cmd)
-{
-    cJSON               *cualm,*ltime,*elcmd,*ver;
-
-    if(!gdispf)
-        return ESP_FAIL;
-    //text to json
-    elcmd=cJSON_Parse(cmd);
-    if(elcmd)
-    {
-        cualm= 		cJSON_GetObjectItem(elcmd,"mid");
-
-
-
-        if(cualm)
-        {
-           if(true)
-        //    if(strcmp(cualm->valuestring,theBlower.getMID())==0)
-           {
-                ltime= 		cJSON_GetObjectItem(elcmd,"time");
-                if(!ltime)
-                {
-                    ESP_LOGE(MESH_TAG,"Display No state time");
-                    ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, false));
-                    cJSON_free(elcmd);
-                    return ESP_FAIL;
-                }
-
-                int duration=ltime->valueint*1000;
-
-                ESP_LOGW(MESH_TAG,"Display MId [%s me] Time [%d]",cualm->valuestring,ltime->valueint);
-                if(!showHandle && duration>0)     //is it not active
-                {
-                    ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, true));
-                    xTaskCreate(&showData,"sdata",1024*3,NULL, 5, &showHandle); 
-                    dispTimer=xTimerCreate("DispT",pdMS_TO_TICKS(duration),pdFALSE,NULL, []( TimerHandle_t xTimer)
-                    { 				
-                        vTaskDelete(showHandle);
-                        showHandle=NULL;
-                        ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, false));
-
-                    });   
-                    xTimerStart(dispTimer,0);
-                    //cjson will be deleted at end of routine
-                }
-                else
-                {
-                    if(duration==0)
-                    {
-                        ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, false));
-                        if(showHandle)
-                            vTaskDelete(showHandle);
-                        showHandle=NULL;
-                        if(dispTimer)
-                            xTimerStop(dispTimer,0);
-                    }
-                }
-           }
-        }
-        else 
-        {
-            ESP_LOGE(MESH_TAG,"Display Cmd no MID\n");
-            cJSON_free(elcmd);
-            return ESP_FAIL;
-        }
-        cJSON_free(elcmd);
     }
-    else 
-        ESP_LOGE(MESH_TAG,"NO CMD argument passed. Turn Display error\n");
+
+    cJSON_Delete(elcmd);
     return ESP_OK;
 }
 
-int  check_my_metrics(char *cmd,char *mid)
+int check_my_metrics(char *cmd, char *mid)
 {
-    cJSON               *cualm,*lstate,*elcmd,*ver;
-
-    elcmd=cJSON_Parse(cmd);
-    if(elcmd)
-    {
-        cualm= 		cJSON_GetObjectItem(elcmd,"mid");
-
-        if(cualm)
-        {
-            strcpy(mid,cualm->valuestring);
-            if(true)
-            // if(strcmp(cualm->valuestring,theBlower.getMID())==0)
-            {
-                ESP_LOGW(MESH_TAG,"MId [%s me] Metrics",cualm->valuestring);
-                send_metrics_message(cualm->valuestring);
-            }
-        }
-        else 
-            ESP_LOGE(MESH_TAG,"Metrics Cmd no MID\n");
-        cJSON_free(elcmd);
+    if (cmd == nullptr || mid == nullptr) {
+        ESP_LOGE(MESH_TAG, "Metrics cmd or output buffer is null");
+        return ESP_ERR_INVALID_ARG;
     }
-    else 
-        ESP_LOGE(MESH_TAG,"Metrics Internal error not parsable\n");
 
+    cJSON *elcmd = cJSON_Parse(cmd);
+    if (!elcmd) {
+        ESP_LOGE(MESH_TAG, "Metrics internal error: command not parsable");
+        return ESP_FAIL;
+    }
+
+    cJSON *mid_item = cJSON_GetObjectItem(elcmd, "mid");
+    if (!cJSON_IsString(mid_item) || mid_item->valuestring == nullptr) {
+        ESP_LOGE(MESH_TAG, "Metrics cmd missing mid field");
+        cJSON_Delete(elcmd);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    strcpy(mid, mid_item->valuestring);
+    // if (strcmp(mid_item->valuestring, theBlower.getMID()) == 0)
+    if (true) {
+        ESP_LOGW(MESH_TAG, "MId [%s me] Metrics", mid_item->valuestring);
+        send_metrics_message(mid_item->valuestring);
+    }
+
+    cJSON_Delete(elcmd);
     return ESP_OK;
 }
 
-int  update_my_meter(char *cmd)     
+int update_my_meter(char *cmd)
 {
-    cJSON               *cualm,*bpk,*ks,*k,*elcmd,*sk,*skn,*ver,*baset,*repeatt;
-
-    elcmd=cJSON_Parse(cmd);
-    if(elcmd)
-    {
-        cualm= 		cJSON_GetObjectItem(elcmd,"mid");       // the meter
-
-        if(cualm)
-        {
-            if(true)
-            // if(strcmp(theBlower.getMID(),cualm->valuestring)==0)
-            {   //its for me
-
-                bpk= 		cJSON_GetObjectItem(elcmd,"bpk");       //bpk value
-                ks= 		cJSON_GetObjectItem(elcmd,"ks");        //kwh start
-                k= 		    cJSON_GetObjectItem(elcmd,"k");         //kwh life
-                sk= 		cJSON_GetObjectItem(elcmd,"sk");        // skip acitve y/n
-                skn= 		cJSON_GetObjectItem(elcmd,"skn");       // skip count
-                ver= 		cJSON_GetObjectItem(elcmd,"ver");       //version to set possible OTA
-                baset= 		cJSON_GetObjectItem(elcmd,"baset");       //base time for development
-                repeatt= 	cJSON_GetObjectItem(elcmd,"repeat");       //repeat time for developmentA
-
-                if(bpk && k && ks)
-                {
-                    if(k->valueint<ks->valueint)
-                    {
-                        ESP_LOGW(MESH_TAG,"Update kwh [%d} < Kwstart [%d}",k->valueint,ks->valueint);
-                        cJSON_free(elcmd);
-                        return  ESP_FAIL;
-                    }
-                    char *tmp=(char*)calloc(200,1);
-                    if(tmp)
-                    {
-                        // sprintf(tmp,"MId [%s me] Update Bpk:[%d->%d} kWh:[%d->%d] kWhStart:[%d->%d] Skip:%s SkipCount %d",cualm->valuestring,theBlower.getBPK(),bpk->valueint,
-                        //             theBlower.getLkwh(),k->valueint,theBlower.getKstart(),ks->valueint,sk->valuestring,skn->valueint);
-                        // writeLog(tmp);
-                        free(tmp);
-                    }
-                    theBlower.eraseBlower();           //erase all metrics given new ks and k
-                    // theBlower.setBPK(bpk->valueint);
-                    // theBlower.setLkwh(k->valueint);
-                    // theBlower.setKstart(ks->valueint);
-                    theBlower.saveBlower();
-                }
-                // if(sk)
-                // {
-                //     if(strcmp("y",sk->valuestring)==0)
-                //         theConf.allowSkips=true;
-                //     else
-                //         theConf.allowSkips=false;
-                // }
-                // if(skn)
-                //     theConf.maxSkips=skn->valueint;
-                if(baset)
-                    theConf.baset=baset->valueint;
-                if(repeatt)
-                    theConf.repeat=repeatt->valueint;
-
-                if (sk || skn || baset || repeatt)
-                    write_to_flash();
-
-                if( baset || repeatt)
-                    esp_restart();      //for timers need to reboot
-
-            }
-            else
-                ESP_LOGI(MESH_TAG,"Update It wasnt for me!");
-        }
-        else 
-            ESP_LOGE(MESH_TAG,"Update Cmd missing required param\n");
-        cJSON_free(elcmd);
+    if (!cmd) {
+        ESP_LOGE(MESH_TAG, "Update meter called with null cmd");
+        return ESP_FAIL;
     }
-    else 
-        ESP_LOGE(MESH_TAG,"Update Internal error not parsable\n");
 
+    cJSON *elcmd = cJSON_Parse(cmd);
+    if (!elcmd) {
+        ESP_LOGE(MESH_TAG, "Update Internal error not parsable");
+        return ESP_FAIL;
+    }
+
+    cJSON *cualm   = cJSON_GetObjectItem(elcmd, "mid");       // the meter
+    cJSON *bpk     = cJSON_GetObjectItem(elcmd, "bpk");       // bpk value
+    cJSON *ks      = cJSON_GetObjectItem(elcmd, "ks");        // kwh start
+    cJSON *k       = cJSON_GetObjectItem(elcmd, "k");         // kwh life
+    cJSON *sk      = cJSON_GetObjectItem(elcmd, "sk");        // skip active y/n
+    cJSON *skn     = cJSON_GetObjectItem(elcmd, "skn");       // skip count
+    cJSON *ver     = cJSON_GetObjectItem(elcmd, "ver");       // version for possible OTA
+    cJSON *baset   = cJSON_GetObjectItem(elcmd, "baset");     // base time for development
+    cJSON *repeatt = cJSON_GetObjectItem(elcmd, "repeat");    // repeat time for development
+
+    if (!cualm) {
+        ESP_LOGE(MESH_TAG, "Update Cmd missing required param");
+        cJSON_Delete(elcmd);
+        return ESP_FAIL;
+    }
+
+    // if(strcmp(theBlower.getMID(),cualm->valuestring)==0)
+    if (true) {   // its for me
+
+        if (bpk && k && ks) {
+            if (k->valueint < ks->valueint) {
+                ESP_LOGW(MESH_TAG, "Update kwh [%d} < Kwstart [%d}", k->valueint, ks->valueint);
+                cJSON_Delete(elcmd);
+                return ESP_FAIL;
+            }
+
+            theBlower.eraseBlower();           // erase all metrics given new ks and k
+            // theBlower.setBPK(bpk->valueint);
+            // theBlower.setLkwh(k->valueint);
+            // theBlower.setKstart(ks->valueint);
+            theBlower.saveBlower();
+        }
+
+        // if(sk)
+        // {
+        //     if(strcmp("y",sk->valuestring)==0)
+        //         theConf.allowSkips=true;
+        //     else
+        //         theConf.allowSkips=false;
+        // }
+        // if(skn)
+        //     theConf.maxSkips=skn->valueint;
+        if (baset)
+            theConf.baset = baset->valueint;
+        if (repeatt)
+            theConf.repeat = repeatt->valueint;
+
+        if (sk || skn || baset || repeatt)
+            write_to_flash();
+
+        if (baset || repeatt)
+            esp_restart();      // for timers need to reboot
+
+    } else {
+        ESP_LOGI(MESH_TAG, "Update It wasnt for me!");
+    }
+
+    cJSON_Delete(elcmd);
     return ESP_OK;
 }
 
@@ -672,304 +674,316 @@ int  update_my_meter(char *cmd)
 
 esp_err_t root_send_data_to_node(mesh_addr_t thismac)
 {
-    int                 err;
-    wifi_config_t       configsta;
-    mesh_data_t         data;
-    char                *topic;
-    time_t              now;
-    cJSON               *root;
-    // meshunion_t         *intMessage;
-    mqttSender_t        meshMsg;
+    mesh_data_t  data       = {0};
+    mqttSender_t meshMsg    = {0};
+    time_t       now;
 
     time(&now);
-    //first send
-        root=cJSON_CreateObject();
-        if(root)
-        {
-            cJSON_AddStringToObject(root,"cmd",internal_cmds[BOOTRESP]);
-            cJSON_AddNumberToObject(root,"time",(uint32_t)now);
-            cJSON_AddNumberToObject(root,"profile",theConf.activeProfile);
-            cJSON_AddNumberToObject(root,"day",theConf.dayCycle);
-            cJSON_AddNumberToObject(root,"timermux",theConf.test_timer_div);
 
-            cJSON_AddNumberToObject(root,"start",theBlower.getScheduleStatus());      // this will determine the node to start or not
-            // cJSON_AddNumberToObject(root,"start",theConf.blower_mode);      // this will determine the node to start or not
+    cJSON *root = cJSON_CreateObject();
+    if (!root) {
+        ESP_LOGE(MESH_TAG, "No RAM creating boot response");
+        return ESP_FAIL;
+    }
 
-            char *intmsg=cJSON_PrintUnformatted(root);
-            if(intmsg)
-            {  
-                meshMsg.msg=intmsg;
-                meshMsg.lenMsg=strlen(intmsg);
-                meshMsg.addr=&thismac;
-                if(xQueueSend(meshQueue,&meshMsg,0)!=pdPASS)
-                    ESP_LOGE(MESH_TAG,"Cannot queue fram");   //queue it he will free the message
-            }
-            else
-                ESP_LOGE(MESH_TAG,"send data node no RAM");
+    cJSON_AddStringToObject(root, "cmd", internal_cmds[BOOTRESP]);
+    cJSON_AddNumberToObject(root, "time", (uint32_t)now);
+    cJSON_AddNumberToObject(root, "profile", theConf.activeProfile);
+    cJSON_AddNumberToObject(root, "day", theConf.dayCycle);
+    cJSON_AddNumberToObject(root, "timermux", theConf.test_timer_div);
+    cJSON_AddNumberToObject(root, "start", theBlower.getScheduleStatus());  // determines node start
 
-            cJSON_Delete(root); 
-            return ESP_OK;
-        }
-        else
-            return ESP_FAIL;
-            delay(500);   // let time to node to process first message
+    char *intmsg = cJSON_PrintUnformatted(root);
+    if (!intmsg) {
+        ESP_LOGE(MESH_TAG, "send data node no RAM");
+        cJSON_Delete(root);
+        return ESP_FAIL;
+    }
 
-        // now send the theConf modbus configurations binary data
-        int big=sizeof(theConf.limits)+sizeof(theConf.modbus_battery)+
-                        sizeof(theConf.modbus_panels)+
-                        sizeof(theConf.modbus_inverter)+
-                        sizeof(theConf.modbus_sensors );
-        printf("Big Modbus data to send %d\n",big);
-        
-        meshunion_t *intMessage=(meshunion_t*)calloc(1,big+4);     // the reserving of space for the union is not the sizeof union just arbitrary 
-        void *p=(void*)intMessage+4;
-        memcpy(p,&theConf.milim,big);        //copy the message itself, offset 4 for cmd uint32 start offset is milim
-        intMessage->cmd=MESH_INT_DATA_MODBUS;
-        data.proto = MESH_PROTO_BIN;
-        data.tos = MESH_TOS_P2P;
-        data.data=(uint8_t*)intMessage;
-        data.size=big+4;
-        esp_mesh_send(meshMsg.addr, &data, meshMsg.addr==NULL? MESH_DATA_FROMDS:MESH_DATA_P2P, NULL, 0);
-        free(intMessage);
+    meshMsg.msg    = intmsg;
+    meshMsg.lenMsg = strlen(intmsg);
+    meshMsg.addr   = &thismac;
+
+    if (xQueueSend(meshQueue, &meshMsg, 0) != pdPASS)
+        ESP_LOGE(MESH_TAG, "Cannot queue fram");   // queue takes ownership and frees msg
+
+    cJSON_Delete(root);
+
+    delay(500);   // let time to node to process first message
+
+    // now send the theConf modbus configurations binary data
+    int big = sizeof(theConf.limits) + sizeof(theConf.modbus_battery) +
+              sizeof(theConf.modbus_panels) +
+              sizeof(theConf.modbus_inverter) +
+              sizeof(theConf.modbus_sensors);
+    printf("Big Modbus data to send %d\n", big);
+    
+    meshunion_t *intMessage = (meshunion_t*)calloc(1, big + 4);     // allocate payload + cmd header
+    if (!intMessage) {
+        ESP_LOGE(MESH_TAG, "No RAM for modbus config send");
+        return ESP_FAIL;
+    }
+
+    void *p = (void*)intMessage + 4;
+    memcpy(p, &theConf.milim, big);        // copy the message itself, offset 4 for cmd uint32 start offset is milim
+    intMessage->cmd = MESH_INT_DATA_MODBUS;
+
+    data.proto = MESH_PROTO_BIN;
+    data.tos   = MESH_TOS_P2P;
+    data.data  = (uint8_t*)intMessage;
+    data.size  = big + 4;
+
+    int err = esp_mesh_send(meshMsg.addr, &data, meshMsg.addr == NULL ? MESH_DATA_FROMDS : MESH_DATA_P2P, NULL, 0);
+    free(intMessage);
+
+    if (err) {
+        ESP_LOGE(MESH_TAG, "Cannot send modbus config err=0x%x", err);
+        return err;
+    }
 
     return ESP_OK;
 }   
 
 int root_sendNodeACK(void *parg)
 {
-    mqttSender_t        meshMsg;
-
-    mesh_data_t data;
-    mesh_addr_t *from=(mesh_addr_t*)parg;
-    // printf("Send Node Install confirmation sent to "MACSTR"\n",MAC2STR(from->addr));
-    char *mensaje=(char*)calloc(1,100);
-    if(mensaje)
-    {
-        strcpy(mensaje,"{\"cmd\":\"installconf\"}");      //cJSON is long /elaborate for this simple message
-
-            meshMsg.msg=mensaje;
-            meshMsg.lenMsg=strlen(mensaje);
-            meshMsg.queue=NULL;
-            meshMsg.addr=from;      //to specific node
-            if(xQueueSend(meshQueue,&meshMsg,0)!=pdTRUE)      //will free mensaje INTERNAL Message 
-            {
-                ESP_LOGE(MESH_TAG,"Error queueing sendNodeACK msg");
-                if(meshMsg.msg)        
-                    free(meshMsg.msg);  //due to failure
-                return ESP_FAIL;
-            }
-    }
-    return ESP_OK;
-}
-
-esp_err_t root_send_confirmation_central(char *msg,uint16_t size,char *cualQ)
-{
-    mqttSender_t        mqttMsg;
-    char *confmsg=(char*)calloc(1,size);
-    // printf("SentoCentral [%s]/%d to Queue [%s]\n",msg,size,cualQ);
-    memcpy(confmsg,msg,size);
-    mqttMsg.queue=cualQ;
-    mqttMsg.msg=confmsg;                                    // freed by mqtt sender
-    mqttMsg.lenMsg=size;
-    mqttMsg.code=NULL;
-    mqttMsg.param=0;
-    if(xQueueSend(mqttSender,&mqttMsg,0)!=pdTRUE)               // NETWORK message
-    {
-        ESP_LOGE(MESH_TAG,"Error queueing confirm msg %s",cualQ);
-        if(mqttMsg.msg)                     // already done but ....
-            free(mqttMsg.msg);              //due to failure
+    mesh_addr_t *from = (mesh_addr_t*)parg;
+    if (!from) {
+        ESP_LOGE(MESH_TAG, "sendNodeACK missing source address");
         return ESP_FAIL;
     }
+
+    char *mensaje = (char*)calloc(1, 32);
+    if (!mensaje) {
+        ESP_LOGE(MESH_TAG, "No RAM for sendNodeACK msg");
+        return ESP_FAIL;
+    }
+
+    strcpy(mensaje, "{\"cmd\":\"installconf\"}");
+
+    mqttSender_t meshMsg = {0};
+    meshMsg.msg   = mensaje;
+    meshMsg.lenMsg= strlen(mensaje);
+    meshMsg.queue = NULL;
+    meshMsg.addr  = from;      //to specific node
+
+    if (xQueueSend(meshQueue, &meshMsg, 0) != pdTRUE) {  //will free mensaje INTERNAL Message
+        ESP_LOGE(MESH_TAG, "Error queueing sendNodeACK msg");
+        free(meshMsg.msg);
+        return ESP_FAIL;
+    }
+
     return ESP_OK;
 }
 
-esp_err_t root_send_confirmation_central_cb(char *msg,char *cualQ,mesh_addr_t *from)
+esp_err_t root_send_confirmation_central(char *msg, uint16_t size, char *cualQ)
 {
-    mqttSender_t        mqttMsg;
-    mesh_addr_t         *localcopy;
+    if (!msg || !cualQ || size == 0) {
+        ESP_LOGE(MESH_TAG, "Invalid confirm msg input");
+        return ESP_FAIL;
+    }
 
-        localcopy=(mesh_addr_t*)calloc(1,sizeof(mesh_addr_t));
-        memcpy(localcopy,from,sizeof(mesh_addr_t));
-        // printf("SentoCentral [%s]/%d to Queue [%s]\n",msg,strlen(msg),cualQ);
-        mqttMsg.queue=cualQ;
-        mqttMsg.msg=msg;                                    // freed by mqtt sender
-        mqttMsg.lenMsg=strlen(msg);
-        mqttMsg.code=root_sendNodeACK;
-        mqttMsg.param=(uint32_t*)localcopy;                   //the beaty of C++ do whatever u want it will leak...now freed also when sent
-        if(xQueueSend(mqttSender,&mqttMsg,0)!=pdTRUE)       
-        {
-            ESP_LOGE(MESH_TAG,"Error queueing confirm msg %s",cualQ);
-            if(mqttMsg.msg)
-                free(mqttMsg.msg);  //due to failure
-            return ESP_FAIL;
-        }
-        return ESP_OK;
+    char *confmsg = (char*)calloc(1, size);
+    if (!confmsg) {
+        ESP_LOGE(MESH_TAG, "No RAM for confirm msg");
+        return ESP_FAIL;
+    }
+
+    memcpy(confmsg, msg, size);
+
+    mqttSender_t mqttMsg = {0};
+    mqttMsg.queue  = cualQ;
+    mqttMsg.msg    = confmsg;  // freed by mqtt sender
+    mqttMsg.lenMsg = size;
+    mqttMsg.code   = NULL;
+    mqttMsg.param  = 0;
+
+    if (xQueueSend(mqttSender, &mqttMsg, 0) != pdTRUE) {
+        ESP_LOGE(MESH_TAG, "Error queueing confirm msg %s", cualQ);
+        free(confmsg);
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
 }
 
-esp_err_t root_average_Solar(solarSystem_t *accum, solarSystem_t *src,uint8_t count)
+esp_err_t root_send_confirmation_central_cb(char *msg, char *cualQ, mesh_addr_t *from)
 {
-    accum->pvPanel.chargeCurr+=src->pvPanel.chargeCurr/count;
-    accum->pvPanel.pv1Volts+=src->pvPanel.pv1Volts/count;
-    accum->pvPanel.pv2Volts+=src->pvPanel.pv2Volts/count;
-    accum->pvPanel.pv1Amp+=src->pvPanel.pv1Amp/count;
-    accum->pvPanel.pv2Amp+=src->pvPanel.pv2Amp/count;
+    if (!msg || !cualQ || !from) {
+        ESP_LOGE(MESH_TAG, "Invalid confirm cb input");
+        return ESP_FAIL;
+    }
 
-    accum->battery.batSOC+=src->battery.batSOC/count;
-    accum->battery.batSOH+=src->battery.batSOH/count;
-    accum->battery.batteryCycleCount+=src->battery.batteryCycleCount/count;
-    accum->battery.batBmsTemp+=src->battery.batBmsTemp/count;
+    const size_t msg_len = strlen(msg);
+    if (msg_len == 0) {
+        ESP_LOGE(MESH_TAG, "Confirm cb message is empty");
+        free(msg);
+        return ESP_FAIL;
+    }
 
-    accum->energy.batChgAHToday+=src->energy.batChgAHToday/count;
-    accum->energy.batDischgAHToday+=src->energy.batDischgAHToday/count;
-    accum->energy.batChgAHTotal+=src->energy.batChgAHTotal/count;
-    accum->energy.batDischgAHTotal+=src->energy.batDischgAHTotal/count;  
-    accum->energy.generateEnergyToday+=src->energy.generateEnergyToday/count;
-    accum->energy.usedEnergyToday+=src->energy.usedEnergyToday/count; 
-    accum->energy.gLoadConsumLineTotal+=src->energy.gLoadConsumLineTotal/count; 
-    accum->energy.batChgkWhToday+=src->energy.batChgkWhToday/count; 
-    accum->energy.batDischgkWhToday+=src->energy.batDischgkWhToday/count; 
-    accum->energy.genLoadConsumToday+=src->energy.genLoadConsumToday/count; 
+    mesh_addr_t *localcopy = (mesh_addr_t*)calloc(1, sizeof(mesh_addr_t));
+    if (!localcopy) {
+        ESP_LOGE(MESH_TAG, "No RAM for confirm cb addr");
+        free(msg);
+        return ESP_FAIL;
+    }
+    memcpy(localcopy, from, sizeof(mesh_addr_t));
 
-    accum->sensors.DO+=src->sensors.DO/count;
-    accum->sensors.PH+=src->sensors.PH/count;
-    accum->sensors.WTemp+=src->sensors.WTemp/count;  
-    accum->sensors.ATemp+=src->sensors.ATemp/count;
-    accum->sensors.AHum+=src->sensors.AHum/count;   
+    mqttSender_t mqttMsg = {0};
+    mqttMsg.queue  = cualQ;
+    mqttMsg.msg    = msg;  // freed by mqtt sender
+    mqttMsg.lenMsg = msg_len;
+    mqttMsg.code   = root_sendNodeACK;
+    mqttMsg.param  = (uint32_t*)localcopy;
+
+    if (xQueueSend(mqttSender, &mqttMsg, 0) != pdTRUE) {
+        ESP_LOGE(MESH_TAG, "Error queueing confirm msg %s", cualQ);
+        free(mqttMsg.msg);
+        free(localcopy);
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t root_average_Solar(solarSystem_t *accum, solarSystem_t *src, uint8_t count)
+{
+    if (!accum || !src || count == 0) {
+        ESP_LOGE(MESH_TAG, "Invalid args to root_average_Solar");
+        return ESP_FAIL;
+    }
+
+    accum->pvPanel.chargeCurr     += src->pvPanel.chargeCurr / count;
+    accum->pvPanel.pv1Volts       += src->pvPanel.pv1Volts / count;
+    accum->pvPanel.pv2Volts       += src->pvPanel.pv2Volts / count;
+    accum->pvPanel.pv1Amp         += src->pvPanel.pv1Amp / count;
+    accum->pvPanel.pv2Amp         += src->pvPanel.pv2Amp / count;
+
+    accum->battery.batSOC         += src->battery.batSOC / count;
+    accum->battery.batSOH         += src->battery.batSOH / count;
+    accum->battery.batteryCycleCount += src->battery.batteryCycleCount / count;
+    accum->battery.batBmsTemp     += src->battery.batBmsTemp / count;
+
+    accum->energy.batChgAHToday   += src->energy.batChgAHToday / count;
+    accum->energy.batDischgAHToday+= src->energy.batDischgAHToday / count;
+    accum->energy.batChgAHTotal   += src->energy.batChgAHTotal / count;
+    accum->energy.batDischgAHTotal+= src->energy.batDischgAHTotal / count;
+    accum->energy.generateEnergyToday += src->energy.generateEnergyToday / count;
+    accum->energy.usedEnergyToday += src->energy.usedEnergyToday / count;
+    accum->energy.gLoadConsumLineTotal += src->energy.gLoadConsumLineTotal / count;
+    accum->energy.batChgkWhToday  += src->energy.batChgkWhToday / count;
+    accum->energy.batDischgkWhToday += src->energy.batDischgkWhToday / count;
+    accum->energy.genLoadConsumToday += src->energy.genLoadConsumToday / count;
+
+    accum->sensors.DO             += src->sensors.DO / count;
+    accum->sensors.PH             += src->sensors.PH / count;
+    accum->sensors.WTemp          += src->sensors.WTemp / count;
+    accum->sensors.ATemp          += src->sensors.ATemp / count;
+    accum->sensors.AHum           += src->sensors.AHum / count;
 
     return ESP_OK;
 }
 
 esp_err_t root_send_collected_nodes(uint32_t cuantos)        //root only
 {
-    mqttSender_t        mqttMsg;
-    solarSystem_t       *solar=NULL,*solarPad=NULL; 
-    meshunion_t*        meshMsg;
+    if (cuantos == 0) {
+        ESP_LOGW(MESH_TAG, "No nodes to send");
+        sendMeterf = false;
+        if (xTimerStart(collectTimer, 0) != pdPASS)
+            ESP_LOGE(MESH_TAG, "Repeat Timer collected failed");
+        return ESP_OK;
+    }
 
-    theBlower.setStatsLastBlowerCount(cuantos);
-// TickType_t xRemainingTime =xTimerGetExpiryTime( sendMeterTimer ) - xTaskGetTickCount();
-// ESP_LOGI(MESH_TAG,"Collect Data time %dms",10000-pdTICKS_TO_MS(xRemainingTime));
-
-//build mqtt message
-//since its binary and can change the number of nodes, first uint32 of message is the number of Nodes in this message
-           
-    uint32_t hp=esp_get_free_heap_size();
-    uint32_t tosend=1;    // //sk   // if we use S
-    //if we are skipping then logic will change thisip any node that has the do not send AND is powered on. If powered off skip this skip jaja
-    // if(theConf.allowSkips)
-    // {
-
-    // }
-
-    if((theConf.debug_flags >> dMESH) & 1U)  
-        ESP_LOGW(MESH_TAG,"%sCollected NODES heap %d nodes %d send %d",DBG_MESH,hp,cuantos,tosend);
-
-    solarPad=(solarSystem_t*)calloc(1,sizeof(solarSystem_t));
-    if(!solarPad)
-    {
-        ESP_LOGE(MESH_TAG,"No RAM solarPad");
-        sendMeterf=false;
-        if( xTimerStart(collectTimer, 0 ) != pdPASS )
-            ESP_LOGE(MESH_TAG,"Repeat Timer collected  failed");   
+    mqttSender_t mqttMsg;
+    solarSystem_t *solarPad = (solarSystem_t*)calloc(1, sizeof(solarSystem_t));
+    if (!solarPad) {
+        ESP_LOGE(MESH_TAG, "No RAM solarPad");
+        sendMeterf = false;
+        if (xTimerStart(collectTimer, 0) != pdPASS)
+            ESP_LOGE(MESH_TAG, "Repeat Timer collected failed");
         return ESP_FAIL;
     }
-    for (int a=0;a<cuantos;a++)                                             //data is stored in the MasterNode Structure
-    {
-        // if(theConf.allowSkips)
-        // {
-        //     if(masterNode.theTable.sendit[a])
-        //     {
-        //         if(masterNode.theTable.thedata[a])                                  //if data present
-        //         {
-        //             meshMsg=(meshunion_t*)masterNode.theTable.thedata[a];
-        //             solar=(solarSystem_t*)&meshMsg->nodedata.solarData;
-        //             root_average_Solar(solarPad,solar,cuantos);
-        //         }
-        //         else 
-        //             ESP_LOGW(MESH_TAG,"Error null data on node skip %d\n",a);
-        //     }
-        // }
-        // else
-        // {
-            if(masterNode.theTable.thedata[a])                                  //if data present
-            {
-                meshMsg=(meshunion_t*)masterNode.theTable.thedata[a];
-                solar=&meshMsg->nodedata.solarData.solarSystem;
-                root_average_Solar(solarPad,solar,cuantos);
-            }
-            else 
-                ESP_LOGE(MESH_TAG,"Error null data on node %d " MACSTR "\n",a,MAC2STR(masterNode.theTable.big_table[a].addr));
-        // }
+
+    const uint32_t hp = esp_get_free_heap_size();
+    if ((theConf.debug_flags >> dMESH) & 1U)
+        ESP_LOGW(MESH_TAG, "%sCollected NODES heap %d nodes %d", DBG_MESH, hp, cuantos);
+
+    int valid_nodes = 0;
+    for (uint32_t a = 0; a < cuantos; a++) {
+        if (masterNode.theTable.thedata[a])
+            valid_nodes++;
+        else
+            ESP_LOGE(MESH_TAG, "Error null data on node %d " MACSTR, a, MAC2STR(masterNode.theTable.big_table[a].addr));
     }
-    // average done, set the shrimp mesasge structure
-    shrimpMsg_t *shmsg=(shrimpMsg_t*)calloc(1,sizeof(shrimpMsg_t));
-    if(!shmsg)
-    {
-        //fuck
-        ESP_LOGE(MESH_TAG,"No ram shmsg");
-        sendMeterf=false;
-        if( xTimerStart(collectTimer, 0 ) != pdPASS )
-            ESP_LOGE(MESH_TAG,"Repeat Timer collected  failed");
+
+    if (valid_nodes == 0) {
+        ESP_LOGE(MESH_TAG, "No valid node data to aggregate");
+        free(solarPad);
+        sendMeterf = false;
+        if (xTimerStart(collectTimer, 0) != pdPASS)
+            ESP_LOGE(MESH_TAG, "Repeat Timer collected failed");
+        return ESP_FAIL;
+    }
+
+    for (uint32_t a = 0; a < cuantos; a++) {
+        if (!masterNode.theTable.thedata[a])
+            continue;
+
+        meshunion_t *meshMsg = (meshunion_t*)masterNode.theTable.thedata[a];
+        solarSystem_t *solar = &meshMsg->nodedata.solarData.solarSystem;
+        root_average_Solar(solarPad, solar, valid_nodes);
+    }
+
+    shrimpMsg_t *shmsg = (shrimpMsg_t*)calloc(1, sizeof(shrimpMsg_t));
+    if (!shmsg) {
+        ESP_LOGE(MESH_TAG, "No ram shmsg");
+        sendMeterf = false;
+        if (xTimerStart(collectTimer, 0) != pdPASS)
+            ESP_LOGE(MESH_TAG, "Repeat Timer collected failed");
         free(solarPad);
         return ESP_FAIL;
     }
 
-    // set data and copy solarPad into shrimp message to send to MAIN HOST via MQTT HQ
-    memcpy(&shmsg->poolAvgMetrics,solarPad,sizeof(solarSystem_t));
-    // update the current schedule data that is lost during averaging
-    wschedule_t *scheduleData=theBlower.getSchedulePtr();
-    memcpy(&shmsg->poolAvgMetrics.wschedule,scheduleData,sizeof(wschedule_t));
-    print_blower("Root Average Solar Data", &shmsg->poolAvgMetrics,false);
-    shmsg->msgTime=time(NULL);
-    shmsg->poolid=theConf.poolid;
-    shmsg->countnodes=cuantos;
-    shmsg->centinel=0x12345678;
-    shmsg->lim_errs=globalErrors;
-    // printf("Schedule status %d\n",shmsg->poolAvgMetrics.wschedule.status);
-    // printf("Global Errors %d\n",globalErrors);
-    // if((theConf.debug_flags >> dSCH) & 1U)  
-    //     printf("Schedule Cycle %d Day %d Horario %d Start %d End %d  Status %d PWM %d\n",scheduleData->currentCycle,scheduleData->currentDay,
-    //         scheduleData->currentHorario,scheduleData->currentStartHour,scheduleData->currentEndHour,scheduleData->status,scheduleData->currentPwmDuty);
+    memcpy(&shmsg->poolAvgMetrics, solarPad, sizeof(solarSystem_t));
+    wschedule_t *scheduleData = theBlower.getSchedulePtr();
+    if (scheduleData)
+        memcpy(&shmsg->poolAvgMetrics.wschedule, scheduleData, sizeof(wschedule_t));
 
-    // memcpy(&shmsg->schedule,&scheduleData,sizeof(wschedule_t));
+    print_blower("Root Average Solar Data", &shmsg->poolAvgMetrics, false);
+    shmsg->msgTime    = time(NULL);
+    shmsg->poolid     = theConf.poolid;
+    shmsg->countnodes = valid_nodes;
+    shmsg->centinel   = 0x12345678;
+    shmsg->lim_errs   = globalErrors;
 
-    free(solarPad); // not neeed anymore
-    solarPad=NULL;
+    free(solarPad);
 
-    if(root_delete_routing_table()!=ESP_OK)
-    {
-        ESP_LOGE(MESH_TAG,"Error deleting Routing table");
+    if (root_delete_routing_table() != ESP_OK) {
+        ESP_LOGE(MESH_TAG, "Error deleting Routing table");
+        free(shmsg);
+        sendMeterf = false;
+        if (xTimerStart(collectTimer, 0) != pdPASS)
+            ESP_LOGE(MESH_TAG, "Repeat Timer collected failed");
         return ESP_FAIL;
     }
 
-    // if(tosend==0)
-    // {
-    //     sendMeterf=false;
-    //     if( xTimerStart(collectTimer, 0 ) != pdPASS )
-    //         ESP_LOGE(MESH_TAG,"Repeat Timer collected  failed");  
-    //     return ESP_OK;          //nothing to send or to do
-    // }
+    mqttMsg.queue = infoQueue;
+    mqttMsg.msg   = (char*)shmsg;  // freed by mqtt sender
+    mqttMsg.lenMsg = sizeof(shrimpMsg_t);
+    mqttMsg.code  = NULL;
+    mqttMsg.param = NULL;
 
-    // printf("Sending Average Solar Data to MQTT HQ size %d\n", sizeof(shrimpMsg_t)); 
-    // esp_log_buffer_hex(MESH_TAG,shmsg,sizeof(shrimpMsg_t)); 
-    mqttMsg.queue=                      infoQueue;
-    mqttMsg.msg=                        (char*)shmsg;                                // freed by mqtt sender
-    mqttMsg.lenMsg=                     sizeof(shrimpMsg_t);
-    mqttMsg.code=                       NULL;
-    mqttMsg.param=                      NULL;
-    if(xQueueSend(mqttSender,&mqttMsg,0)!=pdTRUE)      //will free todo 
-    {
-        ESP_LOGE(MESH_TAG,"Error queueing msg");
-        if(mqttMsg.msg)
-            free(mqttMsg.msg);  //due to failure
-            // need to reset timer due to "exceptional" error and not consiedred generic failure
-        sendMeterf=false;
-        if( xTimerStart(collectTimer, 0 ) != pdPASS )
-            ESP_LOGE(MESH_TAG,"Repeat Timer collected mqttsender failed");  
+    if (xQueueSend(mqttSender, &mqttMsg, 0) != pdTRUE) {
+        ESP_LOGE(MESH_TAG, "Error queueing msg");
+        if (mqttMsg.msg)
+            free(mqttMsg.msg);
+        sendMeterf = false;
+        if (xTimerStart(collectTimer, 0) != pdPASS)
+            ESP_LOGE(MESH_TAG, "Repeat Timer collected mqttsender failed");
         return ESP_FAIL;
     }
-    else
-            //must set the wifi_event_bit SEND_MQTT_BIT, else it will just collect the message in the queue
-        xEventGroupSetBits(wifi_event_group, SENDMQTT_BIT);	// Send everything now !!!!!
+
+    //must set the wifi_event_bit SEND_MQTT_BIT, else it will just collect the message in the queue
+    xEventGroupSetBits(wifi_event_group, SENDMQTT_BIT); // Send everything now !!!!!
 
     return ESP_OK;
 }
@@ -980,277 +994,245 @@ esp_err_t root_send_collected_nodes(uint32_t cuantos)        //root only
 // ladata is  meshunion_t * myNode
 esp_err_t root_check_incoming_meters(mesh_addr_t *who, void* ladata)
 {
-    mqttSender_t        mqttMsg;
-    esp_err_t           err;
+    if (root_load_routing_table_mac(who, ladata) != ESP_OK)
+        return ESP_FAIL;  // failed to store incoming meter data
 
-    if(root_load_routing_table_mac(who,ladata)==ESP_OK)      //save messages in our masternode table
-    {
+    if (counting_nodes > 0)
         counting_nodes--;
-
-        if(counting_nodes==0)                           //when we reach existing node count, start sending process
-        {
-            //stop watchdog timer
-            // if(xTimerIsTimerActive(sendMeterTimer))
-            // {
-                if( xTimerStop(sendMeterTimer, 0 ) != pdPASS )
-                    ESP_LOGE(MESH_TAG,"Failed to stop SendMeter Timer");
-            // }
-            // printf("Sending data \n");
-            err= root_send_collected_nodes(masterNode.existing_nodes);        //all existing nodes
-            if(err)
-            {
-                    ESP_LOGE(MESH_TAG,"Error sending mqtt msg");
-                    return ESP_FAIL;
-            }
-            else
-                return ESP_OK;   
-        }
-        else
-            return ESP_OK;
-    }
     else
+        ESP_LOGW(MESH_TAG, "counting_nodes underflow while processing incoming meters");
+
+    if (counting_nodes > 0)
+        return ESP_OK;  // still waiting for more nodes
+
+    if (xTimerStop(sendMeterTimer, 0) != pdPASS)
+        ESP_LOGE(MESH_TAG, "Failed to stop SendMeter Timer");
+
+    esp_err_t err = root_send_collected_nodes(masterNode.existing_nodes);
+    if (err != ESP_OK) {
+        ESP_LOGE(MESH_TAG, "Error sending mqtt msg");
         return ESP_FAIL;
+    }
+
+    return ESP_OK;
 }
 
 void root_timer(void *parg)
 {
-    mqttSender_t        mqttMsg;
-    esp_err_t           err;
-    
-    while(true)
-    {
-        xEventGroupWaitBits(otherGroup,REPEAT_BIT,pdTRUE,pdFALSE,portMAX_DELAY);    //wait forever, this is the starting gun, flag will be cleared
+    (void)parg;
 
-        ESP_LOGW(MESH_TAG,"Mesh Timeout. Will send only %d nodes",masterNode.existing_nodes-counting_nodes);
-for (int a=0;a<masterNode.existing_nodes;a++)
-{
-    if(!masterNode.theTable.thedata[a])
-        esp_rom_printf("Node not sending %d of %d" MACSTR " \n",a,masterNode.existing_nodes,MAC2STR(masterNode.theTable.big_table[a].addr));
-    else
-        esp_rom_printf("Valid answer %d of %d" MACSTR " \n",a,masterNode.existing_nodes,MAC2STR(masterNode.theTable.big_table[a].addr));
-}
+    while (true) {
+        // wait forever; flag is cleared on exit
+        xEventGroupWaitBits(otherGroup, REPEAT_BIT, pdTRUE, pdFALSE, portMAX_DELAY);
 
-        if(sendMeterf)      //recheck we are sending mode
-        {
-            if((masterNode.existing_nodes-counting_nodes)>0)
-            {
-                err= root_send_collected_nodes(masterNode.existing_nodes-counting_nodes);        //existing nodes minus pending
-                if(err)
-                    ESP_LOGE(MESH_TAG,"Error sending meter timeout msg");
+        const int pending = masterNode.existing_nodes - counting_nodes;
+        ESP_LOGW(MESH_TAG, "Mesh Timeout. Will send only %d nodes", pending);
+
+        for (int a = 0; a < masterNode.existing_nodes; a++) {
+            if (!masterNode.theTable.thedata[a]) {
+                esp_rom_printf("Node not sending %d of %d" MACSTR " \n", a, masterNode.existing_nodes,
+                               MAC2STR(masterNode.theTable.big_table[a].addr));
+            } else {
+                esp_rom_printf("Valid answer %d of %d" MACSTR " \n", a, masterNode.existing_nodes,
+                               MAC2STR(masterNode.theTable.big_table[a].addr));
             }
-            else
-                sendMeterf=false;       //reset flag on error
         }
-        // if(!xTimerIsTimerActive(collectTimer))
-            if( xTimerStart(collectTimer, 0 ) != pdPASS )
-                ESP_LOGE(MESH_TAG,"Repeat Timer mqtt saender failed");
+
+        if (sendMeterf) {
+            if (pending > 0) {
+                if (root_send_collected_nodes(pending) != ESP_OK)
+                    ESP_LOGE(MESH_TAG, "Error sending meter timeout msg");
+            } else {
+                sendMeterf = false;  // reset flag on error/empty
+            }
+        }
+
+        if (xTimerStart(collectTimer, 0) != pdPASS)
+            ESP_LOGE(MESH_TAG, "Repeat Timer mqtt saender failed");
     }
 }
 
 
 void root_collect_meter_data(TimerHandle_t algo)
 {
-    int                 err;    
-    mesh_data_t         data;
-    char                *buf;
-    struct tm           timeinfo;
-    time_t              now;
-    char*               broadcast;
-    meshunion_t         *intMessage;
+    if (!esp_mesh_is_root())
+        return;
 
-// get routing table if root
-    if(esp_mesh_is_root())
-    {
-        if(sendMeterf )
-        {
-            ESP_LOGW(MESH_TAG,"Collect called without previous called finished"); //very import check, else HEAP collapse eventually
-            //maybe just reset the flag and return
-            // analyze this carefully its vital
-            // the flag is reset by the MQtt manager meaning a message was sent or error in root_timer
-            sendMeterf=false;
-            return;
-        }
-
-        err=get_routing_table();        // Get our routing table, This is how many nodes we should esxpect messages from
-        if(err)
-        {
-            ESP_LOGE(MESH_TAG,"Could not get routing table FATAL");
-            sendMeterf=false;
-            return;
-        }
-        // send Broadcast  to start receiving meters from nodes 
-        intMessage=(meshunion_t*)calloc(1,sizeof(meshunion_t));     // the reserving of space for the union is not the sizeof union, an 
-                                                    // arbitrary number of bytes
-        if(!intMessage)
-        {
-            ESP_LOGE(MESH_TAG,"Could not calloc collect meter FATAL");      //very unlikely unless free unbalance 
-            return;
-        }
-        sendMeterf=true;            //now in sendmeter mode so start timer on this message to nodes
-   // changed timer here IMPORTANT
-        // if(!xTimerIsTimerActive(sendMeterTimer))
-        // {
-            // esp_rom_printf("First sendtimer\n");
-            if( xTimerStart(sendMeterTimer, 0 ) != pdPASS )         // mesh rx timer
-                ESP_LOGE(MESH_TAG,"SendMeter Timer failed");
-        // }
-        intMessage->cmd=MESH_INT_DATA_CJSON;
-        strcpy(intMessage->parajson,"{\"cmd\":\"sendmetrics\"}");      //cJSON is long /elaborate for this simple message
-        data.data   =(uint8_t*)intMessage;
-        data.size   = strlen(intMessage->parajson)+4;
-        data.proto  = MESH_PROTO_BIN;
-        data.tos    = MESH_TOS_P2P;
-        //send a Broadcast Message to all nodes to send their data
-        err= esp_mesh_send( &GroupID, &data, MESH_DATA_P2P, NULL, MESH_OPT_SEND_GROUP);         //broadcast msg to mesh, must be freed by us
-        if(err)
-        {
-            ESP_LOGE(MESH_TAG,"Broadcast failed. Now message in this slots %x",err);
-            root_delete_routing_table();    
-            free(intMessage); 
-            sendMeterf=false;
-            // return; 
-        }
-        free(intMessage);    
+    if (sendMeterf) {
+        ESP_LOGW(MESH_TAG, "Collect called without previous finished; resetting flag");
+        sendMeterf = false;
+        return;
     }
+
+    if (get_routing_table() != ESP_OK) {
+        ESP_LOGE(MESH_TAG, "Could not get routing table");
+        sendMeterf = false;
+        return;
+    }
+
+    meshunion_t *intMessage = (meshunion_t*)calloc(1, sizeof(meshunion_t));
+    if (!intMessage) {
+        ESP_LOGE(MESH_TAG, "Could not calloc collect meter message");
+        sendMeterf = false;
+        return;
+    }
+
+    const char payload[] = "{\"cmd\":\"sendmetrics\"}";
+    const size_t payload_len = strlen(payload);
+
+    intMessage->cmd = MESH_INT_DATA_CJSON;
+    strncpy(intMessage->parajson, payload, payload_len);
+    intMessage->parajson[payload_len] = '\0';
+
+    mesh_data_t data = {0};
+    data.data   = (uint8_t*)intMessage;
+    data.size   = payload_len + 4;  // payload + cmd header
+    data.proto  = MESH_PROTO_BIN;
+    data.tos    = MESH_TOS_P2P;
+
+    sendMeterf = true;  // now in sendmeter mode so start timer on this message to nodes
+    if (xTimerStart(sendMeterTimer, 0) != pdPASS) {
+        ESP_LOGE(MESH_TAG, "SendMeter Timer start failed");
+        sendMeterf = false;
+        free(intMessage);
+        return;
+    }
+
+    int err = esp_mesh_send(&GroupID, &data, MESH_DATA_P2P, NULL, MESH_OPT_SEND_GROUP); // broadcast msg to mesh
+    if (err) {
+        ESP_LOGE(MESH_TAG, "Broadcast failed. err=0x%x", err);
+        root_delete_routing_table();
+        sendMeterf = false;
+    }
+
+    free(intMessage);
 }
 
 void set_sta_cmd(char *cjText)      //message from Root giving stations ids and passwords and other stuff
 {
-    int err;
-    wifi_config_t       configsta;
-    struct timeval      now;
-    time_t              nowt;
-
-    cJSON *elcmd=cJSON_Parse(cjText);
-    if(!elcmd)
-    {
-        ESP_LOGE(MESH_TAG,"Invalid Station cjson [%s]",cjText);
+    if (!cjText) {
+        ESP_LOGE(MESH_TAG, "Invalid Station cjson: null input");
         return;
     }
-    err=esp_wifi_get_config( WIFI_IF_STA,&configsta);      // get station ssid and password and others
-    if(!err)
-    {
-        // cJSON *ssid= 		cJSON_GetObjectItem(elcmd,"ssid");
-        // cJSON *pswd= 		cJSON_GetObjectItem(elcmd,"psw");
-        cJSON *cjtime= 		    cJSON_GetObjectItem(elcmd,"time");
-        cJSON *prof= 		    cJSON_GetObjectItem(elcmd,"profile");
-        cJSON *dayp= 		    cJSON_GetObjectItem(elcmd,"day");
-        cJSON *mux= 	        cJSON_GetObjectItem(elcmd,"timermux");
-        cJSON *schedule= 	    cJSON_GetObjectItem(elcmd,"start");
-        // cJSON *mqttserver=	cJSON_GetObjectItem(elcmd,"mqtts");
-        // cJSON *mqttuser= 	cJSON_GetObjectItem(elcmd,"mqttu");
-        // cJSON *mqttpass=	cJSON_GetObjectItem(elcmd,"mqttp");
-        // cJSON *skip=	    cJSON_GetObjectItem(elcmd,"sk");
-        // cJSON *skipcount=	cJSON_GetObjectItem(elcmd,"skn");
-        // if(ssid && pswd)
-        // {
-        //     memcpy(&configsta.sta.ssid,ssid->valuestring,strlen(ssid->valuestring));
-        //     memcpy(&configsta.sta.password,pswd->valuestring,strlen(pswd->valuestring));                        //set ssid and password of internal NVS configuration
-        //     err=esp_wifi_set_config( WIFI_IF_STA,&configsta);                                                   // save new ssid and password
-        //     if(err)
-        //         ESP_LOGE(MESH_TAG,"Failed to save new ssid %x",err);
-        //     else
-        //     {
-        //         strcpy(theConf.thepass,pswd->valuestring);
-        //         strcpy(theConf.thessid,ssid->valuestring);
-        //     }
-        // }
-        // else
-        //     ESP_LOGE(MESH_TAG,"Update SSID without ssid or pswd");
 
-        //set time
-        setenv("TZ", LOCALTIME, 1);
-        tzset();
-        now.tv_sec=cjtime->valueint;
-        now.tv_usec=0;
-        settimeofday(&now, NULL);
-        time(&nowt);
-        
-        if((theConf.debug_flags >> dMESH) & 1U)  
-            ESP_LOGI(MESH_TAG,"%sGot new Time %s",DBG_MESH,ctime(&nowt));
-
-            if(!(prof && dayp && schedule))
-                {
-                    printf("Error in set sta parameters \n");
-                    return;
-                }
-        //set location parameters
-        if(prof)
-            theConf.activeProfile=prof->valueint;
-        if(dayp)
-            theConf.dayCycle=dayp->valueint;
-        if(mux)
-            theConf.test_timer_div=mux->valueint;
-
-        if((theConf.debug_flags >> dMESH) & 1U)  
-            ESP_LOGI(MESH_TAG,"%sStation got Profile %d Day %d Mux %d Restart %s",DBG_MESH,theConf.activeProfile,theConf.dayCycle,
-                theConf.test_timer_div,schedule->valueint?"Yes":"No");
-        if(schedule->valueint>0)
-        {
-            // xTaskCreate(&start_schedule_timers,"sched",1024*10,NULL, 5, &scheduleHandle);
-            xSemaphoreGive(workTaskSem);    //activate task
-            theBlower.setScheduleStatus(BLOWERON);
-            // theConf.blower_mode=1;
-        }	       
-
-        // if(skip)
-        //     theConf.allowSkips=skip->valueint;
-        // if(skipcount)
-        //     theConf.maxSkips=skipcount->valueint;
-        // if(mqttserver)
-        //     strcpy(theConf.mqttServer,mqttserver->valuestring);
-        // if(mqttuser)
-        //     strcpy(theConf.mqttUser,mqttuser->valuestring);
-        // if(mqttpass)
-        //     strcpy(theConf.mqttPass,mqttpass->valuestring);
-
-        write_to_flash();      
-        //cmd and info queue names derived from the Config so do it now
-        // sprintf(cmdQueue,"%s/%d/%s",QUEUE,theConf.controllerid,MQTTCMD);
-        // sprintf(infoQueue,"%s/%d/%s",QUEUE,theConf.controllerid,MQTTINFO);
-        // sprintf(emergencyQueue,"%s/%s",QUEUE,MQTTEMER);
-        // sprintf(cmdBroadcast,"%s/%s",QUEUE,MQTTBROADCAST);
-        // sprintf(discoQueue,"%s/%s",QUEUE,MQTTDISCO);
-        // sprintf(installQueue,"%s/%s",QUEUE,MQTTINSTALL);
-        // if(!theConf.masternode)
-        // {
-        //     printf("Start Schedule Non root\n");
-        //     xTaskCreate(&start_schedule_timers,"sched",1024*10,NULL, 5, &scheduleHandle); 	       
-        //     // if(theConf.blower_mode==1)
-        //         xSemaphoreGive(workTaskSem);
-        // }
+    cJSON *elcmd = cJSON_Parse(cjText);
+    if (!elcmd) {
+        ESP_LOGE(MESH_TAG, "Invalid Station cjson [%s]", cjText);
+        return;
     }
-    else
-        ESP_LOGE(MESH_TAG,"Could not get STA config update ssid %x", err);    
+
+    cJSON *cjtime   = cJSON_GetObjectItem(elcmd, "time");
+    cJSON *prof     = cJSON_GetObjectItem(elcmd, "profile");
+    cJSON *dayp     = cJSON_GetObjectItem(elcmd, "day");
+    cJSON *mux      = cJSON_GetObjectItem(elcmd, "timermux");
+    cJSON *schedule = cJSON_GetObjectItem(elcmd, "start");
+
+    if (!(cJSON_IsNumber(cjtime) && cJSON_IsNumber(prof) && cJSON_IsNumber(dayp) && cJSON_IsNumber(schedule))) {
+        ESP_LOGE(MESH_TAG, "Station parameters missing or invalid");
+        cJSON_Delete(elcmd);
+        return;
+    }
+
+    // set time
+    setenv("TZ", LOCALTIME, 1);
+    tzset();
+
+    struct timeval now = {0};
+    now.tv_sec = cjtime->valueint;
+    settimeofday(&now, NULL);
+
+    time_t nowt;
+    time(&nowt);
+    if ((theConf.debug_flags >> dMESH) & 1U)
+        ESP_LOGI(MESH_TAG, "%sGot new Time %s", DBG_MESH, ctime(&nowt));
+
+    const int newProfile = prof->valueint;
+    const int newDay     = dayp->valueint;
+    const int newMux     = mux ? mux->valueint : theConf.test_timer_div;
+    const bool startNow  = schedule->valueint > 0;
+
+    theConf.activeProfile = newProfile;
+    theConf.dayCycle      = newDay;
+    theConf.test_timer_div = newMux;
+
+    if ((theConf.debug_flags >> dMESH) & 1U)
+        ESP_LOGI(MESH_TAG, "%sStation got Profile %d Day %d Mux %d Restart %s", DBG_MESH,
+                 newProfile, newDay, newMux, startNow ? "Yes" : "No");
+    if (startNow) {
+        xSemaphoreGive(workTaskSem);    //activate task
+        theBlower.setScheduleStatus(BLOWERON);
+    }
+
+    write_to_flash();      
     cJSON_Delete(elcmd);
 }
 
+void wifi_send_meter_data(TimerHandle_t algo)
+{
+    if (!clientCloud) {
+        ESP_LOGE(MESH_TAG, "wifi_send_meter_data: MQTT client not initialized");
+        return;
+    }
+
+    shrimpMsg_t *shmsg = (shrimpMsg_t*)calloc(1, sizeof(shrimpMsg_t));
+    if (!shmsg) {
+        ESP_LOGE(MESH_TAG, "No RAM for shrimpMsg_t");
+        return;
+    }
+
+    // copy theBlower solar data into shrimp message to send to MAIN HOST via MQTT HQ
+    memcpy(&shmsg->poolAvgMetrics, theBlower.getSolarSystem(), sizeof(solarSystem_t));
+    // update the current schedule data that is lost during averaging
+    wschedule_t *scheduleData = theBlower.getSchedulePtr();
+    if (scheduleData)
+        memcpy(&shmsg->poolAvgMetrics.wschedule, scheduleData, sizeof(wschedule_t));
+
+    print_blower("Root Average Solar Data", &shmsg->poolAvgMetrics, false);
+    shmsg->msgTime   = time(NULL);
+    shmsg->poolid    = theConf.poolid;
+    shmsg->countnodes= 1;                //only 1 node in wifi mode
+    shmsg->centinel  = 0x12345678;       // our sentinel
+    shmsg->lim_errs  = globalErrors;     // whatever errors the Blower has recorded
+
+    int msgid = esp_mqtt_client_publish(clientCloud, (char*)infoQueue, (char*)shmsg,
+                                        sizeof(shrimpMsg_t), QOS1, NORETAIN);
+    if (msgid < 0) {
+        ESP_LOGE(MESH_TAG, "Error publishing meter data to MQTT HQ");
+        free(shmsg);
+        return;
+    }
+
+    free(shmsg);
+}
 
 esp_err_t send_datos_to_root()
 {
-    int                 err;
-    mesh_data_t         datas;
-
     // this is binary data and comes with the required header
-    meshunion_t * myNode=sendData(true);
-    if(!myNode)
-    {
-        ESP_LOGE(MESH_TAG,"Error send datos root msg\n");
-        return -2;      //if NULL myNode it wasnt allocated so just return error
+    meshunion_t *myNode = sendData(true);
+    if (!myNode) {
+        ESP_LOGE(MESH_TAG, "Error send datos root msg");
+        return ESP_FAIL;
     }
 
-        print_blower("send datos root",&myNode->nodedata.solarData.solarSystem,false);
-    if(theConf.delay_mesh>0)
-                delay(theConf.delay_mesh*theConf.unitid*SENDMUX);       //trying to avoid congestion UNIT id *ms
-    datas.data      =(uint8_t*)myNode;
-    datas.size      = sizeof(meshunion_t);
-    datas.proto     = MESH_PROTO_BIN;
-    datas.tos       = MESH_TOS_P2P;
-    err= esp_mesh_send( NULL, &datas, MESH_DATA_P2P, NULL, 1); 
-    if(err)
-        ESP_LOGE(MESH_TAG,"Send Meters failed %x",err);
+    print_blower("send datos root", &myNode->nodedata.solarData.solarSystem, false);
 
-    free(myNode);          
+    if (theConf.delay_mesh > 0)
+        delay(theConf.delay_mesh * theConf.unitid * SENDMUX);  // trying to avoid congestion UNIT id *ms
+
+    mesh_data_t datas = {0};
+    datas.data  = (uint8_t*)myNode;
+    datas.size  = sizeof(meshunion_t);
+    datas.proto = MESH_PROTO_BIN;
+    datas.tos   = MESH_TOS_P2P;
+
+    esp_err_t err = esp_mesh_send(NULL, &datas, MESH_DATA_P2P, NULL, 1);
+    if (err) {
+        ESP_LOGE(MESH_TAG, "Send Meters failed %x", err);
+        free(myNode);
+        return err;
+    }
+
+    free(myNode);
     return ESP_OK;
 }
 
@@ -1291,30 +1273,46 @@ esp_err_t send_datos_to_root()
 //     }
 
 // }
-err_t root_mesh_broadcast_msg(char * msg)        // csjon format only    
-    {
-    meshunion_t * intMessage=(meshunion_t*)calloc(1,strlen(msg)+10);     // the reserving of space for the union is not the sizeof union, an 
-    if(!intMessage) 
-    {
-        ESP_LOGE(MESH_TAG,"Root broadcast no RAM");
+err_t root_mesh_broadcast_msg(char *msg)        // csjon format only
+{
+    if (!msg) {
+        ESP_LOGE(MESH_TAG, "Broadcast message is null");
         return ESP_FAIL;
     }
 
-    intMessage->cmd=MESH_INT_DATA_CJSON;
-    mesh_data_t data;
-    strcpy(intMessage->parajson,msg);      //cJSON is long /elaborate for this simple message
+    size_t msg_len = strlen(msg);
+    if (msg_len == 0) {
+        ESP_LOGW(MESH_TAG, "Broadcast message is empty");
+        return ESP_FAIL;
+    }
 
-    data.data   =(uint8_t*)intMessage;
-    data.size   = strlen(intMessage->parajson)+4;
+    // Reserve extra bytes for header and string terminator
+    meshunion_t *intMessage = (meshunion_t*)calloc(1, msg_len + 10);
+    if (!intMessage) {
+        ESP_LOGE(MESH_TAG, "Root broadcast no RAM");
+        return ESP_FAIL;
+    }
+
+    intMessage->cmd = MESH_INT_DATA_CJSON;
+    // Safe copy with explicit bound
+    strncpy(intMessage->parajson, msg, msg_len);
+    intMessage->parajson[msg_len] = '\0';
+
+    mesh_data_t data;
+    data.data   = (uint8_t*)intMessage;
+    data.size   = msg_len + 4;  // payload + cmd header
     data.proto  = MESH_PROTO_BIN;
     data.tos    = MESH_TOS_P2P;
+
     //send a Broadcast Message to all nodes to send their data
-    int err= esp_mesh_send( &GroupID, &data, MESH_DATA_P2P, NULL, MESH_OPT_SEND_GROUP);         //broadcast msg to mesh, must be freed by us
-    if(err)
-    {
-        ESP_LOGE(MESH_TAG,"Broadcast failed. Now message in this slots %x",err);
+    int err = esp_mesh_send(&GroupID, &data, MESH_DATA_P2P, NULL, MESH_OPT_SEND_GROUP);
+    if (err) {
+        ESP_LOGE(MESH_TAG, "Broadcast failed. err=0x%x", err);
+        free(intMessage);
         return err;
     }
+
+    free(intMessage);
     return ESP_OK;  
 }
 
@@ -1342,128 +1340,223 @@ err_t root_mesh_broadcast_msg(char * msg)        // csjon format only
 
 // }
 
-void process_binary_mesh_msg(mesh_addr_t *from, mesh_data_t *data,uint32_t reserved)
+/**
+ * @brief Handle binary meter data from child nodes (root only)
+ * 
+ * Allocates buffer for meter data, copies it, and processes incoming
+ * metrics from child nodes. Buffer ownership transfers to routing table.
+ * 
+ * @param from Source node address
+ * @param data Mesh data containing meter information
+ * @return true if processed successfully, false on error
+ */
+static bool handle_meter_data(mesh_addr_t *from, mesh_data_t *data)
 {
-    meshunion_t *       aNode;
-    esp_err_t           err;
-
-    if(esp_mesh_is_root() && reserved==MESH_INT_DATA_BIN)         // check out for meter data                             //only ROOT is central manager. ONE connection to MQTT
-    {
-        aNode=(meshunion_t *)calloc(data->size,1);                 // allocate buffer, will be erased after processing
-        if(!aNode)
-        {
-            ESP_LOGE(MESH_TAG,"mesh binary RECV Failed calloc");
-            return;
-        }
-        memcpy(aNode,(char*)data->data,data->size);             //now copy since we knwo sizew is not greater than meshunion_t
-        if(root_check_incoming_meters(from,aNode)!=ESP_OK)      //saves data into a working table unless error
-        {
-            ESP_LOGE(MESH_TAG,"Check Incoming Error");
-            free(aNode);
-        }
-    // DO NOT Free aNode its used to get the sent data by Load_table
-        return;
+    meshunion_t *aNode = (meshunion_t*)calloc(data->size, 1);
+    if (!aNode) {
+        ESP_LOGE(MESH_TAG, "Failed to allocate %d bytes for meter data", data->size);
+        return false;
     }
-    // else check other binary commands here
-    if(!esp_mesh_is_root() && reserved==MESH_INT_DATA_MODBUS)         // check out for meter data                             //only ROOT is central manager. ONE connection to MQTT
-    {
-        // update modbus data all nodes
-        printf("Child Node got Modbus data from Root\n");
-        aNode=(meshunion_t *)calloc(data->size,1);                 // allocate buffer
-        if(!aNode)
-        {
-            ESP_LOGE(MESH_TAG,"mesh binary RECV Modbus Failed calloc");
-            return; 
-        }
-        // do something with modbus data
+
+    memcpy(aNode, data->data, data->size);
+    
+    if (root_check_incoming_meters(from, aNode) != ESP_OK) {
+        ESP_LOGE(MESH_TAG, "Error processing incoming meter data from " MACSTR, MAC2STR(from->addr));
         free(aNode);
+        return false;
+    }
+
+    // NOTE: aNode ownership transferred to routing table - do not free here
+    return true;
+}
+
+/**
+ * @brief Handle Modbus configuration data from root (child nodes only)
+ * 
+ * Receives Modbus configuration parameters from root node and updates
+ * local configuration. Currently placeholder for future implementation.
+ * 
+ * @param data Mesh data containing Modbus configuration
+ * @return true if processed successfully, false on error
+ */
+static bool handle_modbus_config(mesh_data_t *data)
+{
+    meshunion_t *aNode = (meshunion_t*)calloc(data->size, 1);
+    if (!aNode) {
+        ESP_LOGE(MESH_TAG, "Failed to allocate %d bytes for Modbus config", data->size);
+        return false;
+    }
+
+    memcpy(aNode, data->data, data->size);
+    
+    if ((theConf.debug_flags >> dMESH) & 1U)
+        ESP_LOGI(MESH_TAG, "Child node received Modbus configuration from root");
+
+    // TODO: Process and apply Modbus configuration data
+    // Currently placeholder - implement configuration update logic
+    
+    free(aNode);
+    return true;
+}
+
+/**
+ * @brief Process binary mesh messages
+ * 
+ * Dispatcher for binary mesh messages based on message type.
+ * Routes to appropriate handler for meter data or Modbus configuration.
+ * 
+ * @param from Source mesh address
+ * @param data Mesh data structure containing binary payload
+ * @param reserved Message type identifier (first 4 bytes of data)
+ */
+void process_binary_mesh_msg(mesh_addr_t *from, mesh_data_t *data, uint32_t reserved)
+{
+    // Root node: handle meter data from child nodes
+    if (esp_mesh_is_root() && reserved == MESH_INT_DATA_BIN) {
+        handle_meter_data(from, data);
         return;
     }
 
+    // Child nodes: handle Modbus configuration from root
+    if (!esp_mesh_is_root() && reserved == MESH_INT_DATA_MODBUS) {
+        handle_modbus_config(data);
+        return;
+    }
+
+    // Unknown binary message type
+    if ((theConf.debug_flags >> dMESH) & 1U)
+        ESP_LOGW(MESH_TAG, "Unknown binary message type: 0x%08x", reserved);
 }
 
-void child_production(cJSON *elcmd) 
+/**
+ * @brief Log production order action
+ * 
+ * Helper to log production order events with consistent formatting.
+ * 
+ * @param order Order name (start, stop, pause, resume)
+ */
+static void log_production_order(const char *order)
 {
-    char laorden[10],*log_msg;
+    if ((theConf.debug_flags >> dMESH) & 1U)
+        ESP_LOGI(MESH_TAG, "%sMesh Production Cmd order to %s", DBG_MESH, order);
 
-        cJSON *prof=        cJSON_GetObjectItem(elcmd,"prof");
-        cJSON *pday=        cJSON_GetObjectItem(elcmd,"day");
-        cJSON *pmux=        cJSON_GetObjectItem(elcmd,"mux");
-        cJSON *order=       cJSON_GetObjectItem(elcmd,"order");
-        if(prof && pday && pmux &&order)
-        {
-            strcpy(laorden,order->valuestring);
-            if((theConf.debug_flags >> dMESH) & 1U)  
-                ESP_LOGI(MESH_TAG, "%Mesh Production Cmd Profile %d Day %d Mux %d Order %s",
-                    prof->valueint,pday->valueint,pmux->valueint,laorden);
+    char *log_msg = (char*)calloc(200, 1);
+    if (!log_msg) {
+        ESP_LOGE(TAG, "No RAM for production log msg");
+        return;
+    }
 
-            theConf.activeProfile=prof->valueint;
-            theConf.dayCycle=pday->valueint;
-            theConf.test_timer_div=pmux->valueint;
-            write_to_flash();
-            if((theConf.debug_flags >> dMESH) & 1U) 
-            ESP_LOGI(TAG,"%sMesh Production Cmd Profile %d Day %d Mux %d Order %s",DBG_MESH,
-                    prof->valueint,pday->valueint,pmux->valueint,laorden);
-            log_msg=(char*)calloc(200,1);
-            if(!log_msg)    //just warning continue processing 
-                ESP_LOGE(TAG,"No Ram CmdProd log msg");
-            if(log_msg ) 
-                writeLog(log_msg); 
-
-            if (strcmp(laorden,"start")==0)
-            {
-                if((theConf.debug_flags >> dMESH) & 1U)  
-                    ESP_LOGI(MESH_TAG, "%sMesh Production Cmd order to Start %s",DBG_MESH,laorden);
-                xSemaphoreGive(workTaskSem);        //start it
-                if(log_msg) 
-                {
-                    sprintf(log_msg,"Mesh Production Cmd order to Start %s",DBG_MESH,laorden);
-                    writeLog(log_msg);
-                }
-            }
-            if (strcmp(laorden,"stop")==0)
-            {
-                if((theConf.debug_flags >> dMESH) & 1U)  
-                    ESP_LOGI(MESH_TAG, "%sMesh Production Cmd order to Stop %s",DBG_MESH,laorden);
-                    if(scheduleHandle) // set sta should have started it or it finished
-                        vTaskDelete(scheduleHandle);
-                    xTaskCreate(&start_schedule_timers,"sched",1024*10,NULL, 5, &scheduleHandle); 
-                if(log_msg) 
-                {
-                    sprintf(log_msg,"Mesh Production Cmd order to Stop %s",DBG_MESH,laorden);
-                    writeLog(log_msg);
-                }	       
-                schedulef=false;
-                // xSemaphoreGive(workTaskSem);
-            }
-            if (strcmp(laorden,"pause")==0)
-            {
-                if((theConf.debug_flags >> dMESH) & 1U)  
-                    ESP_LOGI(MESH_TAG, "%sMesh Production Cmd order to Pause %s",DBG_MESH,laorden);
-                if(log_msg) 
-                {
-                    sprintf(log_msg,"Mesh Production Cmd order to Pause %s",DBG_MESH,laorden);
-                    writeLog(log_msg);
-                }
-                pausef=true;
-
-            }
-            if (strcmp(laorden,"resume")==0)
-            {
-                if((theConf.debug_flags >> dMESH) & 1U)  
-                    ESP_LOGI(MESH_TAG, "%sMesh Production Cmd order to Resume %s",DBG_MESH,laorden);
-                if(log_msg) 
-                {
-                    sprintf(log_msg,"Mesh Production Cmd order to Resume %s",DBG_MESH,laorden);
-                    writeLog(log_msg);
-                }
-                pausef=false;
-            }
-        }
-        else
-            if((theConf.debug_flags >> dMESH) & 1U)  
-                ESP_LOGI(MESH_TAG, "%sProduction missing parameter ",DBG_MESH);
+    snprintf(log_msg, 200, "Mesh Production Cmd order to %s", order);
+    writeLog(log_msg);
+    free(log_msg);
 }
+
+/**
+ * @brief Handle production start order
+ */
+static void handle_production_start(void)
+{
+    log_production_order("Start");
+    xSemaphoreGive(workTaskSem);
+}
+
+/**
+ * @brief Handle production stop order
+ */
+static void handle_production_stop(void)
+{
+    log_production_order("Stop");
+    
+    if (scheduleHandle) {
+        vTaskDelete(scheduleHandle);
+    }
+    xTaskCreate(&start_schedule_timers, "sched", 1024 * 10, NULL, 5, &scheduleHandle);
+    schedulef = false;
+}
+
+/**
+ * @brief Handle production pause order
+ */
+static void handle_production_pause(void)
+{
+    log_production_order("Pause");
+    pausef = true;
+}
+
+/**
+ * @brief Handle production resume order
+ */
+static void handle_production_resume(void)
+{
+    log_production_order("Resume");
+    pausef = false;
+}
+
+/**
+ * @brief Update production configuration from command
+ * 
+ * Extracts profile, day cycle, and timer mux settings from cJSON
+ * and writes to flash storage.
+ * 
+ * @param prof Profile ID
+ * @param pday Day cycle
+ * @param pmux Timer multiplexer
+ */
+static void update_production_config(cJSON *prof, cJSON *pday, cJSON *pmux)
+{
+    theConf.activeProfile = prof->valueint;
+    theConf.dayCycle = pday->valueint;
+    theConf.test_timer_div = pmux->valueint;
+    write_to_flash();
+
+    if ((theConf.debug_flags >> dMESH) & 1U)
+        ESP_LOGI(TAG, "%sMesh Production Config: Profile %d Day %d Mux %d",
+                 DBG_MESH, prof->valueint, pday->valueint, pmux->valueint);
+}
+
+/**
+ * @brief Process production command from mesh
+ * 
+ * Handles production control commands (start, stop, pause, resume)
+ * for child nodes. Updates configuration and executes corresponding action.
+ * 
+ * @param elcmd cJSON command object containing production parameters
+ */
+void child_production(cJSON *elcmd)
+{
+    cJSON *prof = cJSON_GetObjectItem(elcmd, "prof");
+    cJSON *pday = cJSON_GetObjectItem(elcmd, "day");
+    cJSON *pmux = cJSON_GetObjectItem(elcmd, "mux");
+    cJSON *order = cJSON_GetObjectItem(elcmd, "order");
+
+    if (!prof || !pday || !pmux || !order) {
+        if ((theConf.debug_flags >> dMESH) & 1U)
+            ESP_LOGI(MESH_TAG, "%sProduction missing parameter", DBG_MESH);
+        return;
+    }
+
+    const char *order_str = order->valuestring;
+    
+    if ((theConf.debug_flags >> dMESH) & 1U)
+        ESP_LOGI(MESH_TAG, "%sMesh Production Cmd Profile %d Day %d Mux %d Order %s",
+                 DBG_MESH, prof->valueint, pday->valueint, pmux->valueint, order_str);
+
+    update_production_config(prof, pday, pmux);
+
+    // Dispatch to appropriate handler based on order
+    if (strcmp(order_str, "start") == 0) {
+        handle_production_start();
+    } else if (strcmp(order_str, "stop") == 0) {
+        handle_production_stop();
+    } else if (strcmp(order_str, "pause") == 0) {
+        handle_production_pause();
+    } else if (strcmp(order_str, "resume") == 0) {
+        handle_production_resume();
+    } else {
+        ESP_LOGW(MESH_TAG, "%sUnknown production order: %s", DBG_MESH, order_str);
+    }
+}
+
 int findPoolNode(mesh_addr_t *este)
 {
     for (int a=0;a<poolNodesTable.existing_nodes;a++)
@@ -1474,188 +1567,256 @@ int findPoolNode(mesh_addr_t *este)
     return ESP_FAIL;
 }
 
+/**
+ * @brief Parse mesh data payload into cJSON object
+ * 
+ * Validates data size, extracts command type, and parses JSON payload.
+ * Advances data pointer past header and null-terminates before parsing.
+ * 
+ * @param data Mesh data structure (modified: pointer advanced, size reduced)
+ * @return Parsed cJSON object, or NULL on error
+ */
+static cJSON* parse_mesh_json_data(mesh_data_t *data)
+{
+    if (data->size < 5) {  // Need at least 4-byte header + 1 byte data
+        ESP_LOGE(MESH_TAG, "Mesh data too small: %d bytes", data->size);
+        return NULL;
+    }
+
+    data->data += 4;  // Skip command header
+    data->size -= 4;
+    data->data[data->size] = 0;  // Null terminate
+
+    cJSON *parsed = cJSON_Parse((char*)data->data);
+    if (!parsed) {
+        ESP_LOGE(MESH_TAG, "Failed to parse mesh JSON: %s", (char*)data->data);
+    }
+    return parsed;
+}
+
+/**
+ * @brief Handle SCHEDULE command from mesh node
+ * 
+ * Processes schedule confirmation from pool nodes. Root node tracks
+ * confirmations and stops schedule timer when all nodes respond.
+ */
+static void handle_schedule_command(cJSON *elcmd, mesh_addr_t *from)
+{
+    if (!esp_mesh_is_root())
+        return;
+
+    int cualp = findPoolNode(from);
+    cJSON *cualunit = cJSON_GetObjectItem(elcmd, "unit");
+    cJSON *cualcycle = cJSON_GetObjectItem(elcmd, "cycle");
+    cJSON *cualday = cJSON_GetObjectItem(elcmd, "day");
+    cJSON *cualhora = cJSON_GetObjectItem(elcmd, "hora");
+
+    if (cualunit && cualcycle && cualday && cualhora) {
+        ESP_LOGI(TAG, "Schedule Start Unit %d Cycle %d Day %d horario %d Pool %d " MACSTR,
+                 cualunit->valueint, cualcycle->valueint, cualday->valueint,
+                 cualhora->valueint, cualp, MAC2STR(from->addr));
+
+        if (cualp >= 0)
+            poolNodesTable.existing_nodes--;
+
+        if (poolNodesTable.existing_nodes == 0) {
+            ESP_LOGI(TAG, "All pool nodes confirmed schedule start");
+            xTimerStop(scheduleTimer, 0);
+        }
+    }
+}
+
+/**
+ * @brief Handle METRICRESP command from mesh node
+ * 
+ * Allocates buffer, copies metric data, and queues for MQTT transmission.
+ */
+static void handle_metricresp_command(cJSON *elcmd, mesh_data_t *data, mesh_addr_t *from)
+{
+    if ((theConf.debug_flags >> dMESH) & 1U)
+        ESP_LOGI(MESH_TAG, "Mesh Metrics respond cmd");
+
+    char *msg = (char*)calloc(1, data->size + 1);
+    if (!msg) {
+        ESP_LOGE(MESH_TAG, "Error RAM Response metrics mesh mgr");
+        return;
+    }
+
+    memcpy(msg, data->data, data->size);
+    if (root_send_confirmation_central_cb(msg, discoQueue, from) == ESP_FAIL) {
+        ESP_LOGE(MESH_TAG, "Error sending metrics response to Mqtt Mgr");
+    }
+}
+
+/**
+ * @brief Dispatch mesh command to appropriate handler
+ * 
+ * Routes validated mesh commands to their handlers based on command type.
+ * Ensures consistent cleanup and error handling across all cases.
+ * 
+ * @param cualf Command index from findInternalCmds
+ * @param elcmd Parsed cJSON command object
+ * @param from Source mesh address
+ * @param data Mesh data structure
+ */
+static void dispatch_mesh_command(int cualf, cJSON *elcmd, mesh_addr_t *from, mesh_data_t *data)
+{
+    static char cualMID[20];
+    esp_err_t err;
+
+    switch (cualf) {
+    case SCHEDULE:
+        handle_schedule_command(elcmd, from);
+        break;
+
+    case BOOTRESP:
+        if (!esp_mesh_is_root())
+            set_sta_cmd((char*)data->data);
+        break;
+
+    case SENDMETRICS:
+        err = send_datos_to_root();
+        if (err)
+            ESP_LOGE(MESH_TAG, "Error send Meters %d", err);
+        break;
+
+    case PRODUCTION:
+        if ((theConf.debug_flags >> dMESH) & 1U)
+            ESP_LOGI(MESH_TAG, "%sMesh Production Cmd", DBG_MESH);
+        if (!esp_mesh_is_root())
+            child_production(elcmd);
+        break;
+
+    case UPDATEMETER:
+        if ((theConf.debug_flags >> dMESH) & 1U)
+            ESP_LOGI(MESH_TAG, "Mesh Update Mesh Cmd");
+        update_my_meter((char*)data->data);
+        break;
+
+    case FORMAT:
+        if ((theConf.debug_flags >> dMESH) & 1U)
+            ESP_LOGI(MESH_TAG, "Mesh Format cmd");
+        // format_my_meter(elcmd);
+        break;
+
+    case ERASEMETRICS:
+        if ((theConf.debug_flags >> dMESH) & 1U)
+            ESP_LOGI(MESH_TAG, "Mesh Erase Metrics cmd");
+        // erase_my_meter(elcmd);
+        break;
+
+    case MQTTMETRICS:
+        if ((theConf.debug_flags >> dMESH) & 1U)
+            ESP_LOGI(MESH_TAG, "Mesh Metrics requested cmd");
+        check_my_metrics((char*)data->data, cualMID);
+        break;
+
+    case METRICRESP:
+        handle_metricresp_command(elcmd, data, from);
+        break;
+
+    case SHOWDISPLAY:
+        if ((theConf.debug_flags >> dMESH) & 1U)
+            ESP_LOGI(MESH_TAG, "Mesh Display cmd");
+        turn_display((char*)data->data);
+        break;
+
+    default:
+        if ((theConf.debug_flags >> dMESH) & 1U)
+            ESP_LOGE(MESH_TAG, "%sMesh Internal not found (case %d)", DBG_MESH, cualf);
+        break;
+    }
+}
+
 //here we received all mesh traffic data
 void static mesh_manager(mesh_addr_t *from, mesh_data_t *data)
 {
-    cJSON               *elcmd;
-    static char         cualMID[20];
-    esp_err_t           err;
-    locker_t            lock;
-    char                *msg;
-    uint32_t            reserved;
-    char                laorden[10];
+    cJSON *elcmd;
+    uint32_t reserved;
 
-    // msg from the Mesh has to have a defined structure with the first 2 bytes identifying
-    // the msg typpe: 
+    // msg from the Mesh has to have a defined structure with the first 4 bytes identifying
+    // the msg type:
     // BINARY
         // MESH_INT_DATA_BIN -> binary meter msg from nodes
         // MESH_MOTA_START -> Mesh OTA start
         // MESH_MOTA_DATA -> Mesh OTA data in
         // MESH_MOTA_DATA_END -> Mesh OTA end without data
-        // MESH_MOTA_DATA_REC -> Mesh OTA rcovery data in
-        // MESH_MOTA_DATA _REC_END-> Mesh OTA data in and end of recovery
+        // MESH_MOTA_DATA_REC -> Mesh OTA recovery data in
+        // MESH_MOTA_DATA_REC_END -> Mesh OTA data in and end of recovery
 
     // MESH_INT_DATA_CJSON -> Mesh internal cmds text (cJSON)
 
-    if(data->size==0)
-    {
-        ESP_LOGE(MESH_TAG,"Meshmgr got 0 len");
-        // free(aNode);
-        return;
-    }
-    // identify the msg type
-    memcpy(&reserved,data->data,4);     
-
-    if(reserved!=MESH_INT_DATA_CJSON)            //its binary meter data or mesh ota
-    {
-        process_binary_mesh_msg(from, data,reserved);
+    if (data->size == 0) {
+        ESP_LOGE(MESH_TAG, "Meshmgr got 0 len");
         return;
     }
 
-    // internal cmd
-    data->data+=4;      //skip command
-    //size is with cmd so take 4 out of it
-    data->size-=4;
-    data->data[data->size]=0;
-    elcmd=cJSON_Parse((char*)data->data); 
-    if(!elcmd)
-    {
-        ESP_LOGE(MESH_TAG,"CSJON cannot be parsed mesh manager %s",data);
+    // Identify the msg type from header
+    memcpy(&reserved, data->data, 4);
+
+    if (reserved != MESH_INT_DATA_CJSON) {
+        process_binary_mesh_msg(from, data, reserved);
         return;
     }
 
-    // all msgs MUST have a cmd 
-    cJSON *cualm=       cJSON_GetObjectItem(elcmd,"cmd");
-    if(cualm)
-    {
-        if((theConf.debug_flags >> dMESH) & 1U)  
-          ESP_LOGI(MESH_TAG,"%sfind internal cmd %s",DBG_MESH,cualm->valuestring);
-        int cualf=findInternalCmds(cualm->valuestring);
-        if(cualf>=0)
-        {
-            switch (cualf)
-            {
-                // ESP_LOGI(MESH_TAG,"Found %d",cualf);
-                // TODO redo this. Make direct call not a fall thru
-                case SCHEDULE: //Schedule start confimration form all nodes 
-                {
-                    if(esp_mesh_is_root())      // only root checks this for highest level of monitoring
-                    {
-                        int cualp=findPoolNode(from);
-                        cJSON *cualunit=       cJSON_GetObjectItem(elcmd,"unit");
-                        cJSON *cualcycle=      cJSON_GetObjectItem(elcmd,"cycle");
-                        cJSON *cualday=        cJSON_GetObjectItem(elcmd,"day");
-                        cJSON *cualhora=       cJSON_GetObjectItem(elcmd,"hora");
-                        ESP_LOGI(TAG,"Schedule Start Unit %d Cycle %d Day %d horario %d Pool %d " MACSTR,
-                            cualunit->valueint,cualcycle->valueint,cualday->valueint,cualhora->valueint,cualp,MAC2STR(from->addr));
-                        if (cualp>=0)
-                            poolNodesTable.existing_nodes--;
-                        if(poolNodesTable.existing_nodes==0)
-                        {
-                            ESP_LOGI(TAG,"All pool nodes confirmed schedule start");
-                            xTimerStop(scheduleTimer,0);
-                        }
-                    }
-                    cJSON_Delete(elcmd);
-                    return;        
-                }                     
-                case BOOTRESP: // a msg from Root giving the current ssid/pswd bootresp
-                        // ESP_LOGI(MESH_TAG,"Mesh Boot response");
-                        if(!esp_mesh_is_root()) //only non ROOT 
-                            set_sta_cmd((char*)data->data);
-                        cJSON_Delete(elcmd);
-                        return;
-                case SENDMETRICS:// host requires Node sends its meter data 
-                        // ESP_LOGI(MESH_TAG,"Send Meters cmd from Host");
-                        err=send_datos_to_root();
-                        if(err)
-                            ESP_LOGE(MESH_TAG,"Error send Meters %d",err);
-                        cJSON_Delete(elcmd);
-                        return;
-                case PRODUCTION:// start Production
-                        if((theConf.debug_flags >> dMESH) & 1U)  
-                            ESP_LOGI(MESH_TAG, "%sMesh Production CMd ",DBG_MESH);
-                        if(!esp_mesh_is_root()) //only non ROOT 
-                        {
-                          child_production(elcmd);
-                        }
-                        cJSON_Delete(elcmd);
-                        return;
-                case UPDATEMETER:// update important settings meter
-                        if((theConf.debug_flags >> dMESH) & 1U)  
-                            ESP_LOGI(MESH_TAG,"Mesh Update Mesh Cmd");
-                        update_my_meter((char*)data->data);
-                        cJSON_Delete(elcmd);
-                        return;
-                case FORMAT:    // format the meter
-                        if((theConf.debug_flags >> dMESH) & 1U)  
-                            ESP_LOGI(MESH_TAG,"Mesh Format cmd");
-                        // format_my_meter(elcmd);
-                        cJSON_Delete(elcmd);
-                        return;
-                case ERASEMETRICS:    // erase metrics
-                        if((theConf.debug_flags >> dMESH) & 1U)  
-                            ESP_LOGI(MESH_TAG,"Mesh Erase Metrics cmd");
-                        // erase_my_meter(elcmd);
-                        cJSON_Delete(elcmd);
-                        return;
-                case MQTTMETRICS:
-                        if((theConf.debug_flags >> dMESH) & 1U)  
-                            ESP_LOGI(MESH_TAG,"Mesh Metrics requested cmd");
-                        check_my_metrics((char*)data->data,cualMID);
-                        cJSON_Delete(elcmd);
-                        return;     
-                case METRICRESP:
-                        if((theConf.debug_flags >> dMESH) & 1U)  
-                            ESP_LOGI(MESH_TAG,"Mesh Metrics respond cmd");
-                        msg=(char*)calloc(1,data->size+1);
-                        if(msg)
-                        {
-                            memcpy(msg,data->data,data->size);
-                            if(root_send_confirmation_central_cb(msg,discoQueue,from)==ESP_FAIL)
-                                ESP_LOGE(MESH_TAG,"Error sending meterics response to Mqtt Mgr");
-                        }
-                        else
-                            ESP_LOGE(MESH_TAG,"Error RAM Response metrics mesh mgr");
-                        cJSON_Delete(elcmd);
-                        return;     
-                case SHOWDISPLAY:
-                        if((theConf.debug_flags >> dMESH) & 1U)  
-                            ESP_LOGI(MESH_TAG,"Mesh Display cmd");
-                        turn_display((char*)data->data);
-                        cJSON_Delete(elcmd);
-                        return;     
-                default:    // shouldnt happen... maybe during development
-                        if((theConf.debug_flags >> dMESH) & 1U)  
-                            ESP_LOGE(MESH_TAG,"%sMesh Internal not found %s",DBG_MESH,cualm->valuestring);
-                        cJSON_Delete(elcmd);
-                        return;
-            }
-        }
-        else
-        {
-            ESP_LOGW(MESH_TAG,"Mesh cmd not found %s",cualm->valuestring);
-            cJSON_Delete(elcmd);
-            return;
-        }
-    }
-    else
-    {
-        ESP_LOGI(MESH_TAG,"MeshMgr Internal cJSON but no CMD found [%s]",data->data);
-        esp_log_buffer_hex(MESH_TAG,data->data,60);
+    // Parse JSON command
+    elcmd = parse_mesh_json_data(data);
+    if (!elcmd)
+        return;
+
+    // All msgs MUST have a cmd field
+    cJSON *cualm = cJSON_GetObjectItem(elcmd, "cmd");
+    if (!cualm) {
+        ESP_LOGI(MESH_TAG, "MeshMgr Internal cJSON but no CMD found");
+        esp_log_buffer_hex(MESH_TAG, data->data, 60);
         cJSON_Delete(elcmd);
         return;
     }
+
+    if ((theConf.debug_flags >> dMESH) & 1U)
+        ESP_LOGI(MESH_TAG, "%sfind internal cmd %s", DBG_MESH, cualm->valuestring);
+
+    int cualf = findInternalCmds(cualm->valuestring);
+    if (cualf >= 0) {
+        dispatch_mesh_command(cualf, elcmd, from, data);
+    } else {
+        ESP_LOGW(MESH_TAG, "Mesh cmd not found %s", cualm->valuestring);
+    }
+
+    cJSON_Delete(elcmd);
 }
 
 
-err_t write_log(char *LTAG, char *que) {
+/**
+ * @brief Format current time for log entry
+ * 
+ * Gets current time and formats it without trailing newline.
+ * 
+ * @param time_buf Buffer to store formatted time (must be at least 26 chars)
+ * @return Pointer to formatted time string, or NULL if ctime fails
+ */
+static char* format_log_time(char *time_buf, size_t buf_size)
+{
     time_t now = time(NULL);
-
-    // Format the current time without a newline
     char *time_str = ctime(&now);
-    if (time_str) {
-        time_str[strcspn(time_str, "\n")] = 0; // Remove newline
+    
+    if (time_str && buf_size > 0) {
+        strncpy(time_buf, time_str, buf_size - 1);
+        time_buf[buf_size - 1] = '\0';
+        time_buf[strcspn(time_buf, "\n")] = '\0';  // Remove newline
+        return time_buf;
+    }
+    return NULL;
+}
+
+err_t write_log(char *LTAG, char *que)
+{
+    char time_buf[32];
+    
+    char *time_str = format_log_time(time_buf, sizeof(time_buf));
+    if (!time_str) {
+        ESP_LOGE(TAG, "Failed to format log time");
+        return ESP_FAIL;
     }
 
     FILE *f = fopen(LOG_FILE, "a");
@@ -1682,358 +1843,479 @@ err_t write_log(char *LTAG, char *que) {
 
 err_t read_log(int nlines)
 {
-    char *buf=(char*)calloc(1000,1);
-    if (!buf)
-    {
-        ESP_LOGE(TAG, "Failed RAM log fro reading");
+    char *buf = (char*)calloc(1000, 1);
+    if (!buf) {
+        ESP_LOGE(TAG, "Failed RAM allocation for log reading");
         return ESP_FAIL;
     }
 
-    FILE* f = fopen(LOG_FILE, "r");
-    if (f == NULL) {
+    FILE *f = fopen(LOG_FILE, "r");
+    if (!f) {
         ESP_LOGE(TAG, "Failed to open Log for reading");
+        free(buf);
         return ESP_FAIL;
     }
-    rewind(f);
-    for (int a=0;a<nlines;a++)
-    {
-	    if(fgets(buf, 500, f)!=NULL)
-            printf("[%d]%s",a,buf);
+
+    for (int a = 0; a < nlines; a++) {
+        if (fgets(buf, 500, f) != NULL)
+            printf("[%d]%s", a, buf);
         else
             break;
     }
+
     fclose(f);
-    if(buf)
-        free(buf);
+    free(buf);
 
     return ESP_OK;
 }
 
+/**
+ * @brief Read configuration from NVS flash storage
+ * 
+ * Thread-safe read of theConf structure from NVS.
+ * Opens NVS handle, reads blob, and logs any errors.
+ */
 static void read_flash()
 {
-	esp_err_t q ;
-	size_t largo;
+    if (!xSemaphoreTake(flashSem, portMAX_DELAY))
+        return;
 
-	if(xSemaphoreTake(flashSem, portMAX_DELAY))
-	{
-		q = nvs_open("config", NVS_READWRITE, &nvshandle);
-		if(q!=ESP_OK)
-		{
-			ESP_LOGE(MESH_TAG,"Error opening NVS Read File %x",q);
-			xSemaphoreGive(flashSem);
-			return;
-		}
+    esp_err_t err = nvs_open("config", NVS_READWRITE, &nvshandle);
+    if (err != ESP_OK) {
+        ESP_LOGE(MESH_TAG, "Error opening NVS Read File %x", err);
+        xSemaphoreGive(flashSem);
+        return;
+    }
 
-		largo=sizeof(theConf);
-		q=nvs_get_blob(nvshandle,"sysconf",(void*)&theConf,&largo);     //very important NOT TO change to just a number due to POINTEr to length
+    size_t size = sizeof(theConf);
+    err = nvs_get_blob(nvshandle, "sysconf", (void*)&theConf, &size);
+    
+    if (err != ESP_OK)
+        ESP_LOGE(MESH_TAG, "Error read %x size %d expected %d", err, size, sizeof(theConf));
 
-		if (q !=ESP_OK)
-			ESP_LOGE(MESH_TAG,"Error read %x largo %d aqui %d",q,largo,sizeof(theConf));
-		// nvs_close(nvshandle);           //do not close it for future write_to_flash 
-		xSemaphoreGive(flashSem);
-	}
+    // Keep NVS handle open for future write_to_flash calls
+    xSemaphoreGive(flashSem);
 }
 
-void write_to_flash() //save our configuration
+/**
+ * @brief Write configuration to NVS flash storage
+ * 
+ * Thread-safe write of theConf structure to NVS.
+ * Saves blob and commits changes. Handle remains open.
+ */
+void write_to_flash()
 {
-	if(xSemaphoreTake(flashSem, portMAX_DELAY))
-	{
-		esp_err_t q ;
-		// q = nvs_open("config", NVS_READWRITE, &nvshandle);
-		// if(q!=ESP_OK)
-		// {
-		// 	ESP_LOGE(MESH_TAG,"Error opening NVS File RW %x",q);
-		// 	xSemaphoreGive(flashSem);
-		// 	return;
-		// }
-		size_t req=sizeof(theConf);
-		q=nvs_set_blob(nvshandle,"sysconf",&theConf,req);
-		if (q ==ESP_OK)
-		{
-			q = nvs_commit(nvshandle);
-			if(q!=ESP_OK)
-				ESP_LOGE(MESH_TAG,"Flash commit write failed %d",q);
-		}
-		else
-			ESP_LOGE(MESH_TAG,"Fail to write flash %x",q);
-		// nvs_close(nvshandle);           // do not close
-		xSemaphoreGive(flashSem);
-	}
+    if (!xSemaphoreTake(flashSem, portMAX_DELAY))
+        return;
+
+    esp_err_t err = nvs_set_blob(nvshandle, "sysconf", &theConf, sizeof(theConf));
+    
+    if (err == ESP_OK) {
+        err = nvs_commit(nvshandle);
+        if (err != ESP_OK)
+            ESP_LOGE(MESH_TAG, "Flash commit write failed %d", err);
+    } else {
+        ESP_LOGE(MESH_TAG, "Fail to write flash %x", err);
+    }
+
+    // Keep NVS handle open
+    xSemaphoreGive(flashSem);
 }
 
+
+/**
+ * @brief Initialize SNTP and wait for time sync
+ * 
+ * Sets up SNTP client with NTP server and waits for successful sync.
+ * Falls back to saved time if sync fails after SNTPTRY attempts.
+ * 
+ * @param localtime Pointer to timeval structure to receive fallback time
+ * @return true if sync successful, false if using fallback time
+ */
+static bool sntp_sync_with_fallback(timeval *localtime)
+{
+    sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    sntp_setservername(0, "pool.ntp.org");
+    sntp_init();
+
+    int retry = 0;
+    while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && ++retry <= SNTPTRY)
+        vTaskDelay(2000 / portTICK_PERIOD_MS);
+    
+    if(retry >= SNTPTRY)
+    {
+        ESP_LOGE(MESH_TAG, "SNTP failed retry count, using saved time");
+        theConf.lastKnownDate = theBlower.getReservedDate();   
+        localtime->tv_sec = theConf.lastKnownDate;
+        localtime->tv_usec = 0;
+        settimeofday(localtime, NULL);
+        return false;
+    }
+    return true;
+}
+
+/**
+ * @brief Update system time tracking and configuration
+ * 
+ * Records reboot time, calculates downtime, saves to flash,
+ * and updates blower with new timestamp.
+ * 
+ * @param now Current time_t
+ */
+static void update_system_time_tracking(time_t now)
+{
+    setenv("TZ", LOCALTIME, 1);
+    tzset();
+    
+    if(theConf.lastRebootTime == 0)
+        theConf.lastRebootTime = now;
+    else
+        theConf.downtime += (uint32_t)now - theConf.lastRebootTime;
+
+    theBlower.setReservedDate(now);
+    write_to_flash();
+}
+
+/**
+ * @brief Start blower and data collection timers if ready
+ */
+static void start_blower_if_ready(void)
+{
+    if (theBlower.getScheduleStatus() == BLOWERON)
+        xSemaphoreGive(workTaskSem);
+    
+    if (theConf.wifi_mode != WIFI_MESH)
+        root_set_senddata_timer();
+}
 
 void root_sntpget(void *pArg)
 {
     time_t now;
     struct tm timeinfo;
+    timeval localtime;
+    
     time(&now);
     localtime_r(&now, &timeinfo);
-    timeval localtime;
-
-    bzero(&timeinfo,sizeof(timeinfo));
-    // memset(&timeinfo,0,sizeof(timeinfo));
+    memset(&timeinfo, 0, sizeof(timeinfo));
     
     // Is time set? If not, tm_year will be (1970 - 1900).
     if (timeinfo.tm_year < (2016 - 1900)) 
     {
-        sntp_setoperatingmode(SNTP_OPMODE_POLL);
-        sntp_setservername(0, "pool.ntp.org");
-        sntp_init();
-
-        int retry = 0;
-        while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && ++retry <= SNTPTRY)
-            vTaskDelay(2000 / portTICK_PERIOD_MS);
-        
-        if(retry>=SNTPTRY)
-        {
-            ESP_LOGE(MESH_TAG,"SNTP failed retry count, using saved time");
-            theConf.lastKnownDate=theBlower.getReservedDate();   
-            localtime.tv_sec=theConf.lastKnownDate;
-            localtime.tv_usec=0;                                      // no connection most likely
-            settimeofday(&localtime,NULL);
-            //let him fall thru and continue as if date was received
-        }
+        sntp_sync_with_fallback(&localtime);
         time(&now);
-        setenv("TZ", LOCALTIME, 1);
-        tzset();
-        if(theConf.lastRebootTime==0)
-            theConf.lastRebootTime=now;
-        else
-            theConf.downtime+=(uint32_t)now-theConf.lastRebootTime;
-
-        theBlower.setReservedDate(now);
-
-        ESP_LOGI(MESH_TAG,"SNTP Date %s",ctime((time_t*)&now));
-        // this means mesh is ready also
-        if (theBlower.getScheduleStatus()==BLOWERON )
-        // if (theConf.blower_mode==1 )
-            xSemaphoreGive(workTaskSem);
-            // we apparently are restarting for some reason else wait for activation command
-
-            //start our Cycle calculations
-        root_set_senddata_timer();
-        write_to_flash();
+        
+        ESP_LOGI(MESH_TAG, "SNTP Date %s", ctime((time_t*)&now));
+        update_system_time_tracking(now);
+        start_blower_if_ready();
     }
     vTaskDelete(NULL);
+}
 
+// Forward declarations and implementations for Time/SNTP and MQTT helper functions
+/**
+ * @brief Clear all pending messages from MQTT sender queue
+ * 
+ * Drains the mqttSender queue and frees all message buffers and parameters.
+ * Used during reconnection to clean up partial/stale messages.
+ */
+static void clear_mqtt_sender_queue(void)
+{
+    mqttSender_t mensaje;
+    
+    while(true)
+    {
+        if(xQueueReceive(mqttSender, &mensaje, pdMS_TO_TICKS(MQTTSENDERWAIT)) == pdPASS)
+        {
+            if(mensaje.msg)
+                free(mensaje.msg);
+            if(mensaje.param)
+                free(mensaje.param);
+        }
+        else
+            break;
+    }
+}
+
+/**
+ * @brief Attempt one MQTT reconnection cycle
+ * 
+ * Destroys old client, creates new one, starts it, and waits for connection.
+ * On successful connection, restarts all MQTT tasks and timers.
+ * 
+ * @param retry Pointer to retry counter to increment
+ * @return true if reconnection successful and tasks restarted, false otherwise
+ */
+static bool mqtt_reconnect_attempt(int *retry)
+{
+    esp_err_t err;
+    EventBits_t uxBits;
+    
+    if(clientCloud)
+    {
+        err = esp_mqtt_client_destroy(clientCloud);
+        if(err != ESP_OK)
+            ESP_LOGD(MESH_TAG, "MQTT client destroy failed");
+        else
+            clientCloud = NULL;
+    }
+    
+    clientCloud = root_setupMqtt();
+    if(!clientCloud)
+    {
+        ESP_LOGD(MESH_TAG, "MQTT client setup failed");
+        return false;
+    }
+    
+    err = esp_mqtt_client_start(clientCloud);
+    if(err == ESP_FAIL)
+    {
+        ESP_LOGE(MESH_TAG, "MQTT client start failed");
+        return false;
+    }
+    
+    (*retry)++;
+    uxBits = xEventGroupWaitBits(wifi_event_group, MQTT_BIT|DISCO_BIT|ERROR_BIT, pdFALSE, pdFALSE,
+                                  pdMS_TO_TICKS(10000));
+    
+    if((uxBits & MQTT_BIT) != MQTT_BIT)
+        return false;  // Did not connect
+    
+    // Connection successful - restart tasks and timers
+    ESP_LOGI(MESH_TAG, "Reconnection successful after %d tries", *retry);
+    
+    char *tmp = (char*)calloc(1, 100);
+    if(tmp)
+    {
+        snprintf(tmp, 100, "Reconnection successful after %d tries", *retry);
+        writeLog(tmp);
+        free(tmp);
+    }
+    
+    err = esp_mqtt_client_disconnect(clientCloud);
+    xEventGroupWaitBits(wifi_event_group, DISCO_BIT|ERROR_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
+    
+    err = esp_mqtt_client_stop(clientCloud);
+    root_mqtt_app_start();
+    delay(2000);
+    xTimerStart(collectTimer, 0);
+    
+    recoTaskHandle = NULL;
+    vTaskDelete(recoTaskHandle);
+    
+    return true;
 }
 
 void root_reconnectTask(void *pArg)
 {
     esp_err_t err;
-    EventBits_t uxBits;
-    mqttSender_t        mensaje;
-    int retry=0;
-    // in case timers are active
-    // if(xTimerIsTimerActive(collectTimer))
-        xTimerStop(collectTimer, 0 );
-// if(xTimerIsTimerActive(sendMeterTimer))
-    xTimerStop(sendMeterTimer, 0 );
-    //kill MQTT Tasks
+    mqttSender_t mensaje;
+    int retry = 0;
+    
+    xTimerStop(collectTimer, 0);
+    xTimerStop(sendMeterTimer, 0);
+    
     if(mqttMgrHandle)
         vTaskDelete(mqttMgrHandle);
     if(mqttSendHandle)
         vTaskDelete(mqttSendHandle);
-//erase messages and heap allocation in the messages. Mostly 1 message but can be more in case an Emergency/Lockconfirm or other async message was queued
-        while(true)
-        {
-            if( xQueueReceive( mqttSender, &mensaje,  pdMS_TO_TICKS(MQTTSENDERWAIT) )==pdPASS)	//mqttHandle has a pointer to the original message. MUST be freed at some point
-            {
-                if(mensaje.msg)
-                    free(mensaje.msg);
-                if(mensaje.param)
-                    free(mensaje.param);
-            }
-            else
-                break;
-        }
+    
+    clear_mqtt_sender_queue();
 
     while(true)
     {
-        //try to reconnect
-        delay(theConf.mqttDiscoRetry);     // retry interval
-        xEventGroupClearBits(wifi_event_group,MQTT_BIT|ERROR_BIT|DISCO_BIT);        // clear bits
-        if(clientCloud)
-            err=esp_mqtt_client_destroy(clientCloud);
-            if(err!=ESP_OK)
-            {
-                printf("No destroy\n");
-            }
-            else 
-                clientCloud=NULL;
-        clientCloud=root_setupMqtt();
-        if(clientCloud)
+        delay(theConf.mqttDiscoRetry);
+        xEventGroupClearBits(wifi_event_group, MQTT_BIT|ERROR_BIT|DISCO_BIT);
+        
+        if(!mqtt_reconnect_attempt(&retry))
         {
-            err=esp_mqtt_client_start(clientCloud);
-            if(err==ESP_FAIL)
-            {
-                ESP_LOGE(MESH_TAG,"FATAl AND FINAL alternative. Reboot %x",err);
-            }
-            retry++;
-            uxBits=xEventGroupWaitBits(wifi_event_group, MQTT_BIT|DISCO_BIT|ERROR_BIT, pdFALSE, pdFALSE,   pdMS_TO_TICKS(10000)); //explicit Connect Bit
-            if(((uxBits & MQTT_BIT) ==MQTT_BIT) )       //only mqttbit connect 
-            { 
-                ESP_LOGI(MESH_TAG,"Reconnection successfull...good job");
-                char *tmp=(char*)calloc(1,100);
-                if(tmp)
-                {
-                    sprintf(tmp,"Recconection successful after %d tries...good job",retry);
-                    writeLog(tmp);
-                    free(tmp);
-                }
-                //we are connected and subscribed YEAH
-                err=esp_mqtt_client_disconnect(clientCloud);
-                xEventGroupWaitBits(wifi_event_group, DISCO_BIT|ERROR_BIT, pdFALSE, pdFALSE,   portMAX_DELAY); //explicit disConnect Bit
-                // restart our system tasks
-                err=esp_mqtt_client_stop(clientCloud);
-                root_mqtt_app_start();              // start the mqtt tasks
-                delay(2000);                        // breathing space haha
-                xTimerStart(collectTimer, 0 );      // start the mesh comms
-                recoTaskHandle=NULL;                // in case we are called to duty again... before calling xTaskDelete
-                vTaskDelete(recoTaskHandle);        // ourselves...good job :-)
-            }
-        }
-        else
-        {
-            printf("No setup\n");
             delay(1000);
         }
     }
 }
 
 
+static void root_mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data);
+
+/**
+ * @brief Log MQTT error message to system log
+ * 
+ * Creates log entry with specific error type and optional error code.
+ * 
+ * @param error_msg Error message suffix
+ * @param error_code Optional error code (can be NULL)
+ */
+static void log_mqtt_error(const char *error_msg, const char *error_code)
+{
+    char *msg = (char*)calloc(1, 100);
+    if(msg)
+    {
+        snprintf(msg, 100, "MQTT ERROR %s%s%s", error_msg, error_code ? " " : "", error_code ? error_code : "");
+        writeLog(msg);
+        free(msg);
+    }
+}
+
+/**
+ * @brief Handle TCP transport error and initiate reconnection
+ * 
+ * Launches reconnection task if not already running.
+ */
+static void handle_mqtt_tcp_error(void)
+{
+    if(!recoTaskHandle)
+    {
+        log_mqtt_error("Reconnect task launched", NULL);
+        ESP_LOGW(MESH_TAG, "Transport error. ReconnectTask launched");
+        esp_mqtt_client_disconnect(clientCloud);
+        
+        if(xTaskCreate(root_reconnectTask, "mqttreco", 1024*4, NULL, 14, &recoTaskHandle) != pdPASS)
+            ESP_LOGE(MESH_TAG, "Cannot create reconnect task");
+    }
+    else
+        delay(5000);
+}
+
+/**
+ * @brief Handle MQTT data reception
+ * 
+ * Processes incoming MQTT message: allocates buffer, copies data,
+ * updates statistics, and queues for processing.
+ */
+static void handle_mqtt_data_event(esp_mqtt_event_handle_t event)
+{
+    if(event->data_len == 0)
+    {
+        ESP_LOGE(MESH_TAG, "Empty MQTT message received");
+        return;
+    }
+    
+    mqttMsg_t mqttHandle;
+    memset(&mqttHandle, 0, sizeof(mqttHandle));
+    
+    char *msg = (char*)calloc(event->data_len, 1);
+    if(!msg)
+    {
+        ESP_LOGE(MESH_TAG, "No RAM for MQTT message");
+        return;
+    }
+    
+    memcpy(msg, event->data, event->data_len);
+    
+    if((theConf.debug_flags >> dMQTT) & 1U)
+    {
+        msg[event->data_len] = 0;
+        ESP_LOGI(MESH_TAG, "%sMqtt Msg [%s]", DBG_MQTT, msg);
+    }
+    
+    mqttHandle.message = (uint8_t*)msg;
+    mqttHandle.msgLen = event->data_len;
+    
+    theBlower.setStatsBytesIn(event->data_len);
+    theBlower.setStatsMsgIn();
+    
+    char eltopic[60];
+    memset(eltopic, 0, sizeof(eltopic));
+    memcpy(eltopic, event->topic, event->topic_len);
+    
+    if(xQueueSend(mqttQ, &mqttHandle, 0) != pdTRUE)
+    {
+        ESP_LOGE(MESH_TAG, "Cannot queue MQTT message");
+        free(msg);
+        return;
+    }
+    
+    // Delete retained messages
+    if(strcmp(eltopic, cmdQueue) == 0)
+        esp_mqtt_client_publish(clientCloud, cmdQueue, "", 0, 0, 1);
+    else if(strcmp(eltopic, cmdBroadcast) == 0)
+        esp_mqtt_client_publish(clientCloud, cmdBroadcast, "", 0, 0, 1);
+}
+
+/**
+ * @brief Handle MQTT connection event
+ * 
+ * Subscribes to command queue and sets connection flags.
+ */
+static void handle_mqtt_connected_event(void)
+{
+    int err = esp_mqtt_client_subscribe(clientCloud, cmdQueue, 0);
+    if(err == 0 && (theConf.debug_flags >> dMQTT) & 1U)
+        ESP_LOGE(MESH_TAG, "%sSubscription Ok to %s", DBG_MQTT, cmdQueue);
+    
+    mqttf = true;
+    sendMeterf = false;
+}
+
+/**
+ * @brief Handle MQTT disconnection event
+ * 
+ * Clears connection flags and sets disconnect event bit.
+ */
+static void handle_mqtt_disconnected_event(void)
+{
+    xEventGroupSetBits(wifi_event_group, DISCO_BIT);
+    xEventGroupClearBits(wifi_event_group, MQTT_BIT);
+    delay(100);
+    mqttf = false;
+    sendMeterf = false;
+}
+
 static void root_mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
-    // ESP_LOGD(MESH_TAG, "Event dispatched from event loop base=%s, event_id=%" PRIi32, base, event_id);
     esp_mqtt_event_handle_t event = (esp_mqtt_event_handle_t)event_data;
-    esp_mqtt_client_handle_t client = event->client;
-    int msg_id;
-    int err,cualq;
-    mqttMsg_t mqttHandle;
-    char *msg;
-    char    eltopic[60];
-
-    switch ((esp_mqtt_event_id_t)event_id) {
+    
+    switch ((esp_mqtt_event_id_t)event_id)
+    {
     case MQTT_EVENT_BEFORE_CONNECT:
-    // printf("Before connect\n");
         break;
     case MQTT_EVENT_CONNECTED:
-        // ESP_LOGI(MESH_TAG, "MQTT_EVENT_CONNECTED");
-        err=esp_mqtt_client_subscribe(client,cmdQueue, 0);
-        // err=esp_mqtt_client_subscribe(client,cmdBroadcast, 0);       //if a broadcast strategy active
-        mqttf=true;                         //service IS active
-        sendMeterf=false;                   //no message are pending
+        handle_mqtt_connected_event();
         break;
     case MQTT_EVENT_DISCONNECTED:
-        // ESP_LOGI(MESH_TAG, "MQTT_EVENT_DISCONNECTED");
-        xEventGroupSetBits(wifi_event_group, DISCO_BIT);         // used as a CONNECT Mqtt and Subscribe in One
-        xEventGroupClearBits(wifi_event_group,MQTT_BIT);
-        delay(100);
-        mqttf=false;  
-        sendMeterf=false; 
+        handle_mqtt_disconnected_event();
         break;
-
     case MQTT_EVENT_SUBSCRIBED:
-        // ESP_LOGI(MESH_TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
-        xEventGroupSetBits(wifi_event_group, MQTT_BIT);         // used as a CONNECT Mqtt and Subscribe in One
+        xEventGroupSetBits(wifi_event_group, MQTT_BIT);
         break;
     case MQTT_EVENT_UNSUBSCRIBED:
-        // ESP_LOGI(MESH_TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
 #ifdef MQTTSUB
-        xEventGroupSetBits(wifi_event_group, PUB_BIT|DONE_BIT);//message sent bit
+        xEventGroupSetBits(wifi_event_group, PUB_BIT|DONE_BIT);
 #endif
-        mqttf=false;
+        mqttf = false;
         break;
     case MQTT_EVENT_PUBLISHED:
-        if((theConf.debug_flags >> dMQTT) & 1U)  
-            ESP_LOGI(MESH_TAG, "%SMQTT_EVENT_PUBLISHED, msg_id=%d",DBG_MQTT, event->msg_id);
-// #ifdef MQTTSUB
-//             esp_mqtt_client_unsubscribe(client, cmdQueue);//bit is set by unsubscribe
-// #else
-            xEventGroupSetBits(wifi_event_group, PUB_BIT);//message sent bit
-// #endif
-            break;
+        if((theConf.debug_flags >> dMQTT) & 1U)
+            ESP_LOGI(MESH_TAG, "%sMQTT_EVENT_PUBLISHED, msg_id=%d", DBG_MQTT, event->msg_id);
+        xEventGroupSetBits(wifi_event_group, PUB_BIT);
+        break;
     case MQTT_EVENT_DATA:
-            bzero(&mqttHandle,sizeof(mqttHandle));
-            msg=(char*)calloc(event->data_len,1);     
-            memcpy(msg,event->data,event->data_len);
-            if((theConf.debug_flags >> dMQTT) & 1U)  
-                ESP_LOGI(MESH_TAG, "%sMqtt Msg [%s]",DBG_MQTT, msg);
-            mqttHandle.message=(uint8_t*)msg;
-            mqttHandle.msgLen=event->data_len;
-            if(event->data_len)
-            {
-                theBlower.setStatsBytesIn(event->data_len);
-                theBlower.setStatsMsgIn();
-                // ESP_LOGI(MESH_TAG,"TOPIC=%.*s",event->topic_len, event->topic);
-                // ESP_LOGI(MESH_TAG,"DATA=%.*s %d", event->data_len, event->data, event->data_len);
-                bzero(eltopic,sizeof(eltopic));
-                memcpy(eltopic,event->topic,event->topic_len);
-                if(xQueueSend( mqttQ,&mqttHandle,0 )!=pdTRUE)
-                    ESP_LOGE(MESH_TAG,"Cannot add msgd mqtt");  // TODO free msg 
-
-                    // delete retained
-                if(strcmp(eltopic,cmdQueue)==0)
-                    esp_mqtt_client_publish(clientCloud, cmdQueue, "", 0, 0,1);//delete retained
-                else
-                    //hopefully he can do that and mqwtt is not already closed
-                    if(strcmp(eltopic,cmdBroadcast)==0)
-                        esp_mqtt_client_publish(clientCloud, cmdBroadcast, "", 0, 0,1);//delete retained VERY IMPORTANT
-            }
-            break;
+        handle_mqtt_data_event(event);
+        break;
     case MQTT_EVENT_ERROR:
-    {
         ESP_LOGI(MESH_TAG, "MQTT_EVENT_ERROR");
-        xEventGroupClearBits(wifi_event_group,ERROR_BIT);
-        if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT) 
+        xEventGroupClearBits(wifi_event_group, ERROR_BIT);
+        
+        if(event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT)
         {
-            if(!recoTaskHandle)
-            {
-                char *msg=(char*)calloc(1,100);
-                if(msg)
-                {
-                    sprintf(msg,"MQTT ERROR Reconnect task launched");
-                    writeLog(msg);
-                    free(msg);
-                }
-
-                ESP_LOGW(MESH_TAG, "Transport error. ReconnetTask launched");
-                err=esp_mqtt_client_disconnect(clientCloud);
-                if(xTaskCreate(root_reconnectTask,"mqttreco",1024*4,NULL, 14,&recoTaskHandle)!=pdPASS)
-                    ESP_LOGE(MESH_TAG,"Cannot create reconnect task");
-                    //todo need to set the error bit to release mqtt sender
-            }
-            else
-                delay(5000);
-        } 
-        else if (event->error_handle->error_type == MQTT_ERROR_TYPE_CONNECTION_REFUSED) 
+            handle_mqtt_tcp_error();
+        }
+        else if(event->error_handle->error_type == MQTT_ERROR_TYPE_CONNECTION_REFUSED)
         {
             ESP_LOGI(MESH_TAG, "Connection refused error: 0x%x", event->error_handle->connect_return_code);
-            char *msg=(char*)calloc(1,100);
-            if(msg)
-            {
-                sprintf(msg,"MQTT ERROR Connection refused");
-                writeLog(msg);
-                free(msg);
-            } 
+            log_mqtt_error("Connection refused", NULL);
         }
-        else 
+        else
         {
             ESP_LOGW(MESH_TAG, "Unknown error type: 0x%x", event->error_handle->error_type);
-            char *msg=(char*)calloc(1,100);
-            if(msg)
-            {
-                sprintf(msg,"MQTT ERROR Unknown %d",event->error_handle->error_type);
-                writeLog(msg);
-                free(msg);
-            }
+            char error_code[20];
+            snprintf(error_code, sizeof(error_code), "0x%x", event->error_handle->error_type);
+            log_mqtt_error("Unknown type", error_code);
         }
-            sendMeterf=false;                                           
-            xEventGroupSetBits(wifi_event_group, ERROR_BIT);         
+        
+        sendMeterf = false;
+        xEventGroupSetBits(wifi_event_group, ERROR_BIT);
         break;
-    }
     default:
-        // ESP_LOGI(TAG, "MQTT Other event id:%d", event->event_id);
         break;
     }
 }
@@ -2049,56 +2331,139 @@ static int findCommand(const char * cual)
 	return ESP_FAIL;
 }
 
+/**
+ * @brief Process a single command item from MQTT command array
+ * 
+ * Extracts the command name, looks up its handler, and executes it.
+ * Logs errors if command not found or missing cmd field.
+ * 
+ * @param cmditem cJSON object containing the command
+ * @return void
+ */
+static void process_mqtt_command_item(cJSON *cmditem)
+{
+	cJSON *order = cJSON_GetObjectItem(cmditem, "cmd");
+	if (!order)
+	{
+		ESP_LOGE(MESH_TAG, "No order/cmd received in command item");
+		return;
+	}
+
+	ESP_LOGI(MESH_TAG, "%sExternal cmd [%s]", DBG_XCMDS, order->valuestring);
+	int cual = findCommand(order->valuestring);
+	
+	if (cual >= 0)
+	{
+		(*cmds[cual].code)((void *)cmditem);	// call the cmd and wait for it to end
+	}
+	else
+	{
+		ESP_LOGE(MESH_TAG, "Invalid cmd received %s", order->valuestring);
+	}
+}
+
+/**
+ * @brief Process MQTT command array from message
+ * 
+ * Iterates through cmdarr array in cJSON and dispatches each command
+ * to the command handler. Handles parse errors and missing arrays.
+ * 
+ * @param elcmd Parsed cJSON object containing cmdarr
+ * @return void
+ */
+static void process_mqtt_command_array(cJSON *elcmd)
+{
+	cJSON *monton = cJSON_GetObjectItem(elcmd, "cmdarr");
+	if (!monton)
+	{
+		ESP_LOGE(MESH_TAG, "No cmdarr received");
+		return;
+	}
+
+	int son = cJSON_GetArraySize(monton);
+	for (int a = 0; a < son; a++)
+	{
+		cJSON *cmditem = cJSON_GetArrayItem(monton, a);
+		if (cmditem)
+		{
+			process_mqtt_command_item(cmditem);
+		}
+		else
+		{
+			ESP_LOGE(MESH_TAG, "Internal Error MqttMgr cmditem not obtained");
+		}
+	}
+}
+
 void meshSendTask(void *pArg)
 {
     mqttSender_t meshMsg;
     mesh_data_t data;
+    
     while(true)
     {
-        if( xQueueReceive( meshQueue, &meshMsg, portMAX_DELAY ))	//mqttHandle has a pointer to the original message. MUST be freed at some point
+        if(xQueueReceive(meshQueue, &meshMsg, portMAX_DELAY))
         {   
             if(meshMsg.msg)
             {
-                meshunion_t *intMessage=(meshunion_t*)calloc(1,meshMsg.lenMsg+4);     // the reserving of space for the union is not the sizeof union just arbitrary 
-                void *p=(void*)intMessage+4;
-                memcpy(p,meshMsg.msg,meshMsg.lenMsg);        //copy the message itself, offset 4 for cmd uint32
-                intMessage->cmd=MESH_INT_DATA_CJSON;
+                meshunion_t *intMessage = (meshunion_t*)calloc(1, meshMsg.lenMsg + 4);
+                if (!intMessage)
+                {
+                    ESP_LOGE(MESH_TAG, "No RAM for mesh message");
+                    free(meshMsg.msg);
+                    continue;
+                }
+
+                void *p = (void*)intMessage + 4;
+                memcpy(p, meshMsg.msg, meshMsg.lenMsg);
+                intMessage->cmd = MESH_INT_DATA_CJSON;
+                
                 data.proto = MESH_PROTO_BIN;
                 data.tos = MESH_TOS_P2P;
-                data.data=(uint8_t*)intMessage;
-                data.size=meshMsg.lenMsg+4;
-                esp_mesh_send(meshMsg.addr, &data, meshMsg.addr==NULL? MESH_DATA_FROMDS:MESH_DATA_P2P, NULL, 0);
+                data.data = (uint8_t*)intMessage;
+                data.size = meshMsg.lenMsg + 4;
+                
+                esp_err_t err = esp_mesh_send(meshMsg.addr, &data, meshMsg.addr == NULL ? MESH_DATA_FROMDS : MESH_DATA_P2P, NULL, 0);
+                if (err != ESP_OK)
+                    ESP_LOGE(MESH_TAG, "Mesh send failed: %x", err);
+                
                 free(intMessage);
                 free(meshMsg.msg);
             }
-
         }
     }
 }
 
 void root_emergencyTask(void *pArg)
 {
-    mqttSender_t emergencyMsg,meshMsg;
-    mesh_data_t data;
+    mqttSender_t emergencyMsg, meshMsg;
 
     while(true)
     {
-        if( xQueueReceive( mqtt911, &emergencyMsg, portMAX_DELAY ))	//mqttHandle has a pointer to the original message. MUST be freed at some point
+        if(xQueueReceive(mqtt911, &emergencyMsg, portMAX_DELAY))
         {   
             if(emergencyMsg.msg)
             {  
-                char *intMessage=(char *)calloc(1,emergencyMsg.lenMsg);     // the reserving of space for the union is not the sizeof union just arbitrary 
-                memcpy(intMessage,emergencyMsg.msg,emergencyMsg.lenMsg);        //copy the message itself, offset 4 for cmd uint32
+                char *intMessage = (char *)calloc(1, emergencyMsg.lenMsg);
+                if (!intMessage)
+                {
+                    ESP_LOGE(MESH_TAG, "No RAM for emergency message");
+                    free(emergencyMsg.msg);
+                    continue;
+                }
+
+                memcpy(intMessage, emergencyMsg.msg, emergencyMsg.lenMsg);
                 free(emergencyMsg.msg);
 
-                meshMsg.msg=intMessage;
-                meshMsg.lenMsg=strlen(intMessage);
-                meshMsg.addr=NULL;          // to root
-                if(xQueueSend(meshQueue,&meshMsg,0)!=pdTRUE)      //will free todo 
+                memset(&meshMsg, 0, sizeof(meshMsg));
+                meshMsg.msg = intMessage;
+                meshMsg.lenMsg = strlen(intMessage);
+                meshMsg.addr = NULL;  // to root
+                
+                if(xQueueSend(meshQueue, &meshMsg, 0) != pdTRUE)
                 {
-                    ESP_LOGE(MESH_TAG,"Error queueing confirm msg");
-                    if(meshMsg.msg)                 // already checked but ...
-                        free(meshMsg.msg);          //due to failure
+                    ESP_LOGE(MESH_TAG, "Error queueing emergency msg");
+                    free(meshMsg.msg);  // free on failure
                 }
             }
         }
@@ -2112,70 +2477,21 @@ void root_emergencyTask(void *pArg)
 
 void root_mqttMgr(void *pArg)
 {
-    mqttMsg_t           mqttHandle;
-    mqttSender_t        mqttMsg;
-	cJSON 	            *elcmd;
+    mqttMsg_t mqttHandle;
+	cJSON *elcmd;
 
     while(true)
     {
-        if( xQueueReceive( mqttQ, &mqttHandle, portMAX_DELAY ))	//mqttHandle has a pointer to the original message. MUST be freed at some point
+        if(xQueueReceive(mqttQ, &mqttHandle, portMAX_DELAY))
         {
-            // ESP_LOGI(MESH_TAG,"Message In MQtt %s len %d",mqttHandle.message,mqttHandle.msgLen);
-            elcmd= cJSON_Parse((char*)mqttHandle.message);		//plain text to cJSON... must eventually cDelete elcmd
+            elcmd = cJSON_Parse((char*)mqttHandle.message);
 			if(elcmd)
 			{
-                cJSON *monton= 		    cJSON_GetObjectItem(elcmd,"cmdarr");
-                if(monton)
-                {
-                    int son=cJSON_GetArraySize(monton);
-                    for (int a=0;a<son;a++)
-                    {
-                        cJSON *cmditem 	=cJSON_GetArrayItem(monton, a);//next item
-                        if(cmditem)
-                        {
-                            // printf("Cmd[%d]\n",a);
-                            cJSON *order= 		cJSON_GetObjectItem(cmditem,"cmd");
-                            if(order)
-                            {
-                                ESP_LOGI(MESH_TAG,"External cmd [%s]",order->valuestring);
-                                int cual=findCommand(order->valuestring);
-                                if(cual>=0)
-                                {
-                                        (*cmds[cual].code)((void*)cmditem);	// call the cmd and wait for it to end
-                                }
-                                else    
-                                {
-                                    ESP_LOGE(MESH_TAG,"Invalid cmd received %s",order->valuestring);
-                                    // mqttMsg.queue=emergencyQueue;   // fall thru  
-                                    // char *message=(char*)calloc(1,strlen((char*)mqttHandle.message));   //will be freed by mqttsender at delivery confirmation
-                                    // // char *message=(char*)calloc(1,strlen((char*)mqttHandle.message)+50);   //will be freed by mqttsender at delivery confirmation
-                                    // sprintf(message,"Invalid Cmd [%s] in Node %d",(char*)mqttHandle.message,theConf.unitid);
-                                    // mqttMsg.msg=message;
-                                    // mqttMsg.lenMsg=strlen(message);
-                                    // mqttMsg.code=NULL;
-                                    // mqttMsg.param=NULL; 
-                                    // if(xQueueSend(mqttSender,&mqttMsg,0)!=pdTRUE)      //will free message malloc
-                                    // {
-                                    //     ESP_LOGE(MESH_TAG,"Error mqttmgr queueing msg invalid cmd");
-                                    //     if(mqttMsg.msg)
-                                    //         free(mqttMsg.msg);  //due to failure
-                                    // }
-                                }
-                            }
-                            else
-                                ESP_LOGE(MESH_TAG,"No order/cmd received in cmdarr[%d]",a);
-                        }
-                            else
-                               ESP_LOGE(MESH_TAG,"Internal Error MqttMgr cmditem not obtained");
-
-                    }
-                    cJSON_Delete(elcmd);
-                }
-                else
-                    ESP_LOGE(MESH_TAG,"No cmdarr received");
+				process_mqtt_command_array(elcmd);
+                cJSON_Delete(elcmd);
             }
             else
-                ESP_LOGE(MESH_TAG,"Cmd received not parsable [%s]",mqttHandle.message);
+                ESP_LOGE(MESH_TAG, "Cmd received not parsable [%s]", mqttHandle.message);
 
             if(mqttHandle.message)
             {
@@ -2189,59 +2505,166 @@ void root_mqttMgr(void *pArg)
 //                                                <-------- Site/Port -->
 // echo "" | openssl s_client -showcerts -connect m13.cloudmqtt.com:28747 | sed -n "1,/Root/d; /BEGIN/,/END/p" | openssl x509 -outform PEM >hive.pem
 
-static esp_mqtt_client_handle_t root_setupMqtt()
+static void setup_mqtt_config(void)
 {
-    char who[20],mac[8];
-    esp_base_mac_addr_get((uint8_t*)mac);
-    bzero(who,sizeof(who));
-    sprintf(who,"Meterserver%d",theConf.poolid);
-    bzero((void*)&mqtt_cfg,sizeof(mqtt_cfg));
-    mqtt_cfg.broker.address.uri=  					            theConf.mqttServer;  // pem certificate for m13.cloudmqtt.com:28747 match with hivessl.pem
-    if(strlen(theConf.mqttcert)>0)
+    char who[20];
+    
+    memset(who, 0, sizeof(who));
+    memset(&mqtt_cfg, 0, sizeof(mqtt_cfg));
+    
+    snprintf(who, sizeof(who), "Meterserver%d", theConf.poolid);
+    
+    mqtt_cfg.broker.address.uri = theConf.mqttServer;
+    mqtt_cfg.credentials.client_id = who;
+    mqtt_cfg.credentials.username = theConf.mqttUser;
+    mqtt_cfg.credentials.authentication.password = theConf.mqttPass;
+    mqtt_cfg.network.disable_auto_reconnect = true;  // we will manage this in recoTask
+    mqtt_cfg.buffer.size = MQTTBIG;
+    
+    // Configure certificate if present
+    if (strlen(theConf.mqttcert) > 0)
     {
-        mqtt_cfg.broker.verification.certificate=                   theConf.mqttcert;
-        mqtt_cfg.broker.verification.certificate_len=               theConf.mqttcertlen;
+        mqtt_cfg.broker.verification.certificate = theConf.mqttcert;
+        mqtt_cfg.broker.verification.certificate_len = theConf.mqttcertlen;
     }
-    mqtt_cfg.credentials.client_id=				                who;
-    mqtt_cfg.credentials.username=					            theConf.mqttUser;
-    mqtt_cfg.credentials.authentication.password=		        theConf.mqttPass;
-    mqtt_cfg.network.disable_auto_reconnect=                    true;       // we will manage this in recoTask
-    mqtt_cfg.buffer.size=                                       MQTTBIG;         
-   
-    // printf("Mqtt client [%s] user [%s] pass [%s] uri [%s] \n",
-    //          mqtt_cfg.credentials.client_id,mqtt_cfg.credentials.username,mqtt_cfg.credentials.authentication.password,
-    //                     mqtt_cfg.broker.address.uri );
+}
 
-    // ! NOTICE
-    // WITHOUT ssl encryption average message of 8 meters takes aprox 450ms
-    // WITH ssl encryption it 1250 !!! for your information IMPORTANT
-    // wss takes 2000ms
-
+static esp_mqtt_client_handle_t root_setupMqtt(void)
+{
+    setup_mqtt_config();
+    
     clientCloud = esp_mqtt_client_init(&mqtt_cfg);
+    if (!clientCloud)
+    {
+        ESP_LOGE(MESH_TAG, "Failed to initialize MQTT client");
+        return NULL;
+    }
+    
     esp_mqtt_client_register_event(clientCloud, (esp_mqtt_event_id_t)ESP_EVENT_ANY_ID, root_mqtt_event_handler, NULL);
     return clientCloud;
 }
 
+static bool launch_mqtt_manager_task(void)
+{
+    if (xTaskCreate(&root_mqttMgr, "mqtt", 1024*10, NULL, 10, &mqttMgrHandle) != pdPASS)
+    {
+        ESP_LOGE(MESH_TAG, "Failed to launch MQTT manager task");
+        return false;
+    }
+    return true;
+}
+
+static bool launch_mqtt_sender_task(void)
+{
+    if (xTaskCreate(&root_mqtt_sender, "mqttsend", 1024*20, NULL, 14, &mqttSendHandle) != pdPASS)
+    {
+        ESP_LOGE(MESH_TAG, "Failed to launch MQTT sender task");
+        return false;
+    }
+    return true;
+}
+
 static void root_mqtt_app_start(void)
 {
-        // BaseType_t xReturned;
-       if( xTaskCreate(&root_mqttMgr,"mqtt",1024*10,NULL, 10, &mqttMgrHandle)!=pdPASS)      //receiving commands
-            ESP_LOGE(MESH_TAG,"Fail to launch Mgr");
-        if(xTaskCreate(&root_mqtt_sender,"mqttsend",1024*20,NULL, 14, &mqttSendHandle)!=pdPASS)
-            ESP_LOGE(MESH_TAG,"Fail to launch Sender");
+    launch_mqtt_manager_task();
+    launch_mqtt_sender_task();
+}
+
+static uint8_t last_mesh_layer = 0;
+
+static void handle_child_connected(mesh_event_child_connected_t *child_connected)
+{
+    mesh_addr_t id = {0};
+    esp_mesh_get_id(&id);
+    memcpy(&id.addr, &child_connected->mac, 6);
+
+    ESP_LOGI(MESH_TAG, "<MESH_EVENT_CHILD_CONNECTED>aid:%d, " MACSTR "",
+             child_connected->aid, MAC2STR(child_connected->mac));
+
+    if (!esp_mesh_is_root())
+        return;
+
+    esp_err_t err = root_send_data_to_node(id);  // send configuration to station Node including if start schedule
+    if (err != ESP_OK)
+        ESP_LOGE(MESH_TAG, "Send SSID Failed");
+
+    logCount++;
+    if (logCount + 1 >= theConf.totalnodes)
+    {
+        xTimerStop(loginTimer, 0);  // stop any pending login timeout
+        if ((theConf.debug_flags >> dLOGIC) & 1U)
+            ESP_LOGI(TAG, "Login Timeout Done %d have %d", theConf.totalnodes - 1, logCount);
+        send_login_msg("Login Ok");
+    }
+}
+
+static void handle_child_disconnected(mesh_event_child_disconnected_t *child_disconnected)
+{
+    ESP_LOGI(MESH_TAG, "<MESH_EVENT_CHILD_DISCONNECTED>aid:%d, " MACSTR "",
+             child_disconnected->aid, MAC2STR(child_disconnected->mac));
+
+    if (sendMeterf)
+        ESP_LOGI(MESH_TAG, "Disconnect while sending data. Retry");
+
+    if (!esp_mesh_is_root())
+        return;
+
+    logCount--;
+    if (logCount < theConf.totalnodes - 1)
+    {
+        xTimerStart(loginTimer, 0);
+        esp_rom_printf("Login Timer restarted\n");
+    }
+}
+
+static void handle_parent_connected(mesh_event_connected_t *connected)
+{
+    mesh_addr_t id = {0};
+    esp_mesh_get_id(&id);
+
+    mesh_layer = connected->self_layer;
+    memcpy(&mesh_parent_addr.addr, connected->connected.bssid, 6);
+
+    ESP_LOGI(MESH_TAG,
+             "<MESH_EVENT_PARENT_CONNECTED>layer:%d-->%d, parent:" MACSTR "%s, ID:" MACSTR "",
+             last_mesh_layer, mesh_layer, MAC2STR(mesh_parent_addr.addr),
+             esp_mesh_is_root() ? "<ROOT>" : (mesh_layer == 2) ? "<layer2>" : "", MAC2STR(id.addr));
+
+    last_mesh_layer = mesh_layer;
+    mesh_netifs_start(esp_mesh_is_root());
+    meshf = true;
+}
+
+static void handle_parent_disconnected(mesh_event_disconnected_t *disconnected)
+{
+    ESP_LOGI(MESH_TAG, "<MESH_EVENT_PARENT_DISCONNECTED>reason:%d", disconnected->reason);
+
+    if (esp_mesh_is_root())
+    {
+        hostflag = false;
+        mqttf = false;
+        theBlower.setStatsStaDiscos();
+
+        char *msg = (char *)calloc(1, 100);
+        if (msg)
+        {
+            sprintf(msg, "Mesh Parent (HOST) disconnected Reason:%d", disconnected->reason);
+            writeLog(msg);
+            free(msg);
+        }
+    }
+
+    mesh_layer = esp_mesh_get_layer();
+    mesh_netifs_stop();
+    meshf = false;
 }
 
 void mesh_event_handler(void *arg, esp_event_base_t event_base,
                         int32_t event_id, void *event_data)
 {
-    esp_err_t err;
-
-
-    mesh_addr_t id = {0,};
-    static uint8_t last_layer = 0;
-
     switch (event_id) {
     case MESH_EVENT_STARTED: {
+        mesh_addr_t id = {0};
         esp_mesh_get_id(&id);
         // ESP_LOGI(MESH_TAG, "<MESH_EVENT_MESH_STARTED>ID:"MACSTR"", MAC2STR(id.addr));
         mesh_layer = esp_mesh_get_layer();
@@ -2253,52 +2676,11 @@ void mesh_event_handler(void *arg, esp_event_base_t event_base,
     }
     break;
     case MESH_EVENT_CHILD_CONNECTED: {
-        mesh_event_child_connected_t *child_connected = (mesh_event_child_connected_t *)event_data;
-        ESP_LOGI(MESH_TAG, "<MESH_EVENT_CHILD_CONNECTED>aid:%d, "MACSTR"",
-                 child_connected->aid,
-                 MAC2STR(child_connected->mac));
-        esp_mesh_get_id(&id);
-        memcpy(&id.addr,&child_connected->mac,6);
-        if( esp_mesh_is_root())
-        {
-            err= root_send_data_to_node(id);      //send configuration to station Node including if start schedule
-            if(err!=ESP_OK) 
-                ESP_LOGE(MESH_TAG,"Send SSID Failed");
-
-            logCount++;
-            if(logCount+1>=theConf.totalnodes)
-            {
-                // if(xTimerIsTimerActive(loginTimer))
-                    xTimerStop(loginTimer,0);
-                if((theConf.debug_flags >> dLOGIC) & 1U) 
-                    ESP_LOGI(TAG,"Login Timeout Done %d have %d",theConf.totalnodes-1,logCount);
-                send_login_msg("Login Ok");
-            }
-        }
+        handle_child_connected((mesh_event_child_connected_t *)event_data);
     }
     break;
     case MESH_EVENT_CHILD_DISCONNECTED: {
-        mesh_event_child_disconnected_t *child_disconnected = (mesh_event_child_disconnected_t *)event_data;
-        ESP_LOGI(MESH_TAG, "<MESH_EVENT_CHILD_DISCONNECTED>aid:%d, "MACSTR"",
-                 child_disconnected->aid,
-                 MAC2STR(child_disconnected->mac));
-        if(sendMeterf)  //very important to ask
-        {
-            ESP_LOGI(MESH_TAG,"Disconnect while sending data. Retry");
-            //timeout will manage to send whomever was available
-            // this station NEVER sent the data so no RAM to free
-        }
-        if( esp_mesh_is_root())
-        {
-            logCount--;
-            if(logCount<theConf.totalnodes-1)
-                // if(!xTimerIsTimerActive(loginTimer ))
-                // {
-                    xTimerStart(loginTimer,0);  
-                    esp_rom_printf("Login Timer restarted\n"); 
-                // }
-
-        }
+        handle_child_disconnected((mesh_event_child_disconnected_t *)event_data);
     }
     break;
     case MESH_EVENT_ROUTING_TABLE_ADD: {
@@ -2311,560 +2693,787 @@ void mesh_event_handler(void *arg, esp_event_base_t event_base,
     case MESH_EVENT_ROUTING_TABLE_REMOVE: {
         // mesh_event_routing_table_change_t *routing_table = (mesh_event_routing_table_change_t *)event_data;
         // ESP_LOGW(MESH_TAG, "<MESH_EVENT_ROUTING_TABLE_REMOVE>remove %d, new:%d",
-                //  routing_table->rt_size_change,
-                //  routing_table->rt_size_new);
+        //          routing_table->rt_size_change,
+        //          routing_table->rt_size_new);
     }
     break;
     case MESH_EVENT_NO_PARENT_FOUND: {
         // mesh_event_no_parent_found_t *no_parent = (mesh_event_no_parent_found_t *)event_data;
         // ESP_LOGI(MESH_TAG, "<MESH_EVENT_NO_PARENT_FOUND>scan times:%d",
-                //  no_parent->scan_times);
+        //          no_parent->scan_times);
 
     }
     /* TODO handler for the failure */    
     case MESH_EVENT_PARENT_CONNECTED: {
-        mesh_event_connected_t *connected = (mesh_event_connected_t *)event_data;
-        esp_mesh_get_id(&id);
-        mesh_layer = connected->self_layer;
-        memcpy(&mesh_parent_addr.addr, connected->connected.bssid, 6);
-        ESP_LOGI(MESH_TAG,
-                 "<MESH_EVENT_PARENT_CONNECTED>layer:%d-->%d, parent:"MACSTR"%s, ID:"MACSTR"",
-                 last_layer, mesh_layer, MAC2STR(mesh_parent_addr.addr),
-                 esp_mesh_is_root() ? "<ROOT>" :
-                 (mesh_layer == 2) ? "<layer2>" : "", MAC2STR(id.addr));
-        last_layer = mesh_layer;
-        mesh_netifs_start(esp_mesh_is_root());   
-        meshf=true;   
-        }
+        handle_parent_connected((mesh_event_connected_t *)event_data);
+    }
     break;
     case MESH_EVENT_PARENT_DISCONNECTED: {
-        mesh_event_disconnected_t *disconnected = (mesh_event_disconnected_t *)event_data;
-        ESP_LOGI(MESH_TAG,
-                 "<MESH_EVENT_PARENT_DISCONNECTED>reason:%d",
-                 disconnected->reason);            
-        if(esp_mesh_is_root())
-        {
-            hostflag=false;
-            mqttf=false;
-            theBlower.setStatsStaDiscos();
-            char *msg=(char*)calloc(1,100);
-            if(msg)
-            {
-                sprintf(msg,"Mesh Parent (HOST) disconnected Reason:%d",disconnected->reason);
-                writeLog(msg);
-                free(msg);
-            }
-        }
-        mesh_layer = esp_mesh_get_layer();
-        mesh_netifs_stop();
-        meshf=false;
+        handle_parent_disconnected((mesh_event_disconnected_t *)event_data);
     }
     break;
-    case MESH_EVENT_LAYER_CHANGE: {
-        mesh_event_layer_change_t *layer_change = (mesh_event_layer_change_t *)event_data;
-        mesh_layer = layer_change->new_layer;
-        // ESP_LOGI(MESH_TAG, "<MESH_EVENT_LAYER_CHANGE>layer:%d-->%d%s",
-        //          last_layer, mesh_layer,
-        //          esp_mesh_is_root() ? "<ROOT>" :
-        //          (mesh_layer == 2) ? "<layer2>" : "");
-        last_layer = mesh_layer;
-    }
-    break;
-    case MESH_EVENT_ROOT_ADDRESS: {
-        // mesh_event_root_address_t *root_addr = (mesh_event_root_address_t *)event_data;
-        // ESP_LOGI(MESH_TAG, "<MESH_EVENT_ROOT_ADDRESS>root address:"MACSTR"",
-        //          MAC2STR(root_addr->addr));
-    }
-    break;
-    case MESH_EVENT_VOTE_STARTED: {
-        // mesh_event_vote_started_t *vote_started = (mesh_event_vote_started_t *)event_data;
-        // ESP_LOGI(MESH_TAG,
-        //          "<MESH_EVENT_VOTE_STARTED>attempts:%d, reason:%d, rc_addr:"MACSTR"",
-        //          vote_started->attempts,
-        //          vote_started->reason,
-        //          MAC2STR(vote_started->rc_addr.addr));
-    }
-    break;
-    case MESH_EVENT_VOTE_STOPPED: {
-        // ESP_LOGI(MESH_TAG, "<MESH_EVENT_VOTE_STOPPED>");
-        break;
-    }
-    case MESH_EVENT_ROOT_SWITCH_REQ: {
-        // mesh_event_root_switch_req_t *switch_req = (mesh_event_root_switch_req_t *)event_data;
-        // ESP_LOGI(MESH_TAG,
-        //          "<MESH_EVENT_ROOT_SWITCH_REQ>reason:%d, rc_addr:"MACSTR"",
-        //          switch_req->reason,
-        //          MAC2STR( switch_req->rc_addr.addr));
-    }
-    break;
-    case MESH_EVENT_ROOT_SWITCH_ACK: {
-        /* new root */
-        mesh_layer = esp_mesh_get_layer();
-        esp_mesh_get_parent_bssid(&mesh_parent_addr);
-        // ESP_LOGI(MESH_TAG, "<MESH_EVENT_ROOT_SWITCH_ACK>layer:%d, parent:"MACSTR"", mesh_layer, MAC2STR(mesh_parent_addr.addr));
-    }
-    break;
-    case MESH_EVENT_TODS_STATE: {
-        // mesh_event_toDS_state_t *toDs_state = (mesh_event_toDS_state_t *)event_data;
-        // ESP_LOGI(MESH_TAG, "<MESH_EVENT_TODS_REACHABLE>state:%d", *toDs_state);
-    }
-    break;
-    case MESH_EVENT_ROOT_FIXED: {
-        // mesh_event_root_fixed_t *root_fixed = (mesh_event_root_fixed_t *)event_data;
-        // ESP_LOGI(MESH_TAG, "<MESH_EVENT_ROOT_FIXED>%s",
-        //          root_fixed->is_fixed ? "fixed" : "not fixed");
-    }
-    break;
-    case MESH_EVENT_ROOT_ASKED_YIELD: {
-        // mesh_event_root_conflict_t *root_conflict = (mesh_event_root_conflict_t *)event_data;
-        // ESP_LOGI(MESH_TAG,
-        //          "<MESH_EVENT_ROOT_ASKED_YIELD>"MACSTR", rssi:%d, capacity:%d",
-        //          MAC2STR(root_conflict->addr),
-        //          root_conflict->rssi,
-        //          root_conflict->capacity);
-    }
-    break;
-    case MESH_EVENT_CHANNEL_SWITCH: {
-        // mesh_event_channel_switch_t *channel_switch = (mesh_event_channel_switch_t *)event_data;
-        // ESP_LOGI(MESH_TAG, "<MESH_EVENT_CHANNEL_SWITCH>new channel:%d", channel_switch->channel);
-    }
-    break;
-    case MESH_EVENT_SCAN_DONE: {
-        // mesh_event_scan_done_t *scan_done = (mesh_event_scan_done_t *)event_data;
-        // ESP_LOGI(MESH_TAG, "<MESH_EVENT_SCAN_DONE>number:%d",
-        //          scan_done->number);
-    }
-    break;
-    case MESH_EVENT_NETWORK_STATE: {
-        // mesh_event_network_state_t *network_state = (mesh_event_network_state_t *)event_data;
-        // ESP_LOGI(MESH_TAG, "<MESH_EVENT_NETWORK_STATE>is_rootless:%d",
-        //          network_state->is_rootless);
-    }
-    break;
-    case MESH_EVENT_STOP_RECONNECTION: {
-        // ESP_LOGI(MESH_TAG, "<MESH_EVENT_STOP_RECONNECTION>");
-    }
-    break;
-    case MESH_EVENT_FIND_NETWORK: {
-        mesh_event_find_network_t *find_network = (mesh_event_find_network_t *)event_data;
-        ESP_LOGI(MESH_TAG, "<MESH_EVENT_FIND_NETWORK>new channel:%d, router BSSID:"MACSTR"",
-                 find_network->channel, MAC2STR(find_network->router_bssid));
-    }
-    break;
-    case MESH_EVENT_ROUTER_SWITCH: {
-        // mesh_event_router_switch_t *router_switch = (mesh_event_router_switch_t *)event_data;
-        // ESP_LOGI(MESH_TAG, "<MESH_EVENT_ROUTER_SWITCH>new router:%s, channel:%d, "MACSTR"",
-        //          router_switch->ssid, router_switch->channel, MAC2STR(router_switch->bssid));
-    }
-    break;
+    // case MESH_EVENT_LAYER_CHANGE: {
+    //     mesh_event_layer_change_t *layer_change = (mesh_event_layer_change_t *)event_data;
+    //     mesh_layer = layer_change->new_layer;
+    //     // ESP_LOGI(MESH_TAG, "<MESH_EVENT_LAYER_CHANGE>layer:%d-->%d%s",
+    //     //          last_layer, mesh_layer,
+    //     //          esp_mesh_is_root() ? "<ROOT>" :
+    //     //          (mesh_layer == 2) ? "<layer2>" : "");
+    //     last_mesh_layer = mesh_layer;
+    // }
+    // break;
+    // case MESH_EVENT_ROOT_ADDRESS: {
+    //     // mesh_event_root_address_t *root_addr = (mesh_event_root_address_t *)event_data;
+    //     // ESP_LOGI(MESH_TAG, "<MESH_EVENT_ROOT_ADDRESS>root address:"MACSTR"",
+    //     //          MAC2STR(root_addr->addr));
+    // }
+    // break;
+    // case MESH_EVENT_VOTE_STARTED: {
+    //     // mesh_event_vote_started_t *vote_started = (mesh_event_vote_started_t *)event_data;
+    //     // ESP_LOGI(MESH_TAG,
+    //     //          "<MESH_EVENT_VOTE_STARTED>attempts:%d, reason:%d, rc_addr:"MACSTR"",
+    //     //          vote_started->attempts,
+    //     //          vote_started->reason,
+    //     //          MAC2STR(vote_started->rc_addr.addr));
+    // }
+    // break;
+    // case MESH_EVENT_VOTE_STOPPED: {
+    //     // ESP_LOGI(MESH_TAG, "<MESH_EVENT_VOTE_STOPPED>");
+    //     break;
+    // }
+    // case MESH_EVENT_ROOT_SWITCH_REQ: {
+    //     // mesh_event_root_switch_req_t *switch_req = (mesh_event_root_switch_req_t *)event_data;
+    //     // ESP_LOGI(MESH_TAG,
+    //     //          "<MESH_EVENT_ROOT_SWITCH_REQ>reason:%d, rc_addr:"MACSTR"",
+    //     //          switch_req->reason,
+    //     //          MAC2STR( switch_req->rc_addr.addr));
+    // }
+    // break;
+    // case MESH_EVENT_ROOT_SWITCH_ACK: {
+    //     /* new root */
+    //     mesh_layer = esp_mesh_get_layer();
+    //     esp_mesh_get_parent_bssid(&mesh_parent_addr);
+    //     // ESP_LOGI(MESH_TAG, "<MESH_EVENT_ROOT_SWITCH_ACK>layer:%d, parent:"MACSTR"", mesh_layer, MAC2STR(mesh_parent_addr.addr));
+    // }
+    // break;
+    // case MESH_EVENT_TODS_STATE: {
+    //     // mesh_event_toDS_state_t *toDs_state = (mesh_event_toDS_state_t *)event_data;
+    //     // ESP_LOGI(MESH_TAG, "<MESH_EVENT_TODS_REACHABLE>state:%d", *toDs_state);
+    // }
+    // break;
+    // case MESH_EVENT_ROOT_FIXED: {
+    //     // mesh_event_root_fixed_t *root_fixed = (mesh_event_root_fixed_t *)event_data;
+    //     // ESP_LOGI(MESH_TAG, "<MESH_EVENT_ROOT_FIXED>%s",
+    //     //          root_fixed->is_fixed ? "fixed" : "not fixed");
+    // }
+    // break;
+    // case MESH_EVENT_ROOT_ASKED_YIELD: {
+    //     // mesh_event_root_conflict_t *root_conflict = (mesh_event_root_conflict_t *)event_data;
+    //     // ESP_LOGI(MESH_TAG,
+    //     //          "<MESH_EVENT_ROOT_ASKED_YIELD>"MACSTR", rssi:%d, capacity:%d",
+    //     //          MAC2STR(root_conflict->addr),
+    //     //          root_conflict->rssi,
+    //     //          root_conflict->capacity);
+    // }
+    // break;
+    // case MESH_EVENT_CHANNEL_SWITCH: {
+    //     // mesh_event_channel_switch_t *channel_switch = (mesh_event_channel_switch_t *)event_data;
+    //     // ESP_LOGI(MESH_TAG, "<MESH_EVENT_CHANNEL_SWITCH>new channel:%d", channel_switch->channel);
+    // }
+    // break;
+    // case MESH_EVENT_SCAN_DONE: {
+    //     // mesh_event_scan_done_t *scan_done = (mesh_event_scan_done_t *)event_data;
+    //     // ESP_LOGI(MESH_TAG, "<MESH_EVENT_SCAN_DONE>number:%d",
+    //     //          scan_done->number);
+    // }
+    // break;
+    // case MESH_EVENT_NETWORK_STATE: {
+    //     // mesh_event_network_state_t *network_state = (mesh_event_network_state_t *)event_data;
+    //     // ESP_LOGI(MESH_TAG, "<MESH_EVENT_NETWORK_STATE>is_rootless:%d",
+    //     //          network_state->is_rootless);
+    // }
+    // break;
+    // case MESH_EVENT_STOP_RECONNECTION: {
+    //     // ESP_LOGI(MESH_TAG, "<MESH_EVENT_STOP_RECONNECTION>");
+    // }
+    // break;
+    // case MESH_EVENT_FIND_NETWORK: {
+    //     mesh_event_find_network_t *find_network = (mesh_event_find_network_t *)event_data;
+    //     ESP_LOGI(MESH_TAG, "<MESH_EVENT_FIND_NETWORK>new channel:%d, router BSSID:"MACSTR"",
+    //              find_network->channel, MAC2STR(find_network->router_bssid));
+    // }
+    // break;
+    // case MESH_EVENT_ROUTER_SWITCH: {
+    //     // mesh_event_router_switch_t *router_switch = (mesh_event_router_switch_t *)event_data;
+    //     // ESP_LOGI(MESH_TAG, "<MESH_EVENT_ROUTER_SWITCH>new router:%s, channel:%d, "MACSTR"",
+    //     //          router_switch->ssid, router_switch->channel, MAC2STR(router_switch->bssid));
+    // }
+    // break;
     default:
         ESP_LOGI(MESH_TAG, "Mesh unknown id:%d", event_id);
         break;
     }
 } 
 
+// Emergency/login helpers build JSON payloads and manage queue ownership in one place
+static bool enqueue_mesh_emergency(const char *msg, uint32_t err)
+{
+    mqttSender_t meshMsg;
+    memset(&meshMsg, 0, sizeof(meshMsg));
+
+    cJSON *root = cJSON_CreateObject();
+    if(!root)
+        return false;
+
+    cJSON_AddStringToObject(root, "cmd", "911");
+    cJSON_AddStringToObject(root, "msg", msg);
+    cJSON_AddNumberToObject(root, "err", err);
+
+    char *payload = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+
+    if(!payload)
+        return false;
+
+    meshMsg.queue = emergencyQueue;
+    meshMsg.msg = payload;
+    meshMsg.lenMsg = strlen(payload);
+    meshMsg.addr = NULL;
+
+    if(xQueueSend(meshQueue, &meshMsg, 0) != pdPASS)
+    {
+        ESP_LOGE(MESH_TAG, "Cannot queue emergency frame");
+        free(payload);
+        return false;
+    }
+
+    return true;
+}
+
+static char *build_login_payload(const char *title)
+{
+    cJSON *root = cJSON_CreateObject();
+    if(!root)
+        return NULL;
+
+    cJSON_AddStringToObject(root, "alarm", title);
+    cJSON_AddNumberToObject(root, "pool", theConf.poolid);
+    cJSON_AddNumberToObject(root, "nodes", theConf.totalnodes - 1);
+    cJSON_AddNumberToObject(root, "logged", logCount);
+
+    char *payload = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return payload;
+}
+
 void send_internal_emergency(char * msg, uint32_t err)
 {
-        mqttSender_t meshMsg;
-        bzero(&meshMsg,sizeof(meshMsg));            //have to zero it for the callback and param
-        cJSON *root=cJSON_CreateObject();
-        if(root)
-        {
-            cJSON_AddStringToObject(root,"cmd","911");
-            cJSON_AddStringToObject(root,"msg",msg);
-            cJSON_AddNumberToObject(root,"err",err);
-            char *intmsg=cJSON_PrintUnformatted(root);
-            if(intmsg)
-            {
-                // printf("Emergency [%s]\n",intmsg);
-                meshMsg.queue=emergencyQueue;
-                meshMsg.msg=intmsg;
-                meshMsg.lenMsg=strlen(intmsg);
-                meshMsg.addr=NULL;
-                if(xQueueSend(meshQueue,&meshMsg,0)!=pdPASS)
-                    ESP_LOGE(MESH_TAG,"Cannot queue fram");   //queue it
-            }
-            cJSON_Delete(root);
-        }
-
+    enqueue_mesh_emergency(msg, err);
 }
 
 void send_login_msg(char * title)
 {
-    mqttSender_t        mqttMsg;
-    bzero(&mqttMsg,sizeof(mqttMsg));            //have to zero it for the callback and param
+    mqttSender_t mqttMsg;
+    memset(&mqttMsg, 0, sizeof(mqttMsg));
 
-    cJSON *root=cJSON_CreateObject();
-    if(root)
+    char *payload = build_login_payload(title);
+    if(!payload)
     {
-        cJSON_AddStringToObject(root,"alarm",title);
-        cJSON_AddNumberToObject(root,"pool",theConf.poolid);
-        cJSON_AddNumberToObject(root,"nodes",theConf.totalnodes-1);
-        cJSON_AddNumberToObject(root,"logged",logCount);
-        char *intmsg=cJSON_PrintUnformatted(root);
-        if(intmsg)
-        {  
-            mqttMsg.queue=                      alarmQueue;
-            mqttMsg.msg=                        intmsg;                                // freed by mqtt sender
-            mqttMsg.lenMsg=                     strlen(intmsg);
-            mqttMsg.code=                       NULL;           //explicit so as not to forget to null
-            mqttMsg.param=                      NULL;
-            if(xQueueSendFromISR(mqttSender,&mqttMsg,0)!=pdTRUE)      //will free todo from isr since its called from a timer callback ISR style 
-            {
-                ESP_LOGE(MESH_TAG,"Error queueing msg");
-                if(mqttMsg.msg)
-                    free(mqttMsg.msg);  //due to failure
-            }
-            else
-                    //must set the wifi_event_bit SEND_MQTT_BIT, else it will just collect the message in the queue
-                xEventGroupSetBits(wifi_event_group, SENDMQTT_BIT);	// Send everything now !!!!!
+        ESP_LOGE(MESH_TAG, "No RAM for Login Timeout payload");
+        return;
+    }
 
-        }
-        else
-            ESP_LOGE(MESH_TAG,"No RAM for Login Timeout");
-        
-        cJSON_Delete(root);             
+    mqttMsg.queue = alarmQueue;
+    mqttMsg.msg = payload;                    // freed by mqtt sender
+    mqttMsg.lenMsg = strlen(payload);
+    mqttMsg.code = NULL;
+    mqttMsg.param = NULL;
+
+    if(xQueueSendFromISR(mqttSender, &mqttMsg, 0) != pdTRUE)
+    {
+        ESP_LOGE(MESH_TAG, "Error queueing msg");
+        free(mqttMsg.msg);
     }
     else
-        ESP_LOGE(MESH_TAG,"No RAM for Login Timeout CJSON");
-
+    {
+        // must set the wifi_event_bit SEND_MQTT_BIT, else it will just collect the message in the queue
+        xEventGroupSetBits(wifi_event_group, SENDMQTT_BIT);
+    }
 }
 
 void login_timeout(TimerHandle_t timer)
 {
+    // Mesh event helpers keep the switch lean and centralize logging/state updates
 
     if((theConf.debug_flags >> dLOGIC) & 1U) 
         ESP_LOGI(TAG,"Login Timeout Expected %d have %d",theConf.totalnodes-1,logCount);
     //send a time out messsage and restart timer again
     send_login_msg("Login Timeout");
-
-
 }
 
-void init_process()
+/**
+ * @brief Initialize system semaphores
+ * 
+ * Creates and initializes binary semaphores for flash access,
+ * table management, reconnection handling, and work scheduling
+ */
+static void init_system_semaphores(void)
 {
-    esp_err_t err;
+    flashSem = xSemaphoreCreateBinary();
+    xSemaphoreGive(flashSem);
 
-	flashSem= xSemaphoreCreateBinary();
-	xSemaphoreGive(flashSem);
+    tableSem = xSemaphoreCreateBinary();
+    xSemaphoreGive(tableSem);
 
-	tableSem= xSemaphoreCreateBinary();
-	xSemaphoreGive(tableSem);
+    recoSem = xSemaphoreCreateBinary();
+    xSemaphoreGive(recoSem);
 
-	recoSem= xSemaphoreCreateBinary();
-	xSemaphoreGive(recoSem);
+    scheduleSem = xSemaphoreCreateBinary();
+    // xSemaphoreGive(scheduleSem);  // Intentionally not given initially
 
-    scheduleSem= xSemaphoreCreateBinary();
-	// xSemaphoreGive(scheduleSem);
+    workTaskSem = xSemaphoreCreateBinary();
+    // xSemaphoreGive(workTaskSem);  // Intentionally not given initially
+}
 
-    workTaskSem= xSemaphoreCreateBinary();
-	// xSemaphoreGive(workTaskSem);
-
-     err = nvs_flash_init();
-    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) 
-    {
-		ESP_LOGI(MESH_TAG,"No free pages erased!!!!");
-		ESP_ERROR_CHECK(nvs_flash_erase());
-		err = nvs_flash_init();
+/**
+ * @brief Initialize NVS flash storage
+ * 
+ * Initializes the non-volatile storage, handling cases where
+ * partitions need to be erased and reinitialized
+ */
+static void init_nvs_flash(void)
+{
+    esp_err_t err = nvs_flash_init();
+    
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_LOGI(MESH_TAG, "NVS pages need recovery, erasing...");
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        err = nvs_flash_init();
     }
-    ESP_ERROR_CHECK( err );
+    
+    ESP_ERROR_CHECK(err);
+}
 
-    // err=nvs_flash_init_partition("profile");
-    // if (err != ESP_OK) 
-    // {
-	// 	ESP_LOGI(MESH_TAG,"No free pages erased Profile!!!!");
-	// 	ESP_ERROR_CHECK(nvs_flash_erase_partition("profile"));
-	// 	err = nvs_flash_init_partition("profile");
-    // }
-        //read flash        
+/**
+ * @brief Load and validate configuration from flash
+ * 
+ * Reads configuration from flash storage and validates the centinel
+ * value. Erases and resets if validation fails.
+ */
+static void load_and_validate_config(void)
+{
     read_flash();
-    if(theConf.centinel!=CENTINEL)
-    {
-        ESP_LOGI(MESH_TAG,"Centinel invalid check. Erase Config");
+    
+    if (theConf.centinel != CENTINEL) {
+        ESP_LOGI(MESH_TAG, "Invalid centinel check. Erasing config...");
         erase_config();
     }
-    esp_log_level_set("*",(esp_log_level_t)theConf.loglevel);   //set log level
-    esp_log_level_set("mqtt_client",(esp_log_level_t)0);   //set log level
-    if (theConf.test_timer_div==0)
-        theConf.test_timer_div=10;
-// printf("Loaded Mux %d\n",theConf.test_timer_div);
     
+    // Validate and set logging level
+    esp_log_level_set("*", (esp_log_level_t)theConf.loglevel);
+    esp_log_level_set("mqtt_client", (esp_log_level_t)0);
+    
+    // Set default values for uninitialized fields
+    if (theConf.test_timer_div == 0) {
+        theConf.test_timer_div = 10;
+    }
+}
 
-
-	theConf.lastResetCode=esp_rom_get_reset_reason(0);              //store reset reason and reboot count
+/**
+ * @brief Update system state tracking
+ * 
+ * Records reset reason, increments boot count, and persists to flash
+ */
+static void update_system_state(void)
+{
+    theConf.lastResetCode = esp_rom_get_reset_reason(0);
     theConf.bootcount++;
     write_to_flash();           
-// end nvs
+}
 
-//lots of flags
-//todo try to avoid them
-// schedule counter globals for config display
-    mesh_init_done=false;
-    mesh_on=false;
-    logCount=0; 
-    pausef=schedulef=false;
-    ck=ck_d=ck_h=0;
-    scheduleHandle=NULL;
-    wifiready=false;
-    showHandle=NULL;
-    oledDisp=NULL;
-    meshf=false;
-    mqttErrors=0;
-    BASETIMER=theConf.baset;         // miliseconds 1 minute
-    // mesh stuff 
-    mesh_layer = -1;
-    mesh_started=false;
-    memset(MESH_ID,0x77,6);
-    uint8_t solouno=theConf.poolid;
-    memcpy(&MESH_ID[5],&solouno,1);
-    esp_log_buffer_hex(MESH_TAG,&MESH_ID,6);
-    mqttf=false;
-    memset(&GroupID.addr ,0xff,6);
-    sendMeterf=false;
-    hostflag=false;
-    loadedf=false;
-    firstheap=false;
-    clientCloud=NULL;
-    lastKnowCount=0;
-    if(theConf.mqttDiscoRetry==0)
-        theConf.mqttDiscoRetry=MQTTRECONNECTTIME;
+/**
+ * @brief Initialize global state flags and variables
+ * 
+ * Sets up all the global flags used for mesh, WiFi, MQTT, and scheduling
+ */
+static void init_global_state_flags(void)
+{
+    // Scheduling and mesh state
+    mesh_init_done = false;
+    mesh_on = false;
+    logCount = 0;
+    pausef = schedulef = false;
+    ck = ck_d = ck_h = 0;
+    scheduleHandle = NULL;
+    wifiready = false;
+    showHandle = NULL;
+    oledDisp = NULL;
+    meshf = false;
+    mqttErrors = 0;
+    BASETIMER = theConf.baset;
     
-        // timers counters
-    vanTimersStart=vanTimersEnd=0;
+    // Mesh configuration
+    mesh_layer = -1;
+    mesh_started = false;
+    memset(MESH_ID, 0x77, 6);
+    uint8_t pool_id = theConf.poolid;
+    memcpy(&MESH_ID[5], &pool_id, 1);
+    esp_log_buffer_hex(MESH_TAG, &MESH_ID, 6);
+    
+    // MQTT state
+    mqttf = false;
+    memset(&GroupID.addr, 0xff, 6);
+    sendMeterf = false;
+    hostflag = false;
+    loadedf = false;
+    firstheap = false;
+    clientCloud = NULL;
+    lastKnowCount = 0;
+    
+    // Retry configuration
+    if (theConf.mqttDiscoRetry == 0) {
+        theConf.mqttDiscoRetry = MQTTRECONNECTTIME;
+    }
+    
+    // Timer counters
+    vanTimersStart = vanTimersEnd = 0;
+}
 
-    // memory schedule data set to zero
-    // bzero(&scheduleData,sizeof(wschedule_t));
+/**
+ * @brief Initialize MQTT queue topic names
+ * 
+ * Constructs the MQTT topic strings based on pool ID and configuration
+ */
+static void init_mqtt_queue_names(void)
+{
+    snprintf(cmdQueue, sizeof(cmdQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTCMD);
+    snprintf(infoQueue, sizeof(infoQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTINFO);
+    snprintf(alarmQueue, sizeof(alarmQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTALARM);
+    snprintf(limitsQueue, sizeof(limitsQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTLIMITS);
+}
+/**
+ * @brief Initialize internal mesh command strings
+ * 
+ * Initializes lookup table for internal mesh commands
+ */
+static void init_internal_mesh_commands(void)
+{
+    strncpy(internal_cmds[SCHEDULE], "schstart", sizeof(internal_cmds[SCHEDULE]) - 1);
+    strncpy(internal_cmds[BOOTRESP], "bootresp", sizeof(internal_cmds[BOOTRESP]) - 1);
+    strncpy(internal_cmds[SENDMETRICS], "sendmetrics", sizeof(internal_cmds[SENDMETRICS]) - 1);
+    strncpy(internal_cmds[METERSDATA], "meterdata", sizeof(internal_cmds[METERSDATA]) - 1);
+    strncpy(internal_cmds[PRODUCTION], "prod", sizeof(internal_cmds[PRODUCTION]) - 1);
+    strncpy(internal_cmds[CONFIRMLOCK], "confirm", sizeof(internal_cmds[CONFIRMLOCK]) - 1);
+    strncpy(internal_cmds[CONFIRMLOCKERR], "confError", sizeof(internal_cmds[CONFIRMLOCKERR]) - 1);
+    strncpy(internal_cmds[INSTALLATION], "install", sizeof(internal_cmds[INSTALLATION]) - 1);
+    strncpy(internal_cmds[REINSTALL], "reinstall", sizeof(internal_cmds[REINSTALL]) - 1);
+    strncpy(internal_cmds[CONFIRMINST], "installconf", sizeof(internal_cmds[CONFIRMINST]) - 1);
+    strncpy(internal_cmds[FORMAT], "format", sizeof(internal_cmds[FORMAT]) - 1);
+    strncpy(internal_cmds[UPDATEMETER], "update", sizeof(internal_cmds[UPDATEMETER]) - 1);
+    strncpy(internal_cmds[ERASEMETRICS], "erase", sizeof(internal_cmds[ERASEMETRICS]) - 1);
+    strncpy(internal_cmds[MQTTMETRICS], "mqttmetrics", sizeof(internal_cmds[MQTTMETRICS]) - 1);
+    strncpy(internal_cmds[METRICRESP], "metriscresp", sizeof(internal_cmds[METRICRESP]) - 1);
+    strncpy(internal_cmds[SHOWDISPLAY], "display", sizeof(internal_cmds[SHOWDISPLAY]) - 1);
+}
 
-//cmd and info queue names derived form the Config so do it now
-    sprintf(cmdQueue,"%s/%d/%s",QUEUE,theConf.poolid,MQTTCMD);
-    sprintf(infoQueue,"%s/%d/%s",QUEUE,theConf.poolid,MQTTINFO);
-    sprintf(alarmQueue,"%s/%d/%s",QUEUE,theConf.poolid,MQTTALARM);
-    sprintf(limitsQueue,"%s/%d/%s",QUEUE,theConf.poolid,MQTTLIMITS);
-    // sprintf(emergencyQueue,"%s/%s",QUEUE,MQTTEMER);
-    // sprintf(cmdBroadcast,"%s/%s",QUEUE,MQTTBROADCAST);
-    // sprintf(discoQueue,"%s/%s",QUEUE,MQTTDISCO);
-    // sprintf(installQueue,"%s/%s",QUEUE,MQTTINSTALL);
+/**
+ * @brief Register external MQTT command handlers
+ * 
+ * Initializes the command table with mappings between command names,
+ * codes, and abbreviations for external MQTT commands.
+ * Commands are initialized at index time based on their order in the registry.
+ */
+// External MQTT command registry helper keeps string copies safe and handlers aligned
+static void register_external_mqtt_commands(void)
+{
+    int idx = 0;
 
-// internal mesh commands 
+    auto set_cmd = [&](const char *name, const char *abbr, functrsn handler) {
+        strncpy(cmds[idx].comando, name, sizeof(cmds[idx].comando) - 1);
+        cmds[idx].comando[sizeof(cmds[idx].comando) - 1] = '\0';
 
-    strcpy(internal_cmds[SCHEDULE],        "schstart");
-    strcpy(internal_cmds[BOOTRESP],         "bootresp");
-    strcpy(internal_cmds[SENDMETRICS],      "sendmetrics");
-    strcpy(internal_cmds[METERSDATA],       "meterdata");
-    strcpy(internal_cmds[PRODUCTION],       "prod");
-    strcpy(internal_cmds[CONFIRMLOCK],      "confirm");
-    strcpy(internal_cmds[CONFIRMLOCKERR],   "confError");
-    strcpy(internal_cmds[INSTALLATION],     "install");
-    strcpy(internal_cmds[REINSTALL],        "reinstall");
-    strcpy(internal_cmds[CONFIRMINST],      "installconf");
-    strcpy(internal_cmds[FORMAT],           "format");          //erases all fram must reinstall from scratch
-    strcpy(internal_cmds[UPDATEMETER],      "update");
-    strcpy(internal_cmds[ERASEMETRICS],     "erase");           //erases all metrics
-    strcpy(internal_cmds[MQTTMETRICS],      "mqttmetrics");     //send all mesh metrics
-    strcpy(internal_cmds[METRICRESP],       "metriscresp");     //sendhost required metrics
-    strcpy(internal_cmds[SHOWDISPLAY],      "display");         //turn on the display
+        strncpy(cmds[idx].abr, abbr, sizeof(cmds[idx].abr) - 1);
+        cmds[idx].abr[sizeof(cmds[idx].abr) - 1] = '\0';
 
+        cmds[idx].code = handler;
+        idx++;
+    };
 
-
-//external commands via mqtt
-    int x=0;            //reset counter
-	strcpy((char*)&cmds[x].comando,         "format");			        cmds[x].code=cmdFormat;			strcpy((char*)&cmds[x].abr,         "FRMT");		
-	strcpy((char*)&cmds[++x].comando,       "netw");		            cmds[x].code=cmdNetw;			strcpy((char*)&cmds[x].abr,         "NETW");		
-	strcpy((char*)&cmds[++x].comando,       "mqtt");		            cmds[x].code=cmdMQTT;			strcpy((char*)&cmds[x].abr,         "MQTT");		
-	strcpy((char*)&cmds[++x].comando,       "prod");		            cmds[x].code=cmdProd;			strcpy((char*)&cmds[x].abr,         "PROD");		
-	strcpy((char*)&cmds[++x].comando,       "update");		            cmds[x].code=cmdUpdate;			strcpy((char*)&cmds[x].abr,         "UPDT");		
-	strcpy((char*)&cmds[++x].comando,       "erase");		            cmds[x].code=cmdEraseMetrics;   strcpy((char*)&cmds[x].abr,         "ERAS");		
-	strcpy((char*)&cmds[++x].comando,       "mqttmetrics");		        cmds[x].code=cmdSendMetrics;    strcpy((char*)&cmds[x].abr,         "METR");		
-    strcpy((char*)&cmds[++x].comando,       "display");		            cmds[x].code=cmdDisplay;        strcpy((char*)&cmds[x].abr,         "DISP");		
-    strcpy((char*)&cmds[++x].comando,       "log");		                cmds[x].code=cmdLogs;           strcpy((char*)&cmds[x].abr,         "LOGG");		
-    strcpy((char*)&cmds[++x].comando,       "reset");		            cmds[x].code=cmdReset;          strcpy((char*)&cmds[x].abr,         "REST");		
-    strcpy((char*)&cmds[++x].comando,       "Panels");		            cmds[x].code=cmdPanels;         strcpy((char*)&cmds[x].abr,         "PANE");		
-    strcpy((char*)&cmds[++x].comando,       "Battery");		            cmds[x].code=cmdBattery;        strcpy((char*)&cmds[x].abr,         "BATT");		
-    strcpy((char*)&cmds[++x].comando,       "Sensors");		            cmds[x].code=cmdSensors;        strcpy((char*)&cmds[x].abr,         "SENS");		
-    strcpy((char*)&cmds[++x].comando,       "Inverter");		        cmds[x].code=cmdInverter;       strcpy((char*)&cmds[x].abr,         "INVR");		
-    strcpy((char*)&cmds[++x].comando,       "limits");		            cmds[x].code=cmdLimits;         strcpy((char*)&cmds[x].abr,         "LMTS");		
-    strcpy((char*)&cmds[++x].comando,       "rlimits");		            cmds[x].code=cmdReadLimits;     strcpy((char*)&cmds[x].abr,         "RLIM");		
-  
-// Lock gpio PIN 
-    bzero(&io_conf,sizeof(io_conf));
+    set_cmd("format", "FRMT", cmdFormat);
+    set_cmd("netw", "NETW", cmdNetw);
+    set_cmd("mqtt", "MQTT", cmdMQTT);
+    set_cmd("prod", "PROD", cmdProd);
+    set_cmd("update", "UPDT", cmdUpdate);
+    set_cmd("erase", "ERAS", cmdEraseMetrics);
+    set_cmd("mqttmetrics", "METR", cmdSendMetrics);
+    set_cmd("display", "DISP", cmdDisplay);
+    set_cmd("log", "LOGG", cmdLogs);
+    set_cmd("reset", "REST", cmdReset);
+    set_cmd("Panels", "PANE", cmdPanels);
+    set_cmd("Battery", "BATT", cmdBattery);
+    set_cmd("Sensors", "SENS", cmdSensors);
+    set_cmd("Inverter", "INVR", cmdInverter);
+    set_cmd("limits", "LMTS", cmdLimits);
+    set_cmd("rlimits", "RLIM", cmdReadLimits);
+}
+/**
+ * @brief Configure GPIO pins for relay, LED, and heartbeat
+ * 
+ * Sets up output pins with appropriate initial states
+ */
+static void init_gpio_pins(void)
+{
+    gpio_config_t io_conf = {};
+    
+    // Configure RELAY pin
     io_conf.intr_type = GPIO_INTR_DISABLE;
     io_conf.mode = GPIO_MODE_OUTPUT;
     io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
-    io_conf.pull_up_en = GPIO_PULLUP_ENABLE;    //it will have an ext3ernal pullup anyway
-    io_conf.pin_bit_mask = (1ULL<<RELAY);
-    gpio_set_level((gpio_num_t)RELAY,1);        //before configuring it decide level we want it to be at start, in this case HIGH
-    err=gpio_config(&io_conf);
+    io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
+    io_conf.pin_bit_mask = (1ULL << RELAY);
+    gpio_set_level((gpio_num_t)RELAY, 1);  // Set HIGH initially
+    gpio_config(&io_conf);
 
-	io_conf.pin_bit_mask = ((1ULL<<WIFILED) );     //output pins 
-    gpio_set_level((gpio_num_t)WIFILED,0);          //before configuring it decide level we want it to be at start, in this case LOW
-	gpio_config(&io_conf);
+    // Configure WiFi LED pin
+    io_conf.pin_bit_mask = (1ULL << WIFILED);
+    gpio_set_level((gpio_num_t)WIFILED, 0);  // Set LOW initially
+    gpio_config(&io_conf);
     
-
-    io_conf.pin_bit_mask = ((1ULL<<BEATPIN) );     //output pins 
-    gpio_set_level((gpio_num_t)BEATPIN,1);          //before configuring it decide level we want it to be at start, in this case LOW
-	gpio_config(&io_conf);
-
-    // aes init     for encryptions
-    esp_aes_init( &actx );
-
-//queues check sizes if problems
-
-    mqtt911 = xQueueCreate( 5, sizeof( mqttMsg_t ) );
-    if(!mqtt911)
-        ESP_LOGE(MESH_TAG,"Failed queue 911");
-    meshQueue = xQueueCreate( MAXNODES, sizeof( mqttSender_t ) );
-    // meshQueue = xQueueCreate( MAXNODES, sizeof( mqttMsg_t ) );
-    if(!meshQueue)
-        ESP_LOGE(MESH_TAG,"Failed queue meshSend");
-    mqttQ = xQueueCreate( 20, sizeof( mqttMsg_t ) );
-    if(!mqttQ)
-        ESP_LOGE(MESH_TAG,"Failed queue Cmd");
-    mqttSender = xQueueCreate( 20, sizeof( mqttSender_t ) );
-    if(!mqttSender)
-        ESP_LOGE(MESH_TAG,"Failed queue Sender");
-    rs485Q = xQueueCreate( 10, sizeof( rs485queue_t ) );
-    if(!rs485Q)
-        ESP_LOGE(MESH_TAG,"Failed queue rs485Q");
-
-
-
-//timing stuff and timers
-
-    scheduleTimer=xTimerCreate("scht",pdMS_TO_TICKS(500),pdFALSE,( void * ) 0, schedule_timeout);    
-
-    uint32_t permanent_time=(theConf.totalnodes/theConf.conns)*EXPECTED_DELIVERY_TIME;
-    // printf("Repeat time nodes %d conns %d permanent %d repeat %d finaltime %d\n",theConf.totalnodes,theConf.conns,permanent_time,theConf.repeat,
-        permanent_time*theConf.repeat;
-    if(permanent_time==0)
-    {
-        ESP_LOGI(MESH_TAG,"Permanent time 0...default to 500");
-        permanent_time=500;
-    }
-    if (theConf.repeat<1 )
-        theConf.repeat=1;
-
-    sendMeterTimer=xTimerCreate("SendM",pdMS_TO_TICKS(MESHTIMEOUT),pdFALSE,NULL, []( TimerHandle_t xTimer)  
-                { xEventGroupSetBits(otherGroup,REPEAT_BIT);});    // every 10secs for now -> use lambda
-    
-    collectTimer=xTimerCreate("Timer",pdMS_TO_TICKS(theConf.repeat*60000),pdFALSE,( void * ) 0, root_collect_meter_data);    //no repeat, manually start it -> to big for lambda
-    // collectTimer=xTimerCreate("Timer",pdMS_TO_TICKS(permanent_time*theConf.repeat),pdFALSE,( void * ) 0, root_collect_meter_data);    //no repeat, manually start it -> to big for lambda
-    if(theConf.loginwait==0)
-        theConf.loginwait=LOGINTIME;
-    loginTimer=xTimerCreate("Ltim",pdMS_TO_TICKS(theConf.loginwait),pdFALSE,( void * ) 0, login_timeout);    //no repeat, manually start it -> to big for lambda
-    
-    confirmTimer=xTimerCreate("Confirm",pdMS_TO_TICKS(CONFIRMTIMER),pdFALSE,( void * ) 0,[] (TimerHandle_t xTimer)  
-{   // lambda function
-    char *cualMID;
-
-            cJSON *root=cJSON_CreateObject();
-            if(root)
-            {
-                cualMID = ( char* ) pvTimerGetTimerID( xTimer );
-
-                cJSON_AddStringToObject(root,"cmd",internal_cmds[6]);
-                cJSON_AddStringToObject(root,"mid",cualMID);
-                cJSON_AddNumberToObject(root,"status",METER_NOT_FOUND);
-
-                char *intmsg=cJSON_PrintUnformatted(root);
-                if(intmsg)
-                {
-                    ESP_LOGW(MESH_TAG,"Confirm time out for [%s] ",cualMID);
-                    root_send_confirmation_central(intmsg,strlen(intmsg),discoQueue);
-                    free(intmsg);
-                }
-                cJSON_Delete(root);
-            }
-            else
-                ESP_LOGE(MESH_TAG,"No RAM for Confirm timeout");
-});
-
-    // beatTimer=xTimerCreate("beats",pdMS_TO_TICKS(BEATTIMER),pdFALSE,( void * ) 0, [] (TimerHandle_t xTimer){theBlower.saveBlower();});    //lambda no repeat, manually start it -> use lambda
-
-
-
-    //loggin stuff?
-#ifdef LOGOPT
-    logFileInit();              //log file init
-    timeval localtime;
-
-    theConf.lastKnownDate=theBlower.getReservedDate();
-    localtime.tv_sec=theConf.lastKnownDate;
-    localtime.tv_usec=0;                                      // no connection most likely
-    settimeofday(&localtime,NULL);
-#endif
-
-//event group bits for wifi and other uses
-    wifi_event_group = xEventGroupCreate();
-    otherGroup = xEventGroupCreate();           //other group
+    // Configure Heartbeat pin
+    io_conf.pin_bit_mask = (1ULL << BEATPIN);
+    gpio_set_level((gpio_num_t)BEATPIN, 1);  // Set HIGH initially
+    gpio_config(&io_conf);
 }
 
-void erase_config()
+
+/**
+ * @brief Initialize cryptographic engine
+ * 
+ * Sets up AES encryption context
+ */
+static void init_crypto_engine(void)
 {
-    ESP_LOGI(MESH_TAG,"Erase config");
+    esp_aes_init(&actx);
+}
+
+/**
+ * @brief Helper to create and validate queue
+ * 
+ * @param queue_ptr Pointer to store queue handle
+ * @param queue_size Number of items the queue can hold
+ * @param item_size Size of each queue item
+ * @param queue_name Name for logging purposes
+ * @return true if queue created successfully, false otherwise
+ */
+static bool create_queue_safe(QueueHandle_t *queue_ptr, uint32_t queue_size, 
+                               uint32_t item_size, const char *queue_name)
+{
+    *queue_ptr = xQueueCreate(queue_size, item_size);
+    if (*queue_ptr == NULL) {
+        ESP_LOGE(MESH_TAG, "Failed to create queue: %s", queue_name);
+        return false;
+    }
+    return true;
+}
+
+/**
+ * @brief Initialize all inter-task communication queues
+ * 
+ * Creates queues for MQTT, mesh, RS485, and emergency messages
+ */
+static void init_system_queues(void)
+{
+    create_queue_safe(&mqtt911, 5, sizeof(mqttMsg_t), "emergency");
+    create_queue_safe(&meshQueue, MAXNODES, sizeof(mqttSender_t), "mesh send");
+    create_queue_safe(&mqttQ, 20, sizeof(mqttMsg_t), "MQTT command");
+    create_queue_safe(&mqttSender, 20, sizeof(mqttSender_t), "MQTT sender");
+    create_queue_safe(&rs485Q, 10, sizeof(rs485queue_t), "RS485");
+}
+
+/**
+ * @brief Calculate permanent data delivery time
+ * 
+ * Computes the time slot for data transmission based on network configuration
+ * 
+ * @return Calculated permanent time in milliseconds, minimum 500ms
+ */
+static uint32_t calculate_permanent_delivery_time(void)
+{
+    uint32_t permanent_time = (theConf.totalnodes / theConf.conns) * EXPECTED_DELIVERY_TIME;
+    
+    if (permanent_time == 0) {
+        ESP_LOGI(MESH_TAG, "Permanent time calculated as 0, using default 500ms");
+        permanent_time = 500;
+    }
+    
+    if (theConf.repeat < 1) {
+        theConf.repeat = 1;
+    }
+    
+    return permanent_time;
+}
+
+/**
+ * @brief Initialize system timers for various periodic tasks
+ * 
+ * Creates timers for meter collection, transmission, login timeout, and confirmation
+ */
+static void init_system_timers(void)
+{
+    // Validate and set login wait time
+    if (theConf.loginwait == 0) {
+        theConf.loginwait = LOGINTIME;
+    }
+    
+    // Schedule timer for internal scheduling
+    scheduleTimer = xTimerCreate("scht", pdMS_TO_TICKS(500), pdFALSE, 
+                                  (void*)0, schedule_timeout);
+    
+    // Send meter timer with lambda callback
+    sendMeterTimer = xTimerCreate("SendM", pdMS_TO_TICKS(MESHTIMEOUT), pdFALSE, NULL,
+        [](TimerHandle_t xTimer) {
+            xEventGroupSetBits(otherGroup, REPEAT_BIT);
+        }
+    );
+    
+    // Meter collection timer (based on WiFi mode)
+    uint32_t collection_period = theConf.repeat * 60000;
+    TimerCallbackFunction_t collection_callback = 
+        (theConf.wifi_mode > 0) ? root_collect_meter_data : wifi_send_meter_data;
+    BaseType_t collection_autoreload = 
+        (theConf.wifi_mode > 0) ? pdFALSE : pdTRUE;
+    
+    collectTimer = xTimerCreate("Timer", pdMS_TO_TICKS(collection_period),
+                               collection_autoreload, (void*)0, collection_callback);
+    
+    // Login timeout timer
+    loginTimer = xTimerCreate("Ltim", pdMS_TO_TICKS(theConf.loginwait), pdFALSE,
+                             (void*)0, login_timeout);
+    
+    // Confirmation timer (only in WiFi mode) with lambda callback
+    if (theConf.wifi_mode) {
+        confirmTimer = xTimerCreate("Confirm", pdMS_TO_TICKS(CONFIRMTIMER), pdFALSE,
+            (void*)0,
+            [](TimerHandle_t xTimer) {
+                cJSON *root = cJSON_CreateObject();
+                if (root) {
+                    char *cualMID = (char*)pvTimerGetTimerID(xTimer);
+                    cJSON_AddStringToObject(root, "cmd", internal_cmds[6]);
+                    cJSON_AddStringToObject(root, "mid", cualMID);
+                    cJSON_AddNumberToObject(root, "status", METER_NOT_FOUND);
+
+                    char *intmsg = cJSON_PrintUnformatted(root);
+                    if (intmsg) {
+                        ESP_LOGW(MESH_TAG, "Confirm timeout for [%s]", cualMID);
+                        root_send_confirmation_central(intmsg, strlen(intmsg), discoQueue);
+                        free(intmsg);
+                    }
+                    cJSON_Delete(root);
+                } else {
+                    ESP_LOGE(MESH_TAG, "No RAM for Confirm timeout");
+                }
+            }
+        );
+    }
+}
+
+/**
+ * @brief Initialize logging system and time synchronization
+ * 
+ * Sets up logging file and optionally initializes system time from stored date
+ */
+static void init_logging_system(void)
+{
+#ifdef LOGOPT
+    logFileInit();  // Initialize log file
+    timeval localtime = {};
+    
+    theConf.lastKnownDate = theBlower.getReservedDate();
+    localtime.tv_sec = theConf.lastKnownDate;
+    localtime.tv_usec = 0;  // No connection most likely
+    settimeofday(&localtime, NULL);
+#endif
+}
+
+/**
+ * @brief Initialize event groups for inter-task synchronization
+ * 
+ * Creates event groups for WiFi/MQTT state management and other async events
+ */
+static void init_event_groups(void)
+{
+    wifi_event_group = xEventGroupCreate();
+    if (wifi_event_group == NULL) {
+        ESP_LOGE(MESH_TAG, "Failed to create WiFi event group");
+    }
+    
+    otherGroup = xEventGroupCreate();
+    if (otherGroup == NULL) {
+        ESP_LOGE(MESH_TAG, "Failed to create other event group");
+    }
+}
+
+/**
+ * @brief Main initialization process for the system
+ * 
+ * Orchestrates all system initialization in the correct order:
+ * 1. Semaphores and synchronization primitives
+ * 2. NVS flash storage
+ * 3. Configuration loading and validation
+ * 4. System state initialization
+ * 5. Global flags and state variables
+ * 6. MQTT and command configuration
+ * 7. GPIO and cryptography setup
+ * 8. Queues and timers
+ * 9. Logging and event groups
+ */
+void init_process(void)
+{
+    init_system_semaphores();
+    init_nvs_flash();
+    load_and_validate_config();
+    update_system_state();
+    init_global_state_flags();
+    init_mqtt_queue_names();
+    init_internal_mesh_commands();
+    register_external_mqtt_commands();
+    init_gpio_pins();
+    init_crypto_engine();
+    init_system_queues();
+    calculate_permanent_delivery_time();
+    init_system_timers();
+    init_logging_system();
+    init_event_groups();
+    
+    ESP_LOGI(MESH_TAG, "System initialization complete");
+}
+
+/**
+ * @brief Initialize default modbus sensor configuration
+ */
+static void init_default_modbus_config(void)
+{
+    modbSensors local_modbSensors = {
+        15, 42, 1.5, 1, 0, 0, -1, 20, 1, 1, 0, 0, -1, 19, 1, 1, 0, 0, -1,
+        17, 1, 1, 6, 8192, 0, 16, 1, 1, 2, 8192, 0, 16
+    };
+    modbInverter local_modbInverter = {
+        10, 1, 10, 1, 2, 61530, 0, 10, 1, 1, 61518, 0, 10, 1, 1, 61517, 0,
+        10, 1, 2, 61528, 0, 10, 1, 1, 61526, 0, 10, 1, 1, 61527, 0,
+        10, 1, 2, 61522, 0, 10, 1, 2, 61520, 0, 10, 1, 1, 61518, 0,
+        10, 1, 1, 61517, 0
+    };
+    modbBattery local_modbBattery = {
+        30, 3, 10, 1, 1, 276, 0, 1, 1, 1, 268, 0, 1, 1, 1, 260, 0, 1, 1, 1, 256, 0
+    };
+    modbPanels local_modbPanels = {
+        30, 4, 10, 1, 1, 272, 0, 10, 1, 1, 271, 0, 10, 1, 1, 264, 0,
+        10, 1, 1, 263, 0, 1, 1, 1, 267, 0
+    };
+    
+    theConf.modbus_sensors = local_modbSensors;
+    theConf.modbus_inverter = local_modbInverter;
+    theConf.modbus_battery = local_modbBattery;
+    theConf.modbus_panels = local_modbPanels;
+}
+
+/**
+ * @brief Initialize default network and MQTT configuration
+ */
+static void init_default_network_config(void)
+{
+    // Default MQTT server certificate and credentials
+    strncpy(theConf.mqttServer, DEFAULTMQTT, sizeof(theConf.mqttServer) - 1);
+    strncpy(theConf.mqttUser, DEFAULTMQTTUSER, sizeof(theConf.mqttUser) - 1);
+    strncpy(theConf.mqttPass, DEFAULTMQTTPASS, sizeof(theConf.mqttPass) - 1);
+    
+    // WiFi credentials
+    strncpy(theConf.thessid, DEFAULT_SSID, sizeof(theConf.thessid) - 1);
+    strncpy(theConf.thepass, DEFAULT_PSWD, sizeof(theConf.thepass) - 1);
+    
+    // Mesh security
+    strncpy(theConf.kpass, DEFAULT_MESH_PASSW, sizeof(theConf.kpass) - 1);
+    
+    // Serial configuration
+    theConf.port = (uart_port_t)ECHO_UART_PORT;
+    theConf.baud = BAUD_RATE;
+}
+
+/**
+ * @brief Initialize default limits configuration
+ */
+static void init_default_limits(void)
+{
+    struct limits start_limits = {
+        90, 50, 32, 19, 31, 19, 70, 50, 70, 40, 42, 40, 42, 40, 42, 40,
+        42, 40, 42, 40, 42, 40, 820, 720, 850, 720, 820, 720, 820, 780,
+        50, 10, 5000, 0, 100, 20, 80, 20, 15, 14, 390, 340
+    };
+    theConf.milim = start_limits;
+}
+
+/**
+ * @brief Initialize default timing configuration
+ */
+static void init_default_timing(void)
+{
+    theConf.loglevel = 3;
+    theConf.baset = 10;
+    theConf.repeat = 25;                            // Change before production
+    theConf.totalnodes = EXPECTED_NODES;
+    theConf.conns = EXPECTED_CONNS;
+}
+
+/**
+ * @brief Reset all system configuration to factory defaults
+ * 
+ * Clears NVS flash, WiFi settings, and reinitializes all configuration
+ * parameters to their default values. Also clears profile file.
+ */
+void erase_config(void)
+{
+    ESP_LOGI(MESH_TAG, "Erasing configuration to factory defaults");
+    
+    // Clear system storage
     esp_wifi_restore();
     nvs_flash_erase();
     nvs_flash_init();
-    bzero(&theConf,sizeof(theConf));        //init the Mother to 0 everything that is not explicitly definted
-    theConf.centinel=CENTINEL;
+    
+    // Clear configuration structure
+    bzero(&theConf, sizeof(theConf));
+    theConf.centinel = CENTINEL;
+    
+    // Clear profile file
     FILE* f = fopen(PROFILE_FILE, "w");
-    fclose(f);
-    // erase logifle and profiles
-
-    //default mqtt server certificate and user/pass should be up to date 
-    strcpy(theConf.mqttServer,"mqtt://64.23.180.233:1883");
-    strcpy(theConf.mqttUser,"robert");
-    strcpy(theConf.mqttPass,"csttpstt");
-    struct limits start_limits = {90, 50, 32, 19, 31, 19, 70, 50, 70, 40, 42, 40, 42, 40, 42, 40, 42, 40, 42, 40, 42, 40, 820, 720, 850, 720, 820, 720, 820, 780, 50, 10, 5000, 0, 100, 20, 80, 20, 15, 14, 390, 340};
-    theConf.milim=start_limits;
-    modbSensors local_modbSensors =  {15, 42, 1.5, 1, 0, 0, -1, 20, 1, 1, 0, 0, -1, 19, 1, 1, 0, 0, -1, 17, 1, 1, 6, 8192, 0, 16, 1, 1, 2, 8192, 0, 16};
-    modbInverter local_modbInverter = {10, 1, 10, 1, 2, 61530, 0, 10, 1, 1, 61518, 0, 10, 1, 1, 61517, 0, 10, 1, 2, 61528, 0, 10, 1, 1, 61526, 0, 10, 1, 1, 61527, 0, 10, 1, 2, 61522, 0, 10, 1, 2, 61520, 0, 10, 1, 1, 61518, 0, 10, 1, 1, 61517, 0};
-    modbBattery local_modbBattery = {30, 3, 10, 1, 1, 276, 0, 1, 1, 1, 268, 0, 1, 1, 1, 260, 0, 1, 1, 1, 256, 0};
-    modbPanels local_modbPanels = {30, 4, 10, 1, 1, 272, 0, 10, 1, 1, 271, 0, 10, 1, 1, 264, 0, 10, 1, 1, 263, 0, 1, 1, 1, 267, 0};
-    theConf.modbus_inverter=local_modbInverter;
-    theConf.modbus_sensors=local_modbSensors;
-    theConf.modbus_battery=local_modbBattery;
-    theConf.modbus_panels=local_modbPanels;
-
-    // struct modbus mimod={7,3,6,3,5,3,4,3,16,3,1,10,11,12,13,14,2,20,21,22,23,8,80,81,82,83,84,85,86,87,88,89};
-    // theConf.mimodbus=mimod;
-    // strcpy(theConf.mqttServer,"mqtts://possum.lmq.cloudamqp.com:8883");
-    // strcpy(theConf.mqttUser,"yavwcjrm:yavwcjrm");
-    // strcpy(theConf.mqttPass,"UjKTzDJOnMN7voH-FaflNW0rP-dUXck0");
-    // strcpy(theConf.mqttcert,(const char*)cert_start);       //copy default cert and len to configuration
-    // theConf.mqttcertlen=cert_end-cert_start;
-    // int ssllen=cert_end-cert_start;
-    // memcpy(theConf.mqttcert,cert_start,ssllen);
-    // theConf.mqttcertlen=ssllen;
-
-    time((time_t*)&theConf.bornDate); 
-    theConf.loglevel=           3;
-    theConf.baset=              10;
-    theConf.repeat=             25;                 // change before production
-    theConf.totalnodes=         EXPECTED_NODES;     // a shitload of nodes
-    theConf.conns=              EXPECTED_CONNS;     // big number
-    strcpy(theConf.thessid,DEFAULT_SSID);
-    strcpy(theConf.thepass,DEFAULT_PSWD);
+    if (f != NULL) {
+        fclose(f);
+    } else {
+        ESP_LOGW(MESH_TAG, "Failed to open profile file for clearing");
+    }
     
-    theConf.port=(uart_port_t)ECHO_UART_PORT;
-    theConf.baud=BAUD_RATE;
-
-
-    // skip sending on same kwh
-    // theConf.maxSkips=           SKIPS;
-    // theConf.allowSkips=         false;
+    // Initialize all default configurations
+    init_default_network_config();
+    init_default_modbus_config();
+    init_default_limits();
+    init_default_timing();
     
-    strcpy(theConf.kpass,DEFAULT_MESH_PASSW);       //default password
-    const esp_app_desc_t *mip=esp_app_get_description();
-    strcpy(theConf.lastVersion,mip->version);       //installed version as defualt last used
-
-    // Profile default Everything is ) for the time being
+    // Set creation timestamp
+    time((time_t*)&theConf.bornDate);
     
-    //nvs was initied so re-open
-    esp_err_t q = nvs_open("config", NVS_READWRITE, &nvshandle);
-    if(q!=ESP_OK)
-        ESP_LOGE(MESH_TAG,"Error opening NVS Read File %x",q);
+    // Get and store current firmware version
+    const esp_app_desc_t *app_info = esp_app_get_description();
+    if (app_info != NULL) {
+        strncpy(theConf.lastVersion, app_info->version, sizeof(theConf.lastVersion) - 1);
+    }
+    
+    // Open NVS and persist configuration
+    esp_err_t nvs_err = nvs_open("config", NVS_READWRITE, &nvshandle);
+    if (nvs_err != ESP_OK) {
+        ESP_LOGE(MESH_TAG, "Error opening NVS: %s", esp_err_to_name(nvs_err));
+    }
+    
     write_to_flash();
-
+    ESP_LOGI(MESH_TAG, "Configuration reset to factory defaults");
 }
 
 // Routine to send mqtt messages
@@ -2876,171 +3485,265 @@ void erase_config()
 
 // ! In general if an mqtt error disconnection or fatal is issued, this task is terminated and restarted again when recoonected
 // ! Which means that timeouts and the other control programming is probably usless but good practice
-void root_mqtt_sender(void *pArg)        // MQTTT data sender task
+/**
+ * @brief Wait for MQTT host to become active
+ * 
+ * Polls hostflag with timeout warnings every 10 retries (3 seconds)
+ */
+static void wait_for_mqtt_host(void)
 {
-    mqttSender_t        mensaje;
-    uint32_t            startMqtt,endMqtt;
-    int                 err,whost;
-    EventBits_t         uxBits;
-    int                 msgid;
-    time_t              now;
+    int whost = 0;
+    while (!hostflag) {
+        delay(300);
+        whost++;
+        if (whost > 10) {
+            ESP_LOGW(MESH_TAG, "Waiting for host");
+            whost = 0;
+        }
+    }
+}
 
-    xEventGroupClearBits(wifi_event_group, SENDMQTT_BIT);	// clear bit to wait on --> same as a queue wihtout queues
-                                                            
-    while(true)         //task is forever
-    {
-        alla:
-        while(!hostflag)            //check if host is active...hum not solid but still...below waits on the SENDMQTT_BIT which will not be Set without WIIF
-        {
-            delay(300);             // if no host, no sending...wait for it display warning after X retries
-            whost++;
-            if(whost>10)
+/**
+ * @brief Free message resources
+ * 
+ * Safely frees both message buffer and parameter pointer
+ * 
+ * @param msg Message structure containing msg and param pointers
+ */
+static void free_message_resources(mqttSender_t *msg)
+{
+    if (msg == NULL) {
+        return;
+    }
+    
+    if (msg->msg != NULL) {
+        free(msg->msg);
+        msg->msg = NULL;
+    }
+    
+    if (msg->param != NULL) {
+        free(msg->param);
+        msg->param = NULL;
+    }
+}
+
+/**
+ * @brief Publish message and wait for acknowledgment
+ * 
+ * Attempts to publish MQTT message and wait for publication confirmation
+ * with 1 second timeout
+ * 
+ * @param msg Message to publish
+ * @return true if successfully published, false on failure
+ */
+static bool publish_and_wait_ack(mqttSender_t *msg, uint32_t *endTime)
+{
+    if (msg == NULL || msg->msg == NULL) {
+        return false;
+    }
+    
+    int msgid = esp_mqtt_client_publish(clientCloud, (char*)msg->queue, 
+                                        (char*)msg->msg, msg->lenMsg, QOS1, NORETAIN);
+    
+    if ((theConf.debug_flags >> dMQTT) & 1U) {
+        ESP_LOGI(MESH_TAG, "%sPublish msgid %x len %d", DBG_MQTT, msgid, msg->lenMsg);
+    }
+    
+    if (msgid == ESP_FAIL) {
+        ESP_LOGE(MESH_TAG, "Publish failed %x", msgid);
+        return false;
+    }
+    
+    EventBits_t uxBits = xEventGroupWaitBits(wifi_event_group, PUB_BIT|DISCO_BIT|ERROR_BIT, 
+                                              pdFALSE, pdFALSE, pdMS_TO_TICKS(1000));
+    
+    if ((uxBits & PUB_BIT) != PUB_BIT) {
+        ESP_LOGE(MESH_TAG, "Pub failed Error or Disco or Timeout %x", uxBits);
+        return false;
+    }
+    
+    *endTime = xmillis();
+    xEventGroupClearBits(wifi_event_group, PUB_BIT|DISCO_BIT|ERROR_BIT);
+    return true;
+}
+
+/**
+ * @brief Process and send message from queue
+ * 
+ * Handles publication, acknowledgment, callbacks, and cleanup for a single message
+ * 
+ * @param msg Message to process
+ * @param startTime Start time for timing measurement
+ * @return true if message sent successfully, false if connection failed
+ */
+static bool process_queued_message(mqttSender_t *msg, uint32_t startTime)
+{
+    uint32_t endTime = 0;
+    
+    if (!msg->msg) {
+        ESP_LOGE(MESH_TAG, "No message to send but Process activated");
+        free_message_resources(msg);
+        return true;
+    }
+    
+    if (!publish_and_wait_ack(msg, &endTime)) {
+        free_message_resources(msg);
+        return false;
+    }
+    
+    // Update statistics
+    theBlower.setStatsMsgOut();
+    theBlower.setStatsBytesOut(msg->lenMsg);
+    
+    // Execute callback if provided
+    if (msg->code != NULL) {
+        (*msg->code)((void*)msg->param);
+    }
+    
+    if ((theConf.debug_flags >> dMQTT) & 1U) {
+        ESP_LOGI(MESH_TAG, "%sMsgLen %d Msgs sent %d msec %d", DBG_MQTT, 
+                 msg->lenMsg, theBlower.getStatsMsgOut(), endTime - startTime);
+    }
+    
+    free_message_resources(msg);
+    return true;
+}
+
+/**
+ * @brief Send all queued messages from the MQTT sender queue
+ * 
+ * Processes the message queue until empty or connection fails
+ * disco if true will disconnect after sending all messages -> used in Mesh Mode and NOT wifi_mesh
+ * @return true if all messages sent, false if connection lost
+ */
+static bool send_queued_messages(bool disco)
+{
+    mqttSender_t mensaje;
+    uint32_t startTime = xmillis();
+    
+    while (true) {
+        if (xQueueReceive(mqttSender, &mensaje, pdMS_TO_TICKS(MQTTSENDERWAIT)) == pdPASS) {
+            if (!process_queued_message(&mensaje, startTime)) {
+                return false;
+            }
+        } else {
+            // Queue empty - disconnect and return success
+            sendMeterf = false;
+            if(disco)
             {
-                ESP_LOGW(MESH_TAG,"Waiting for host");
-                whost=0;
+                esp_mqtt_client_disconnect(clientCloud);
+                xEventGroupWaitBits(wifi_event_group, DISCO_BIT|ERROR_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
+                esp_mqtt_client_stop(clientCloud);
             }
+            if ((theConf.debug_flags >> dMQTT) & 1U) {
+                ESP_LOGI(MESH_TAG, "%sConn closed and Queue empty", DBG_MQTT);
+            }
+            return true;
         }
+    }
+}
 
-        xEventGroupWaitBits(wifi_event_group,SENDMQTT_BIT,pdTRUE,pdFALSE,portMAX_DELAY);    //this is the starting gun, flag will be cleared on Queue needed to be evacuated
-        // ESP_LOGI(MESH_TAG,"Check host: %s",hostflag?"connected":"disconnected");         //debug stuff
-        startMqtt=xmillis();        
-        if((theConf.debug_flags >> dMQTT) & 1U)                                                        // timer to know how long it takes to send mqtt msg
-            ESP_LOGI(MESH_TAG,"%sMqttsender establish",DBG_MQTT);
-        uxBits=xEventGroupClearBits(wifi_event_group, MQTT_BIT); //explicit Connect Bit
-        //dynamic connect strategy
-        if(!clientCloud)
-            clientCloud=root_setupMqtt();           //why would this happen. Was created by the InitProcess routine
-        if(clientCloud)                             //in case we cannot get a connection.... super secure programming
+/**
+ * @brief Establish MQTT connection and send messages
+ * 
+ * Handles MQTT client initialization, connection, and message transmission
+ *  
+ * @return true if session completed successfully
+ */
+static bool mqtt_send_session(void)
+{
+    EventBits_t uxBits;
+    
+    if (!clientCloud) {
+        clientCloud = root_setupMqtt();
+        if(theConf.mesh_wifi)
+            esp_mqtt_client_start(clientCloud);
+    }
+    
+    if (clientCloud == NULL) {
+        ESP_LOGE(MESH_TAG, "Cannot connect to ClientCloud");
+        sendMeterf = false;
+        return true;
+    }
+    
+    if(theConf.mesh_wifi)       // in mesh mode, if wifi_mesh is used, connection is always on
+    {
+        // not using connection sharing, but direct connection to mqtt host
+        if (!send_queued_messages(false))
         {
-            xEventGroupClearBits(wifi_event_group,MQTT_BIT|ERROR_BIT|DISCO_BIT);        // clear bits
-            err=esp_mqtt_client_start(clientCloud);         //start a MQTT connection, wait for it in MQTT_BIT
-            uxBits=xEventGroupWaitBits(wifi_event_group, MQTT_BIT|DISCO_BIT|ERROR_BIT, pdFALSE, pdFALSE,   pdMS_TO_TICKS(40000)); //explicit Connect Bit, can get stuck here
-            // uxBits=xEventGroupWaitBits(wifi_event_group, MQTT_BIT|DISCO_BIT|ERROR_BIT, pdFALSE, pdFALSE,   portMAX_DELAY); //explicit Connect Bit, can get stuck here
-            if(((uxBits & MQTT_BIT) ==MQTT_BIT) && err!=ESP_FAIL)       //only mqttbit connect other skip sending and mqtt client did start
-            {   // great, something to do
-                if((theConf.debug_flags >> dMQTT) & 1U)  
-                    ESP_LOGI(MESH_TAG,"%sMqtt Sender connected",DBG_MQTT);
-
-                while(true) //send all items in queue 
-                {
-                    if( xQueueReceive( mqttSender, &mensaje,  pdMS_TO_TICKS(MQTTSENDERWAIT) )==pdPASS)	//mqttHandle has a pointer to the original message. MUST be freed at some point
-                    {
-                        if(mensaje.msg)     
-                        {   //entry has a msg to be sent
-                            // if(mensaje.queue==emergencyQueue){
-                            //     ESP_LOGI(MESH_TAG,"Publish sender len %d buff [%s]",mensaje.lenMsg,mensaje.msg);
-                            // }
-                            // ESP_LOG_BUFFER_HEX(MESH_TAG,mensaje.msg,mensaje.lenMsg);
-                            msgid=esp_mqtt_client_publish(clientCloud,(char*) mensaje.queue, (char*)mensaje.msg,mensaje.lenMsg,QOS1,NORETAIN);
-                            if((theConf.debug_flags >> dMQTT) & 1U)  
-                                ESP_LOGI(MESH_TAG,"%sPublish msgid %x len %d",DBG_MQTT,msgid,mensaje.lenMsg);
-                            if(msgid==ESP_FAIL)   //msg_id cannot be negative, means error
-                            {
-                                ESP_LOGE(MESH_TAG,"Publish failed %x",msgid);
-                                if(mensaje.msg)
-                                    free(mensaje.msg); 
-                                if(mensaje.param)
-                                    free(mensaje.param);    
-                                    //failure implies all this, disconnect stop 
-                                err=esp_mqtt_client_disconnect(clientCloud);                // added May 8/2025... if no connect no uxbit so stuck, now timedout
-                                err=esp_mqtt_client_stop(clientCloud); 
-                                sendMeterf=false;    //if we break reet senderflag
-                                break;      //wait for next time slot....should free things up
-                            }
-                            else
-                            {       // wait for published bit or error
-                                uxBits=xEventGroupWaitBits(wifi_event_group, PUB_BIT|DISCO_BIT|ERROR_BIT, pdFALSE, pdFALSE,   pdMS_TO_TICKS(1000)); //explicit Connect Bit
-                                // uxBits=xEventGroupWaitBits(wifi_event_group, PUB_BIT|DISCO_BIT|ERROR_BIT, pdFALSE, pdFALSE,   portMAX_DELAY); //explicit Connect Bit
-                                if(((uxBits & PUB_BIT) !=PUB_BIT))   
-                                {
-                                    ESP_LOGE(MESH_TAG,"Pub failed Error or Disco or Timeout %x",uxBits);
-                                    if(mensaje.msg)
-                                        free(mensaje.msg); 
-                                    if(mensaje.param)
-                                        free(mensaje.param); 
-                                    //failure implies all this, disconnect stop 
-                                    err=esp_mqtt_client_disconnect(clientCloud);                // added May 8/2025... if no connect no uxbit so stuck, now timedout
-                                    err=esp_mqtt_client_stop(clientCloud); 
-                                    sendMeterf=false;    //if we break reet senderflag
-                                    break;
-                                }
-                                endMqtt=xmillis();          
-                                xEventGroupClearBits(wifi_event_group,PUB_BIT|DISCO_BIT|ERROR_BIT);     //could be done in firt call but explicit here
-                                theBlower.setStatsMsgOut();  //increment count
-                                theBlower.setStatsBytesOut(mensaje.lenMsg);
-                                //see if callback given
-                                if(mensaje.code)
-                                {
-                                    // printf("Callback %p param %ld\n",mensaje.code,mensaje.param);
-                                    (*mensaje.code)((void*)mensaje.param);	// call back should be fast
-                                }
-                                //free msg and param MUST be a pointer to anything
-                                if(mensaje.msg)
-                                    free(mensaje.msg);          //BIGF responsability if not heap collapses
-                                if(mensaje.param)
-                                    free(mensaje.param); 
-                                if((theConf.debug_flags >> dMQTT) & 1U)  
-                                    ESP_LOGI(MESH_TAG,"%sMsgLen %d Msgs sent %d msec %d",DBG_MQTT,mensaje.lenMsg,theBlower.getStatsMsgOut(),endMqtt-startMqtt);
-                                // if ((theBlower.getStatsMsgOut() % SAVEDATE)==0)
-                                // {
-                                //     time(&now);
-                                //     theBlower.setReservedDate(now);
-                                // }
-                            }
-                        }
-                        else
-                        {
-                            ESP_LOGE(MESH_TAG,"No message to send but Process activated");        
-                            if(mensaje.param)
-                                free(mensaje.param);        //in case this has a pointer
-                        }
-                    }               
-                    else        // queue empty, now close
-                    {
-                        sendMeterf=false;   //best way yet to sync sending and done sending 
-                        err=esp_mqtt_client_disconnect(clientCloud);                    // disconnect to reduce connections required globaly as a System
-                        xEventGroupWaitBits(wifi_event_group, DISCO_BIT|ERROR_BIT, pdFALSE, pdFALSE,   portMAX_DELAY); //explicit Connect Bit
-                        err=esp_mqtt_client_stop(clientCloud);
-                        if((theConf.debug_flags >> dMQTT) & 1U)  
-                            ESP_LOGI(MESH_TAG,"%sConn closed and Queue empty",DBG_MQTT);
-                        break;  //get out of send loop , all msgs were sent           
-                    }
-                }
-
-            }
-            else  
-            {   
-                // some problem, disconnect or error, in etiher case Task was released and will start loop again
-                ESP_LOGE(MESH_TAG,"Did not get connect bit or error %x\n",uxBits);
-                sendMeterf=false;
-                err=esp_mqtt_client_disconnect(clientCloud);                // added May 8/2025... if no connect no uxbit so stuck, now timedout
-                err=esp_mqtt_client_stop(clientCloud);
-                while(true)
-                {   //free queueed messages 
-                    if( xQueueReceive( mqttSender, &mensaje,  pdMS_TO_TICKS(MQTTSENDERWAIT) )==pdPASS)	//mqttHandle has a pointer to the original message. MUST be freed at some point
-                    {
-                        if(mensaje.msg)
-                            free(mensaje.msg);
-                        if(mensaje.param)
-                            free(mensaje.param);
-                    }
-                    else
-                        break;
-                }
-                // delay(100);  //in case its very fast
-            }
-            //start again the collecting cycle
-                if( xTimerStart(collectTimer, 0 ) != pdPASS )
-                    ESP_LOGE(MESH_TAG,"Repeat Timer mqtt saender failed");
+            ESP_LOGE(MESH_TAG, "Connection lost during sending mesh wifi");
+            if (xTimerStart(collectTimer, 0) != pdPASS)                 // start the timer again.... could be setup to be repeating but disconnecting uses manual so do the same
+                ESP_LOGE(MESH_TAG, "Repeat Timer mqtt sender mesh_wifi failed");
+            return false;
         }
-        else    // NO connection to MQTT, but Host is active
-        {
-            sendMeterf=false;           //reset flag so we can try again, even if it suspicious that it could not open the connection
-            ESP_LOGE(MESH_TAG,"Cannot connect to ClientCloud");
+
+        if (xTimerStart(collectTimer, 0) != pdPASS)
+            ESP_LOGE(MESH_TAG, "Repeat Timer mqtt sender mesh_wifi 2 failed");   // stat the timer again.... could be setup to be repeating but disconnecting uses manual so do the same
+        return true;
+    }
+
+    xEventGroupClearBits(wifi_event_group, MQTT_BIT|ERROR_BIT|DISCO_BIT);
+    int err = esp_mqtt_client_start(clientCloud);
+    
+    uxBits = xEventGroupWaitBits(wifi_event_group, MQTT_BIT|DISCO_BIT|ERROR_BIT, 
+                                 pdFALSE, pdFALSE, pdMS_TO_TICKS(40000));
+    
+    if (((uxBits & MQTT_BIT) == MQTT_BIT) && err != ESP_FAIL) {
+        if ((theConf.debug_flags >> dMQTT) & 1U) {
+            ESP_LOGI(MESH_TAG, "%sMqtt Sender connected", DBG_MQTT);
         }
+        
+        if (!send_queued_messages(true)) {
+            // Connection failed during sending
+            esp_mqtt_client_disconnect(clientCloud);
+            esp_mqtt_client_stop(clientCloud);
+            xQueueReset(mqttSender);
+            // clear_queued_messages();
+        }
+    } else {
+        // Failed to connect
+        ESP_LOGE(MESH_TAG, "Did not get connect bit or error %x", uxBits);
+        sendMeterf = false;
+        esp_mqtt_client_disconnect(clientCloud);
+        esp_mqtt_client_stop(clientCloud);
+        xQueueReset(mqttSender);
+        // clear_queued_messages();
+    }
+    
+    if (xTimerStart(collectTimer, 0) != pdPASS) {
+        ESP_LOGE(MESH_TAG, "Repeat Timer mqtt sender failed");
+    }
+    
+    return true;
+}
+
+/**
+ * @brief MQTT sender task
+ * 
+ * Continuously monitors MQTT sender queue and transmits messages when host is available.
+ * Manages connection lifecycle and message cleanup on failures.
+ * 
+ * @param pArg Task parameter (unused)
+ */
+void root_mqtt_sender(void *pArg)
+{
+    xEventGroupClearBits(wifi_event_group, SENDMQTT_BIT);
+    
+    while (true) {
+        wait_for_mqtt_host();
+        
+        xEventGroupWaitBits(wifi_event_group, SENDMQTT_BIT, pdTRUE, pdFALSE, portMAX_DELAY);
+        
+        uint32_t startMqtt = xmillis();
+        if ((theConf.debug_flags >> dMQTT) & 1U) {
+            ESP_LOGI(MESH_TAG, "%sMqttsender establish", DBG_MQTT);
+        }
+        
+        mqtt_send_session();
+        
         delay(100);
     }
-}   //should never leave this while its a Task
+}
 
 
 /**
@@ -3065,77 +3768,146 @@ void root_mqtt_sender(void *pArg)        // MQTTT data sender task
 //         ESP_LOGE(MESH_TAG,"Repeat Timer failed");
 //  }
 
+/**
+ * @brief Calculate current meter collection cycle
+ * 
+ * Determines the current cycle based on time elapsed since midnight
+ * and the number of nodes/connections configured
+ * 
+ * @param now Current time
+ * @param cycles Total number of cycles per day
+ * @return Current cycle index
+ */
+static int calculate_current_cycle(time_t now, int cycles)
+{
+    struct tm timeinfo;
+    localtime_r(&now, &timeinfo);
+    
+    // Calculate midnight time
+    timeinfo.tm_hour = 0;
+    timeinfo.tm_min = 0;
+    timeinfo.tm_sec = 0;
+    time_t midnight = mktime(&timeinfo);
+    
+    int secs_from_midnight = (int)(now - midnight);
+    int currCycle = (secs_from_midnight / EXPECTED_DELIVERY_TIME) % cycles;
+    
+    return currCycle;
+}
+
+/**
+ * @brief Send emergency message and restart if critical operation fails
+ * 
+ * Used when timer initialization fails - attempts to send emergency
+ * notification through MQTT queue before restarting system
+ * 
+ * @param context Context string describing the failure
+ */
+static void send_emergency_and_restart(const char *context)
+{
+    mqttSender_t emergencyMsg;
+    
+    ESP_LOGE(MESH_TAG, "%s: FATAL - attempting emergency restart", context);
+    
+    char *mensa = (char*)calloc(1, 200);
+    if (mensa == NULL) {
+        ESP_LOGE(MESH_TAG, "%s: No RAM for emergency message", context);
+        esp_restart();
+        return;
+    }
+    
+    sprintf(mensa, "%s failed Node %d", context, theConf.poolid);
+    emergencyMsg.msg = mensa;
+    emergencyMsg.lenMsg = strlen(mensa);
+    
+    if (xQueueSend(mqtt911, &emergencyMsg, 0) != pdPASS) {
+        ESP_LOGE(MESH_TAG, "Cannot send emergency message: %s", context);
+        writeLog(mensa);
+        free(mensa);
+        delay(1000);
+    }
+    
+    esp_restart();
+}
+
+/**
+ * @brief Create and start the meter data collection timer
+ * 
+ * Initializes the primary timer for periodic meter data collection.
+ * Timer fires once at start of collection cycle, then schedules
+ * the repeat timer for subsequent collections.
+ * 
+ * @return true if timer successfully created and started, false otherwise
+ */
+static bool create_and_start_collection_timer(void)
+{
+    firstTimer = xTimerCreate(
+        "Timer",
+        pdMS_TO_TICKS(100 * theConf.baset),
+        pdFALSE,
+        (void*)10,
+        [](TimerHandle_t xTimer) {
+            // First timer called - we are now in our alloted time cycle
+            if (!theConf.meterconf) {
+                return;
+            }
+            
+            root_collect_meter_data(NULL);
+            if (xTimerStart(collectTimer, 0) != pdPASS) {
+                ESP_LOGE(MESH_TAG, "Repeat Timer failed");
+            }
+        }
+    );
+    
+    if (firstTimer == NULL) {
+        ESP_LOGE(MESH_TAG, "Failed to create first timer");
+        return false;
+    }
+    
+    if (xTimerStart(firstTimer, 0) != pdPASS) {
+        send_emergency_and_restart("First Timer");
+        return false;
+    }
+    
+    return true;
+}
+
+/**
+ * @brief Set up root node data collection timer
+ * 
+ * Calculates the appropriate time slot for this node's meter data
+ * transmission based on controller ID and network configuration.
+ * Creates and starts the collection timer if this is the root node.
+ * 
+ * Timer scheduling: Divides the day into cycles based on number of
+ * nodes and connections. Each node gets a defined time slot within
+ * the EXPECTED_DELIVERY_TIME window.
+ */
 void root_set_senddata_timer()
 {
-    // get our defined time slot based on the controllerid and expected publish time... in seconds
-    // mqttSlots will be defined by default and modified by Host via any cmd message with SLOT primitive in Json msg
-       
-    time_t      now;
-    struct tm   timeinfo;
-    int         cuando=0;
-
+    time_t now;
+    struct tm timeinfo;
+    
     time(&now);
-    // printf("Just now %lu %s",(int)now,ctime(&now));
-
     localtime_r(&now, &timeinfo);
-    timeinfo.tm_hour=0;
-    timeinfo.tm_min=0;
-    timeinfo.tm_sec=0; //midnight hour
-    time_t midnight = mktime(&timeinfo);
-    // printf("Midnight %lu [%s]\n",(int)midnight,ctime(&midnight));
-    int cycles=theConf.totalnodes/theConf.conns;
     
-    int secs_from_midnight=int(now-midnight);
-    // printf("Secs from midnight %d cycles %d\n",secs_from_midnight,cycles);
-
-    int currCycle= (secs_from_midnight/EXPECTED_DELIVERY_TIME) % cycles;
-    int passedCycle =(secs_from_midnight/EXPECTED_DELIVERY_TIME) / cycles;
-    // printf("Passedcycles %d curcycle %d\n",passedCycle,currCycle);
-    int time_to_next_cycle;
-
-    // printf("Now %d Mid night %d secMid %d Secs to resync %d repeattime %d secs\n",(int)now,
-        //    (int)midnight,secs_from_midnight,time_to_next_cycle*theConf.baset,theConf.totalnodes/theConf.conns*EXPECTED_DELIVERY_TIME);
+    // Ensure baset has a minimum value
+    if (theConf.baset < 1) {
+        theConf.baset = 10;
+    }
     
-    if(esp_mesh_is_root())
-    {
-        // if(theConf.baset<1)
-            theConf.baset=10;
-        firstTimer=xTimerCreate("Timer",pdMS_TO_TICKS(100*theConf.baset),pdFALSE,( void * ) 10,
-        // firstTimer=xTimerCreate("Timer",pdMS_TO_TICKS(time_to_next_cycle*theConf.baset),pdFALSE,( void * ) 10,
-        [](TimerHandle_t xTimer)
-        {
-            // first timer called, we are now in our alloted time cycle
-            int ulCount = ( uint32_t ) pvTimerGetTimerID( xTimer );
-            if(!theConf.meterconf)  
-                return;
-
-            root_collect_meter_data(NULL);              // do this cycle call directly, dont skip it then start timer for repeat frequency
-            if( xTimerStart(collectTimer, 0 ) != pdPASS )
-                ESP_LOGE(MESH_TAG,"Repeat Timer failed");
-        }
-        );   //will be called once Mesh  established
-        if( xTimerStart(firstTimer, 0 ) != pdPASS )
-        {
-            mqttSender_t emergencyMsg;
-
-            ESP_LOGE(MESH_TAG,"First Timer failed F A T A L");            // deadly!!!! will never send anything
-            char *mensa=(char*)calloc(1,200);
-            if(!mensa)
-            {
-                ESP_LOGE(MESH_TAG,"First Timer no emergency ram");            
-                esp_restart();                                          //really screwed, try restarting 
-            }
-            sprintf(mensa,"First Timer failed Node %d",theConf.poolid);
-            emergencyMsg.msg=mensa;
-            emergencyMsg.lenMsg=strlen(mensa);
-            if(xQueueSend(mqtt911,&emergencyMsg,0)!=pdPASS)
-            {
-                ESP_LOGE(MESH_TAG,"Cannot send emergency message first timer");
-                free(mensa);        //for consistency's sake
-                writeLog(mensa);
-                delay(1000);
-                esp_restart();      //screwed, now we restart and try again
-            }
+    int cycles = theConf.totalnodes / theConf.conns;
+    if (cycles < 1) {
+        cycles = 1;
+    }
+    
+    ESP_LOGI(MESH_TAG, "Setting senddata timer: cycles=%d, baset=%d", cycles, theConf.baset);
+    
+    if (esp_mesh_is_root()) {
+        calculate_current_cycle(now, cycles);
+        
+        if (!create_and_start_collection_timer()) {
+            ESP_LOGE(MESH_TAG, "Failed to create collection timer");
         }
     }
 }
@@ -3145,102 +3917,113 @@ void post_root()
     xTaskCreate(&root_sntpget,"sntp",4096,NULL, 10, NULL); 	        // get real time
 }
 
-// void check_installation()
-// {
-//     mesh_data_t         data;
-//     mqttSender_t meshMsg;
-
-//     if(theConf.meterconf==1)        //for redundancy
-//     {
-//         //queue msg to meshsender that we have been installed so it can be relayed to Central wioth its conditions
-//         if(strlen(theConf.instMsg)>10)
-//         {
-//             char *intmsg=(char*)calloc(1,theConf.instMsglen+4);
-//             if(intmsg)
-//             {
-//                 memcpy(intmsg,theConf.instMsg,theConf.instMsglen);
-//                 meshMsg.msg=intmsg;
-//                 meshMsg.lenMsg=strlen(intmsg);
-//                 meshMsg.addr=NULL;          // to root
-//                 if(xQueueSend(meshQueue,&meshMsg,0)!=pdTRUE)      //will free todo 
-//                 {
-//                     ESP_LOGE(MESH_TAG,"Error queueing confirm msg");
-//                     if(meshMsg.msg)                 // already checked but ...
-//                         free(meshMsg.msg);          //due to failure
-//                 }
-//             }
-//         }
-//     }
-// }
-
-
-void ip_event_handler(void *arg, esp_event_base_t event_base,int32_t event_id, void *event_data)
+/**
+ * @brief Initialize root node after IP acquisition
+ * 
+ * Sets up MQTT, emergency task, blink indicator, and login timer
+ */
+static void init_root_node(void)
 {
-    modbus_sensor_type_t  sensor;
-
-    if (event_id ==IP_EVENT_STA_GOT_IP)
-    {
-        ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
-        ESP_LOGI(MESH_TAG, "<IP_EVENT_STA_GOT_IP>IP:" IPSTR, IP2STR(&event->ip_info.ip));
-        s_current_ip.addr = event->ip_info.ip.addr;
-        theBlower.setStatsStaConns();
-        esp_netif_t *netif = event->esp_netif;
-        esp_netif_dns_info_t dns;
-        ESP_ERROR_CHECK(esp_netif_get_dns_info(netif, ESP_NETIF_DNS_MAIN, &dns));
-        mesh_netif_start_root_ap(esp_mesh_is_root(), dns.ip.u_addr.ip4.addr);
-        hostflag=true;
-        gpio_set_level((gpio_num_t)WIFILED,1);
-        char * prompt=(char*)calloc(1,40);
-
-        if (esp_mesh_is_root() && !loadedf) 
-        {
-            loadedf=true;
-            meshf=true;
-            root_mqtt_app_start();
-            post_root();
-            xTaskCreate(&root_emergencyTask,"e911",2048,NULL, 5, NULL);
-            xTaskCreate(&blinkRoot,"root",1024,(void*)400, 5, &blinkHandle);
-            if(theConf.totalnodes>0)
-                xTimerStart(loginTimer,0);          // start the login timer if more that 0 nodes
-            // sprintf(prompt,"R%s",theBlower.getMID());
-            // showLVGL(prompt,10000,3);   	
-            launch_sensors();
-        }
-        else
-        {
-            ESP_LOGE(MESH_TAG,"IP child");	
-            launch_sensors();
-            // sprintf(prompt,"N%s",theBlower.getMID());
-            // showLVGL(prompt,10000,3);   
-        } 
-        // // esp_console_ xTaskCreate(&rs485_task,"modbus",1024*10,NULL, 5, NULL); repl_t* veamos=repl;    //new structure type
-        // create a shitload of undefined and weird problems DO NOT DO THIS
-        // void * dale=(void*)repl;          //make it byte oriented
-        // // void * dale=(void*)veamos;          //make it byte oriented
-        // sprintf(prompt,"%s%d-%s>",esp_mesh_is_root()?"Root":"Node",theConf.controllerid,theBlower.getMID());
-
-        // esp_console_setup_prompt(prompt,(esp_console_repl_com_t*)dale);
-
-        // if(theConf.meterconf==1)
-        //     check_installation();
-
-        xTaskCreate(&meshSendTask,"msend",1024*5,NULL, 10, NULL); 	            //now that its active, you can send any queued messages    
-
+    loadedf = true;
+    meshf = true;
+    root_mqtt_app_start();
+    post_root();
+    xTaskCreate(&root_emergencyTask, "e911", 2048, NULL, 5, NULL);
+    xTaskCreate(&blinkRoot, "root", 1024, (void*)400, 5, &blinkHandle);
+    
+    if (theConf.totalnodes > 0) {
+        xTimerStart(loginTimer, 0);
     }
-    if(event_id ==IP_EVENT_STA_LOST_IP)
-    {
-       ESP_LOGI(MESH_TAG,"Lost ip");    //never gets called but Parent disconnect does
-        hostflag=false;        
-        gpio_set_level((gpio_num_t)WIFILED,0);
-        char *tmp=(char*)calloc(1,100);
-        if (tmp)
-        {
-            sprintf(tmp,"Lost ip as %s",esp_mesh_is_root()?"Roo9t":"Node");
-            writeLog(tmp);
-            free(tmp);
-        }
-    }
+    
+    launch_sensors();
+    ESP_LOGI(MESH_TAG, "Root node initialized with %d total nodes", theConf.totalnodes);
+}
 
+/**
+ * @brief Initialize child node after IP acquisition
+ * 
+ * Launches sensor monitoring for child node
+ */
+static void init_child_node(void)
+{
+    launch_sensors();
+    ESP_LOGI(MESH_TAG, "Child node initialized with sensors launched");
+}
+
+/**
+ * @brief Handle IP address acquisition event
+ * 
+ * Updates current IP, initializes root or child node, and starts mesh send task
+ * 
+ * @param event IP event data containing IP information
+ */
+static void handle_ip_got_ip(ip_event_got_ip_t *event)
+{
+    if (event == NULL) {
+        return;
+    }
+    
+    ESP_LOGI(MESH_TAG, "<IP_EVENT_STA_GOT_IP>IP:" IPSTR, IP2STR(&event->ip_info.ip));
+    s_current_ip.addr = event->ip_info.ip.addr;
+    theBlower.setStatsStaConns();
+    
+    // Get DNS configuration
+    esp_netif_t *netif = event->esp_netif;
+    esp_netif_dns_info_t dns;
+    ESP_ERROR_CHECK(esp_netif_get_dns_info(netif, ESP_NETIF_DNS_MAIN, &dns));
+    mesh_netif_start_root_ap(esp_mesh_is_root(), dns.ip.u_addr.ip4.addr);
+    
+    hostflag = true;
+    gpio_set_level((gpio_num_t)WIFILED, 1);
+    
+    // Initialize appropriate node type
+    if (esp_mesh_is_root() && !loadedf) {
+        init_root_node();
+    } else {
+        init_child_node();
+    }
+    
+    // Start mesh send task to process queued messages
+    xTaskCreate(&meshSendTask, "msend", 1024*5, NULL, 10, NULL);
+}
+
+/**
+ * @brief Handle IP address lost event
+ * 
+ * Disables indicators and logs the disconnection
+ */
+static void handle_ip_lost_ip(void)
+{
+    ESP_LOGI(MESH_TAG, "Lost IP address");
+    hostflag = false;
+    gpio_set_level((gpio_num_t)WIFILED, 0);
+    
+    char *tmp = (char*)calloc(1, 100);
+    if (tmp != NULL) {
+        sprintf(tmp, "Lost ip as %s", esp_mesh_is_root() ? "Root" : "Node");
+        writeLog(tmp);
+        free(tmp);
+    }
+}
+
+/**
+ * @brief IP event handler for WiFi IP events
+ * 
+ * Processes IP acquisition and loss events for proper network initialization
+ * and cleanup
+ * 
+ * @param arg Context argument (unused)
+ * @param event_base Event base identifier
+ * @param event_id IP event ID
+ * @param event_data Event data (type depends on event_id)
+ */
+void ip_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+{
+    if (event_id == IP_EVENT_STA_GOT_IP) {
+        handle_ip_got_ip((ip_event_got_ip_t*)event_data);
+    } else if (event_id == IP_EVENT_STA_LOST_IP) {
+        handle_ip_lost_ip();
+    }
 }
 
 void blinkSSID(void *pArg)
@@ -3257,347 +4040,576 @@ void blinkSSID(void *pArg)
     }
 }
 
+/**
+ * @brief Handle WiFi AP station connection event
+ * 
+ * Starts SSID blink task to indicate active station connection
+ */
+static void handle_sta_connected(void)
+{
+    xTaskCreate(&blinkSSID, "bssid", 4096, (void*)SSIDBLINKTIME, 5, &ssidHandle);
+    ESP_LOGI(MESH_TAG, "Station connected to AP, starting SSID blink");
+}
+
+/**
+ * @brief Handle WiFi AP station disconnection event
+ * 
+ * Stops SSID blink task and cleans up task handle
+ */
+static void handle_sta_disconnected(void)
+{
+    if (ssidHandle != NULL) {
+        gpio_set_level((gpio_num_t)BEATPIN, 1);
+        vTaskDelete(ssidHandle);
+        ssidHandle = NULL;
+        ESP_LOGI(MESH_TAG, "Station disconnected from AP, stopped SSID blink");
+    }
+}
+
+/**
+ * @brief Handle WiFi STA start event
+ * 
+ * Initiates WiFi connection to mesh network
+ */
+static void handle_sta_start(void)
+{
+    esp_wifi_connect();
+    ESP_LOGI(MESH_TAG, "WiFi STA started, connecting to network");
+}
+
+/**
+ * @brief WiFi event handler for AP mode events
+ * 
+ * Processes station connection/disconnection and STA start events
+ * 
+ * @param arg Context argument (unused)
+ * @param event_base Event base identifier
+ * @param event_id WiFi event ID
+ * @param event_data Event data (type depends on event_id)
+ */
 static void wifi_event_handler_ap(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data)
 {
     if (event_id == WIFI_EVENT_AP_STACONNECTED) {
-        // wifi_event_ap_staconnected_t* event = (wifi_event_ap_staconnected_t*) event_data;
-        // ESP_LOGI(MESH_TAG, "station "MACSTR" join, AID=%d",
-        //          MAC2STR(event->mac), event->aid);
-        xTaskCreate(&blinkSSID,"bssid",4096,(void*)SSIDBLINKTIME, 5, &ssidHandle); 	        //SSID Blink
-
+        handle_sta_connected();
     } else if (event_id == WIFI_EVENT_AP_STADISCONNECTED) {
-        // wifi_event_ap_stadisconnected_t* event = (wifi_event_ap_stadisconnected_t*) event_data;
-        // ESP_LOGI(MESH_TAG, "station "MACSTR" leave, AID=%d",
-        //          MAC2STR(event->mac), event->aid);// test remote
-    if(ssidHandle)
-    {
-        gpio_set_level((gpio_num_t)BEATPIN,1);
-        vTaskDelete(ssidHandle);
-        ssidHandle=NULL;
+        handle_sta_disconnected();
+    } else if (event_id == WIFI_EVENT_STA_START) {
+        handle_sta_start();
     }
-    }
-    else if (event_id == WIFI_EVENT_STA_START)
-        esp_wifi_connect();
+}
+/**
+ * @brief Generate AP SSID from MAC address
+ * 
+ * Creates SSID in format: APPNAME + last 3 bytes of MAC in hex
+ */
+static void generate_ap_ssid(void)
+{
+    uint8_t mac[6];
+    esp_wifi_get_mac(WIFI_IF_AP, mac);
+    
+    bzero(apssid, sizeof(apssid));
+    sprintf(apssid, "%s%02X%02X%02X", APPNAME, mac[3], mac[4], mac[5]);
 }
 
-void wifi_init_network()
+/**
+ * @brief Setup WiFi AP SSID and password
+ */
+static void setup_ap_credentials(void)
 {
-    uint8_t         mac[6];
-    wifi_config_t   wifi_config;
+    generate_ap_ssid();
+    strcpy(appsw, DEFAULT_MESH_PASSW);
+    ESP_LOGI(TAG, "AP configured - SSID: %s", apssid);
+}
 
-    bzero(&wifi_config,sizeof(wifi_config));
+/**
+ * @brief Configure WiFi AP settings
+ * 
+ * @param wifi_config Config structure to populate
+ */
+static void setup_wifi_ap_config(wifi_config_t *wifi_config)
+{
+    if (!wifi_config) {
+        return;
+    }
+    
+    bzero(wifi_config, sizeof(wifi_config_t));
+    
+    memcpy(&wifi_config->ap.ssid, apssid, strlen(apssid));
+    memcpy(&wifi_config->ap.password, appsw, strlen(appsw));
+    wifi_config->ap.ssid_len = strlen(apssid);
+    wifi_config->ap.channel = 4;
+    wifi_config->ap.max_connection = 4;
+    wifi_config->ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
+}
 
+/**
+ * @brief Initialize network interfaces and WiFi for AP mode
+ * 
+ * Sets up netif, event handlers, and WiFi driver in access point mode.
+ * Generates SSID from MAC address and launches web server for configuration.
+ */
+void wifi_init_network(void)
+{
+    // Initialize network interfaces
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     esp_netif_create_default_wifi_ap();
+    
+    // Initialize WiFi
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
-                                                        ESP_EVENT_ANY_ID,
-                                                        &wifi_event_handler_ap,
-                                                        NULL,
-                                                        NULL));
-
-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B));        // MUST BE
+    
+    // Register event handler
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
+                                                        &wifi_event_handler_ap, NULL, NULL));
+    
+    // Configure WiFi parameters
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
     ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
-
-    esp_wifi_get_mac(WIFI_IF_AP,mac);
-    bzero(apssid,sizeof(apssid));
-    sprintf(apssid,"%s%02X%02X%02X\0",APPNAME, mac[3],mac[4],mac[5]);
-    // printf("%s%02X%02X%02X%02X%02X%02X\0",APPNAME, mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
-    strcpy(appsw,DEFAULT_MESH_PASSW);   //Data is protected via Challenge Id. This passw should be "irrelevant"
-    // printf("Config AP [%s] Passw [%s]\n",apssid,appsw);
-    memcpy(&wifi_config.ap.ssid,apssid,strlen(apssid));
-    memcpy(&wifi_config.ap.password,appsw,strlen(appsw));
-    wifi_config.ap.ssid_len = strlen(apssid);
-    wifi_config.ap.channel = 4;
-    wifi_config.ap.max_connection = 4;
-    // wifi_config.ap.authmode = WIFI_AUTH_OPEN;
-    wifi_config.ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
-
+    
+    // Setup AP credentials
+    setup_ap_credentials();
+    
+    // Configure AP settings
+    wifi_config_t wifi_config;
+    setup_wifi_ap_config(&wifi_config);
+    
+    // Start WiFi
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
-    //start web server
-    xTaskCreate(&start_webserver,"webs",1024*10,NULL, 5, NULL); 	       
-// printf("returning wifiinit\n");
+    
+    // Start web server for configuration
+    xTaskCreate(&start_webserver, "webs", 1024 * 10, NULL, 5, NULL);
+    ESP_LOGI(TAG, "WiFi AP initialized and web server started");
+}
+// WiFi STA connection state variables
+static bool s_wifi_sta_connected = false;
+static int s_wifi_sta_retry_num = 0;
+#define WIFI_STA_MAXIMUM_RETRY  5
+
+/**
+ * @brief WiFi event handler for external AP connection (STA mode)
+ * @param arg User data registered to the event
+ * @param event_base Event base for the handler
+ * @param event_id Event ID
+ * @param event_data Event data
+ * 
+ * Handles WiFi station events including:
+ * - WIFI_EVENT_STA_START: Initiates connection to external AP
+ * - WIFI_EVENT_STA_DISCONNECTED: Handles disconnection and retry logic
+ */
+static void wifi_sta_event_handler(void* arg, esp_event_base_t event_base,
+                                    int32_t event_id, void* event_data)
+{
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
+    {
+        ESP_LOGI(MESH_TAG, "WiFi STA started, attempting to connect to external AP");
+        esp_wifi_connect();
+    }
+    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
+    {
+        if (s_wifi_sta_retry_num < WIFI_STA_MAXIMUM_RETRY)
+        {
+            esp_wifi_connect();
+            s_wifi_sta_retry_num++;
+            ESP_LOGW(MESH_TAG, "Retry connecting to external AP (attempt %d/%d)", 
+                     s_wifi_sta_retry_num, WIFI_STA_MAXIMUM_RETRY);
+        }
+        else
+        {
+            ESP_LOGE(MESH_TAG, "Failed to connect to external AP after %d attempts", 
+                     WIFI_STA_MAXIMUM_RETRY);
+        }
+        s_wifi_sta_connected = false;
+    }
 }
 
-void meter_configure()
+/**
+ * @brief IP event handler for external AP connection (STA mode)
+ * @param arg User data registered to the event
+ * @param event_base Event base for the handler
+ * @param event_id Event ID
+ * @param event_data Event data
+ * 
+ * Handles IP events:
+ * - IP_EVENT_STA_GOT_IP: Successfully obtained IP address from external AP
+ */
+static void ip_sta_got_ip_handler(void* arg, esp_event_base_t event_base,
+                                   int32_t event_id, void* event_data)
 {
-    mqttSender_t    mensaje;
-    char            tmp[20];
+    if (event_id == IP_EVENT_STA_GOT_IP)
+    {
+        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
+        ESP_LOGI(MESH_TAG, "Got IP from external AP: " IPSTR, IP2STR(&event->ip_info.ip));
+        ESP_LOGI(MESH_TAG, "Gateway: " IPSTR, IP2STR(&event->ip_info.gw));
+        ESP_LOGI(MESH_TAG, "Netmask: " IPSTR, IP2STR(&event->ip_info.netmask));
+        s_wifi_sta_retry_num = 0;
+        s_wifi_sta_connected = true;
+        post_root();
+        xTaskCreate(&root_emergencyTask,"e911",2048,NULL, 5, NULL);
+        xTaskCreate(&blinkRoot,"root",1024,(void*)400, 5, &blinkHandle);
+        launch_sensors();
+        if( xTaskCreate(&root_mqttMgr,"mqtt",1024*10,NULL, 10, &mqttMgrHandle)!=pdPASS)      //receiving commands
+            ESP_LOGE(MESH_TAG,"Fail to launch Mgr Wifi");
+        clientCloud=root_setupMqtt();
+        if(clientCloud)
+            esp_mqtt_client_start(clientCloud);   // start and keep it open
+        else
+            ESP_LOGE(TAG,"Could not start MQTT client" );
+        if( xTimerStart(collectTimer, 0 ) != pdPASS )         // data collection timer
+            ESP_LOGE(MESH_TAG,"WIFI Collect Timer failed");
+    }
+}
 
-    // if(theConf.ptch)
-    // {
-        // printf("Start timer\n");
-        // if( xTimerStart(reconfTimer, 0 ) != pdPASS )
-        //     ESP_LOGI(MESH_TAG,"Repeat Timer failed to start");
-    // }
+/**
+ * @brief Initialize and connect to external WiFi AP in STA mode
+ * 
+ * Configures WiFi in STA mode and connects to the external access point
+ * using credentials from theConf.thessid and theConf.thepass.
+ * 
+ * Registers event handlers for:
+ * - WiFi connection/disconnection events
+ * - IP address assignment (got IP event)
+ * 
+ * @return ESP_OK on success, ESP_FAIL on error
+ */
+esp_err_t wifi_connect_external_ap(void)
+{
+    esp_err_t ret;
+    
+    // Validate SSID and password
+    if (strlen(theConf.thessid) == 0)
+    {
+        ESP_LOGE(MESH_TAG, "WiFi SSID is empty, cannot connect to external AP");
+        return ESP_FAIL;
+    }
+    
+    // Initialize network interface if not already done
+    ret = esp_netif_init();
+    if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE)
+    {
+        ESP_LOGE(MESH_TAG, "Failed to initialize netif: %s", esp_err_to_name(ret));
+        return ESP_FAIL;
+    }
+    
+    // Create default event loop if not already created
+    ret = esp_event_loop_create_default();
+    if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE)
+    {
+        ESP_LOGE(MESH_TAG, "Failed to create event loop: %s", esp_err_to_name(ret));
+        return ESP_FAIL;
+    }
+    
+    // Create default WiFi station interface
+    esp_netif_t* sta_netif = esp_netif_create_default_wifi_sta();
+    if (sta_netif == NULL)
+    {
+        ESP_LOGE(MESH_TAG, "Failed to create WiFi STA interface");
+        return ESP_FAIL;
+    }
+    
+    // Initialize WiFi with default configuration
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ret = esp_wifi_init(&cfg);
+    if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE)
+    {
+        ESP_LOGE(MESH_TAG, "Failed to initialize WiFi: %s", esp_err_to_name(ret));
+        return ESP_FAIL;
+    }
+    
+    // Register WiFi event handler
+    ret = esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_sta_event_handler, NULL);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(MESH_TAG, "Failed to register WiFi event handler: %s", esp_err_to_name(ret));
+        return ESP_FAIL;
+    }
+    
+    // Register IP event handler for GOT_IP event
+    ret = esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &ip_sta_got_ip_handler, NULL);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(MESH_TAG, "Failed to register IP event handler: %s", esp_err_to_name(ret));
+        return ESP_FAIL;
+    }
+    
+    // Configure WiFi station with SSID and password from configuration
+    wifi_config_t wifi_config = {};
+    memset(&wifi_config, 0, sizeof(wifi_config_t));
+    
+    strncpy((char*)wifi_config.sta.ssid, theConf.thessid, sizeof(wifi_config.sta.ssid) - 1);
+    strncpy((char*)wifi_config.sta.password, theConf.thepass, sizeof(wifi_config.sta.password) - 1);
+    wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
+    wifi_config.sta.pmf_cfg.capable = true;
+    wifi_config.sta.pmf_cfg.required = false;
+    
+    // Set WiFi mode to station
+    ret = esp_wifi_set_mode(WIFI_MODE_STA);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(MESH_TAG, "Failed to set WiFi mode to STA: %s", esp_err_to_name(ret));
+        return ESP_FAIL;
+    }
+    
+    // Set WiFi configuration
+    ret = esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(MESH_TAG, "Failed to set WiFi config: %s", esp_err_to_name(ret));
+        return ESP_FAIL;
+    }
+    
+    // Start WiFi
+    ret = esp_wifi_start();
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(MESH_TAG, "Failed to start WiFi: %s", esp_err_to_name(ret));
+        return ESP_FAIL;
+    }
+    
+    ESP_LOGI(MESH_TAG, "WiFi STA initialization complete. Connecting to SSID: %s", theConf.thessid);
+    return ESP_OK;
+}
+
+/**
+ * @brief Generate and store configuration ID for new meter
+ * 
+ * Creates random CID and displays SSID with CID for user information.
+ */
+static void generate_meter_cid(void)
+{
+    int cid = esp_random() % 99999999;
+    char tmp[50];
+    
+    sprintf(tmp, "%s %d", apssid, cid);
+    ESP_LOGI(TAG, "Generated CID: %s", tmp);
+    showLVGL(tmp, 600000, 1);
+    
+    theConf.cid = cid;
+    write_to_flash();
+}
+
+/**
+ * @brief Display configuration status on LVGL display
+ */
+static void display_config_status(void)
+{
+    showLVGL((char*)"CONF", 600000, 1);
+}
+
+/**
+ * @brief Wait for webserver configuration completion or timeout
+ * 
+ * Blocks indefinitely for webserver to complete configuration.
+ */
+static void wait_for_webserver_config(void)
+{
+    while (true) {
+        delay(1000);  // Webserver will restart after configuration
+    }
+}
+
+/**
+ * @brief Initialize meter and wait for configuration via web interface
+ * 
+ * Sets up WiFi in AP mode and waits for configuration. If meter is new
+ * (meterconf==0), generates and displays a unique CID. Displays status
+ * on LVGL display and blocks until webserver completes configuration.
+ */
+void meter_configure(void)
+{
     wifi_init_network();
-    if(theConf.meterconf==0)
-    {
-    // seed the CID base code for Configuration
-        int cid= (esp_random() % 99999999);
-        sprintf(tmp,"%s %d",apssid,cid);
-
-        printf("\nSSID %s\n",tmp);
-        showLVGL(tmp,600000,1);     
-        theConf.cid=cid;
-        write_to_flash();
-    }
-    else
-    {
-        showLVGL((char*)"CONF",600000,1); 
-	}
     
-    while(true)
-    {
-        delay(1000);        // Webserver will restart after configuration or timeout
+    if (theConf.meterconf == 0) {
+        // New meter: generate CID
+        generate_meter_cid();
+    } else {
+        // Already configured: show status
+        display_config_status();
     }
+    
+    // Block until webserver completes configuration
+    wait_for_webserver_config();
 }
 
-esp_err_t mesh_enable(void) {
-
-    
-  esp_err_t err = ESP_OK;
-    char            missid[30],mipassw[18];
-mesh_addr_t mesh_self_addr;
-esp_rom_printf("Start Mesh\n");
-        if(strlen(theConf.thessid)==0)
-    {
-        strcpy(missid,DEFAULT_MESH_SSID);
-        strcpy(mipassw,DEFAULT_MESH_PASSW); //8 chars at least
-        strcpy(theConf.thessid,DEFAULT_MESH_SSID);
-        strcpy(theConf.thepass,DEFAULT_MESH_PASSW);
-        write_to_flash();
-    }
-    else
-    {
-        strcpy(missid,theConf.thessid);
-        strcpy(mipassw,theConf.thepass);
-    }
-esp_rom_printf("SSID [%s] len %d Pass [%s] len %d\n",missid,strlen(missid),mipassw,strlen(mipassw));
-// theConf.masternode=true;
-  if (!mesh_on) {
-    if (mesh_init_done == false) {
-      ESP_LOGW(MESH_TAG, "Initializing mesh network");
-    } else {
-      ESP_LOGW(MESH_TAG, "Enabling mesh network");
-    }
-    if (mesh_init_done == false) {
-    //   disableCore0WDT();
-      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_init());
-      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_event_loop_create_default());
-      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_create_default_wifi_mesh_netifs(NULL, NULL));
-      wifi_init_config_t config = WIFI_INIT_CONFIG_DEFAULT();
-      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_init(&config));
-      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &ip_event_handler, NULL));
-      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_mode(WIFI_MODE_APSTA));
-      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_ps(WIFI_PS_NONE));
-    }
-    // ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_country(&wifi_country));
-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_LR));
-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_LR));
-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_start());
-    uint8_t i = 72;
-    while (esp_wifi_set_max_tx_power(i) == ESP_OK) {
-      i++;
-    }
-
-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_init());
-    if (theConf.masternode) {
-      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_set_type(MESH_ROOT));
-    } else {
-      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_fix_root(true));
-      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_set_group_id(&GroupID, 1));
-    }
-    if (mesh_init_done == false) {
-      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_event_handler_register(MESH_EVENT, ESP_EVENT_ANY_ID, &mesh_event_handler, NULL));
-    }
-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_set_topology(MESH_TOPO_CHAIN));
-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_set_max_layer(10));
-    // ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_set_max_layer(mesh_settings.max_layer));
-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_set_vote_percentage(1));
-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_set_xon_qsize(16));
-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_disable_ps());
-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_set_ap_assoc_expire(10));
-    mesh_cfg_t cfg = MESH_INIT_CONFIG_DEFAULT();
-    // memcpy((uint8_t *)&cfg.mesh_id, mesh_settings.id, 6);
-        memcpy((uint8_t *) &cfg.mesh_id, MESH_ID, 6);       //was setup in init_vars
-
-    cfg.channel = 0;
-    // cfg.channel = mesh_settings.channel;
-    cfg.allow_channel_switch = true;
-    ESP_ERROR_CHECK(esp_mesh_set_ap_authmode((wifi_auth_mode_t)CONFIG_MESH_AP_AUTHMODE));
-    // ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_set_ap_authmode(mesh_settings.auth_mode));
-
-    // esp_mesh_set_ie_crypto_key(mesh_settings.crypt_key, strlen(mesh_settings.crypt_key));
-    cfg.mesh_ap.max_connection = 10;
-    // cfg.mesh_ap.max_connection = mesh_settings.max_conn;
-    // memcpy((uint8_t *)&cfg.mesh_ap.password, mesh_settings.ap_pass, strlen(mesh_settings.ap_pass));
-
-        cfg.router.ssid_len =strlen( missid);
-    memcpy((uint8_t *) &cfg.router.ssid, missid, cfg.router.ssid_len);
-    memcpy((uint8_t *) &cfg.router.password, mipassw,strlen(mipassw));
-        memcpy((uint8_t *)&cfg.mesh_ap.password, mipassw, strlen(mipassw));
-
-
-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_set_config(&cfg));
-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_start());
-    if (mesh_init_done == false) {
-    //   xTaskCreate(&get_message, "get_message", 9216, NULL, 5, &get_message_handle);
-      ESP_LOGI(MESH_TAG, "Created mesh receive task");
-    //   enableCore0WDT();
-      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_read_mac(mesh_self_addr.addr,(esp_mac_type_t) 0));
-    } else {
-    //   ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_comm_p2p_start());
-    }
-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_mesh_set_self_organized(true, false));
-    mesh_on = true;
-    if (mesh_init_done == false) {
-      if (esp_mesh_is_root()) {
-        // memcpy(&mesh_root_addr, &mesh_self_addr, sizeof(mesh_addr_t));
-        // memcpy(&node_status[0].address, &mesh_self_addr, sizeof(mesh_addr_t));
-        // node_status[0].exists = true;
-        // node_status[0].connected = true;
-        // node_status[0].current_version = SOFTWARE_VERSION;
-        // node_status[0].uptime = (uint32_t)(esp_timer_get_time() / 1000000ULL);
-        // node_status[0].mesh_layer = esp_mesh_get_layer();
-      }
-      mesh_init_done = true;
-    }
-    uint8_t wifi_protocol_ap;
-    uint8_t wifi_protocol_sta;
-    esp_wifi_get_protocol(WIFI_IF_AP, &wifi_protocol_ap);
-    esp_wifi_get_protocol(WIFI_IF_STA, &wifi_protocol_sta);
-    mesh_addr_t id;
-    esp_mesh_get_id(&id);
-    int8_t max_tx_power;
-    esp_wifi_get_max_tx_power(&max_tx_power);
-
-    ESP_LOGI(MESH_TAG, "Mesh starts successfully");
-    ESP_LOGI(MESH_TAG, "Mesh type:                                  %s", (esp_mesh_is_root()) ? "Root" : "Node");
-    ESP_LOGI(MESH_TAG, "Mesh ID:                       " MACSTR "", MAC2STR(id.addr));
-    ESP_LOGI(MESH_TAG, "Station MAC:                   " MACSTR "", MAC2STR(mesh_self_addr.addr));
-    ESP_LOGI(MESH_TAG, "Channel:                                       %d", cfg.channel);
-    ESP_LOGI(MESH_TAG, "Max. connected stations:                       %d", cfg.mesh_ap.max_connection);
-    ESP_LOGI(MESH_TAG, "STA protocol:                         %s%s%s%s", (wifi_protocol_sta == 1) ? "802.11b" : "", (wifi_protocol_sta == 2) ? "802.11g" : "", (wifi_protocol_sta == 4) ? "802.11n" : "", (wifi_protocol_sta == 8) ? "Long Range" : "");
-    ESP_LOGI(MESH_TAG, "AP protocol:                          %s%s%s%s", (wifi_protocol_ap == 1) ? "802.11b" : "", (wifi_protocol_ap == 2) ? "802.11g" : "", (wifi_protocol_ap == 4) ? "802.11n" : "", (wifi_protocol_ap == 8) ? "Long Range" : "");
-    ESP_LOGI(MESH_TAG, "Max. layer:                                  %d", esp_mesh_get_max_layer());
-    ESP_LOGI(MESH_TAG, "Topology:                                  %s", (esp_mesh_get_topology()) ? "Chain" : "Tree");
-    ESP_LOGI(MESH_TAG, "Root fixed:                                  %s", (esp_mesh_is_root_fixed()) ? "Yes" : "No");
-    ESP_LOGI(MESH_TAG, "Power save enabled:                           %s", (esp_mesh_is_ps_enabled()) ? "Yes" : "No");
-    ESP_LOGI(MESH_TAG, "Max. TX power:                          %.1f dBm", (float)max_tx_power * 0.25);
-    ESP_LOGI(MESH_TAG, "Free heap:                                 %d", esp_get_free_heap_size());
-    // ESP_LOGI(MESH_TAG, "MF ID:      %s", basic_settings.mf_id);
-    // ESP_LOGI(MESH_TAG, "MF key:     %s", basic_settings.mf_key);
-    // ESP_LOGI(MESH_TAG, "MF chan:    %s", basic_settings.mf_channel);
-  } else {
-    ESP_LOGW(MESH_TAG, "Mesh network already enabled!");
-  }
-  return err;
-}
-
-void start_mesh()
+/**
+ * @brief Initialize WiFi stack for mesh networking
+ * 
+ * Sets up network interfaces, WiFi drivers, and registers event handlers.
+ */
+static void init_wifi_stack(void)
 {
-    int             err;
-    char            missid[30],mipassw[18];
-
-    // MESH sequence start
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-    /*  crete network interfaces for mesh (only station instance saved for further manipulation, soft AP instance ignored */
     ESP_ERROR_CHECK(mesh_netifs_init(mesh_manager));
-    wifi_init_config_t configg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&configg));
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &ip_event_handler, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT,IP_EVENT_STA_LOST_IP, &ip_event_handler, NULL));
-    if(!theConf.masternode)
+    
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, 
+                                               &ip_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_LOST_IP, 
+                                               &ip_event_handler, NULL));
+    
+    if (!theConf.masternode) {
         ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_LR));
+    }
     ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_LR));
-    // ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
     ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
     ESP_ERROR_CHECK(esp_wifi_start());
-    if(strlen(theConf.thessid)==0)
-    {
-        strcpy(missid,DEFAULT_MESH_SSID);
-        strcpy(mipassw,DEFAULT_MESH_PASSW); //8 chars at least
-        strcpy(theConf.thessid,DEFAULT_MESH_SSID);
-        strcpy(theConf.thepass,DEFAULT_MESH_PASSW);
+}
+
+/**
+ * @brief Load or initialize mesh SSID and password credentials
+ * 
+ * @param ssid Buffer to store SSID (min 30 bytes)
+ * @param password Buffer to store password (min 18 bytes)
+ */
+static void load_mesh_credentials(char *ssid, char *password)
+{
+    if (!ssid || !password) {
+        return;
+    }
+    
+    if (strlen(theConf.thessid) == 0) {
+        // Initialize with defaults
+        strcpy(ssid, DEFAULT_MESH_SSID);
+        strcpy(password, DEFAULT_MESH_PASSW);
+        strcpy(theConf.thessid, DEFAULT_MESH_SSID);
+        strcpy(theConf.thepass, DEFAULT_MESH_PASSW);
         write_to_flash();
+    } else {
+        // Use existing configuration
+        strcpy(ssid, theConf.thessid);
+        strcpy(password, theConf.thepass);
     }
-    else
-    {
-        strcpy(missid,theConf.thessid);
-        strcpy(mipassw,theConf.thepass);
+}
+
+/**
+ * @brief Initialize mesh configuration structure
+ * 
+ * @param cfg Mesh config structure to populate
+ * @param ssid Router SSID
+ * @param password Router password
+ */
+static void setup_mesh_config(mesh_cfg_t *cfg, const char *ssid, const char *password)
+{
+    if (!cfg || !ssid || !password) {
+        return;
     }
-// nada
-// printf("Missid [%s] pass [%s]\n",missid,mipassw);
-        /*  mesh initialization */
+    
+    *cfg = MESH_INIT_CONFIG_DEFAULT();
+    memcpy((uint8_t *)&cfg->mesh_id, MESH_ID, 6);
+    
+    cfg->channel = 0;  // Required: all nodes must use same channel
+    cfg->router.ssid_len = strlen(ssid);
+    memcpy((uint8_t *)&cfg->router.ssid, ssid, cfg->router.ssid_len);
+    memcpy((uint8_t *)&cfg->router.password, password, strlen(password));
+    
+    // Soft AP credentials
+    ESP_ERROR_CHECK(esp_mesh_set_ap_authmode((wifi_auth_mode_t)CONFIG_MESH_AP_AUTHMODE));
+    cfg->mesh_ap.max_connection = CONFIG_MESH_AP_CONNECTIONS;
+    cfg->mesh_ap.nonmesh_max_connection = CONFIG_MESH_NON_MESH_AP_CONNECTIONS;
+    memcpy((uint8_t *)&cfg->mesh_ap.password, DEFAULT_MESH_PASSW, 8);
+}
+
+/**
+ * @brief Initialize core mesh parameters and event handlers
+ */
+static void init_mesh_parameters(void)
+{
     ESP_ERROR_CHECK(esp_mesh_init());
-    ESP_ERROR_CHECK(esp_event_handler_register(MESH_EVENT, ESP_EVENT_ANY_ID, &mesh_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(MESH_EVENT, ESP_EVENT_ANY_ID, 
+                                               &mesh_event_handler, NULL));
     ESP_ERROR_CHECK(esp_mesh_set_max_layer(CONFIG_MESH_MAX_LAYER));
     ESP_ERROR_CHECK(esp_mesh_set_vote_percentage(1));
     ESP_ERROR_CHECK(esp_mesh_set_ap_assoc_expire(10));
-    ESP_ERROR_CHECK(esp_mesh_send_block_time(30000));       
+    ESP_ERROR_CHECK(esp_mesh_send_block_time(30000));
     ESP_ERROR_CHECK(esp_mesh_disable_ps());
-    mesh_cfg_t cfg = MESH_INIT_CONFIG_DEFAULT();
-    memcpy((uint8_t *) &cfg.mesh_id, MESH_ID, 6);       //was setup in init_vars
-esp_log_buffer_hex("MESHID",&cfg.mesh_id,6);
+}
 
-    cfg.channel = 0;        //has to be 0 NO IDEA WHY -> all have to have the same Channel
+/**
+ * @brief Apply mesh configuration and handle errors
+ * 
+ * @param cfg Mesh configuration to apply
+ * @return true if successful, false if fatal error
+ */
+static bool apply_mesh_config(const mesh_cfg_t *cfg)
+{
+    if (!cfg) {
+        return false;
+    }
     
-    //Router credentials STA
-    cfg.router.ssid_len =strlen( missid);
-    memcpy((uint8_t *) &cfg.router.ssid, missid, cfg.router.ssid_len);
-    memcpy((uint8_t *) &cfg.router.password, mipassw,strlen(mipassw));
-   
-   // softAP credientials
-    ESP_ERROR_CHECK(esp_mesh_set_ap_authmode((wifi_auth_mode_t)CONFIG_MESH_AP_AUTHMODE));
-    cfg.mesh_ap.max_connection = CONFIG_MESH_AP_CONNECTIONS;
-    cfg.mesh_ap.nonmesh_max_connection = CONFIG_MESH_NON_MESH_AP_CONNECTIONS;
-    memcpy((uint8_t *) &cfg.mesh_ap.password, DEFAULT_MESH_PASSW,8);            //Only password required
-   err=esp_mesh_set_config(&cfg);
-    if (err)
-    {
-        ESP_LOGE(MESH_TAG,"Init Mesh err %x");
-        if(err==0x4008)
-        {
-            ESP_LOGE(MESH_TAG,"pasword len error");
+    esp_err_t err = esp_mesh_set_config(cfg);
+    if (err != ESP_OK) {
+        ESP_LOGE(MESH_TAG, "Init Mesh err %x", err);
+        
+        if (err == 0x4008) {
+            ESP_LOGE(MESH_TAG, "Password length error");
             erase_config();
             esp_restart();
         }
+        return false;
     }
-    /* mesh start */
-    // Broadcast address setup
-    //set a global flag that MESH has started. No esp_mesh_get-running or similar call so use flag
-    esp_err_t errReturn = esp_mesh_set_group_id(&GroupID, 1);
-    if(errReturn)
-        ESP_LOGI(MESH_TAG,"Failed to resgister Mesh Broadcast");
-
-     esp_mesh_set_topology(MESH_TOPO_CHAIN);
-    ESP_ERROR_CHECK(esp_mesh_set_ie_crypto_funcs(NULL));
-    if(theConf.masternode)
-        {
-
-        }
-    // extremely important for MOTA else lost packages
-    // int xon=esp_mesh_get_xon_qsize();
-    // esp_mesh_set_xon_qsize(xon*10);      // 100 ms delay sustained
     
-    ESP_ERROR_CHECK(esp_mesh_start());
-
-    mesh_started=true;  //for kbd and other aux routines
-    ESP_LOGI(MESH_TAG, "mesh starts successfully, heap:%d, %s\n",  esp_get_free_heap_size(),
-             esp_mesh_is_root_fixed() ? "root fixed" : "root not fixed");
+    return true;
 }
 
+/**
+ * @brief Setup mesh topology and broadcast addressing
+ */
+static void setup_mesh_topology(void)
+{
+    esp_err_t err = esp_mesh_set_group_id(&GroupID, 1);
+    if (err != ESP_OK) {
+        ESP_LOGI(MESH_TAG, "Failed to register Mesh Broadcast");
+    }
+    
+    ESP_ERROR_CHECK(esp_mesh_set_topology(MESH_TOPO_CHAIN));
+    ESP_ERROR_CHECK(esp_mesh_set_ie_crypto_funcs(NULL));
+}
+
+/**
+ * @brief Start mesh networking and finalize initialization
+ */
+void start_mesh(void)
+{
+    char ssid[30], password[18];
+    
+    // Initialize WiFi stack
+    init_wifi_stack();
+    
+    // Load or initialize mesh credentials
+    load_mesh_credentials(ssid, password);
+    
+    // Initialize mesh parameters
+    init_mesh_parameters();
+    
+    // Setup and apply mesh configuration
+    mesh_cfg_t cfg;
+    setup_mesh_config(&cfg, ssid, password);
+    
+    esp_log_buffer_hex("MESHID", &cfg.mesh_id, 6);
+    
+    if (!apply_mesh_config(&cfg)) {
+        return;
+    }
+    
+    // Setup topology and broadcast
+    setup_mesh_topology();
+    
+    // Start mesh
+    ESP_ERROR_CHECK(esp_mesh_start());
+    
+    mesh_started = true;
+    ESP_LOGI(MESH_TAG, "Mesh started successfully. Heap: %d bytes, Root: %s",
+             esp_get_free_heap_size(),
+             esp_mesh_is_root_fixed() ? "fixed" : "not fixed");
+}
 
 time_t get_today_midnight() {
     time_t now = time(NULL);
@@ -3610,284 +4622,456 @@ time_t get_today_midnight() {
     
     return mktime(tm_info);
 }
-void find_cycle_day(uint8_t * ciclo,uint8_t*dia)
-{
-    // check profile and day set
-    printf("Find Cycle %d Dia %d\n",theConf.activeProfile,theConf.dayCycle);
-    if(theConf.activeProfile>=0 && theConf.dayCycle>=0)
-    {
-        //given the day, find the current cycle and day to start
-        for (int a=0;a<theConf.profiles[theConf.activeProfile].numCycles;a++)
-        {
-            if(theConf.profiles[theConf.activeProfile].cycle[a].day+theConf.profiles[theConf.activeProfile].cycle[a].duration>theConf.dayCycle)
-            {
-                //in this cyycle a
-                //days to skip start+duracion - daycycle
-                *dia=theConf.dayCycle-theConf.profiles[theConf.activeProfile].cycle[a].day;
-                // *dia=theConf.profiles[theConf.activeProfile].cycle[a].duration-(theConf.dayCycle-theConf.profiles[theConf.activeProfile].cycle[a].day);
-                *ciclo=a;
-                    printf("Found it Cycle %d Dia %d\n",*ciclo,*dia);
 
-                return;
-            }
-        }
-        *ciclo=0;
-        *dia=0;
+/**
+ * @brief Validate active profile and day cycle configuration
+ * 
+ * @return true if configuration is valid, false otherwise
+ */
+static bool is_profile_config_valid(void)
+{
+    if (theConf.activeProfile < 0 || theConf.dayCycle < 0) {
+        ESP_LOGE(TAG, "Invalid Profile %d or Day Start %d", theConf.activeProfile, theConf.dayCycle);
+        return false;
     }
-    ESP_LOGE(TAG,"Invalid Profile %d or Day Start %d",theConf.activeProfile,theConf.dayCycle);
+    return true;
 }
 
+/**
+ * @brief Find active cycle and day within profile for recovery from power loss
+ * 
+ * Calculates which cycle and day within that cycle to resume based on
+ * theConf.dayCycle counter. Used for resuming production after reboot.
+ * 
+ * @param ciclo Output: cycle number to start (0-indexed)
+ * @param dia Output: day within cycle to start (0-indexed)
+ */
+void find_cycle_day(uint8_t *ciclo, uint8_t *dia)
+{
+    if (!ciclo || !dia) {
+        ESP_LOGE(TAG, "Invalid output pointers");
+        return;
+    }
+    
+    if (theConf.debug_flags & (1U << dSCH)) {
+        ESP_LOGI(TAG, "Finding cycle for Profile %d Day %d", 
+                theConf.activeProfile, theConf.dayCycle);
+    }
+    
+    if (!is_profile_config_valid()) {
+        *ciclo = 0;
+        *dia = 0;
+        return;
+    }
+    
+    // Search for cycle containing the target day
+    const profile_t *profile = &theConf.profiles[theConf.activeProfile];
+    for (int i = 0; i < profile->numCycles; i++) {
+        const ciclo_t *cycle = &profile->cycle[i];
+        int cycle_end_day = cycle->day + cycle->duration;
+        
+        if (cycle_end_day > theConf.dayCycle) {
+            // Found containing cycle
+            *dia = theConf.dayCycle - (cycle->day - 1);
+            *ciclo = i;
+            
+            if (theConf.debug_flags & (1U << dSCH)) {
+                ESP_LOGI(TAG, "Found Cycle %d Day %d", *ciclo, *dia);
+            }
+            return;
+        }
+    }
+    
+    // Day not found in any cycle, reset to start
+    *ciclo = 0;
+    *dia = 0;
+    ESP_LOGW(TAG, "Day %d not found in profile, resetting to start", theConf.dayCycle);
+}
+
+
+/**
+ * @brief Stop the send meter watchdog timer
+ * 
+ * @return true if stopped successfully, false otherwise
+ */
+static bool stop_send_meter_timer(void)
+{
+    return (xTimerStop(sendMeterTimer, 0) == pdPASS);
+}
+
+/**
+ * @brief Check mesh node schedule and trigger data collection when complete
+ * 
+ * Processes routing table entries from mesh nodes. When all expected nodes
+ * have reported, sends collected data via MQTT and stops the watchdog timer.
+ * 
+ * @param who Mesh address of reporting node
+ * @param ladata Node data from routing table
+ * @return ESP_OK if processed or waiting, ESP_FAIL if routing table load failed
+ */
 esp_err_t root_check_schedule(mesh_addr_t *who, void* ladata)
 {
-    mqttSender_t        mqttMsg;
-    esp_err_t           err;
-
-    if(root_load_routing_table_mac(who,ladata)==ESP_OK)      //save messages in our masternode table
-    {
-        counting_nodes--;
-
-        if(counting_nodes==0)                           //when we reach existing node count, start sending process
-        {
-            //stop watchdog timer
-            // if(xTimerIsTimerActive(sendMeterTimer))
-            // {
-                if( xTimerStop(sendMeterTimer, 0 ) != pdPASS )
-                    ESP_LOGE(MESH_TAG,"Failed to stop SendMeter Timer");
-            // }
-            // printf("Sending data \n");
-            err= root_send_collected_nodes(masterNode.existing_nodes);        //all existing nodes
-            if(err)
-            {
-                    ESP_LOGE(MESH_TAG,"Error sending mqtt msg");
-                    return ESP_FAIL;
-            }
-            else
-                return ESP_OK;   
-        }
-        else
-            return ESP_OK;
-    }
-    else
+    if (root_load_routing_table_mac(who, ladata) != ESP_OK) {
         return ESP_FAIL;
+    }
+    
+    counting_nodes--;
+    
+    // All nodes reported, send collected data
+    if (counting_nodes == 0) {
+        if (!stop_send_meter_timer()) {
+            ESP_LOGE(MESH_TAG, "Failed to stop SendMeter Timer");
+        }
+        
+        esp_err_t err = root_send_collected_nodes(masterNode.existing_nodes);
+        if (err != ESP_OK) {
+            ESP_LOGE(MESH_TAG, "Error sending mqtt msg");
+            return ESP_FAIL;
+        }
+    }
+    
+    return ESP_OK;
+}
+/**
+ * @brief Create timer context for schedule execution
+ * 
+ * @param cycle Cycle number
+ * @param day Day number within cycle
+ * @param horario Hour index
+ * @param timer_num Timer array index
+ * @return Allocated context or NULL on failure
+ */
+static start_timer_ctx_t* create_timer_context(uint8_t cycle, uint8_t day, int horario, int timer_num)
+{
+    start_timer_ctx_t* ctx = (start_timer_ctx_t*)calloc(1, sizeof(start_timer_ctx_t));
+    if (!ctx) {
+        ESP_LOGE(MESH_TAG, "No ram for start timer context");
+        return NULL;
+    }
+    
+    ctx->cycle = cycle;
+    ctx->day = day;
+    ctx->horario = horario;
+    ctx->tostart = theConf.profiles[0].cycle[cycle].horarios[horario].hourStart;
+    ctx->horaslen = theConf.profiles[0].cycle[cycle].horarios[horario].horarioLen;
+    ctx->pwm = theConf.profiles[0].cycle[cycle].horarios[horario].pwmDuty;
+    ctx->timerNum = timer_num;
+    
+    return ctx;
 }
 
+/**
+ * @brief Handle schedule that started in the past but hasn't ended
+ * 
+ * Creates immediate end timer for currently running schedule.
+ * 
+ * @param endtime Schedule end timestamp
+ * @param now Current timestamp
+ * @param ck_h Hour index
+ * @param num_horarios Total horarios in cycle
+ */
+static void handle_past_schedule_in_progress(time_t endtime, time_t now, int ck_h, int num_horarios)
+{
+    time_t remaining = endtime - now;
+    bool is_last = (ck_h == num_horarios - 1);
+    void* timer_id = is_last ? (void*)0xFFFFFFFF : (void*)vanTimersEnd;
+    
+    end_timers[vanTimersEnd] = xTimerCreate(NULL, pdMS_TO_TICKS(remaining * 1000), 
+                                            pdFALSE, timer_id, blower_end);
+    if (end_timers[vanTimersEnd]) {
+        xTimerStart(end_timers[vanTimersEnd], 10);
+        vanTimersEnd++;
+    }
+}
+
+/**
+ * @brief Validate and apply test timer multiplier
+ * 
+ * @param delay_ms Calculated delay in milliseconds
+ * @return true if delay is valid, false if timer div too large
+ */
+static bool validate_timer_delay(time_t delay_ms)
+{
+    if (delay_ms < 1000) {
+        ESP_LOGE(TAG, "MUX too big %d", theConf.test_timer_div);
+        return false;
+    }
+    return true;
+}
+
+/**
+ * @brief Create and start schedule timers for future event
+ * 
+ * @param starttime Schedule start timestamp
+ * @param endtime Schedule end timestamp  
+ * @param now Current timestamp
+ * @param ctx Timer context
+ * @param ck_h Hour index
+ * @param num_horarios Total horarios
+ * @return true on success, false if validation failed
+ */
+static bool create_future_timers(time_t starttime, time_t endtime, time_t now,
+                                 start_timer_ctx_t* ctx, int ck_h, int num_horarios)
+{
+    time_t start_delay = (starttime - now) / theConf.test_timer_div * 1000;
+    time_t end_delay = (endtime - now) / theConf.test_timer_div * 1000;
+    
+    if (!validate_timer_delay(start_delay) || !validate_timer_delay(end_delay)) {
+        free(ctx);
+        return false;
+    }
+    
+    // Create start timer
+    start_timers[vanTimersStart] = xTimerCreate(NULL, pdMS_TO_TICKS(start_delay),
+                                                pdFALSE, (void*)ctx, blower_start);
+    if (!start_timers[vanTimersStart]) {
+        ESP_LOGE(MESH_TAG, "Start Timer not created %d", vanTimersStart);
+        free(ctx);
+        return true; // Continue despite error
+    }
+    
+    // Create end timer
+    bool is_last = (ck_h == num_horarios - 1);
+    void* timer_id = is_last ? (void*)0xFFFFFFFF : (void*)vanTimersEnd;
+    end_timers[vanTimersEnd] = xTimerCreate(NULL, pdMS_TO_TICKS(end_delay),
+                                           pdFALSE, timer_id, blower_end);
+    if (!end_timers[vanTimersEnd]) {
+        ESP_LOGE(MESH_TAG, "End Timer not created %d", vanTimersEnd);
+        xTimerDelete(start_timers[vanTimersStart], 0);
+        return true;
+    }
+    
+    // Start both timers
+    if (xTimerStart(start_timers[vanTimersStart], 10) != pdPASS) {
+        ESP_LOGE(MESH_TAG, "FATAL could not start Start Timer %d", vanTimersStart);
+    }
+    if (xTimerStart(end_timers[vanTimersEnd], 10) != pdPASS) {
+        ESP_LOGE(MESH_TAG, "FATAL could not start End Timer %d", vanTimersEnd);
+    }
+    
+    vanTimersStart = (vanTimersStart + 1) % (MAXHORARIOS + 1);
+    vanTimersEnd = (vanTimersEnd + 1) % (MAXHORARIOS + 1);
+    
+    return true;
+}
+
+/**
+ * @brief Process single horario (schedule slot)
+ * 
+ * @param ck Cycle index
+ * @param ck_d Day index
+ * @param ck_h Hour index
+ * @param midn Midnight timestamp
+ * @param now Current timestamp
+ * @return true to continue, false to restart
+ */
+static bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, time_t now)
+{
+    while (pausef) {
+        delay(1000);
+    }
+    
+    start_timer_ctx_t* ctx = create_timer_context(ck, ck_d, ck_h, vanTimersStart);
+    if (!ctx) {
+        return true;
+    }
+    
+    const auto& horario = theConf.profiles[0].cycle[ck].horarios[ck_h];
+    time_t starttime = midn + horario.hourStart * 3600;
+    time_t endtime = starttime + horario.horarioLen * 3600;
+    
+    if ((theConf.debug_flags >> dSCH) & 1U) {
+        char aca[40];
+        sprintf(aca, "%sC-%d D-%d %d", DBG_SCH, ck, ck_d, horario.horarioLen * 3600);
+        ESP_LOGI(TAG, "%s", aca);
+    }
+    
+    // Schedule already started
+    if (starttime < now) {
+        if ((theConf.debug_flags >> dSCH) & 1U) {
+            ESP_LOGI(TAG, "%sStart already happened %ld %ld", DBG_SCH, (long)starttime, (long)now);
+        }
+        
+        if (endtime < now) {
+            if ((theConf.debug_flags >> dSCH) & 1U) {
+                ESP_LOGI(TAG, "%sEnd already happened. Skip this schedule %ld %ld", 
+                        DBG_SCH, (long)endtime, (long)now);
+            }
+            free(ctx);
+        } else {
+            free(ctx); // Context not needed for immediate execution
+            handle_past_schedule_in_progress(endtime, now, ck_h, 
+                                            theConf.profiles[0].cycle[ck].numHorarios);
+        }
+        return true;
+    }
+    
+    // Future schedule
+    return create_future_timers(starttime, endtime, now, ctx, ck_h,
+                               theConf.profiles[0].cycle[ck].numHorarios);
+}
+
+/**
+ * @brief Clean up all active timers
+ */
+static void cleanup_all_timers()
+{
+    for (int i = 0; i < vanTimersStart; i++) {
+        xTimerDelete(start_timers[i], 0);
+    }
+    for (int i = 0; i < vanTimersEnd; i++) {
+        xTimerDelete(end_timers[i], 0);
+    }
+    
+    vanTimersStart = vanTimersEnd = 0;
+    bzero(&start_timers, sizeof(start_timers));
+    bzero(&end_timers, sizeof(end_timers));
+}
+
+/**
+ * @brief Handle end-of-day transition and cleanup
+ * 
+ * @param now Initial start timestamp
+ */
+static void handle_day_end(time_t now)
+{
+    if (!xSemaphoreTake(scheduleSem, portMAX_DELAY)) {
+        return;
+    }
+    
+    if ((theConf.debug_flags >> dSCH) & 1U) {
+        ESP_LOGI(TAG, "%sDay ended", DBG_SCH);
+    }
+    
+    time_t current = time(NULL);
+    struct tm *tm_current = localtime(&current);
+    struct tm *tm_start = localtime(&now);
+    
+    if ((theConf.debug_flags >> dSCH) & 1U) {
+        char *time_str1 = ctime(&current);
+        char *time_str2 = ctime(&now);
+        time_str1[strcspn(time_str1, "\n")] = '\0';
+        time_str2[strcspn(time_str2, "\n")] = '\0';
+        ESP_LOGI(TAG, "%sFirst Now %s", DBG_SCH, time_str2);
+        ESP_LOGI(TAG, "%sNew day %s", DBG_SCH, time_str1);
+    }
+    
+    if (tm_current->tm_mday == tm_start->tm_mday && tm_current->tm_mon == tm_start->tm_mon) {
+        if ((theConf.debug_flags >> dSCH) & 1U) {
+            ESP_LOGI(TAG, "%sSame day and month", DBG_SCH);
+        }
+        
+        tm_start->tm_mday++;
+        time_t next = mktime(tm_start);
+        struct tm *tm_next = localtime(&next);
+        tm_next->tm_hour = tm_next->tm_min = tm_next->tm_sec = 0;
+        time_t next_midnight = mktime(tm_next);
+        
+        if ((theConf.debug_flags >> dSCH) & 1U) {
+            char *time_str = ctime(&next_midnight);
+            time_str[strcspn(time_str, "\n")] = '\0';
+            ESP_LOGI(TAG, "%sNew day %s", DBG_SCH, time_str);
+            ESP_LOGI(TAG, "%sDistance to midnight next day %ld", 
+                    DBG_SCH, (long)(next_midnight - now));
+        }
+    }
+    
+    cleanup_all_timers();
+}
+
+/**
+ * @brief Production schedule timer management task
+ * 
+ * Main task loop that processes production cycles, days, and hourly schedules.
+ * Creates and manages FreeRTOS timers for blower activation/deactivation.
+ * Handles recovery from power loss via flash-stored day counter.
+ * 
+ * @param pArg Unused task parameter
+ */
 void start_schedule_timers(void * pArg)
- {
+{
     time_t now = time(NULL);
-    time_t midn=get_today_midnight();
-    time_t son,sone,starttime,endtime;
-    char aca[20];
-    uint8_t cyclestart,daystart;
-    int desde=0;
-
-    while(true)
+    time_t midn = get_today_midnight();
+    uint8_t cyclestart, daystart;
+    
+    while (true)
     {
-        again:
-        if(xSemaphoreTake(workTaskSem, portMAX_DELAY))	// start the active profile
+        if (!xSemaphoreTake(workTaskSem, portMAX_DELAY)) {
+            continue;
+        }
+        
+        vanTimersEnd = 0;
+        vanTimersStart = 0;
+        ESP_LOGW(TAG, "Started Production cycles");
+        
+        find_cycle_day(&cyclestart, &daystart);
+        schedulef = true;
+        
+        if ((theConf.debug_flags >> dSCH) & 1U) {
+            ESP_LOGW(TAG, "%sStart Cycle %d Start Day %d", DBG_SCH, cyclestart, daystart);
+        }
+        
+        // Process all cycles
+        for (ck = cyclestart; ck < theConf.profiles[0].numCycles; ck++)
         {
-            vanTimersEnd=0;
-            vanTimersStart=0;
-            ESP_LOGW(TAG,"Started Production cycles");
-            find_cycle_day(&cyclestart,&daystart);
-            schedulef=true;         // active for all production cmds
-            if((theConf.debug_flags >> dSCH) & 1U)
-                ESP_LOGW(TAG,"%sStart Cycle %d Start Day %d",DBG_SCH,cyclestart,daystart);
-            for (ck=cyclestart;ck<theConf.profiles[0].numCycles;ck++)       // cycles
+            int day_offset = (ck == cyclestart) ? daystart : 0;
+            
+            // Process days in cycle
+            for (ck_d = day_offset; ck_d < theConf.profiles[0].cycle[ck].duration; ck_d++)
             {
-                if (ck==cyclestart) 
-                    desde=daystart;
-                else
-                    desde=0;
-
-                for (ck_d=desde; ck_d<theConf.profiles[0].cycle[ck].duration;ck_d++)    //  days
+                // Process horarios (hourly schedules) in day
+                for (int ck_h = 0; ck_h < theConf.profiles[0].cycle[ck].numHorarios; ck_h++)
                 {
-
-                    // if((theConf.debug_flags >> dSCH) & 1U)  
-                    for (int ck_h=0;ck_h<theConf.profiles[0].cycle[ck].numHorarios;ck_h++)      // hours
-                    {
-                        while(pausef)
-                            delay(1000);            // todo make it less fatal
-                        //fill the internal strucute with schedule info for this start timer
-                        start_timer_ctx_t* start_timer_ctx=(start_timer_ctx_t*)calloc(1,sizeof(start_timer_ctx_t));
-                        if(!start_timer_ctx)
-                        {
-                            ESP_LOGE(MESH_TAG,"No ram for start timer context");
-                            // continue;       // skip this horario
-                        }
-                        else{
-                            start_timer_ctx->cycle=ck;
-                            start_timer_ctx->day=ck_d;
-                            start_timer_ctx->horario=ck_h;
-                            start_timer_ctx->tostart=theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart;
-                            start_timer_ctx->horaslen=theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen;
-                            start_timer_ctx->pwm=theConf.profiles[0].cycle[ck].horarios[ck_h].pwmDuty;
-                        }
-
-                        // printf("Ctx Cycle %d Day %d Hora %d Start %d Horas %d PW %d\n",start_timer_ctx->cycle,start_timer_ctx->day,start_timer_ctx->horario,start_timer_ctx->tostart,start_timer_ctx->horaslen,start_timer_ctx->pwm );    // update blower with schedule info
-                        // theBlower.setSchedule(ck,ck_d,ck_h,theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart,theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen,theConf.profiles[0].cycle[ck].horarios[ck_h].pwmDuty,1);    // update blower with schedule info
-                        starttime=midn+theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart*3600;    //in seconds
-                        endtime=starttime+theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen*3600;    //in seconds
-                        if((theConf.debug_flags >> dSCH) & 1U)
-                        {
-                            sprintf(aca,"%sC-%d D-%d %d",DBG_SCH,ck,ck_d,theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen*3600);
-                            ESP_LOGI(TAG,"%s",aca);
-                        }
-                        // printf("Start[%d] %ld %s",h,(long)starttime,ctime(&starttime));
-                        // printf("End[%d] %ld %s",h,(long)endtime,ctime(&endtime));
-                        // printf("Now %ld %s",(long)now,ctime(&now));
-                        if(starttime<now)
-                        {
-                            if((theConf.debug_flags >> dSCH) & 1U)
-                                ESP_LOGI(TAG,"%sStart already happened %ld %ld",DBG_SCH,(long)starttime,(long)now);
-                            if(endtime<now)
-                            {
-                                if((theConf.debug_flags >> dSCH) & 1U)       
-                                    ESP_LOGI(TAG,"%SEnd already happende. Skip this schedule %ld %ld",DBG_SCH,(long)endtime,(long)now);
-                            }
-                            else
-                            {
-                                son=endtime-now;
-                                // printf("Turn on blower inmmediately and wait for %d secs %d\n",(long)son);
-                                            //set start timers start and end  off all hours
-                                end_timers[vanTimersEnd]=xTimerCreate(NULL,pdMS_TO_TICKS(son),pdFALSE,(ck_h==theConf.profiles[0].cycle[ck].numHorarios-1)?(void*)0xFFFFFFFF:( void * ) vanTimersEnd, blower_end);
-                                xTimerStart(end_timers[vanTimersEnd],10);
-                                vanTimersEnd++;
-                            }
-                        }
-                        else
-                        {
-                            son=starttime-now;
-                            sone=endtime-now;
-                            son=son/theConf.test_timer_div*1000;
-                            sone=sone/theConf.test_timer_div*1000;
-                            // esp_rom_printf("Start timer in %ld secs %ld  millis %ld Mux %d\n",(long)son,(long)starttime,(long)now,theConf.test_timer_div);
-                            // esp_rom_printf("End timer in %d sec %ld %ld\n",(long)sone,(long)endtime,(long)now);
-
-                            // guards due to the MUX tester should not be used in production the MUX 
-                            if (son<1000 || son <1000) //to secs
-                            {
-                                ESP_LOGE(TAG,"MUX to big %d",theConf.test_timer_div);
-                                goto again;
-                            }
-                            start_timers[vanTimersStart]=xTimerCreate(NULL,pdMS_TO_TICKS(son),pdFALSE,(void*)start_timer_ctx, blower_start);       // start timer ctx should be freed by the blower_start
-                            // start_timers[vanTimersStart]=xTimerCreate(NULL,pdMS_TO_TICKS(son/TEST),pdFALSE,(void*)vanTimersStart, blower_start);
-                            if(!start_timers[vanTimersStart])
-                            {
-                                ESP_LOGE(MESH_TAG,"Start Timer not created %d",vanTimersStart);
-                                //do something drastic
-                            }
-                            // for simulation, end timers takes longer to see the effect of blower status reporting
-                            end_timers[vanTimersEnd]=xTimerCreate(NULL,pdMS_TO_TICKS(sone),pdFALSE,ck_h==theConf.profiles[0].cycle[0].numHorarios-1?(void*)0xFFFFFFFF:( void * ) vanTimersEnd, blower_end);
-                            // end_timers[vanTimersEnd]=xTimerCreate(NULL,pdMS_TO_TICKS(sone/TEST),pdFALSE,ck_h==theConf.profiles[0].cycle[0].numHorarios-1?(void*)0xFFFFFFFF:( void * ) vanTimersEnd, blower_end);
-                            if(!end_timers[vanTimersEnd])
-                            {
-                                ESP_LOGE(MESH_TAG,"End Timer not created %d",vanTimersEnd);
-                                //do something drastic
-                            }
-                            // start them 
-                            if(xTimerStart(start_timers[vanTimersStart],10)!=pdPASS)
-                            {
-                                ESP_LOGE(MESH_TAG,"FATAL could not start Start Timer %d",vanTimersStart);
-                                //do something drastic
-                            }
-                            if(xTimerStart(end_timers[vanTimersEnd],10)!=pdPASS)        /// allow 10 ticks for start SUPER IMPORTANT
-                            {
-                                ESP_LOGE(MESH_TAG,"FATAL could not start End Timer %d",vanTimersEnd);
-                                //do something drastic
-                            }
-                            vanTimersStart++;
-                            vanTimersEnd++;
-                            if (vanTimersEnd>MAXHORARIOS)
-                                vanTimersEnd=0;
-                            if (vanTimersStart>MAXHORARIOS)
-                                vanTimersStart=0;
-                        }
-
-
-                    } // horarios
-                    if(xSemaphoreTake(scheduleSem, portMAX_DELAY))	
-                    {
-                        if((theConf.debug_flags >> dSCH) & 1U)
-                            ESP_LOGI(TAG,"%sDay ended",DBG_SCH);
-                        time_t nnow=time(NULL);     // get our current date
-                        struct tm *tm_info = localtime(&nnow);
-                        struct tm *tm_infofirst = localtime(&now);  // this is the date we started with
-                        if((theConf.debug_flags >> dSCH) & 1U)
-                        {
-                            char *tiempo=ctime(&nnow);
-                            char *tiempo2=ctime(&now);
-                            tiempo[strcspn(tiempo, "\n")] = '\0';
-                            tiempo2[strcspn(tiempo2, "\n")] = '\0';
-                            ESP_LOGI(TAG,"%sFirst Now %s",DBG_SCH,tiempo2);
-                            ESP_LOGI(TAG,"%sNew day %s",DBG_SCH,tiempo);
-                        }
-                        if(tm_info->tm_mday==tm_infofirst->tm_mday && tm_info->tm_mon==tm_infofirst->tm_mon)
-                        {
-                            if((theConf.debug_flags >> dSCH) & 1U)
-                                ESP_LOGI(TAG,"%sSame day and month",DBG_SCH); // need to get to next day midnight
-                        // }
-                        // else
-                        //     {
-                                tm_infofirst->tm_mday++;
-                                time_t newn=mktime(tm_infofirst);
-                                tm_info = localtime(&newn);
-                                tm_info->tm_hour=tm_info->tm_min=tm_info->tm_sec=0;
-                                time_t nextd=mktime(tm_info);
-                                // printf("New day Mes %d Day %d Year %d\n",tm_info->tm_mon,tm_info->tm_mday,tm_info->tm_year);
-                                if((theConf.debug_flags >> dSCH) & 1U)
-                                {
-                                    char *tiempo=ctime(&nextd);
-                                    tiempo[strcspn(tiempo, "\n")] = '\0';
-                                    ESP_LOGI(TAG,"%sNew day %s",DBG_SCH,tiempo);
-                                    ESP_LOGI(TAG,"%sDistance to midnight next day %d",DBG_SCH,long(nextd-now));
-                                }
-
-                            }
-                        for (int a=0; a<vanTimersStart;a++)
-                            xTimerDelete(start_timers[a],0);
-                        for (int a=0; a<vanTimersEnd;a++)
-                            xTimerDelete(end_timers[a],0);
-                        vanTimersStart=vanTimersEnd=0;  //reset count
-                        bzero(&start_timers,sizeof(start_timers));
-                        bzero(&end_timers,sizeof(end_timers));
+                    if (!process_horario(ck, ck_d, ck_h, midn, now)) {
+                        goto restart_schedule; // Timer validation failed, restart
                     }
-                    theConf.work_day=ck_d; //last day processed
-                    theConf.work_cycle=ck;
-                    theConf.dayCycle++;     // for recovery
-                    if((theConf.debug_flags >> dSCH) & 1U)
-                        ESP_LOGI(TAG,"%sSave day %d",DBG_SCH,theConf.dayCycle);
-                    write_to_flash();
-                } //days
-
-
-            } //cycles
-            ESP_LOGW(TAG,"Production cycle ended");
-            theBlower.setScheduleStatus(BLOWEROFF);
-            // theConf.blower_mode=0;              // done Production Cycle... wait for next activation
-            // theConf.bleboot=BLE_MODE;            //set ble mode to restart production cycle
-            theConf.dayCycle=0;                 // reset staring day
-            // write_to_flash();
-            schedulef=false;
-        } // start process semaphore
-    } //task loop forever
+                }
+                
+                // Day complete, wait and cleanup
+                handle_day_end(now);
+                
+                theConf.work_day = ck_d;
+                theConf.work_cycle = ck;
+                theConf.dayCycle++;
+                
+                if ((theConf.debug_flags >> dSCH) & 1U) {
+                    ESP_LOGI(TAG, "%sSave day %d", DBG_SCH, theConf.dayCycle);
+                }
+                write_to_flash();
+            }
+        }
+        
+        // All cycles complete
+        ESP_LOGW(TAG, "Production cycle ended");
+        theBlower.setScheduleStatus(BLOWEROFF);
+        theConf.dayCycle = 0;
+        schedulef = false;
+        continue;
+        
+restart_schedule:
+        cleanup_all_timers();
+    }
 } 
 
-
-void app_spiffs_log(void)
+/**
+ * @brief Register and mount SPIFFS filesystem
+ * 
+ * Configures VFS for SPIFFS with automatic formatting on mount failure.
+ * Uses /spiffs as base path with max 2 concurrent file handles.
+ * 
+ * @param partition_label Name of the SPIFFS partition to mount
+ * @return true if registration and mount successful, false otherwise
+ */
+static bool spiffs_register_and_mount(const char* partition_label)
 {
-    ESP_LOGI(TAG, "Initializing SPIFF LogS");
-
     esp_vfs_spiffs_conf_t conf = {
-      .base_path = "/spiffs",
-      .partition_label = "profile",
-      .max_files =2,
-      .format_if_mount_failed = true
+        .base_path = "/spiffs",
+        .partition_label = partition_label,
+        .max_files = 2,
+        .format_if_mount_failed = true
     };
 
-    // Use settings defined above to initialize and mount SPIFFS filesystem.
-    // Note: esp_vfs_spiffs_register is an all-in-one convenience function.
     esp_err_t ret = esp_vfs_spiffs_register(&conf);
-
     if (ret != ESP_OK) {
         if (ret == ESP_FAIL) {
             ESP_LOGE(TAG, "Failed to mount or format filesystem");
@@ -3896,116 +5080,233 @@ void app_spiffs_log(void)
         } else {
             ESP_LOGE(TAG, "Failed to initialize SPIFFS (%s)", esp_err_to_name(ret));
         }
-        return;
+        return false;
     }
-
-
-    ESP_LOGI(TAG, "Performing SPIFFS_check().");
-    ret = esp_spiffs_check(conf.partition_label);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "SPIFFS_check() failed (%s)", esp_err_to_name(ret));
-        return;
-    } else {
-        ESP_LOGI(TAG, "SPIFFS_check() successful");
-    }
-
-
-    size_t total = 0, used = 0;
-    ret = esp_spiffs_info(conf.partition_label, &total, &used);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to get SPIFFS partition information (%s). Formatting...", esp_err_to_name(ret));
-        esp_spiffs_format(conf.partition_label);
-        return;
-    } else {
-        ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
-    }
-
-    // Check consistency of reported partition size info.
-    if (used > total) {
-        ESP_LOGW(TAG, "Number of used bytes cannot be larger than total. Performing SPIFFS_check().");
-        ret = esp_spiffs_check(conf.partition_label);
-        // Could be also used to mend broken files, to clean unreferenced pages, etc.
-        // More info at https://github.com/pellepl/spiffs/wiki/FAQ#powerlosses-contd-when-should-i-run-spiffs_check
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "SPIFFS_check() failed (%s)", esp_err_to_name(ret));
-            return;
-        } else {
-            ESP_LOGI(TAG, "SPIFFS_check() successful");
-        }
-    }
-
+    return true;
 }
 
+/**
+ * @brief Perform filesystem consistency check
+ * 
+ * Validates SPIFFS partition integrity. Can mend broken files and clean
+ * unreferenced pages. Should be run after power loss or unexpected shutdowns.
+ * 
+ * @param partition_label Name of the SPIFFS partition to check
+ * @return true if check passed, false if errors detected
+ * @see https://github.com/pellepl/spiffs/wiki/FAQ#powerlosses-contd-when-should-i-run-spiffs_check
+ */
+static bool spiffs_perform_check(const char* partition_label)
+{
+    ESP_LOGI(TAG, "Performing SPIFFS_check()");
+    esp_err_t ret = esp_spiffs_check(partition_label);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "SPIFFS_check() failed (%s)", esp_err_to_name(ret));
+        return false;
+    }
+    ESP_LOGI(TAG, "SPIFFS_check() successful");
+    return true;
+}
 
-void blower_start(TimerHandle_t xTimer)
+/**
+ * @brief Verify partition size information and handle anomalies
+ * 
+ * Retrieves and validates partition usage statistics. If used bytes exceed
+ * total capacity (indicates corruption), triggers filesystem check.
+ * Formats partition if info retrieval fails.
+ * 
+ * @param partition_label Name of the SPIFFS partition to verify
+ * @return true if partition info valid, false if formatting required
+ */
+static bool spiffs_verify_partition_info(const char* partition_label)
+{
+    size_t total = 0, used = 0;
+    esp_err_t ret = esp_spiffs_info(partition_label, &total, &used);
+    
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to get SPIFFS partition information (%s). Formatting...", esp_err_to_name(ret));
+        esp_spiffs_format(partition_label);
+        return false;
+    }
+    
+    ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
+    
+    if (used > total) {
+        ESP_LOGW(TAG, "Number of used bytes cannot be larger than total. Performing SPIFFS_check()");
+        return spiffs_perform_check(partition_label);
+    }
+    
+    return true;
+}
+
+/**
+ * @brief Initialize SPIFFS logging partition
+ * 
+ * Complete initialization sequence for SPIFFS-based logging:
+ * 1. Register and mount the "profile" partition
+ * 2. Perform filesystem consistency check
+ * 3. Verify partition size information
+ * 
+ * Early return on any initialization failure.
+ */
+void app_spiffs_log(void)
+{
+    ESP_LOGI(TAG, "Initializing SPIFFS Logs");
+    
+    const char* partition_label = "profile";
+    
+    if (!spiffs_register_and_mount(partition_label)) {
+        return;
+    }
+    
+    if (!spiffs_perform_check(partition_label)) {
+        return;
+    }
+    
+    if (!spiffs_verify_partition_info(partition_label)) {
+        return;
+    }
+}
+
+// Blower Start is called when the start timer fires
+// will turn the Blower ON
+// if Mesh Mode it will send the schedule info to all child nodes (ctx has the schedule info)
+// ctx has the detailes of schedule info to send to childs as we3ll as the timerNum for non Mesh Mode
+
+/**
+ * @brief Create and populate schedule start JSON message
+ * 
+ * @param start_timer_ctx Timer context with schedule information
+ * @return Allocated JSON string or NULL on failure (caller must free)
+ */
+static char* create_schedule_start_json(const start_timer_ctx_t *start_timer_ctx)
+{
+    cJSON *root = cJSON_CreateObject();
+    if (!root) {
+        return NULL;
+    }
+    
+    cJSON_AddStringToObject(root, "cmd", "schstart");
+    cJSON_AddNumberToObject(root, "unit", theConf.unitid);
+    cJSON_AddNumberToObject(root, "cycle", start_timer_ctx->cycle);
+    cJSON_AddNumberToObject(root, "day", start_timer_ctx->day);
+    cJSON_AddNumberToObject(root, "hora", start_timer_ctx->horario);
+    
+    char *json_msg = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    
+    return json_msg;
+}
+
+/**
+ * @brief Send schedule start message to mesh network
+ * 
+ * @param json_msg JSON formatted message (will be freed by sender)
+ * @return true if queued successfully, false otherwise
+ */
+static bool send_schedule_sync_to_mesh(char *json_msg)
 {
     mqttSender_t meshMsg;
-
-    start_timer_ctx_t *start_timer_ctx = ( start_timer_ctx_t * ) pvTimerGetTimerID( xTimer );           // to set the schedule inmfo accordingly
-    gpio_set_level((gpio_num_t)BEATPIN,0);          //before configuring it decide level we want it to be at start, in this case LOW
-
-    if(esp_mesh_is_root())
-    {
-        int err=esp_mesh_get_routing_table((mesh_addr_t *) &poolNodesTable.address_table,MAXNODES * 6, &poolNodesTable.existing_nodes);
-        if(err!=ESP_OK)
-        {
-            ESP_LOGE(MESH_TAG,"Failed to get routing table %d",err);
-        }
-        esp_rom_printf("Hay %d/%d nodes\n",poolNodesTable.existing_nodes, theConf.totalnodes);
-        poolNodesTable.existing_nodes=theConf.totalnodes;      // override with config value
-        xTimerStart(scheduleTimer,1);
+    bzero(&meshMsg, sizeof(meshMsg));
+    
+    meshMsg.queue = emergencyQueue;
+    meshMsg.msg = json_msg;
+    meshMsg.lenMsg = strlen(json_msg);
+    meshMsg.addr = NULL;
+    
+    if (xQueueSend(meshQueue, &meshMsg, 0) != pdPASS) {
+        ESP_LOGE(MESH_TAG, "Cannot queue Schedule Sync");
+        free(json_msg);
+        return false;
     }
-
-    esp_rom_printf("Start Blower Ctx Cycle %d Day %d Hora %d Start %d Horas %d PW %d\n",start_timer_ctx->cycle,start_timer_ctx->day,start_timer_ctx->horario,start_timer_ctx->tostart,start_timer_ctx->horaslen,start_timer_ctx->pwm );    // update blower with schedule info
-    theBlower.setSchedule(start_timer_ctx->cycle,start_timer_ctx->day,start_timer_ctx->horario,start_timer_ctx->tostart,start_timer_ctx->horaslen,start_timer_ctx->pwm,BLOWERON);
-
-    bzero(&meshMsg,sizeof(meshMsg));            //have to zero it for the callback and param
-    cJSON *root=cJSON_CreateObject();
-    if(root)
-    {
-        cJSON_AddStringToObject(root,"cmd","schstart");
-        cJSON_AddNumberToObject(root,"unit",theConf.unitid);
-        cJSON_AddNumberToObject(root,"cycle",start_timer_ctx->cycle);
-        cJSON_AddNumberToObject(root,"day",start_timer_ctx->day);
-        cJSON_AddNumberToObject(root,"hora",start_timer_ctx->horario);
-        char *intmsg=cJSON_PrintUnformatted(root);
-        if(intmsg)
-        {
-            // esp_rom_printf("ScvhStart [%s]\n",intmsg);
-            meshMsg.queue=emergencyQueue;
-            meshMsg.msg=intmsg;
-            meshMsg.lenMsg=strlen(intmsg);
-            meshMsg.addr=NULL;          // root
-            if(xQueueSend(meshQueue,&meshMsg,0)!=pdPASS)
-                ESP_LOGE(MESH_TAG,"Cannot queue fram");   //queue it
-        }
-        cJSON_Delete(root);
+    
+    if ((theConf.debug_flags >> dSCH) & 1U) {
+        ESP_LOGI(TAG, "Scheduled Start sent to Mesh %s", json_msg);
     }
+    
+    return true;
+}
 
+/**
+ * @brief Synchronize schedule start with child mesh nodes
+ * 
+ * Root node broadcasts schedule start to all children for synchronized activation.
+ * Starts watchdog timer to monitor sync completion.
+ * 
+ * @param start_timer_ctx Timer context with schedule parameters
+ */
+static void sync_schedule_with_mesh(const start_timer_ctx_t *start_timer_ctx)
+{
+    int err = esp_mesh_get_routing_table((mesh_addr_t *)&poolNodesTable.address_table,
+                                         MAXNODES * 6, &poolNodesTable.existing_nodes);
+    
+    if (err != ESP_OK) {
+        ESP_LOGE(MESH_TAG, "Failed to get routing table %d", err);
+        return;
+    }
+    
+    poolNodesTable.existing_nodes = theConf.totalnodes;
+    xTimerStart(scheduleTimer, 1);
+    
+    char *json_msg = create_schedule_start_json(start_timer_ctx);
+    if (!json_msg) {
+        ESP_LOGE(MESH_TAG, "No ram for child schedule start message");
+        return;
+    }
+    
+    send_schedule_sync_to_mesh(json_msg);
+}
+
+/**
+ * @brief Timer callback for blower start event
+ * 
+ * Handles schedule activation for blower operation. In mesh mode, root node
+ * broadcasts start message to child nodes for synchronized operation.
+ * 
+ * @param xTimer Timer handle containing start_timer_ctx_t as ID
+ */
+void blower_start(TimerHandle_t xTimer)
+{
+    start_timer_ctx_t *start_timer_ctx = (start_timer_ctx_t *)pvTimerGetTimerID(xTimer);
+    
+    gpio_set_level((gpio_num_t)BEATPIN, 0);
+    
+    if ((theConf.debug_flags >> dSCH) & 1U) {
+        ESP_LOGI(TAG, "Timer Started Cycle %d Day %d Hora %d Start %d Horas %d PW %d",
+                 start_timer_ctx->cycle, start_timer_ctx->day, start_timer_ctx->horario,
+                 start_timer_ctx->tostart, start_timer_ctx->horaslen, start_timer_ctx->pwm);
+    }
+    
+    if (!theConf.wifi_mode) {
+        free(start_timer_ctx);
+        return;
+    }
+    
+    elapsed[start_timer_ctx->timerNum] = xmillis();
+    
+    if (esp_mesh_is_root()) {
+        sync_schedule_with_mesh(start_timer_ctx);
+    }
+    
     free(start_timer_ctx);
 }
 
 void blower_end(TimerHandle_t xTimer)
 {
     uint32_t ulCount = ( uint32_t ) pvTimerGetTimerID( xTimer );
-    esp_rom_printf("Timer Ended %d Elapsed %ld\n",ulCount,xmillis()-elapsed[ulCount]);
+    if((theConf.debug_flags >> dSCH) & 1U)  
+        ESP_LOGI(TAG,"Timer Ended %d Elapsed %ld",ulCount,xmillis()-elapsed[ulCount]);
     elapsed[ulCount]=0;
     gpio_set_level((gpio_num_t)BEATPIN,1);          //before configuring it decide level we want it to be at start, in this case LOW
 
     if (ulCount==0xFFFFFFFF)
     {
-        // if((theConf.debug_flags >> dSCH) & 1U)  
-        //     ESP_LOGI(TAG,"Last end timer...set for Wait For Start\n");
+        if((theConf.debug_flags >> dSCH) & 1U)  
+            ESP_LOGI(TAG,"Last end timer...set for Wait For Start\n");
         xSemaphoreGive(scheduleSem);
             theBlower.setScheduleStatus(BLOWEROFF);
-
-        // scheduleData.status=BLOWEROFF;        // definitly off now
     }
     else
         theBlower.setScheduleStatus(BLOWERNEXT);
-
-        // scheduleData.status=BLOWERNEXT;           // waiting for next hour
-
 }
 
 void app_main(void)
@@ -4082,25 +5383,35 @@ sizeof(theConf) );
 
     xTaskCreate(&root_timer,"reptimer",1024*8,NULL, 5, NULL); 	        
     xTaskCreate(&rs485_task_manager,"modbus",1024*10,NULL, 5, NULL); 	            // start the modbus task   
-    // delay(2000);
+    // delay(2000);  //used when debugging modbus to test just modbus without starting mesh/wifi
     // launch_sensors();
             // start the modbus task   
 // the internal mesh is now going to start and begin all the main flow from its gotIp event manager
     showLVGL((char*)"MESH",10000,3);   
 
-    if(!theConf.masternode)     // allow master to boot
+    if(!theConf.masternode && theConf.wifi_mode)     // allow master to boot
     {
         ESP_LOGW(TAG,"Leaf -> Waiting for Root to start");
         delay(30000);
     }
+    ESP_LOGI(TAG,"Network mode is %s",theConf.wifi_mode?"Mesh":"WiFi");
 
-    start_mesh();
-    theConf.loginwait=20000;
-    // mesh_enable();
+    if(theConf.wifi_mode==WIFI_MESH)
+    {
+        // printf("Start wifi mode\n");
+        wifi_connect_external_ap(); //start wifi
+
+    }
+    else  
+    {
+        // printf("Start mesh\n");
+        start_mesh();
+        theConf.loginwait=20000;
+    }
 // schedule timer will be started or not by sntp if root or when child connected by mesh if it was active and crash/power down
     
 ESP_LOGI(MESH_TAG,"APP Free Heap %d",esp_get_free_heap_size());
 // if system has resetted and restarting, the sntpget routine will be in charge of starting the schedule timer again
-// the mesh connecting child will be order to start also if theConf.blower_mode=1; This is set to 0 when Cycle done see start shcedule timer
+//  In mesh mode,the mesh connecting child will be order to start also if theConf.blower_mode=1;(???) This is set to 0 when Cycle done see start shcedule timer
 
 }
