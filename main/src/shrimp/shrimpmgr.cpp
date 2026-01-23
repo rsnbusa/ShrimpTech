@@ -60,22 +60,22 @@ void launch_sensors()
             if(battery)
                 xTaskCreate(&generic_modbus_task,battery->modbus_sensor_name,1024*4,(void*)battery, 5, NULL); 
             else
-                ESP_LOGE(TAG, "Failed to create Battery modbus sensor task due to memory allocation failure"); 
+                ESP_LOGE(TAG, "Failed to create Battery modbus task due to memory allocation failure"); 
 
             if(panels)  
                 xTaskCreate(&generic_modbus_task,panels->modbus_sensor_name,1024*4,(void*)panels, 5, NULL); 
             else
-                ESP_LOGE(TAG, "Failed to create Panels modbus sensor task due to memory allocation failure"); 
+                ESP_LOGE(TAG, "Failed to create Panels modbus task due to memory allocation failure"); 
 
             if(energy)
                 xTaskCreate(&generic_modbus_task,energy->modbus_sensor_name,1024*4,(void*)energy, 5, NULL); 
             else
-                ESP_LOGE(TAG, "Failed to create Energy modbus sensor task due to memory allocation failure"); 
+                ESP_LOGE(TAG, "Failed to create Energy modbus task due to memory allocation failure"); 
 
             if(sensorDev)
                 xTaskCreate(&generic_modbus_task,sensorDev->modbus_sensor_name,1024*4,(void*)sensorDev, 5, NULL); 
             else
-                ESP_LOGE(TAG, "Failed to create Sensors modbus sensor task due to memory allocation failure"); 
+                ESP_LOGE(TAG, "Failed to create Sensors modbus task due to memory allocation failure"); 
 }
 
 void print_blower(char * title,solarSystem_t *msolar,bool dumphex)
@@ -3237,7 +3237,8 @@ static void init_system_timers(void)
     );
     
     // Meter collection timer (based on WiFi mode)
-    uint32_t collection_period = theConf.repeat * 60000;
+    // uint32_t collection_period = theConf.repeat * 25000;        // for testing every 10s
+    uint32_t collection_period = theConf.repeat * 60000;        // in minutes to ms
     TimerCallbackFunction_t collection_callback = 
         (theConf.wifi_mode > 0) ? root_collect_meter_data : wifi_send_meter_data;
     BaseType_t collection_autoreload = 
@@ -4885,7 +4886,6 @@ static bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, tim
         sprintf(aca, "%sC-%d D-%d %d", DBG_SCH, ck, ck_d, horario.horarioLen * 3600);
         ESP_LOGI(TAG, "%s", aca);
     }
-    
     // Schedule already started
     if (starttime < now) {
         if ((theConf.debug_flags >> dSCH) & 1U) {
@@ -5022,6 +5022,10 @@ void start_schedule_timers(void * pArg)
                 // Process horarios (hourly schedules) in day
                 for (int ck_h = 0; ck_h < theConf.profiles[0].cycle[ck].numHorarios; ck_h++)
                 {
+                    // update the blower schedule
+                    theBlower.setSchedule(ck, ck_d, ck_h, theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart,
+                        theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen,theConf.profiles[0].cycle[ck].horarios[ck_h].pwmDuty,1);
+
                     if (!process_horario(ck, ck_d, ck_h, midn, now)) {
                         goto restart_schedule; // Timer validation failed, restart
                     }

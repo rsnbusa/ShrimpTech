@@ -358,7 +358,6 @@ struct sysset {
   int lreason_val;
   bool security_val;
   bool display_val;
-  int lost_val;
   int writes_val;
   int reads_val;
   char nodetype_val[10];

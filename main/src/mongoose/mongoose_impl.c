@@ -390,7 +390,6 @@ struct attribute s_sysset_attributes[] = {
   {"lreason_val", "int", NULL, offsetof(struct sysset, lreason_val), 0, false},
   {"security_val", "bool", NULL, offsetof(struct sysset, security_val), 0, false},
   {"display_val", "bool", NULL, offsetof(struct sysset, display_val), 0, false},
-  {"lost_val", "int", NULL, offsetof(struct sysset, lost_val), 0, false},
   {"writes_val", "int", NULL, offsetof(struct sysset, writes_val), 0, false},
   {"reads_val", "int", NULL, offsetof(struct sysset, reads_val), 0, false},
   {"nodetype_val", "string", NULL, offsetof(struct sysset, nodetype_val), 10, false},

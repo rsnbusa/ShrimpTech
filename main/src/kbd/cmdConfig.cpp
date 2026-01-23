@@ -54,7 +54,7 @@ void show_modbus()
     printf("  │ %-15s │ %6d │ %5d  │ %6d  │ %4.2f  │\n", modb_names[4], 
            theConf.modbus_panels.PV2AmpsOffset, theConf.modbus_panels.PV2AmpsStart, 
            theConf.modbus_panels.PV2AmpsPoints, theConf.modbus_panels.PV2AmpsMux);
-    printf("  └─────────────────┴────────┴────────┴────────┴────────┘\n\n");
+    printf("  └─────────────────┴────────┴────────┴─────────┴───────┘\n\n");
 
     // ===== BATTERY =====
     printf("  ┌─ %sBattery (Addr: %3d | Refresh: %3dms) %s ─────────────┐\n", BK_GREEN,
@@ -194,15 +194,15 @@ void show_schedule_info()
        char date_buf[30];
        struct tm timeinfo;
        wschedule_t wsched;
-
-       theBlower.setScheduleStruct(wsched);
+        
+       theBlower.getScheduleStruct(&wsched);
 
        // printf("%s\n", CYAN);
        printf("┌────────────────────────────────────────────────────┐\n");
        printf("│%s%s              SCHEDULE INFORMATION                  %s│\n",RESETC,BK_BLUE,RESETC);
        printf("├────────────────────────────────────────────────────┤\n");
        //     printf("%s", RESETC);
-       printf("│ Current Cycle :      %-28d  │\n", theConf.activeProfile);
+       printf("│ Current Profile :    %-28d  │\n", theConf.activeProfile);
        printf("│ Current Cycle:       %-28d  │\n", wsched.currentCycle);
        printf("│ Current Day:         %-28d  │\n", wsched.currentDay);
        printf("│ Current Horario:     %-28d  │\n", wsched.currentHorario);
@@ -247,7 +247,7 @@ void show_device_info(time_t bootdate, time_t guardDate)
     printf("│ %sDisplay & System Status:%s                                    │\n",BK_GRAY,RESETC);
     printf("│   Display Active: %-42s│\n", gdispf?"Yes":"No");
     printf("│ %sVersion Information:%s                                        │\n",BK_GRAY,RESETC);
-    printf("│   App: %-11s  IDF: %-33s│\n", mip->version, mip->idf_ver);
+    printf("│   App: %-11s  IDF: %-33s  │\n", mip->version, mip->idf_ver);
     printf("│   Project: %-48s │\n", mip->project_name);
     printf("│   Compiled: %s @ %-34s│\n", mip->date, mip->time);
     printf("│   Latest Sent: %-44s │\n", theConf.lastVersion);
@@ -262,7 +262,11 @@ void show_device_info(time_t bootdate, time_t guardDate)
     printf("│%s%s               TIMING INFORMATION                            %s│\n",RESETC,BK_GREEN,RESETC);
     printf("├─────────────────────────────────────────────────────────────┤\n");
        //  printf("%s", RESETC);
-    printf("│ Network: %-2s | MeshW: %c | Base Time: %2d | Repeat Timer: %2d   │\n", 
+    if(theConf.wifi_mode==0)
+       printf("│ Network: %-2s |          | Base Time: %2d | Repeat Timer: %2d   │\n", 
+              theConf.wifi_mode?"M ":"W ", theConf.baset, theConf.repeat);
+    if(theConf.wifi_mode)
+       printf("│ Network: %-2s | MeshW: %c | Base Time: %2d | Repeat Timer: %2d   │\n", 
            theConf.wifi_mode?"M ":"W ", theConf.mesh_wifi?'Y':'N', theConf.baset, theConf.repeat);
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
 
