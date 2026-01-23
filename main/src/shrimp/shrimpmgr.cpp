@@ -2006,6 +2006,10 @@ void root_sntpget(void *pArg)
         
         ESP_LOGI(MESH_TAG, "SNTP Date %s", ctime((time_t*)&now));
         update_system_time_tracking(now);
+
+        xTaskCreate(&start_schedule_timers,"sched",1024*10,NULL, 5, &scheduleHandle); 	       
+
+
         start_blower_if_ready();
     }
     vTaskDelete(NULL);
@@ -2185,7 +2189,7 @@ static void handle_mqtt_data_event(esp_mqtt_event_handle_t event)
 {
     if(event->data_len == 0)
     {
-        ESP_LOGE(MESH_TAG, "Empty MQTT message received");
+        // ESP_LOGE(MESH_TAG, "Empty MQTT message received");
         return;
     }
     
@@ -4631,7 +4635,7 @@ time_t get_today_midnight() {
  */
 static bool is_profile_config_valid(void)
 {
-    if (theConf.activeProfile < 0 || theConf.dayCycle < 0) {
+    if (theConf.activeProfile < 0 || theConf.dayCycle < 0 || theConf.activeProfile >= MAXPROFILES) {
         ESP_LOGE(TAG, "Invalid Profile %d or Day Start %d", theConf.activeProfile, theConf.dayCycle);
         return false;
     }
@@ -4653,7 +4657,9 @@ void find_cycle_day(uint8_t *ciclo, uint8_t *dia)
         ESP_LOGE(TAG, "Invalid output pointers");
         return;
     }
-    
+    // the initial profile and cycle is sent by the cmdProd mqtt command with these values
+    // in theConf.activeProdile and theConf.dayCycle
+
     if (theConf.debug_flags & (1U << dSCH)) {
         ESP_LOGI(TAG, "Finding cycle for Profile %d Day %d", 
                 theConf.activeProfile, theConf.dayCycle);
@@ -4823,6 +4829,11 @@ static bool create_future_timers(time_t starttime, time_t endtime, time_t now,
     }
     
     // Create start timer
+    if ((theConf.debug_flags >> dSCH) & 1U) {
+        ESP_LOGI(TAG, "%sScheduling Start in %ld ms End in %ld ms", 
+                 DBG_SCH, (long)start_delay, (long)end_delay);
+    }
+    
     start_timers[vanTimersStart] = xTimerCreate(NULL, pdMS_TO_TICKS(start_delay),
                                                 pdFALSE, (void*)ctx, blower_start);
     if (!start_timers[vanTimersStart]) {
@@ -4883,7 +4894,7 @@ static bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, tim
     
     if ((theConf.debug_flags >> dSCH) & 1U) {
         char aca[40];
-        sprintf(aca, "%sC-%d D-%d %d", DBG_SCH, ck, ck_d, horario.horarioLen * 3600);
+        sprintf(aca, "%sC-%d D-%d H-%d %d", DBG_SCH, ck, ck_d, ck_h,horario.horarioLen * 3600);
         ESP_LOGI(TAG, "%s", aca);
     }
     // Schedule already started
@@ -4990,25 +5001,28 @@ static void handle_day_end(time_t now)
  */
 void start_schedule_timers(void * pArg)
 {
-    time_t now = time(NULL);
+    time_t nows;
+    time(&nows);
     time_t midn = get_today_midnight();
     uint8_t cyclestart, daystart;
-    
+
     while (true)
     {
+
+
         if (!xSemaphoreTake(workTaskSem, portMAX_DELAY)) {
             continue;
         }
-        
+
         vanTimersEnd = 0;
         vanTimersStart = 0;
         ESP_LOGW(TAG, "Started Production cycles");
         
         find_cycle_day(&cyclestart, &daystart);
         schedulef = true;
-        
         if ((theConf.debug_flags >> dSCH) & 1U) {
-            ESP_LOGW(TAG, "%sStart Cycle %d Start Day %d", DBG_SCH, cyclestart, daystart);
+            ESP_LOGW(TAG, "%sStart Cycle %d Start Day %d midn %ld now %ld %s", DBG_SCH, cyclestart, daystart,
+                    (uint32_t)midn,(uint32_t)nows,ctime(&nows));
         }
         
         // Process all cycles
@@ -5026,13 +5040,13 @@ void start_schedule_timers(void * pArg)
                     theBlower.setSchedule(ck, ck_d, ck_h, theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart,
                         theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen,theConf.profiles[0].cycle[ck].horarios[ck_h].pwmDuty,1);
 
-                    if (!process_horario(ck, ck_d, ck_h, midn, now)) {
+                    if (!process_horario(ck, ck_d, ck_h, midn, nows)) {
                         goto restart_schedule; // Timer validation failed, restart
                     }
                 }
                 
                 // Day complete, wait and cleanup
-                handle_day_end(now);
+                handle_day_end(nows);
                 
                 theConf.work_day = ck_d;
                 theConf.work_cycle = ck;
@@ -5383,7 +5397,7 @@ sizeof(theConf) );
         //         vTaskDelay(100);    
         // }
     
-    xTaskCreate(&start_schedule_timers,"sched",1024*10,NULL, 5, &scheduleHandle); 	       
+    // xTaskCreate(&start_schedule_timers,"sched",1024*10,NULL, 5, &scheduleHandle); 	       
 
     xTaskCreate(&root_timer,"reptimer",1024*8,NULL, 5, NULL); 	        
     xTaskCreate(&rs485_task_manager,"modbus",1024*10,NULL, 5, NULL); 	            // start the modbus task   

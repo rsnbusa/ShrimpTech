@@ -33,7 +33,7 @@
                             "h_secs":2,
                             "pwm_duty":100
                         }
-                ]
+                    ]
                 } ,
                 {
                     "startday":11,
@@ -60,7 +60,7 @@
                             "h_secs":2,
                             "pwm_duty":100
                         }
-                ]
+                    ]
                 },
                 {
                     "startday":26,
@@ -87,7 +87,7 @@
                             "h_secs":2,
                             "pwm_duty":100
                         }
-                ]
+                    ]
                 },
                 {
                     "startday":46,
@@ -114,7 +114,7 @@
                             "h_secs":2,
                             "pwm_duty":100
                         }
-                ]
+                    ]
                 },
                 {
                     "startday":56,
@@ -141,7 +141,7 @@
                             "h_secs":2,
                             "pwm_duty":100
                         }
-                ]
+                    ]
                 }
             ]
         },
@@ -177,7 +177,7 @@
                             "h_secs":2,
                             "pwm_duty":100
                         }
-                ]
+                    ]
                 } ,
                 {
                     "startday":11,
@@ -204,7 +204,7 @@
                             "h_secs":2,
                             "pwm_duty":100
                         }
-                ]
+                    ]
                 },
                 {
                     "startday":26,
@@ -231,7 +231,7 @@
                             "h_secs":2,
                             "pwm_duty":100
                         }
-                ]
+                    ]
                 },
                 {
                     "startday":46,
@@ -258,7 +258,7 @@
                             "h_secs":2,
                             "pwm_duty":100
                         }
-                ]
+                    ]
                 },
                 {
                     "startday":56,
@@ -285,7 +285,7 @@
                             "h_secs":2,
                             "pwm_duty":100
                         }
-                ]
+                    ]
                 }
             ]
         }
