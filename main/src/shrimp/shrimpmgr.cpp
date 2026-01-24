@@ -2196,7 +2196,7 @@ static void handle_mqtt_data_event(esp_mqtt_event_handle_t event)
     mqttMsg_t mqttHandle;
     memset(&mqttHandle, 0, sizeof(mqttHandle));
     
-    char *msg = (char*)calloc(event->data_len, 1);
+    char *msg = (char*)calloc(event->data_len+10, 1);   // give him some space +10
     if(!msg)
     {
         ESP_LOGE(MESH_TAG, "No RAM for MQTT message");
@@ -4830,8 +4830,11 @@ static bool create_future_timers(time_t starttime, time_t endtime, time_t now,
     
     // Create start timer
     if ((theConf.debug_flags >> dSCH) & 1U) {
-        ESP_LOGI(TAG, "%sScheduling Start in %ld ms End in %ld ms", 
-                 DBG_SCH, (long)start_delay, (long)end_delay);
+        char time_str[30];
+        ctime_r(&starttime, time_str);
+        time_str[strcspn(time_str, "\n")] = '\0';
+        ESP_LOGI(TAG, "%sScheduling Start in %ld ms(%s)", 
+                 DBG_SCH, (long)start_delay, time_str);
     }
     
     start_timers[vanTimersStart] = xTimerCreate(NULL, pdMS_TO_TICKS(start_delay),
@@ -4847,7 +4850,15 @@ static bool create_future_timers(time_t starttime, time_t endtime, time_t now,
     void* timer_id = is_last ? (void*)0xFFFFFFFF : (void*)vanTimersEnd;
     end_timers[vanTimersEnd] = xTimerCreate(NULL, pdMS_TO_TICKS(end_delay),
                                            pdFALSE, timer_id, blower_end);
-    if (!end_timers[vanTimersEnd]) {
+
+    if ((theConf.debug_flags >> dSCH) & 1U) {
+        char time_str[30];
+        ctime_r(&endtime, time_str);
+        time_str[strcspn(time_str, "\n")] = '\0';
+        ESP_LOGI(TAG, "%sScheduling Ending in %ld ms(%s)", 
+                 DBG_SCH, (long)end_delay, time_str);
+    }                                           
+    if (!end_timers[vanTimersEnd]) { 
         ESP_LOGE(MESH_TAG, "End Timer not created %d", vanTimersEnd);
         xTimerDelete(start_timers[vanTimersStart], 0);
         return true;
@@ -4900,13 +4911,25 @@ static bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, tim
     // Schedule already started
     if (starttime < now) {
         if ((theConf.debug_flags >> dSCH) & 1U) {
-            ESP_LOGI(TAG, "%sStart already happened %ld %ld", DBG_SCH, (long)starttime, (long)now);
+            char  time_str[30];
+            strcpy(time_str, ctime(&starttime));
+            time_str[strcspn(time_str, "\n")] = '\0';
+            char  now_str[30];
+            strcpy(now_str, ctime(&now));
+            now_str[strcspn(now_str, "\n")] = '\0';
+            ESP_LOGI(TAG, "%sStart already happened %ld(%s) %ld(%s)", DBG_SCH, (long)starttime, time_str, (long)now, now_str);
         }
         
         if (endtime < now) {
             if ((theConf.debug_flags >> dSCH) & 1U) {
-                ESP_LOGI(TAG, "%sEnd already happened. Skip this schedule %ld %ld", 
-                        DBG_SCH, (long)endtime, (long)now);
+            char  time_str[30];
+            strcpy(time_str, ctime(&endtime));
+            time_str[strcspn(time_str, "\n")] = '\0';
+            char  now_str[30];
+            strcpy(now_str, ctime(&now));
+            now_str[strcspn(now_str, "\n")] = '\0';
+                ESP_LOGI(TAG, "%sEnd already happened. Skip this schedule %ld(%s) %ld(%s)", 
+                        DBG_SCH, (long)endtime, time_str, (long)now, now_str);
             }
             free(ctx);
         } else {
@@ -4944,10 +4967,12 @@ static void cleanup_all_timers()
  * 
  * @param now Initial start timestamp
  */
-static void handle_day_end(time_t now)
+static uint32_t handle_day_end(time_t now)
 {
+    time_t next_midnight = 0;
+
     if (!xSemaphoreTake(scheduleSem, portMAX_DELAY)) {
-        return;
+        return 0;
     }
     
     if ((theConf.debug_flags >> dSCH) & 1U) {
@@ -4963,31 +4988,34 @@ static void handle_day_end(time_t now)
         char *time_str2 = ctime(&now);
         time_str1[strcspn(time_str1, "\n")] = '\0';
         time_str2[strcspn(time_str2, "\n")] = '\0';
-        ESP_LOGI(TAG, "%sFirst Now %s", DBG_SCH, time_str2);
-        ESP_LOGI(TAG, "%sNew day %s", DBG_SCH, time_str1);
+        ESP_LOGI(TAG, "%sStart Day %s", DBG_SCH, time_str2);
+        ESP_LOGI(TAG, "%sEnd day %s", DBG_SCH, time_str1);
     }
     
-    if (tm_current->tm_mday == tm_start->tm_mday && tm_current->tm_mon == tm_start->tm_mon) {
+    if (tm_current->tm_mday == tm_start->tm_mday && tm_current->tm_mon == tm_start->tm_mon)
+    {
+        // ended on same day, move to next day
         if ((theConf.debug_flags >> dSCH) & 1U) {
             ESP_LOGI(TAG, "%sSame day and month", DBG_SCH);
         }
         
-        tm_start->tm_mday++;
-        time_t next = mktime(tm_start);
+        tm_start->tm_mday++;        
+        time_t next = mktime(tm_start);                     // will take care if day is OB and add 1 month and set day to 1
         struct tm *tm_next = localtime(&next);
         tm_next->tm_hour = tm_next->tm_min = tm_next->tm_sec = 0;
-        time_t next_midnight = mktime(tm_next);
+        next_midnight = mktime(tm_next);
         
         if ((theConf.debug_flags >> dSCH) & 1U) {
             char *time_str = ctime(&next_midnight);
             time_str[strcspn(time_str, "\n")] = '\0';
             ESP_LOGI(TAG, "%sNew day %s", DBG_SCH, time_str);
             ESP_LOGI(TAG, "%sDistance to midnight next day %ld", 
-                    DBG_SCH, (long)(next_midnight - now));
+                    DBG_SCH, (long)(next_midnight - current));
         }
     }
     
     cleanup_all_timers();
+    return next_midnight - current;     //return time to wait for next day midnight 00:00:00
 }
 
 /**
@@ -5008,8 +5036,6 @@ void start_schedule_timers(void * pArg)
 
     while (true)
     {
-
-
         if (!xSemaphoreTake(workTaskSem, portMAX_DELAY)) {
             continue;
         }
@@ -5036,6 +5062,10 @@ void start_schedule_timers(void * pArg)
                 // Process horarios (hourly schedules) in day
                 for (int ck_h = 0; ck_h < theConf.profiles[0].cycle[ck].numHorarios; ck_h++)
                 {
+                    if(ck_h==0)
+                    {
+                        send_start_dasy_host();
+                    }
                     // update the blower schedule
                     theBlower.setSchedule(ck, ck_d, ck_h, theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart,
                         theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen,theConf.profiles[0].cycle[ck].horarios[ck_h].pwmDuty,1);
@@ -5046,7 +5076,7 @@ void start_schedule_timers(void * pArg)
                 }
                 
                 // Day complete, wait and cleanup
-                handle_day_end(nows);
+                uint32_t wait_next_day=handle_day_end(nows);
                 
                 theConf.work_day = ck_d;
                 theConf.work_cycle = ck;
@@ -5056,6 +5086,17 @@ void start_schedule_timers(void * pArg)
                     ESP_LOGI(TAG, "%sSave day %d", DBG_SCH, theConf.dayCycle);
                 }
                 write_to_flash();
+                // need to wait for next day
+                if ((theConf.debug_flags >> dSCH) & 1U)
+                {
+                    time_t new_day;
+                    time(&new_day);
+                    char *time_str = ctime(&new_day);
+                    time_str[strcspn(time_str, "\n")] = '\0';
+                    ESP_LOGI(TAG, "%sCheck Wait %ld New day %s", DBG_SCH, wait_next_day,time_str);
+                }
+                delay(wait_next_day+10000); // add 10 seconds to be sure we are in the next day
+
             }
         }
         
@@ -5289,9 +5330,13 @@ void blower_start(TimerHandle_t xTimer)
     gpio_set_level((gpio_num_t)BEATPIN, 0);
     
     if ((theConf.debug_flags >> dSCH) & 1U) {
-        ESP_LOGI(TAG, "Timer Started Cycle %d Day %d Hora %d Start %d Horas %d PW %d",
+        time_t now = time(NULL);
+        char *time_str2 = ctime(&now);
+        time_str2[strcspn(time_str2, "\n")] = '\0';
+
+        ESP_LOGI(TAG, "Timer Started Cycle %d Day %d Hora %d Start %d Horas %d PW %d Time: %s",
                  start_timer_ctx->cycle, start_timer_ctx->day, start_timer_ctx->horario,
-                 start_timer_ctx->tostart, start_timer_ctx->horaslen, start_timer_ctx->pwm);
+                 start_timer_ctx->tostart, start_timer_ctx->horaslen, start_timer_ctx->pwm, time_str2);
     }
     
     if (!theConf.wifi_mode) {
@@ -5312,7 +5357,12 @@ void blower_end(TimerHandle_t xTimer)
 {
     uint32_t ulCount = ( uint32_t ) pvTimerGetTimerID( xTimer );
     if((theConf.debug_flags >> dSCH) & 1U)  
-        ESP_LOGI(TAG,"Timer Ended %d Elapsed %ld",ulCount,xmillis()-elapsed[ulCount]);
+    {
+        time_t now= time(NULL);
+        char *time_str2 = ctime(&now);
+        time_str2[strcspn(time_str2, "\n")] = '\0';
+        ESP_LOGI(TAG,"Timer Ended %d Elapsed %ld Time: %s",ulCount,xmillis()-elapsed[ulCount],time_str2);
+    }
     elapsed[ulCount]=0;
     gpio_set_level((gpio_num_t)BEATPIN,1);          //before configuring it decide level we want it to be at start, in this case LOW
 
