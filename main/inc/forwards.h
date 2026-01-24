@@ -15,6 +15,8 @@
 // Note: delay() and xmillis() moved to time_utils.h
 // Note: AES functions moved to crypto_utils.h
 
+void turn_blower_onOff(bool onoff);
+
 // ============================================================================
 // TIMER FUNCTIONS
 // ============================================================================

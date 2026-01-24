@@ -4707,6 +4707,25 @@ static bool stop_send_meter_timer(void)
 }
 
 /**
+ * @brief Control blower hardware state
+ * 
+ * Sets GPIO level to turn blower on or off.
+ * 
+ * @param onoff true to turn on, false to turn off
+ */
+void turn_blower_onOff(bool onoff)
+{
+     if ((theConf.debug_flags >> dBLOW) & 1U) {
+        ESP_LOGI(TAG, "%sBlower turned %s",DBG_BLOW, onoff ? "ON" : "OFF");
+     }
+    
+    if(onoff)
+        gpio_set_level((gpio_num_t)BEATPIN, 0);
+    else
+        gpio_set_level((gpio_num_t)BEATPIN, 1);
+}
+
+/**
  * @brief Check mesh node schedule and trigger data collection when complete
  * 
  * Processes routing table entries from mesh nodes. When all expected nodes
@@ -4783,6 +4802,15 @@ static void handle_past_schedule_in_progress(time_t endtime, time_t now, int ck_
     bool is_last = (ck_h == num_horarios - 1);
     void* timer_id = is_last ? (void*)0xFFFFFFFF : (void*)vanTimersEnd;
     
+    turn_blower_onOff(true);  // Ensure blower is on
+    if ((theConf.debug_flags >> dSCH) & 1U) {
+        char time_str[30];
+        ctime_r(&endtime, time_str);
+        time_str[strcspn(time_str, "\n")] = '\0';
+        ESP_LOGI(TAG, "%sScheduling Past Ending in %ld ms(%s)", 
+                 DBG_SCH, (long)remaining * 1000, time_str);
+    }  
+
     end_timers[vanTimersEnd] = xTimerCreate(NULL, pdMS_TO_TICKS(remaining * 1000), 
                                             pdFALSE, timer_id, blower_end);
     if (end_timers[vanTimersEnd]) {
@@ -5018,6 +5046,72 @@ static uint32_t handle_day_end(time_t now)
     return next_midnight - current;     //return time to wait for next day midnight 00:00:00
 }
 
+
+/**
+ * @brief Send day cycle start notification to MQTT info queue
+ * 
+ * Sends a message to the info queue containing current date, pool ID, unit ID,
+ * day counter, and "Started Day Cycle" status message.
+ * 
+ * @param ck_d Current day counter within cycle
+ */
+static void send_start_day_host(uint8_t ck_d)
+{
+    time_t now;
+    time(&now);
+    struct tm *timeinfo = localtime(&now);
+    
+    cJSON *root = cJSON_CreateObject();
+    if (!root) {
+        ESP_LOGE(MESH_TAG, "No ram for start day message");
+        return;
+    }
+    
+    char date_str[30];
+    strftime(date_str, sizeof(date_str), "%Y-%m-%d %H:%M:%S", timeinfo);
+    
+    cJSON_AddStringToObject(root, "cmd", "WORKINFO");
+    cJSON_AddStringToObject(root, "date", date_str);
+    cJSON_AddNumberToObject(root, "poolid", theConf.poolid);
+    cJSON_AddNumberToObject(root, "unitid", theConf.unitid);
+    cJSON_AddNumberToObject(root, "day", ck_d);
+    cJSON_AddStringToObject(root, "msg", "Started Day Cycle");
+    
+    char *json_msg = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    
+    if (!json_msg) {
+        ESP_LOGE(MESH_TAG, "No ram for JSON print");
+        return;
+    }
+    
+    if(theConf.wifi_mode==0)
+    {  
+        esp_mqtt_client_publish(clientCloud, (char*)alarmQueue, (char*)json_msg, strlen(json_msg), QOS1, NORETAIN);
+        free(json_msg);
+        return;
+    }
+
+    mqttSender_t mensaje;
+    bzero(&mensaje, sizeof(mensaje));
+    mensaje.queue = alarmQueue;
+    mensaje.msg = json_msg;
+    mensaje.lenMsg = strlen(json_msg);
+    
+    if (xQueueSend(mqttSender, &mensaje, 0) != pdPASS) {
+        ESP_LOGE(MESH_TAG, "Cannot queue start day message");
+        free(json_msg);
+        return;
+    }
+
+    xEventGroupSetBits(wifi_event_group, SENDMQTT_BIT); // Send when possible
+
+    if ((theConf.debug_flags >> dSCH) & 1U) {
+        ESP_LOGI(TAG, "Start day message queued: %s", json_msg);
+    }
+}
+
+
 /**
  * @brief Production schedule timer management task
  * 
@@ -5064,7 +5158,7 @@ void start_schedule_timers(void * pArg)
                 {
                     if(ck_h==0)
                     {
-                        send_start_dasy_host();
+                        send_start_day_host(ck_d);
                     }
                     // update the blower schedule
                     theBlower.setSchedule(ck, ck_d, ck_h, theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart,
@@ -5315,6 +5409,7 @@ static void sync_schedule_with_mesh(const start_timer_ctx_t *start_timer_ctx)
     send_schedule_sync_to_mesh(json_msg);
 }
 
+
 /**
  * @brief Timer callback for blower start event
  * 
@@ -5327,8 +5422,8 @@ void blower_start(TimerHandle_t xTimer)
 {
     start_timer_ctx_t *start_timer_ctx = (start_timer_ctx_t *)pvTimerGetTimerID(xTimer);
     
-    gpio_set_level((gpio_num_t)BEATPIN, 0);
-    
+    turn_blower_onOff(true);
+
     if ((theConf.debug_flags >> dSCH) & 1U) {
         time_t now = time(NULL);
         char *time_str2 = ctime(&now);
@@ -5364,7 +5459,7 @@ void blower_end(TimerHandle_t xTimer)
         ESP_LOGI(TAG,"Timer Ended %d Elapsed %ld Time: %s",ulCount,xmillis()-elapsed[ulCount],time_str2);
     }
     elapsed[ulCount]=0;
-    gpio_set_level((gpio_num_t)BEATPIN,1);          //before configuring it decide level we want it to be at start, in this case LOW
+    turn_blower_onOff(false);
 
     if (ulCount==0xFFFFFFFF)
     {

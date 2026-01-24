@@ -218,6 +218,8 @@ static int handle_production_stop(const ProductionCommandFields *fields, char *l
 
     vanTimersStart=vanTimersEnd=0;
 
+    // stop the blower itself
+    turn_blower_onOff(false);
     return ESP_OK;
 }
 

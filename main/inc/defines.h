@@ -217,7 +217,8 @@
 
 #define WIFI_MESH                      (0)
 
-#define DBG_SCH						    "\e[36m[SCH]\e[0m"               //blue
+#define DBG_SCH						    "\e[36m[SCH]\e[0m"               //cyan
+#define DBG_BLOW						"\e[34m[SCH]\e[0m"               //blue
 #define DBG_MESH					    "\e[35m[MESH]\e[0m"              // Magenta
 #define DBG_BLE						    "\e[32m[BLE]\e[0m]"              //Green
 #define DBG_MQTT					    "\e[33m[MQTT]\e[0m"              //Yellow
