@@ -202,6 +202,8 @@ void show_schedule_info()
        printf("│%s%s              SCHEDULE INFORMATION                  %s│\n",RESETC,BK_BLUE,RESETC);
        printf("├────────────────────────────────────────────────────┤\n");
        //     printf("%s", RESETC);
+       if(schedulef)
+       {
        printf("│ Current Profile :    %-28d  │\n", theConf.activeProfile);
        printf("│ Current Cycle:       %-28d  │\n", wsched.currentCycle);
        printf("│ Current Day:         %-28d  │\n", wsched.currentDay);
@@ -210,6 +212,7 @@ void show_schedule_info()
        printf("│ Current End Hour:    %-28d  │\n", wsched.currentEndHour);
        printf("│ Current PWM Duty:    %-28d  │\n", wsched.currentPwmDuty);
        printf("│ Schedule Status:     %-28d  │\n", wsched.status);
+        }   
 
        printf("└────────────────────────────────────────────────────┘\n\n");
 }

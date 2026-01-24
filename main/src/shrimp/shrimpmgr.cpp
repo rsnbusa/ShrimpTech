@@ -4661,7 +4661,7 @@ void find_cycle_day(uint8_t *ciclo, uint8_t *dia)
     // in theConf.activeProdile and theConf.dayCycle
 
     if (theConf.debug_flags & (1U << dSCH)) {
-        ESP_LOGI(TAG, "Finding cycle for Profile %d Day %d", 
+        ESP_LOGI(TAG, "%sFinding cycle for Profile %d Day %d", DBG_SCH,
                 theConf.activeProfile, theConf.dayCycle);
     }
     
@@ -4683,7 +4683,7 @@ void find_cycle_day(uint8_t *ciclo, uint8_t *dia)
             *ciclo = i;
             
             if (theConf.debug_flags & (1U << dSCH)) {
-                ESP_LOGI(TAG, "Found Cycle %d Day %d", *ciclo, *dia);
+                ESP_LOGI(TAG, "%sFound Cycle %d Day %d",DBG_SCH, *ciclo, *dia);
             }
             return;
         }
@@ -4807,7 +4807,7 @@ static void handle_past_schedule_in_progress(time_t endtime, time_t now, int ck_
         char time_str[30];
         ctime_r(&endtime, time_str);
         time_str[strcspn(time_str, "\n")] = '\0';
-        ESP_LOGI(TAG, "%sScheduling Past Ending in %ld ms(%s)", 
+        ESP_LOGI(TAG, "%sScheduling Ending in %ld ms(%s)", 
                  DBG_SCH, (long)remaining * 1000, time_str);
     }  
 
@@ -5136,7 +5136,7 @@ void start_schedule_timers(void * pArg)
 
         vanTimersEnd = 0;
         vanTimersStart = 0;
-        ESP_LOGW(TAG, "Started Production cycles");
+        ESP_LOGI(TAG, "%sStarted Production cycles", DBG_SCH);
         
         find_cycle_day(&cyclestart, &daystart);
         schedulef = true;

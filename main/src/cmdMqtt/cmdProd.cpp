@@ -166,13 +166,21 @@ static int handle_production_start(const ProductionCommandFields *fields, char *
         return ESP_OK;
     }
     
+    if( fields->profileIndex >= MAXPROFILES ||
+        fields->dayIndex >= MAXDAYCYCLE)
+    {
+        ESP_LOGE(MESH_TAG, "%sInvalid profile (%d) or day (%d) index for production start",
+                DBG_XCMDS, fields->profileIndex, fields->dayIndex);
+        return ESP_FAIL;
+    }       
     snprintf(logBuffer, PRODUCTION_LOG_BUFFER_SIZE, "CMd Prod Start %s", fields->orderCommand);
     if((theConf.debug_flags >> dXCMDS) & 1U)  
         ESP_LOGI(MESH_TAG, "%sCMd Prod Start %s", DBG_XCMDS, fields->orderCommand);
     writeLog(logBuffer);
     
-    xSemaphoreGive(workTaskSem);
-    if(theConf.wifi_mode)
+    xSemaphoreGive(workTaskSem);        // start the schedule task!!!!
+
+    if(theConf.wifi_mode)           // in mesh mode inform nodes to confirm their start
         send_start_production(fields->profileIndex, fields->dayIndex, 
                          theConf.test_timer_div, (char*)fields->orderCommand);
     return ESP_OK;
