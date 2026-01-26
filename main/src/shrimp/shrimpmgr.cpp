@@ -1981,8 +1981,22 @@ static void update_system_time_tracking(time_t now)
  */
 static void start_blower_if_ready(void)
 {
-    if (theBlower.getScheduleStatus() == BLOWERON)
-        xSemaphoreGive(workTaskSem);
+    wschedule_t* scheduleData = theBlower.getSchedulePtr();
+    if (theBlower.getScheduleStatus() != BLOWERPARK)        // parked is the only status that does not start blower
+   {
+        char *aca=(char*)calloc(100,1);
+        if(aca)
+        {
+            sprintf(aca,"Restarting Blower apparent PF Cycle %d Day %d",scheduleData->currentCycle,scheduleData->currentDay);
+
+        // get last schedule
+            if ((theConf.debug_flags >> dSCH) & 1U)
+                ESP_LOGI(MESH_TAG, "%s%s", DBG_SCH,aca);
+                write_log("SYSTEM", aca);
+                free(aca);
+        }
+         xSemaphoreGive(workTaskSem);
+   }    
     
     if (theConf.wifi_mode != WIFI_MESH)
         root_set_senddata_timer();
@@ -3427,6 +3441,8 @@ static void init_default_timing(void)
     theConf.repeat = 25;                            // Change before production
     theConf.totalnodes = EXPECTED_NODES;
     theConf.conns = EXPECTED_CONNS;
+    bzero(&start_timers,sizeof(start_timers));
+    bzero(&end_timers,sizeof(end_timers));
 }
 
 /**
@@ -4798,7 +4814,7 @@ static start_timer_ctx_t* create_timer_context(uint8_t cycle, uint8_t day, int h
  */
 static void handle_past_schedule_in_progress(time_t endtime, time_t now, int ck_h, int num_horarios)
 {
-    time_t remaining = endtime - now;
+    time_t remaining = (endtime - now)/theConf.minutes;
     bool is_last = (ck_h == num_horarios - 1);
     void* timer_id = is_last ? (void*)0xFFFFFFFF : (void*)vanTimersEnd;
     
@@ -4807,11 +4823,15 @@ static void handle_past_schedule_in_progress(time_t endtime, time_t now, int ck_
         char time_str[30];
         ctime_r(&endtime, time_str);
         time_str[strcspn(time_str, "\n")] = '\0';
-        ESP_LOGI(TAG, "%sScheduling Ending in %ld ms(%s)", 
-                 DBG_SCH, (long)remaining * 1000, time_str);
+        char time_str2[30];
+        ctime_r(&now, time_str2);
+        time_str2[strcspn(time_str2, "\n")] = '\0';
+        ESP_LOGI(TAG, "%sScheduling Ending in %ld ms(%s) now %s - %ld", 
+                 DBG_SCH, (long)remaining * 1000 , time_str, time_str2, (long)now);
     }  
+    elapsed[vanTimersStart++] = time(NULL);     // consider now as start time since its started manually
 
-    end_timers[vanTimersEnd] = xTimerCreate(NULL, pdMS_TO_TICKS(remaining * 1000), 
+    end_timers[vanTimersEnd] = xTimerCreate(NULL, pdMS_TO_TICKS(remaining * 1000 ), 
                                             pdFALSE, timer_id, blower_end);
     if (end_timers[vanTimersEnd]) {
         xTimerStart(end_timers[vanTimersEnd], 10);
@@ -4848,8 +4868,8 @@ static bool validate_timer_delay(time_t delay_ms)
 static bool create_future_timers(time_t starttime, time_t endtime, time_t now,
                                  start_timer_ctx_t* ctx, int ck_h, int num_horarios)
 {
-    time_t start_delay = (starttime - now) / theConf.test_timer_div * 1000;
-    time_t end_delay = (endtime - now) / theConf.test_timer_div * 1000;
+    time_t start_delay = (starttime - now) / theConf.test_timer_div * 1000 / theConf.minutes;
+    time_t end_delay = (endtime - now) / theConf.test_timer_div * 1000 / theConf.minutes;
     
     if (!validate_timer_delay(start_delay) || !validate_timer_delay(end_delay)) {
         free(ctx);
@@ -4861,8 +4881,11 @@ static bool create_future_timers(time_t starttime, time_t endtime, time_t now,
         char time_str[30];
         ctime_r(&starttime, time_str);
         time_str[strcspn(time_str, "\n")] = '\0';
-        ESP_LOGI(TAG, "%sScheduling Start in %ld ms(%s)", 
-                 DBG_SCH, (long)start_delay, time_str);
+        char time_str2[30];
+        ctime_r(&now, time_str2);
+        time_str2[strcspn(time_str2, "\n")] = '\0';
+        ESP_LOGI(TAG, "%sScheduling timer %d Start in %ld ms(%s) now %s - %ld", 
+                 DBG_SCH, vanTimersStart, (long)start_delay, time_str, time_str2,now);
     }
     
     start_timers[vanTimersStart] = xTimerCreate(NULL, pdMS_TO_TICKS(start_delay),
@@ -4883,8 +4906,11 @@ static bool create_future_timers(time_t starttime, time_t endtime, time_t now,
         char time_str[30];
         ctime_r(&endtime, time_str);
         time_str[strcspn(time_str, "\n")] = '\0';
-        ESP_LOGI(TAG, "%sScheduling Ending in %ld ms(%s)", 
-                 DBG_SCH, (long)end_delay, time_str);
+        char time_str2[30];
+        ctime_r(&now, time_str2);
+        time_str2[strcspn(time_str2, "\n")] = '\0';
+        ESP_LOGI(TAG, "%sScheduling Timer %d Ending in %ld ms(%s) now %s - %ld", 
+                 DBG_SCH, vanTimersEnd, (long)end_delay, time_str, time_str2, now);
     }                                           
     if (!end_timers[vanTimersEnd]) { 
         ESP_LOGE(MESH_TAG, "End Timer not created %d", vanTimersEnd);
@@ -4979,10 +5005,14 @@ static bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, tim
 static void cleanup_all_timers()
 {
     for (int i = 0; i < vanTimersStart; i++) {
-        xTimerDelete(start_timers[i], 0);
+        if(start_timers[i]!=0)
+            xTimerDelete(start_timers[i], 0);
+            start_timers[i]=0;
     }
     for (int i = 0; i < vanTimersEnd; i++) {
-        xTimerDelete(end_timers[i], 0);
+        if(end_timers[i]!=0)
+            xTimerDelete(end_timers[i], 0);
+            end_timers[i]=0;
     }
     
     vanTimersStart = vanTimersEnd = 0;
@@ -5013,8 +5043,8 @@ static uint32_t handle_day_end(time_t now)
     
     if ((theConf.debug_flags >> dSCH) & 1U) {
         char *time_str1 = ctime(&current);
-        char *time_str2 = ctime(&now);
         time_str1[strcspn(time_str1, "\n")] = '\0';
+        char *time_str2 = ctime(&now);
         time_str2[strcspn(time_str2, "\n")] = '\0';
         ESP_LOGI(TAG, "%sStart Day %s", DBG_SCH, time_str2);
         ESP_LOGI(TAG, "%sEnd day %s", DBG_SCH, time_str1);
@@ -5189,7 +5219,7 @@ void start_schedule_timers(void * pArg)
                     time_str[strcspn(time_str, "\n")] = '\0';
                     ESP_LOGI(TAG, "%sCheck Wait %ld New day %s", DBG_SCH, wait_next_day,time_str);
                 }
-                delay(wait_next_day+10000); // add 10 seconds to be sure we are in the next day
+                delay(wait_next_day*1000+10000); // in ms and add 10 seconds to be sure we are in the next day
 
             }
         }
@@ -5429,17 +5459,18 @@ void blower_start(TimerHandle_t xTimer)
         char *time_str2 = ctime(&now);
         time_str2[strcspn(time_str2, "\n")] = '\0';
 
-        ESP_LOGI(TAG, "Timer Started Cycle %d Day %d Hora %d Start %d Horas %d PW %d Time: %s",
-                 start_timer_ctx->cycle, start_timer_ctx->day, start_timer_ctx->horario,
+        ESP_LOGI(TAG, "Timer %d Started Cycle %d Day %d Hora %d Start %d Horas %d PW %d Time: %s",
+                 start_timer_ctx->timerNum, start_timer_ctx->cycle, start_timer_ctx->day, start_timer_ctx->horario,
                  start_timer_ctx->tostart, start_timer_ctx->horaslen, start_timer_ctx->pwm, time_str2);
     }
-    
+
+    elapsed[start_timer_ctx->timerNum] = time(NULL);
+
     if (!theConf.wifi_mode) {
         free(start_timer_ctx);
         return;
     }
     
-    elapsed[start_timer_ctx->timerNum] = xmillis();
     
     if (esp_mesh_is_root()) {
         sync_schedule_with_mesh(start_timer_ctx);
@@ -5456,7 +5487,7 @@ void blower_end(TimerHandle_t xTimer)
         time_t now= time(NULL);
         char *time_str2 = ctime(&now);
         time_str2[strcspn(time_str2, "\n")] = '\0';
-        ESP_LOGI(TAG,"Timer Ended %d Elapsed %ld Time: %s",ulCount,xmillis()-elapsed[ulCount],time_str2);
+        ESP_LOGI(TAG,"Timer Ended %d Elapsed %ld Time: %s",ulCount,long(now-elapsed[ulCount]),time_str2);
     }
     elapsed[ulCount]=0;
     turn_blower_onOff(false);
@@ -5488,6 +5519,8 @@ void app_main(void)
     //     } 
     // #endif
     //log boot
+    if(theConf.minutes<1)
+        theConf.minutes=1;
     char *msg=(char*)calloc(1,100);
     if(msg)
     {    
@@ -5562,7 +5595,7 @@ sizeof(theConf) );
     if(theConf.wifi_mode==WIFI_MESH)
     {
         // printf("Start wifi mode\n");
-        wifi_connect_external_ap(); //start wifi
+        wifi_connect_external_ap(); //start wifi which will start many ither tasks from got ip event wiht SNTP starting the scheduler
 
     }
     else  

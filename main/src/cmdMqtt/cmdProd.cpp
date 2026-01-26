@@ -159,7 +159,7 @@ static void apply_production_config(const ProductionCommandFields *fields)
 /* Handles production start operation. */
 static int handle_production_start(const ProductionCommandFields *fields, char *logBuffer)
 {
-    if(schedulef)
+    if(schedulef)           // set when worktasksem is given by start_schedule_timers
     {
         if((theConf.debug_flags >> dXCMDS) & 1U)  
             ESP_LOGI(MESH_TAG, "%sCMd Prod already started %s", DBG_XCMDS, fields->orderCommand);
@@ -178,7 +178,7 @@ static int handle_production_start(const ProductionCommandFields *fields, char *
         ESP_LOGI(MESH_TAG, "%sCMd Prod Start %s", DBG_XCMDS, fields->orderCommand);
     writeLog(logBuffer);
     
-    xSemaphoreGive(workTaskSem);        // start the schedule task!!!!
+    xSemaphoreGive(workTaskSem);        // start the schedule task!!!! and the schedulef flag
 
     if(theConf.wifi_mode)           // in mesh mode inform nodes to confirm their start
         send_start_production(fields->profileIndex, fields->dayIndex, 
@@ -205,7 +205,9 @@ static int handle_production_stop(const ProductionCommandFields *fields, char *l
     
     if((theConf.debug_flags >> dXCMDS) & 1U)  
         ESP_LOGI(MESH_TAG, "%sCMd Prod Stop %s", DBG_XCMDS, fields->orderCommand);
-    
+
+    theBlower.setSchedule(0, 0, 0,0,0,0,BLOWERPARK);    // erase any previous schedule
+
     vTaskDelete(scheduleHandle);
     xTaskCreate(&start_schedule_timers, "sched", 1024*10, NULL, 5, &scheduleHandle);
 
@@ -213,7 +215,7 @@ static int handle_production_stop(const ProductionCommandFields *fields, char *l
         send_start_production(fields->profileIndex, fields->dayIndex, 
                          theConf.test_timer_div, (char*)fields->orderCommand);
     schedulef = false;
-    theBlower.setSchedule(0, 0, 0,0,0,0,BLOWEROFF);
+    theBlower.setSchedule(0, 0, 0,0,0,0,BLOWERPARK);
 
     // stop all timers
 

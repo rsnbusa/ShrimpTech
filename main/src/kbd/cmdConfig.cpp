@@ -197,24 +197,38 @@ void show_schedule_info()
         
        theBlower.getScheduleStruct(&wsched);
 
-       // printf("%s\n", CYAN);
-       printf("┌────────────────────────────────────────────────────┐\n");
-       printf("│%s%s              SCHEDULE INFORMATION                  %s│\n",RESETC,BK_BLUE,RESETC);
-       printf("├────────────────────────────────────────────────────┤\n");
-       //     printf("%s", RESETC);
+       printf("┌──────────────────────────────────────────────────────────────┐\n");
+       printf("│%s%s                   SCHEDULE INFORMATION                       %s│\n",RESETC,BK_BLUE,RESETC);
+       printf("├──────────────────────────────────────────────────────────────┤\n");
        if(schedulef)
        {
-       printf("│ Current Profile :    %-28d  │\n", theConf.activeProfile);
-       printf("│ Current Cycle:       %-28d  │\n", wsched.currentCycle);
-       printf("│ Current Day:         %-28d  │\n", wsched.currentDay);
-       printf("│ Current Horario:     %-28d  │\n", wsched.currentHorario);
-       printf("│ Current Start Hour:  %-28d  │\n", wsched.currentStartHour);
-       printf("│ Current End Hour:    %-28d  │\n", wsched.currentEndHour);
-       printf("│ Current PWM Duty:    %-28d  │\n", wsched.currentPwmDuty);
-       printf("│ Schedule Status:     %-28d  │\n", wsched.status);
+            printf("│ Current Profile :              %-28d  │\n", theConf.activeProfile);
+            printf("│ Current Cycle:                 %-28d  │\n", wsched.currentCycle);
+            printf("│ Current Day:                   %-28d  │\n", wsched.currentDay);
+            printf("│ Current Horario:               %-28d  │\n", wsched.currentHorario);
+            printf("│ Current Start Hour:            %-28d  │\n", wsched.currentStartHour);
+
+            int hora=wsched.currentHorario-3;
+            TickType_t currentTime=xTaskGetTickCount(  );       // right now in ticks
+
+            TickType_t xEnd_pending= xTimerGetExpiryTime( end_timers[hora] )-currentTime;
+            TickType_t xStart_pending = xTimerGetExpiryTime( start_timers[hora] )-currentTime;
+
+            if(xStart_pending>currentTime)
+                printf("│ Time to Start(min):            %-28d  │\n", (int)pdTICKS_TO_MS(xStart_pending)/60/1000);
+            else
+                printf("│ Already Started %-47s|\n", " ");
+
+            if(xEnd_pending>currentTime)
+                printf("│ Remaining End Session(min):    %-28d  │\n", (int)pdTICKS_TO_MS(xEnd_pending)/60/1000);
+                else
+                    printf("│ Already Stopped%-46s│\n", " ");
+
+            printf("│ Current PWM Duty:              %-28d  │\n", wsched.currentPwmDuty);
+            printf("│ Schedule Status:               %-28d  │\n", wsched.status);
         }   
 
-       printf("└────────────────────────────────────────────────────┘\n\n");
+       printf("└──────────────────────────────────────────────────────────────┘\n\n");
 }
 
 /**
@@ -289,7 +303,7 @@ void show_production_config()
        //  printf("%s", RESETC);
 //     printf("│ Blower Mode: %-47d│\n", theConf.blower_mode);
 //     printf("│ Active Profile: %1d | Start Day: %-33d│\n", theConf.activeProfile, theConf.dayCycle);
-    printf("│ Is Master Node: %-44s│\n", theConf.masternode?"Yes":"No ");
+    printf("│ Is Master Node: %-29s│ TestDiv %5d│\n", theConf.masternode?"Yes":"No ", theConf.minutes);
     printf("│ Debug Flags (0x%X): ", theConf.debug_flags);
     if((theConf.debug_flags >> dSCH) & 1U)   printf("Schedule ");
     if((theConf.debug_flags >> dMESH) & 1U)  printf("Mesh ");

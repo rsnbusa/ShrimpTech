@@ -183,7 +183,7 @@ EXTERN int routet;
 
 EXTERN uint32_t gCRC;
 EXTERN uint32_t TEST;
-EXTERN uint32_t elapsed[MAXHORARIOS];
+EXTERN time_t   elapsed[MAXHORARIOS];
 
 EXTERN uint16_t sys_limits[18][2];  // [0]=min, [1]=max
 
