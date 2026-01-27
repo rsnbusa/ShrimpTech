@@ -20,7 +20,9 @@ static constexpr size_t ERROR_BUF_LEN = 20;
 // Modbus master initialization
 static esp_err_t master_init(void)
 {
-    // Initialize and start Modbus controller
+     esp_log_level_set("MB_CONTROLLER_MASTER", (esp_log_level_t)0);
+
+     // Initialize and start Modbus controller
     mb_communication_info_t comm = {
         .mode = MODBUS_MODE,
         .port = (uart_port_t)MODBUS_PORT,
@@ -123,12 +125,15 @@ void rs485_task_manager(void *arg)
                             mensaje.errCode[cid] = ESP_OK;   // success
                         else 
                         {
-                            ESP_LOGE(TAG, "FAIL Characteristic #%u (%s) Addr %x read fail, err = 0x%x (%s).",       //timeout here
+                            if ((theConf.debug_flags >> dRS485) & 1U) 
+                            {
+                                ESP_LOGE(TAG, "FAIL Characteristic #%u (%s) Addr %x read fail, err = 0x%x (%s).",       //timeout here
                                             param_descriptor->cid,
                                             param_descriptor->param_key,
                                             param_descriptor->mb_slave_addr,
                                             (int)err,
                                             esp_err_to_name(err));
+                            }
                             mensaje.errCode[cid] = err;   // this error
 
                         }                   

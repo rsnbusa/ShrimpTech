@@ -5170,10 +5170,9 @@ void start_schedule_timers(void * pArg)
         
         find_cycle_day(&cyclestart, &daystart);
         schedulef = true;
-        if ((theConf.debug_flags >> dSCH) & 1U) {
+        if ((theConf.debug_flags >> dSCH) & 1U)
             ESP_LOGW(TAG, "%sStart Cycle %d Start Day %d midn %ld now %ld %s", DBG_SCH, cyclestart, daystart,
                     (uint32_t)midn,(uint32_t)nows,ctime(&nows));
-        }
         
         // Process all cycles
         for (ck = cyclestart; ck < theConf.profiles[0].numCycles; ck++)
@@ -5187,29 +5186,26 @@ void start_schedule_timers(void * pArg)
                 for (int ck_h = 0; ck_h < theConf.profiles[0].cycle[ck].numHorarios; ck_h++)
                 {
                     if(ck_h==0)
-                    {
                         send_start_day_host(ck_d);
-                    }
                     // update the blower schedule
                     theBlower.setSchedule(ck, ck_d, ck_h, theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart,
                         theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen,theConf.profiles[0].cycle[ck].horarios[ck_h].pwmDuty,1);
 
-                    if (!process_horario(ck, ck_d, ck_h, midn, nows)) {
+                    if (!process_horario(ck, ck_d, ck_h, midn, nows))
                         goto restart_schedule; // Timer validation failed, restart
-                    }
                 }
-                
                 // Day complete, wait and cleanup
                 uint32_t wait_next_day=handle_day_end(nows);
-                
+
+                // ... maybe not used anymore
                 theConf.work_day = ck_d;
                 theConf.work_cycle = ck;
                 theConf.dayCycle++;
-                
-                if ((theConf.debug_flags >> dSCH) & 1U) {
-                    ESP_LOGI(TAG, "%sSave day %d", DBG_SCH, theConf.dayCycle);
-                }
                 write_to_flash();
+
+                if ((theConf.debug_flags >> dSCH) & 1U)
+                    ESP_LOGI(TAG, "%sSave day %d", DBG_SCH, theConf.dayCycle);
+                
                 // need to wait for next day
                 if ((theConf.debug_flags >> dSCH) & 1U)
                 {
@@ -5221,8 +5217,11 @@ void start_schedule_timers(void * pArg)
                 }
                 delay(wait_next_day*1000+10000); // in ms and add 10 seconds to be sure we are in the next day
 
+            if ((theConf.debug_flags >> dSCH) & 1U)
+                ESP_LOGI(TAG, "%sNew CYcle %d", DBG_SCH, ck+1);
             }
         }
+        
         
         // All cycles complete
         ESP_LOGW(TAG, "Production cycle ended");

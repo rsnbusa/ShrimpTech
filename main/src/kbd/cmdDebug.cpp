@@ -106,6 +106,9 @@ int cmdDebug(int argc, char **argv)
     if (dbgArg.limits->count)
         set_debug_flag(dbgArg.limits->sval[0], dLIMITS);
 
+    if (dbgArg.rs485->count)
+        set_debug_flag(dbgArg.rs485->sval[0], dRS485);
+
     if (dbgArg.all->count) 
     {
         char aca[10];

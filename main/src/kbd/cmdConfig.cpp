@@ -208,7 +208,7 @@ void show_schedule_info()
             printf("│ Current Horario:               %-28d  │\n", wsched.currentHorario);
             printf("│ Current Start Hour:            %-28d  │\n", wsched.currentStartHour);
 
-            int hora=wsched.currentHorario-3;
+            int hora=wsched.currentHorario-3;    // adjust for 0 index
             TickType_t currentTime=xTaskGetTickCount(  );       // right now in ticks
 
             TickType_t xEnd_pending= xTimerGetExpiryTime( end_timers[hora] )-currentTime;

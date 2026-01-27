@@ -123,6 +123,7 @@ void kbd(void *pArg)
   dbgArg.logic    = arg_str0(NULL, "logic",    "on | off", "Show logic stuff");
   dbgArg.modbus   = arg_str0(NULL, "modbus",   "on | off", "Show modbus stuff");
   dbgArg.limits   = arg_str0(NULL, "limits",   "on | off", "Show modbus limits errors");
+  dbgArg.rs485    = arg_str0(NULL, "rs485",    "on | off", "Show RS485 debugging");
   dbgArg.all      = arg_str0(NULL, "all",      "on | off", "Set/Reset all cmds");
   dbgArg.end      = arg_end(DEBUG_MAX_ARGUMENTS);
 
