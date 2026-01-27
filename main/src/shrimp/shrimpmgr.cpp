@@ -4826,10 +4826,12 @@ static void handle_past_schedule_in_progress(time_t endtime, time_t now, int ck_
         char time_str2[30];
         ctime_r(&now, time_str2);
         time_str2[strcspn(time_str2, "\n")] = '\0';
-        ESP_LOGI(TAG, "%sScheduling Ending in %ld ms(%s) now %s - %ld", 
-                 DBG_SCH, (long)remaining * 1000 , time_str, time_str2, (long)now);
+        ESP_LOGI(TAG, "%sScheduling Ending in %ld ms(%s ) now %s - %ld", 
+                 DBG_SCH, (long)remaining * 1000 , time_str, (long)endtime, time_str2, (long)now);
     }  
     elapsed[vanTimersStart++] = time(NULL);     // consider now as start time since its started manually
+    if(remaining<=0)
+        return ;
 
     end_timers[vanTimersEnd] = xTimerCreate(NULL, pdMS_TO_TICKS(remaining * 1000 ), 
                                             pdFALSE, timer_id, blower_end);
@@ -4847,8 +4849,8 @@ static void handle_past_schedule_in_progress(time_t endtime, time_t now, int ck_
  */
 static bool validate_timer_delay(time_t delay_ms)
 {
-    if (delay_ms < 1000) {
-        ESP_LOGE(TAG, "MUX too big %d", theConf.test_timer_div);
+    if (delay_ms < 10) {
+        ESP_LOGE(TAG, "MUX too big %d-%d", theConf.test_timer_div,delay_ms);
         return false;
     }
     return true;
@@ -4926,9 +4928,14 @@ static bool create_future_timers(time_t starttime, time_t endtime, time_t now,
         ESP_LOGE(MESH_TAG, "FATAL could not start End Timer %d", vanTimersEnd);
     }
     
-    vanTimersStart = (vanTimersStart + 1) % (MAXHORARIOS + 1);
-    vanTimersEnd = (vanTimersEnd + 1) % (MAXHORARIOS + 1);
-    
+    vanTimersStart++;
+    vanTimersEnd++;
+
+    if(vanTimersStart>=MAXHORARIOS || vanTimersEnd>=MAXHORARIOS)
+    {
+        ESP_LOGE(MESH_TAG, "FATAL too many timers Start %d End %d", vanTimersStart,vanTimersEnd);
+    }
+        
     return true;
 }
 
@@ -4972,6 +4979,7 @@ static bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, tim
             strcpy(now_str, ctime(&now));
             now_str[strcspn(now_str, "\n")] = '\0';
             ESP_LOGI(TAG, "%sStart already happened %ld(%s) %ld(%s)", DBG_SCH, (long)starttime, time_str, (long)now, now_str);
+            vanTimersStart++;   // cannot skip start timer count due to complicated timer numbering
         }
         
         if (endtime < now) {
@@ -4984,6 +4992,7 @@ static bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, tim
             now_str[strcspn(now_str, "\n")] = '\0';
                 ESP_LOGI(TAG, "%sEnd already happened. Skip this schedule %ld(%s) %ld(%s)", 
                         DBG_SCH, (long)endtime, time_str, (long)now, now_str);
+            vanTimersEnd++;     // cannot skip end timer count due to complicated timer numbering
             }
             free(ctx);
         } else {
@@ -5035,7 +5044,7 @@ static uint32_t handle_day_end(uint8_t nextHour)
     if ((theConf.debug_flags >> dSCH) & 1U) {
         ESP_LOGI(TAG, "%sDay ended NH %d", DBG_SCH,nextHour);
     }
-    
+    vanTimersEnd=vanTimersStart=0;
     time_t current = time(NULL);
     struct tm *timeinfo = localtime(&current);
     uint8_t currentHour= timeinfo->tm_hour;
