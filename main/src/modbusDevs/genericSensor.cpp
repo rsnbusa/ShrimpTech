@@ -98,7 +98,7 @@ void generic_modbus_task(void *pArg)
             }
         }
         
-        // Wait before next reading cycle
-        vTaskDelay(pdMS_TO_TICKS(refresh_rate * 1000 * theConf.minutes));
+        // Wait before next reading cycle refresh per configuration * 1000 ms * modbus_mux which should be 60 for minutes
+        vTaskDelay(pdMS_TO_TICKS(refresh_rate * 1000 * theConf.modbus_mux));
     }
 }

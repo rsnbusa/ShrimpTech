@@ -198,8 +198,8 @@ static int handle_production_stop(const ProductionCommandFields *fields, char *l
         return ESP_OK;
     }
     
-    theConf.dayCycle = 0;
-    theConf.work_day=theConf.work_cycle=0;
+    // theConf.dayCycle = 0;
+    // theConf.work_day=theConf.work_cycle=0;
     write_to_flash();
     
     snprintf(logBuffer, PRODUCTION_LOG_BUFFER_SIZE, "CMd Prod Stop %s", fields->orderCommand);

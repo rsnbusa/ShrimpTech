@@ -95,6 +95,15 @@ int cmdBlow(int argc, char **argv)
         write_to_flash();
         return 0;
     }
+    // Set modbus for simulation
+    if (blowArgs.modbus->count) {
+        int modbuss = blowArgs.modbus->ival[0];
+        esp_rom_printf("Setting Modbus to %d from %d\n", modbuss, theConf.modbus_mux);
+        if(modbuss<0) modbuss=1;
+        theConf.modbus_mux = modbuss;
+        write_to_flash();
+        return 0;
+    }
 
     // Initialize blower with zeros
     if (blowArgs.init->count) {

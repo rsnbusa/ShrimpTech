@@ -290,6 +290,7 @@ typedef struct blowst {
     struct arg_str *seed;
     struct arg_str *init;
     struct arg_int *minute;
+    struct arg_int *modbus;
     struct arg_end *end;
 } blow_t;
 
@@ -390,7 +391,7 @@ typedef struct config {
     time_t              dateProfile, dateDayCycle;
     uint8_t             wifi_mode;           // 0=off, 1=activated for power loss cases
     uint32_t            debug_flags, test_timer_div;
-    uint8_t             work_cycle, work_day, unit_num, delay_mesh;
+    uint8_t             work_cycle, work_day, modbus_mux, delay_mesh;
     uint32_t            loginwait;
     int                 limits[21][2];             // For 21 variables: [0]=min, [1]=max
     uint16_t            baud;

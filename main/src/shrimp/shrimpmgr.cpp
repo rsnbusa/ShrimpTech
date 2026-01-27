@@ -5208,9 +5208,9 @@ void start_schedule_timers(void * pArg)
                 // uint32_t wait_next_day=handle_day_end(nows);
 
                 // ... maybe not used anymore
-                theConf.work_day = ck_d;
-                theConf.work_cycle = ck;
-                theConf.dayCycle++;
+                // theConf.work_day = ck_d;
+                // theConf.work_cycle = ck;
+                // theConf.dayCycle++;
                 write_to_flash();
 
                 if ((theConf.debug_flags >> dSCH) & 1U)
@@ -5534,6 +5534,8 @@ void app_main(void)
     //log boot
     if(theConf.test_timer_div<1)
         theConf.test_timer_div=1;
+    if(theConf.modbus_mux<1)
+        theConf.modbus_mux=1;
     char *msg=(char*)calloc(1,100);
     if(msg)
     {    
