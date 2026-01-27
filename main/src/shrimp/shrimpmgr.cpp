@@ -4814,7 +4814,7 @@ static start_timer_ctx_t* create_timer_context(uint8_t cycle, uint8_t day, int h
  */
 static void handle_past_schedule_in_progress(time_t endtime, time_t now, int ck_h, int num_horarios)
 {
-    time_t remaining = (endtime - now)/theConf.minutes;
+    time_t remaining = (endtime - now)/theConf.test_timer_div;
     bool is_last = (ck_h == num_horarios - 1);
     void* timer_id = is_last ? (void*)0xFFFFFFFF : (void*)vanTimersEnd;
     
@@ -4868,8 +4868,8 @@ static bool validate_timer_delay(time_t delay_ms)
 static bool create_future_timers(time_t starttime, time_t endtime, time_t now,
                                  start_timer_ctx_t* ctx, int ck_h, int num_horarios)
 {
-    time_t start_delay = (starttime - now) / theConf.test_timer_div * 1000 / theConf.minutes;
-    time_t end_delay = (endtime - now) / theConf.test_timer_div * 1000 / theConf.minutes;
+    time_t start_delay = (starttime - now) / theConf.test_timer_div * 1000 ;
+    time_t end_delay = (endtime - now) / theConf.test_timer_div * 1000 ;
     
     if (!validate_timer_delay(start_delay) || !validate_timer_delay(end_delay)) {
         free(ctx);
@@ -4884,8 +4884,8 @@ static bool create_future_timers(time_t starttime, time_t endtime, time_t now,
         char time_str2[30];
         ctime_r(&now, time_str2);
         time_str2[strcspn(time_str2, "\n")] = '\0';
-        ESP_LOGI(TAG, "%sScheduling timer %d Start in %ld ms(%s) now %s - %ld", 
-                 DBG_SCH, vanTimersStart, (long)start_delay, time_str, time_str2,now);
+        ESP_LOGI(TAG, "%sScheduling timer %d Start in %ldms %s / %ld now %s / %ld", 
+                 DBG_SCH, vanTimersStart, (long)start_delay, time_str,long(starttime), time_str2,(long)now);
     }
     
     start_timers[vanTimersStart] = xTimerCreate(NULL, pdMS_TO_TICKS(start_delay),
@@ -4909,8 +4909,8 @@ static bool create_future_timers(time_t starttime, time_t endtime, time_t now,
         char time_str2[30];
         ctime_r(&now, time_str2);
         time_str2[strcspn(time_str2, "\n")] = '\0';
-        ESP_LOGI(TAG, "%sScheduling Timer %d Ending in %ld ms(%s) now %s - %ld", 
-                 DBG_SCH, vanTimersEnd, (long)end_delay, time_str, time_str2, now);
+        ESP_LOGI(TAG, "%sScheduling Timer %d Ending in %ld ms(%s / %ld) now %s / %ld", 
+                 DBG_SCH, vanTimersEnd, (long)end_delay, time_str, (long)endtime, time_str2, (long)now);
     }                                           
     if (!end_timers[vanTimersEnd]) { 
         ESP_LOGE(MESH_TAG, "End Timer not created %d", vanTimersEnd);
@@ -5025,55 +5025,57 @@ static void cleanup_all_timers()
  * 
  * @param now Initial start timestamp
  */
-static uint32_t handle_day_end(time_t now)
+static uint32_t handle_day_end(uint8_t nextHour)
 {
-    time_t next_midnight = 0;
 
-    if (!xSemaphoreTake(scheduleSem, portMAX_DELAY)) {
+    if (!xSemaphoreTake(scheduleSem, portMAX_DELAY)) { //wait for blower last timer 
         return 0;
     }
     
     if ((theConf.debug_flags >> dSCH) & 1U) {
-        ESP_LOGI(TAG, "%sDay ended", DBG_SCH);
+        ESP_LOGI(TAG, "%sDay ended NH %d", DBG_SCH,nextHour);
     }
     
     time_t current = time(NULL);
-    struct tm *tm_current = localtime(&current);
-    struct tm *tm_start = localtime(&now);
-    
+    struct tm *timeinfo = localtime(&current);
+    uint8_t currentHour= timeinfo->tm_hour;
+
+    if(nextHour>currentHour)
+    {
+        if ((theConf.debug_flags >> dSCH) & 1U) {
+            ESP_LOGI(TAG, "%sAfter current hour NH %d CH %d", DBG_SCH,nextHour,currentHour);
+        }
+        return 0; // we have passed midnight and next hour is still ahead of current time
+    }
+  
+    // need to wait for midnight and then start normal scheduling process
+   
+    // Calculate midnight time
+    timeinfo->tm_hour = 0;
+    timeinfo->tm_min = 0;
+    timeinfo->tm_sec = 0;
+    timeinfo->tm_mday++;  // Move to next day Zero hours
+    time_t midnight = mktime(timeinfo);
+    // sanity check
+    if(midnight<current)
+    {
+        ESP_LOGE(TAG, "%sMidnight calculation error now %ld midn %ld", DBG_SCH, (long)current, (long)midnight);
+        cleanup_all_timers();
+        return 0;   
+    }
+
     if ((theConf.debug_flags >> dSCH) & 1U) {
         char *time_str1 = ctime(&current);
         time_str1[strcspn(time_str1, "\n")] = '\0';
-        char *time_str2 = ctime(&now);
+        char *time_str2 = ctime(&midnight);
         time_str2[strcspn(time_str2, "\n")] = '\0';
         ESP_LOGI(TAG, "%sStart Day %s", DBG_SCH, time_str2);
-        ESP_LOGI(TAG, "%sEnd day %s", DBG_SCH, time_str1);
+        ESP_LOGI(TAG, "%sMidnight %s", DBG_SCH, time_str1);
     }
     
-    if (tm_current->tm_mday == tm_start->tm_mday && tm_current->tm_mon == tm_start->tm_mon)
-    {
-        // ended on same day, move to next day
-        if ((theConf.debug_flags >> dSCH) & 1U) {
-            ESP_LOGI(TAG, "%sSame day and month", DBG_SCH);
-        }
-        
-        tm_start->tm_mday++;        
-        time_t next = mktime(tm_start);                     // will take care if day is OB and add 1 month and set day to 1
-        struct tm *tm_next = localtime(&next);
-        tm_next->tm_hour = tm_next->tm_min = tm_next->tm_sec = 0;
-        next_midnight = mktime(tm_next);
-        
-        if ((theConf.debug_flags >> dSCH) & 1U) {
-            char *time_str = ctime(&next_midnight);
-            time_str[strcspn(time_str, "\n")] = '\0';
-            ESP_LOGI(TAG, "%sNew day %s", DBG_SCH, time_str);
-            ESP_LOGI(TAG, "%sDistance to midnight next day %ld", 
-                    DBG_SCH, (long)(next_midnight - current));
-        }
-    }
-    
+
     cleanup_all_timers();
-    return next_midnight - current;     //return time to wait for next day midnight 00:00:00
+    return midnight - current;     //return time to wait for next day midnight 00:00:00
 }
 
 
@@ -5187,15 +5189,14 @@ void start_schedule_timers(void * pArg)
                 {
                     if(ck_h==0)
                         send_start_day_host(ck_d);
-                    // update the blower schedule
-                    theBlower.setSchedule(ck, ck_d, ck_h, theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart,
-                        theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen,theConf.profiles[0].cycle[ck].horarios[ck_h].pwmDuty,1);
-
                     if (!process_horario(ck, ck_d, ck_h, midn, nows))
                         goto restart_schedule; // Timer validation failed, restart
                 }
                 // Day complete, wait and cleanup
-                uint32_t wait_next_day=handle_day_end(nows);
+                uint8_t newhour=theConf.profiles[0].cycle[ck+1].horarios[0].hourStart; // just to avoid warning
+                uint32_t wait_next_day= handle_day_end(newhour);        // the first hour of next day. boundry of end fo cycles later
+
+                // uint32_t wait_next_day=handle_day_end(nows);
 
                 // ... maybe not used anymore
                 theConf.work_day = ck_d;
@@ -5226,6 +5227,7 @@ void start_schedule_timers(void * pArg)
         // All cycles complete
         ESP_LOGW(TAG, "Production cycle ended");
         theBlower.setScheduleStatus(BLOWEROFF);
+        theBlower.setSchedule(0, 0, 0, 0, 0,0,0);
         theConf.dayCycle = 0;
         schedulef = false;
         continue;
@@ -5453,6 +5455,9 @@ void blower_start(TimerHandle_t xTimer)
     
     turn_blower_onOff(true);
 
+    theBlower.setSchedule( start_timer_ctx->cycle, start_timer_ctx->day, start_timer_ctx->horario, theConf.profiles[0].cycle[start_timer_ctx->cycle].horarios[start_timer_ctx->tostart].hourStart,
+            theConf.profiles[0].cycle[start_timer_ctx->cycle].horarios[start_timer_ctx->tostart].horarioLen,theConf.profiles[0].cycle[start_timer_ctx->cycle].horarios[start_timer_ctx->tostart].pwmDuty,1);
+
     if ((theConf.debug_flags >> dSCH) & 1U) {
         time_t now = time(NULL);
         char *time_str2 = ctime(&now);
@@ -5518,8 +5523,8 @@ void app_main(void)
     //     } 
     // #endif
     //log boot
-    if(theConf.minutes<1)
-        theConf.minutes=1;
+    if(theConf.test_timer_div<1)
+        theConf.test_timer_div=1;
     char *msg=(char*)calloc(1,100);
     if(msg)
     {    

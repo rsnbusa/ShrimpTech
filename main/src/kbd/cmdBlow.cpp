@@ -89,9 +89,9 @@ int cmdBlow(int argc, char **argv)
     // Set MINUTES for simulation
     if (blowArgs.minute->count) {
         int minutes = blowArgs.minute->ival[0];
-        esp_rom_printf("Setting MINUTES to %d from %d\n", minutes, theConf.minutes);
+        esp_rom_printf("Setting MINUTES to %d from %d\n", minutes, theConf.test_timer_div);
         if(minutes<0) minutes=1;
-        theConf.minutes = minutes;
+        theConf.test_timer_div = minutes;
         write_to_flash();
         return 0;
     }

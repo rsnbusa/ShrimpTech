@@ -180,6 +180,8 @@ static int handle_production_start(const ProductionCommandFields *fields, char *
     
     xSemaphoreGive(workTaskSem);        // start the schedule task!!!! and the schedulef flag
 
+    theBlower.setSchedule(0, 0, 0, 0, 0,0,0); // start production means from 0 so reset all trackers for PF
+
     if(theConf.wifi_mode)           // in mesh mode inform nodes to confirm their start
         send_start_production(fields->profileIndex, fields->dayIndex, 
                          theConf.test_timer_div, (char*)fields->orderCommand);
@@ -227,6 +229,8 @@ static int handle_production_stop(const ProductionCommandFields *fields, char *l
             xTimerStop(end_timers[a],10);
 
     vanTimersStart=vanTimersEnd=0;
+    
+    theBlower.setSchedule(0, 0, 0, 0, 0,0,0); // start production means from 0 so reset all trackers for PF
 
     // stop the blower itself
     turn_blower_onOff(false);

@@ -191,44 +191,46 @@ void show_limits()
  */
 void show_schedule_info()
 {
-       char date_buf[30];
-       struct tm timeinfo;
-       wschedule_t wsched;
-        
-       theBlower.getScheduleStruct(&wsched);
+        char date_buf[30];
+        struct tm timeinfo;
+        wschedule_t wsched;
+        TickType_t xEnd_pending=0,xStart_pending=0,currentTime=0;
+        int hora;
 
-       printf("┌──────────────────────────────────────────────────────────────┐\n");
-       printf("│%s%s                   SCHEDULE INFORMATION                       %s│\n",RESETC,BK_BLUE,RESETC);
-       printf("├──────────────────────────────────────────────────────────────┤\n");
-       if(schedulef)
-       {
+        theBlower.getScheduleStruct(&wsched);
+
+        printf("┌──────────────────────────────────────────────────────────────┐\n");
+        printf("│%s%s                   SCHEDULE INFORMATION                       %s│\n",RESETC,BK_BLUE,RESETC);
+        printf("├──────────────────────────────────────────────────────────────┤\n");
+        if(schedulef)
+        {
+            hora=wsched.currentHorario;    // adjust for 0 index
+            currentTime=xTaskGetTickCount(  );       // right now in ticks
+
+            if ((uint32_t)end_timers[hora]>0)
+            // if (xTimerIsTimerActive(end_timers[hora])>0)
+                xEnd_pending= xTimerGetExpiryTime( end_timers[hora] )-currentTime;
+            if ((uint32_t)start_timers[hora]>0)
+            // if (xTimerIsTimerActive(start_timers[hora])>0)
+                xStart_pending = xTimerGetExpiryTime( start_timers[hora] )-currentTime;
+
             printf("│ Current Profile :              %-28d  │\n", theConf.activeProfile);
             printf("│ Current Cycle:                 %-28d  │\n", wsched.currentCycle);
             printf("│ Current Day:                   %-28d  │\n", wsched.currentDay);
             printf("│ Current Horario:               %-28d  │\n", wsched.currentHorario);
             printf("│ Current Start Hour:            %-28d  │\n", wsched.currentStartHour);
-
-            int hora=wsched.currentHorario-3;    // adjust for 0 index
-            TickType_t currentTime=xTaskGetTickCount(  );       // right now in ticks
-
-            TickType_t xEnd_pending= xTimerGetExpiryTime( end_timers[hora] )-currentTime;
-            TickType_t xStart_pending = xTimerGetExpiryTime( start_timers[hora] )-currentTime;
-
-            if(xStart_pending>currentTime)
+            if(xStart_pending>currentTime && xStart_pending>0)
                 printf("│ Time to Start(min):            %-28d  │\n", (int)pdTICKS_TO_MS(xStart_pending)/60/1000);
             else
                 printf("│ Already Started %-47s|\n", " ");
-
-            if(xEnd_pending>currentTime)
+            if(xEnd_pending>currentTime && xEnd_pending>0)
                 printf("│ Remaining End Session(min):    %-28d  │\n", (int)pdTICKS_TO_MS(xEnd_pending)/60/1000);
                 else
                     printf("│ Already Stopped%-46s│\n", " ");
-
             printf("│ Current PWM Duty:              %-28d  │\n", wsched.currentPwmDuty);
             printf("│ Schedule Status:               %-28d  │\n", wsched.status);
         }   
-
-       printf("└──────────────────────────────────────────────────────────────┘\n\n");
+        printf("└──────────────────────────────────────────────────────────────┘\n\n");
 }
 
 /**
