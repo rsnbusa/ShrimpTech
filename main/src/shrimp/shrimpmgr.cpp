@@ -4936,6 +4936,8 @@ static bool create_future_timers(time_t starttime, time_t endtime, time_t now,
         ESP_LOGE(MESH_TAG, "FATAL too many timers Start %d End %d", vanTimersStart,vanTimersEnd);
     }
         
+    theBlower.setSchedule(0, 0, 0, 0, 0,0,0); // clear any previous schedule in blower
+
     return true;
 }
 
@@ -5460,7 +5462,20 @@ static void sync_schedule_with_mesh(const start_timer_ctx_t *start_timer_ctx)
  */
 void blower_start(TimerHandle_t xTimer)
 {
+    uint16_t currentamps,dummy;
+    float dummyf;
+
     start_timer_ctx_t *start_timer_ctx = (start_timer_ctx_t *)pvTimerGetTimerID(xTimer);
+
+    // motor power  * duration is thw kwh to be consumed in this schedule
+    uint16_t energy_amps= MOTORKW * (start_timer_ctx->horaslen)  / MOTORVOLTS;   // Expected energy consumption in AH
+
+    theBlower.getEnergy(&currentamps,&dummy,&dummy,&dummy,&dummyf,&dummyf,&dummyf,&dummyf,&dummyf,&dummyf); // get current amps form the blower
+
+    if(energy_amps>currentamps)
+        if ((theConf.debug_flags >> dSCH) & 1U) 
+            ESP_LOGW(TAG, "Schedule Start Check Energy NOT OK amps Availble %d needed %f",currentamps,energy_amps); 
+        // todo send mqtt msg to host Emergency/Alarm
     
     turn_blower_onOff(true);
 

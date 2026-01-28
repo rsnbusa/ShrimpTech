@@ -192,30 +192,34 @@
 #define FCHOLDING                       (0x03)
 #define FCINPUT                         (0x01)
 
-#define BLOWEROFF                        (0)   // stopped but active pool
-#define BLOWERON                         (1)   // actually blowing
-#define BLOWERNEXT                       (2)    // in cycle waitng next hour scheule
-#define BLOWERCROP                       (3)    // currently beign harvbested
-#define BLOWERPARK                       (4)    // not being used
+#define BLOWEROFF                       (0)   // stopped but active pool
+#define BLOWERON                        (1)   // actually blowing
+#define BLOWERNEXT                      (2)    // in cycle waitng next hour scheule
+#define BLOWERCROP                      (3)    // currently beign harvbested
+#define BLOWERPARK                      (4)    // not being used
 
 #define MINUTES                         (1)   
 // Modbus descriptor fields offsets
-#define DADDR      (4)
-#define DOFFSET    (3)
-#define DSTART     (2)
-#define DPOINTS    (1)
-#define DTYPE      (0)
-#define SENSOR_ERROR_BIT               (0) // Bit 0 for sensor errors
+#define DADDR                           (4)
+#define DOFFSET                         (3)
+#define DSTART                          (2)
+#define DPOINTS                         (1)
+#define DTYPE                           (0)
+#define SENSOR_ERROR_BIT                (0) // Bit 0 for sensor errors
 #define PANELS_ERROR_BIT                (1) // Bit 1 for panel errors
-#define BATTERY_ERROR_BIT              (2) // Bit 2 for battery errors
-#define ENERGY_ERROR_BIT               (3) // Bit 3 for energy errors
+#define BATTERY_ERROR_BIT               (2) // Bit 2 for battery errors
+#define ENERGY_ERROR_BIT                (3) // Bit 3 for energy errors
 
-#define SENSOR_LIMIT_ERROR_BIT         (4) // Bit 4 for limit errors
+#define SENSOR_LIMIT_ERROR_BIT          (4) // Bit 4 for limit errors
 #define PANELS_LIMIT_ERROR_BIT          (5) // Bit 5 for limit errors
-#define BATTERY_LIMIT_ERROR_BIT        (6) // Bit 6 for limit errors
-#define ENERGY_LIMIT_ERROR_BIT         (7) // Bit 7 for limit errors
+#define BATTERY_LIMIT_ERROR_BIT         (6) // Bit 6 for limit errors
+#define ENERGY_LIMIT_ERROR_BIT          (7) // Bit 7 for limit errors
 
-#define WIFI_MESH                      (0)
+// Motor specs 
+#define MOTORKW                         (2200)  // 2200 W motor
+#define MOTORVOLTS                      (220)  // 220 V motor -> 10amps
+
+#define WIFI_MESH                       (0)
 
 #define DBG_SCH						    "\e[36m[SCH]\e[0m"               //cyan
 #define DBG_BLOW						"\e[34m[SCH]\e[0m"               //blue
@@ -223,12 +227,6 @@
 #define DBG_BLE						    "\e[32m[BLE]\e[0m]"              //Green
 #define DBG_MQTT					    "\e[33m[MQTT]\e[0m"              //Yellow
 #define DBG_XCMDS					    "\e[37m[XCMDS]\e[0m"                //White
-// #define UNKNOWSTATE						"\e[31m[UNK]\e[0m"                  //Red
-// #define OFFLINESTATE    				"\e[37m[OFFLINE]\e[0m"              //White
-// #define SYSTEM          				"\e[90;3;4m\t[SYSTEM]\e[0m"         //Gray
-// #define KBD          				    "\e[31m[KBD]\e[0m"                  //Red
-// #define WEB          				    "\e[33;1m[APP]\e[0m"                  //Yellow
-
 
 #define BLACKC							"\e[30m"
 #define BLUE							"\e[34m"
@@ -254,5 +252,4 @@
 #define BK_WHITEC						"\e[47m"
 #define BK_GRAY 						"\e[100m"
 
-#define BK_
 

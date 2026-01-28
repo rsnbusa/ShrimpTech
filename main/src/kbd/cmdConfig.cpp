@@ -222,11 +222,11 @@ void show_schedule_info()
             if(xStart_pending>currentTime && xStart_pending>0)
                 printf("│ Time to Start(min):            %-28d  │\n", (int)pdTICKS_TO_MS(xStart_pending)/60/1000);
             else
-                printf("│ Already Started %-47s|\n", " ");
+                printf("│%s Already Started %-45s%s│\n",LRED, " ",RESETC);
             if(xEnd_pending>currentTime && xEnd_pending>0)
                 printf("│ Remaining End Session(min):    %-28d  │\n", (int)pdTICKS_TO_MS(xEnd_pending)/60/1000);
                 else
-                    printf("│ Already Stopped%-46s│\n", " ");
+                    printf("│%s Already Stopped %-45s%s│\n",LRED, " ",RESETC);
             printf("│ Current PWM Duty:              %-28d  │\n", wsched.currentPwmDuty);
             printf("│ Schedule Status:               %-28d  │\n", wsched.status);
         }   
@@ -266,7 +266,7 @@ void show_device_info(time_t bootdate, time_t guardDate)
     printf("│ %sDisplay & System Status:%s                                    │\n",BK_GRAY,RESETC);
     printf("│   Display Active: %-42s│\n", gdispf?"Yes":"No");
     printf("│ %sVersion Information:%s                                        │\n",BK_GRAY,RESETC);
-    printf("│   App: %-11s  IDF: %-33s  │\n", mip->version, mip->idf_ver);
+    printf("│   App: %-20s  IDF: %-24s  │\n", mip->version, mip->idf_ver);
     printf("│   Project: %-48s │\n", mip->project_name);
     printf("│   Compiled: %s @ %-34s│\n", mip->date, mip->time);
     printf("│   Latest Sent: %-44s │\n", theConf.lastVersion);
@@ -305,7 +305,7 @@ void show_production_config()
        //  printf("%s", RESETC);
 //     printf("│ Blower Mode: %-47d│\n", theConf.blower_mode);
 //     printf("│ Active Profile: %1d | Start Day: %-33d│\n", theConf.activeProfile, theConf.dayCycle);
-    printf("│ Is Master Node: %-29s│ TestDiv %5d│\n", theConf.masternode?"Yes":"No ", theConf.minutes);
+    printf("│ Is Master Node: %-29s│ TestDiv %5d│\n", theConf.masternode?"Yes":"No ", theConf.test_timer_div);
     printf("│ Debug Flags (0x%X): ", theConf.debug_flags);
     if((theConf.debug_flags >> dSCH) & 1U)   printf("Schedule ");
     if((theConf.debug_flags >> dMESH) & 1U)  printf("Mesh ");
@@ -418,6 +418,9 @@ void show_network_mesh(wifi_config_t conf, mesh_addr_t bssid, unsigned char *mac
 void show_statistics(time_t now)
 {
 //     printf("%s", BLUE);
+    char time_str[30];
+    ctime_r(&now, time_str);
+    time_str[strcspn(time_str, "\n")] = '\0';
     printf("┌─────────────────────────────────────────────────────────────┐\n");
     printf("│%s%s                    STATISTICS                               %s│\n",RESETC,BK_BLUE,RESETC);
     printf("├─────────────────────────────────────────────────────────────┤\n");
@@ -425,7 +428,7 @@ void show_statistics(time_t now)
     printf("│ Bytes Out: %-16d │  Bytes In: %-18d │\n", theBlower.getStatsBytesOut(), theBlower.getStatsBytesIn());
     printf("│ Messages In: %-14d │ Messages Out: %-15d │\n", theBlower.getStatsMsgIn(), theBlower.getStatsMsgOut());
     printf("│ STA Connections: %-10d │ STA Disconnections: %-9d │\n", theBlower.getStatsStaConns(), theBlower.getStatsStaDiscos());
-    printf("│ Last Activity: %s", ctime(&now));
+    printf("│ Last Activity: %-44s │\n", time_str);
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
 }
 
