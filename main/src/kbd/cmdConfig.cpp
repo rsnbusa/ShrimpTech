@@ -15,6 +15,7 @@ char modb_names[][30]={
 "BatChToday","BatDscToday","BatChgTotal","BatDscTotal","GenToday","UsedToday","LoadUsedTotal","BatChdToday","BatDscToday","LoadUsedToday","BatTemp"
 };
 
+char schStatus[][11]={"INACTIVE  ","BLOWERON  ","NEXTHOUR  ","HARVESTING","PARKED    "};
 /**
  * @brief Display complete Modbus configuration for all devices
  * 
@@ -208,16 +209,15 @@ void show_schedule_info()
             currentTime=xTaskGetTickCount(  );       // right now in ticks
 
             if ((uint32_t)end_timers[hora]>0)
-            // if (xTimerIsTimerActive(end_timers[hora])>0)
                 xEnd_pending= xTimerGetExpiryTime( end_timers[hora] )-currentTime;
             if ((uint32_t)start_timers[hora]>0)
-            // if (xTimerIsTimerActive(start_timers[hora])>0)
                 xStart_pending = xTimerGetExpiryTime( start_timers[hora] )-currentTime;
 
             printf("│ Current Profile :              %-28d  │\n", theConf.activeProfile);
             printf("│ Current Cycle:                 %-28d  │\n", wsched.currentCycle);
             printf("│ Current Day:                   %-28d  │\n", wsched.currentDay);
-            printf("│ Current Horario:               %-28d  │\n", wsched.currentHorario);
+            printf("│ Current Horario:               %-28d  │\n", wsched.currentHorario+1);     // seen first=1 not 0
+            printf("│ Number of Sessions:            %-28d  │\n", theConf.profiles[0].cycle[wsched.currentCycle].numHorarios);
             printf("│ Current Start Hour:            %-28d  │\n", wsched.currentStartHour);
             if(xStart_pending>currentTime && xStart_pending>0)
                 printf("│ Time to Start(min):            %-28d  │\n", (int)pdTICKS_TO_MS(xStart_pending)/60/1000);
@@ -228,7 +228,7 @@ void show_schedule_info()
                 else
                     printf("│%s Already Stopped %-45s%s│\n",LRED, " ",RESETC);
             printf("│ Current PWM Duty:              %-28d  │\n", wsched.currentPwmDuty);
-            printf("│ Schedule Status:               %-28d  │\n", wsched.status);
+            printf("│ Schedule Status:               %-28s  │\n", schStatus[wsched.status] );
         }   
         printf("└──────────────────────────────────────────────────────────────┘\n\n");
 }

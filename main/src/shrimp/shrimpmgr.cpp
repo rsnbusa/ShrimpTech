@@ -4736,9 +4736,15 @@ void turn_blower_onOff(bool onoff)
      }
     
     if(onoff)
+    {
         gpio_set_level((gpio_num_t)BEATPIN, 0);
+        theBlower.setScheduleStatus(BLOWERON);
+    }
     else
+    {
         gpio_set_level((gpio_num_t)BEATPIN, 1);
+        theBlower.setScheduleStatus(BLOWEROFF);
+    }
 }
 
 /**
@@ -4812,7 +4818,7 @@ static start_timer_ctx_t* create_timer_context(uint8_t cycle, uint8_t day, int h
  * @param ck_h Hour index
  * @param num_horarios Total horarios in cycle
  */
-static void handle_past_schedule_in_progress(time_t endtime, time_t now, int ck_h, int num_horarios)
+static void handle_past_schedule_in_progress(time_t endtime, time_t now, int ck,int ck_day,int ck_h, int num_horarios)
 {
     time_t remaining = (endtime - now)/theConf.test_timer_div;
     bool is_last = (ck_h == num_horarios - 1);
@@ -4838,6 +4844,7 @@ static void handle_past_schedule_in_progress(time_t endtime, time_t now, int ck_
     if (end_timers[vanTimersEnd]) {
         xTimerStart(end_timers[vanTimersEnd], 10);
         vanTimersEnd++;
+        theBlower.setSchedule(ck,ck_day,ck_h,theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart,theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen,theConf.profiles[0].cycle[ck].horarios[ck_h].pwmDuty,0); // clear any previous schedule in blower
     }
 }
 
@@ -4936,8 +4943,6 @@ static bool create_future_timers(time_t starttime, time_t endtime, time_t now,
         ESP_LOGE(MESH_TAG, "FATAL too many timers Start %d End %d", vanTimersStart,vanTimersEnd);
     }
         
-    theBlower.setSchedule(0, 0, 0, 0, 0,0,0); // clear any previous schedule in blower
-
     return true;
 }
 
@@ -4999,7 +5004,7 @@ static bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, tim
             free(ctx);
         } else {
             free(ctx); // Context not needed for immediate execution
-            handle_past_schedule_in_progress(endtime, now, ck_h, 
+            handle_past_schedule_in_progress(endtime, now, ck,ck_d,ck_h, 
                                             theConf.profiles[0].cycle[ck].numHorarios);
         }
         return true;
