@@ -5483,7 +5483,7 @@ void blower_start(TimerHandle_t xTimer)
     turn_blower_onOff(true);
 
     theBlower.setSchedule( start_timer_ctx->cycle, start_timer_ctx->day, start_timer_ctx->horario, theConf.profiles[0].cycle[start_timer_ctx->cycle].horarios[start_timer_ctx->tostart].hourStart,
-            theConf.profiles[0].cycle[start_timer_ctx->cycle].horarios[start_timer_ctx->tostart].horarioLen,theConf.profiles[0].cycle[start_timer_ctx->cycle].horarios[start_timer_ctx->tostart].pwmDuty,BLOWERWNEXT);
+            theConf.profiles[0].cycle[start_timer_ctx->cycle].horarios[start_timer_ctx->tostart].horarioLen,theConf.profiles[0].cycle[start_timer_ctx->cycle].horarios[start_timer_ctx->tostart].pwmDuty,BLOWERNEXT);
 
     if ((theConf.debug_flags >> dSCH) & 1U) {
         time_t now = time(NULL);
