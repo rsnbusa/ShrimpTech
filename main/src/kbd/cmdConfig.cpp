@@ -315,6 +315,9 @@ void show_production_config()
     if((theConf.debug_flags >> dBLOW) & 1U)  printf("Blower ");
     if((theConf.debug_flags >> dLOGIC) & 1U) printf("Logic ");
     if((theConf.debug_flags >> dMODBUS) & 1U) printf("Modbus ");
+    if((theConf.debug_flags >> dLIMITS) & 1U) printf("Limits ");
+    if((theConf.debug_flags >> dRS485) & 1U) printf("RS485 ");
+    if((theConf.debug_flags >> dDO) & 1U) printf("DO ");
     printf("│\n");
 //     if(theBlower.getScheduleStatus()==BLOWERON)
 //         printf("│ Cycle: %1d | Day: %3d | Timer Div: %3d Status %2d│\n", ck, ck_d, theConf.test_timer_div, theBlower.getScheduleStatus());
@@ -520,6 +523,40 @@ void show_first_profile()
     }
 }
 
+    /**
+     * @brief Display Dissolved Oxygen (DO) sensor control configuration
+     * 
+     * Shows the current DO sensor settings including:
+     * - Night-only mode status
+     * - Control enabled/disabled status
+     * - PID controller parameters (Kp, Ki, Kd)
+     * - DO setpoint target value
+     */
+    void show_DO()
+    {
+        struct DO doParms;
+    
+        printf("┌────────────────────────────────────────────────────────┐\n");
+        printf("│%s%s       DISSOLVED OXYGEN (DO) SENSOR CONFIGURATION       %s│\n",RESETC,BK_CYAN,RESETC);
+        printf("├────────────────────────────────────────────────────────┤\n");
+        printf("│ Night Only Mode:     %s%-33s%s │\n", 
+            (theConf.doParms.nighonly ? BK_GREEN : BK_RED), 
+            (theConf.doParms.nighonly ? "ENABLED" : "DISABLED"), 
+            RESETC);
+        printf("│ DO Control:          %s%-33s%s │\n", 
+            (theConf.doParms.docontrol ? BK_GREEN : BK_RED), 
+            (theConf.doParms.docontrol ? "ENABLED" : "DISABLED"), 
+            RESETC);
+        printf("├────────────────────────────────────────────────────────┤\n");
+        printf("│ PID Controller Parameters:                             │\n");
+        printf("│   Proportional (Kp): %-33.4f │\n", theConf.doParms.KP);
+        printf("│   Integral (Ki):     %-33.4f │\n", theConf.doParms.KI);
+        printf("│   Derivative (Kd):   %-33.4f │\n", theConf.doParms.KD);
+        printf("├────────────────────────────────────────────────────────┤\n");
+        printf("│ DO Setpoint (mg/L):  %-33.4f │\n", theConf.doParms.setpoint);
+        printf("└────────────────────────────────────────────────────────┘\n\n");
+    }
+
 /**
  * @brief Display comprehensive system configuration (runs as FreeRTOS task)
  * 
@@ -644,6 +681,8 @@ int cmdConfig(int argc, char **argv)
            show_limits();
     if (configArgs.all->count || configArgs.modbus->count)         
            show_modbus();
+    if (configArgs.all->count || configArgs.DO->count)         
+           show_DO();
     
     printf("%s", RESETC);
     return 0;

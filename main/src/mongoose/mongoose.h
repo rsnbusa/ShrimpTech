@@ -1254,8 +1254,9 @@ size_t mg_print_mac(void (*out)(char, void *), void *arg, va_list *ap);
 size_t mg_print_l2addr(void (*out)(char, void *), void *arg, va_list *ap);
 
 // Various output functions
-void mg_pfn_iobuf(char ch, void *param);  // param: struct mg_iobuf *
-void mg_pfn_stdout(char c, void *param);  // param: ignored
+void mg_pfn_iobuf(char ch, void *param);           // param: struct mg_iobuf *
+void mg_pfn_iobuf_noresize(char ch, void *param);  // param: struct mg_iobuf *
+void mg_pfn_stdout(char c, void *param);           // param: ignored
 
 // A helper macro for printing JSON: mg_snprintf(buf, len, "%m", MG_ESC("hi"))
 #define MG_ESC(str) mg_print_esc, 0, (str)
@@ -1882,6 +1883,7 @@ void mg_tls_handshake(struct mg_connection *);
 // Private
 void mg_tls_ctx_init(struct mg_mgr *);
 void mg_tls_ctx_free(struct mg_mgr *);
+#define MG_IS_DER(buf) (((uint8_t *) (buf))[0] == 0x30)  // DER begins with 0x30
 
 // Low-level IO primives used by TLS layer
 enum { MG_IO_ERR = -1, MG_IO_WAIT = -2, MG_IO_RESET = -3 };
@@ -2738,7 +2740,13 @@ PORTABLE_8439_DECL size_t mg_chacha20_poly1305_decrypt(
 
 
 int mg_rsa_mod_pow(const uint8_t *mod, size_t modsz, const uint8_t *exp, size_t expsz, const uint8_t *msg, size_t msgsz, uint8_t *out, size_t outsz);
-
+int mg_rsa_crt_sign(const uint8_t *em, size_t em_len,
+                    const uint8_t *dP, size_t dP_len,
+                    const uint8_t *dQ, size_t dQ_len,
+                    const uint8_t *p, size_t p_len,
+                    const uint8_t *q, size_t q_len,
+                    const uint8_t *qInv, size_t qInv_len,
+                    uint8_t *signature, size_t sig_len);
 #endif // TLS_RSA_H
 
 
@@ -2930,6 +2938,7 @@ struct mg_connection *mg_mqtt_listen(struct mg_mgr *mgr, const char *url,
 void mg_mqtt_login(struct mg_connection *c, const struct mg_mqtt_opts *opts);
 uint16_t mg_mqtt_pub(struct mg_connection *c, const struct mg_mqtt_opts *opts);
 void mg_mqtt_sub(struct mg_connection *, const struct mg_mqtt_opts *opts);
+void mg_mqtt_unsub(struct mg_connection *c, const struct mg_mqtt_opts *opts);
 int mg_mqtt_parse(const uint8_t *, size_t, uint8_t, struct mg_mqtt_message *);
 void mg_mqtt_send_header(struct mg_connection *, uint8_t cmd, uint8_t flags,
                          uint32_t len);

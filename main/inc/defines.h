@@ -215,6 +215,11 @@
 #define BATTERY_LIMIT_ERROR_BIT         (6) // Bit 6 for limit errors
 #define ENERGY_LIMIT_ERROR_BIT          (7) // Bit 7 for limit errors
 
+// Dissolved Oxygen Sensor Calibration Values
+#define OUTPUT_MIN                      (0)
+#define OUTPUT_MAX                      (100)
+#define SETPOINT_DO                     (7.0)    
+
 // Motor specs 
 #define MOTORKW                         (2200)  // 2200 W motor
 #define MOTORVOLTS                      (220)  // 220 V motor -> 10amps

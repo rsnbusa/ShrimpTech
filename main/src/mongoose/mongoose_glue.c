@@ -5,6 +5,14 @@
 // Default mock implementation of the API callbacks
 
 #include "mongoose_glue.h"
+struct DO s_DO = {10, false, false, 1.5, 0.05, 1.1, 5.1};
+void glue_get_DO(struct DO *data) {
+  *data = s_DO;  // Sync with your device
+}
+void glue_set_DO(struct DO *data) {
+  s_DO = *data; // Sync with your device
+}
+
 struct modbInverter s_modbInverter = {10, 1, 10, 1, 2, 61530, 0, 10, 1, 1, 61518, 0, 10, 1, 1, 61517, 0, 10, 1, 2, 61528, 0, 10, 1, 1, 61526, 0, 10, 1, 1, 61527, 0, 10, 1, 2, 61522, 0, 10, 1, 2, 61520, 0, 10, 1, 1, 61518, 0, 10, 1, 1, 61517, 0};
 void glue_get_modbInverter(struct modbInverter *data) {
   *data = s_modbInverter;  // Sync with your device

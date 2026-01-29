@@ -1875,7 +1875,7 @@ err_t read_log(int nlines)
  * Thread-safe read of theConf structure from NVS.
  * Opens NVS handle, reads blob, and logs any errors.
  */
-static void read_flash()
+void read_flash()
 {
     if (!xSemaphoreTake(flashSem, portMAX_DELAY))
         return;
@@ -3331,6 +3331,21 @@ static void init_event_groups(void)
         ESP_LOGE(MESH_TAG, "Failed to create other event group");
     }
 }
+/**
+ * @brief Initialize DO Defaults
+ * 
+ * Creates Defaults for Dissolved Oxygen PID
+ */
+static void init_DO_Defaults(void)
+{
+    theConf.doParms.setpoint=5.5;
+    theConf.doParms.KP=1.5;
+    theConf.doParms.KI=0.1;
+    theConf.doParms.KD=0.01;
+    theConf.doParms.docontrol=false;
+    theConf.doParms.nighonly=false;
+    theConf.doParms.sampletime=10;
+}
 
 /**
  * @brief Main initialization process for the system
@@ -3477,6 +3492,7 @@ void erase_config(void)
     init_default_modbus_config();
     init_default_limits();
     init_default_timing();
+    init_DO_Defaults();
     
     // Set creation timestamp
     time((time_t*)&theConf.bornDate);
@@ -5454,6 +5470,63 @@ static void sync_schedule_with_mesh(const start_timer_ctx_t *start_timer_ctx)
     send_schedule_sync_to_mesh(json_msg);
 }
 
+// auto pid
+void PIDController(void *pArg)  
+{
+    time_t now;
+    struct tm timeinfo;
+
+    // PID settings and gains
+    setPoint=theConf.doParms.setpoint; // Desired DO setpoint
+    KP = theConf.doParms.KP; // Proportional gain
+    KI = theConf.doParms.KI; // Integral gain
+    KD = theConf.doParms.KD; // Derivative gain
+    ESP_LOGI(TAG,"PID Controller Task Started SetPoint %.4f Kp %.4f KI %.4f KD %.4f Sample %d",setPoint,KP,KI,KD,
+            theConf.doParms.sampletime);
+// setGains(double Kp, double Ki, double Kd);
+    AutoPID myPID(&doValue, &setPoint, &outputVal, OUTPUT_MIN, OUTPUT_MAX, KP, KI, KD); // Create an AutoPID object
+    myPID.setBangBang(theConf.doParms.setpoint-1.0,theConf.doParms.setpoint+1.0); // Set bang-bang control thresholds
+    myPID.setTimeStep(10000); // Set PID update interval to 10000ms
+
+    while (true) {
+        denuevo:
+        time(&now);  
+        localtime_r(&now, &timeinfo);
+        if(theConf.doParms.nighonly)
+        {
+            if(timeinfo.tm_hour<18)
+            {
+                if ((theConf.debug_flags >> dDO) & 1U) 
+                    ESP_LOGI(TAG, "Night Only DO Control Disabled Now %02d:%02d",timeinfo.tm_hour,timeinfo.tm_min);
+                vTaskDelay(pdMS_TO_TICKS(60000)); // Delay for a short period
+                goto denuevo;
+            }
+        }
+        
+        // choose kd according to time of day
+        if(timeinfo.tm_hour>=6 && timeinfo.tm_hour<12) // day time to noon
+            KD=1.5;
+        else 
+            if(timeinfo.tm_hour>=12 && timeinfo.tm_hour<18) // noon to evening
+                KD=2.5;
+            else
+                KD=1.0; // night time
+
+        doValue=sensorData.DO; // get the current DO value from sensorsData structure
+        myPID.run(); // Call every loop, updates automatically at the set time interval
+
+        // print at setpoint when at setpoint +-1 degree
+        if (myPID.atSetPoint(1)) {
+            if ((theConf.debug_flags >> dDO) & 1U) 
+                ESP_LOGI(TAG, "At setpoint");
+        }
+        
+        if ((theConf.debug_flags >> dDO) & 1U) 
+            ESP_LOGI(TAG, "KD: %.4f DO: %.2f, SetPoint: %.2f, Output: %.2f", KD,doValue, setPoint, outputVal); // Log the values
+
+        vTaskDelay(pdMS_TO_TICKS(theConf.doParms.sampletime*60*1000)); // Delay for a short period
+    }
+}
 
 /**
  * @brief Timer callback for blower start event
@@ -5538,9 +5611,14 @@ void app_main(void)
 {
     esp_err_t ret;
 
+
     init_process();  
+
+    // printf("DO Active %d Setpoint %f KP %f KI %f KD %f Night %d\n",theConf.doParms.docontrol,theConf.doParms.setpoint,
+    //     theConf.doParms.KP,theConf.doParms.KI,theConf.doParms.KD,theConf.doParms.nighonly);
+
     app_spiffs_log();
-    gdispf=false;
+    // gdispf=false;
     // #ifdef DISPLAY
     //     ret=init_lcd();
     //     if(ret==ESP_OK)
@@ -5570,8 +5648,6 @@ void app_main(void)
 #ifdef DEBB
     xTaskCreate(&kbd,"kbd",1024*10,NULL, 5, NULL); 	        // keyboard commands
 #endif
-
-
 
 printf("PV PAnel %d Battery %d Energy %d Solar System %d SolarPad %d Union %d SmpMsg %d timet %d float %d Config %d\n",sizeof(pvPanel_t),sizeof(battery_t),
 sizeof(energy_t),sizeof(solarSystem_t),sizeof(solarDef_t),sizeof(meshunion_t),sizeof(shrimpMsg_t),sizeof(time_t),sizeof(float),
@@ -5611,7 +5687,10 @@ sizeof(theConf) );
     // xTaskCreate(&start_schedule_timers,"sched",1024*10,NULL, 5, &scheduleHandle); 	       
 
     xTaskCreate(&root_timer,"reptimer",1024*8,NULL, 5, NULL); 	        
-    xTaskCreate(&rs485_task_manager,"modbus",1024*10,NULL, 5, NULL); 	            // start the modbus task   
+    xTaskCreate(&rs485_task_manager,"modbus",1024*10,NULL, 5, NULL); 	            // start the modbus task  
+    // printf("Active %d\n",theConf.doParms.docontrol); 
+    if(theConf.doParms.docontrol)
+        xTaskCreate(&PIDController,"PID",1024*10,NULL, 5, NULL); 	            // start the {PID} task   
     // delay(2000);  //used when debugging modbus to test just modbus without starting mesh/wifi
     // launch_sensors();
             // start the modbus task   

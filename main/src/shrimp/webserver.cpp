@@ -72,6 +72,7 @@ extern struct system s_system;				// system setting like mqtt server etc. --> Se
 extern struct profile s_profile;			// schedule profile cycles and working timers --> 5th sidebar
 extern struct limits s_limits;				// every know limit of 22 parameters from the inverter --> fourth sidebar
 extern struct sysset s_sysset;				// system parameters --> third sidebar
+extern struct DO s_DO;						// Dissolved Oxygen control parameters
 extern uint64_t s_action_timeout_reboot;  	// Reboot button
 
 #include "crypto_utils.h"
@@ -370,6 +371,24 @@ void my_get_system(struct system *data)
 	*data = s_system;
 }
 
+/**
+ * @brief Get current system settings for web interface
+ * @param data Pointer to system structure to populate
+ */
+void my_get_DO(struct DO *data) 
+{
+	*data = theConf.doParms;
+}
+
+
+/**
+ * @brief Apply system settings from web interface
+ * @param data Pointer to system settings structure
+ */
+void my_set_DO(struct DO *data) {
+	theConf.doParms = *data;
+	write_to_flash();
+}
 /**
  * @brief Get system status and statistics for web interface
  * @param data Pointer to sysset structure to populate with system info
@@ -1052,7 +1071,7 @@ bool my_check_reboot(void) {
 void my_start_reboot(struct mg_str params) {		//Done button pressed,
 	s_action_timeout_reboot = mg_now() + REBOOT_ACTION_MS; // Start Done, finish after 1 second
 	theConf.meterconf=CONF_STATE_CONFIGURED;
-	esp_rom_printf("Restarting\n");
+	esp_rom_printf("Webserver Restarting System\n");
 	write_to_flash();
 	esp_restart();
 }
@@ -1091,6 +1110,7 @@ void start_webserver(void *pArg)
   	mongoose_set_http_handlers("modbSensors", my_get_modbSensors ,my_set_modbSensors);				
   	mongoose_set_http_handlers("modbBattery", my_get_modbBattery ,my_set_modbBattery);				
   	mongoose_set_http_handlers("modbPanels", my_get_modbPanels ,my_set_modbPanels);				
+  	mongoose_set_http_handlers("DO", my_get_DO ,my_set_DO);				
   	mongoose_set_http_handlers("reboot", my_check_reboot ,my_start_reboot);				
 	//web timeout if not done in 2 minutes restart
 	webTimer=xTimerCreate("restart",pdMS_TO_TICKS(WEB_TIMEOUT_MS),pdFALSE,( void * ) 0, [] ( TimerHandle_t xTimer){	

@@ -136,7 +136,8 @@ enum {
     dLOGIC,
     dMODBUS,
     dLIMITS,
-    dRS485
+    dRS485,
+    dDO
 } debug_flags_t;
 
 typedef enum {
@@ -227,13 +228,14 @@ typedef struct dbg {
     struct arg_str *modbus;    // modbus data
     struct arg_str *limits;    // limits tracking
     struct arg_str *rs485;     // RS485 debugging
+    struct arg_str *DO;        // Dissolved Oxygen debugging
     struct arg_str *all;       // All commands on/off
     struct arg_end *end;
 } dbg_t;
 
 typedef struct cfg {
     struct arg_lit *sch;        // All configuration x
-    struct arg_lit *meshnet;     // Mesh related x
+    struct arg_lit *meshnet;    // Mesh related x
     struct arg_lit *mqtt;       // MQTT related x
     struct arg_lit *profile;    // Profile data x
     struct arg_lit *blow;       // Blower data x
@@ -241,8 +243,9 @@ typedef struct cfg {
     struct arg_lit *limits;     // BLE related x
     struct arg_lit *prod  ;     // production data x
     struct arg_lit *stats  ;    // statistics data x
-    struct arg_lit *system  ;    // system data x
-    struct arg_lit *all;       // All commands on/off
+    struct arg_lit *system  ;   // system data x
+    struct arg_lit *all;        // All commands on/off
+    struct arg_lit *DO;         // DO setup
     struct arg_end *end;
 } cfg_t;
 
@@ -401,6 +404,8 @@ typedef struct config {
     struct modbSensors  modbus_sensors;
     struct modbBattery  modbus_battery;
     struct modbPanels   modbus_panels;
+    struct DO           doParms;
+
 } config_flash;
 
 // ============================================================================

@@ -19,6 +19,8 @@ extern "C" {
 #define WIZARD_ENABLE_WEBSOCKET 0
 
 #define WIZARD_ENABLE_MQTT 0
+#define WIZARD_ENABLE_OTA_OVER_MQTT 0
+#define WIZARD_MQTT_DEVICE_ID ""
 #define WIZARD_MQTT_URL ""
 
 #define WIZARD_ENABLE_SNTP 0  // Enable time sync.
@@ -80,6 +82,15 @@ void mongoose_set_auth_handler(int (*fn)(const char *user, const char *pass));
 void mongoose_add_custom_handler(const char *url_pattern, mg_event_handler_t,
                                  int read_level, int write_level);
 
+struct mongoose_wifi_handlers {
+  void (*on_connect_fn)(struct mg_tcpip_if *);
+  void (*on_disconnect_fn)(struct mg_tcpip_if *);
+  void (*on_connect_error_fn)(struct mg_tcpip_if *);
+  void (*on_scan_result_fn)(struct mg_tcpip_if *, struct mg_wifi_scan_bss_data *);
+  void (*on_scan_end_fn)(struct mg_tcpip_if *);
+};
+void mongoose_set_wifi_handlers(struct mongoose_wifi_handlers *);
+
 #if WIZARD_ENABLE_MQTT
 void glue_lock_init(void);  // Initialise global Mongoose mutex
 void glue_lock(void);       // Lock global Mongoose mutex
@@ -97,6 +108,18 @@ void glue_mdns_update_name(const char *newname);
 void glue_update_state(void);
 
 // Firmware Glue
+
+struct DO {
+  int sampletime;
+  bool nighonly;
+  bool docontrol;
+  double KD;
+  double KI;
+  double KP;
+  double setpoint;
+};
+void glue_get_DO(struct DO *);
+void glue_set_DO(struct DO *);
 
 struct modbInverter {
   int refresh_rate;

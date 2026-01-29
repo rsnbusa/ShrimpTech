@@ -124,6 +124,7 @@ void kbd(void *pArg)
   dbgArg.modbus   = arg_str0(NULL, "modbus",   "on | off", "Show modbus stuff");
   dbgArg.limits   = arg_str0(NULL, "limits",   "on | off", "Show modbus limits errors");
   dbgArg.rs485    = arg_str0(NULL, "rs485",    "on | off", "Show RS485 debugging");
+  dbgArg.DO       = arg_str0(NULL, "DO",       "on | off", "Show Dissolved Oxygen debugging");
   dbgArg.all      = arg_str0(NULL, "all",      "on | off", "Set/Reset all cmds");
   dbgArg.end      = arg_end(DEBUG_MAX_ARGUMENTS);
 
@@ -141,6 +142,7 @@ void kbd(void *pArg)
   configArgs.prod     = arg_lit0(NULL, "produc",    "Show Porduction configuration");
   configArgs.stats    = arg_lit0(NULL, "stats",     "Show stats");
   configArgs.system   = arg_lit0(NULL, "sys",       "Show system configuration");
+  configArgs.DO       = arg_lit0(NULL, "DO",        "Show Dissolved Oxygen configuration");
   configArgs.all      = arg_lit0(NULL, "all",       "Show all sections");
   configArgs.end      = arg_end(CONFIG_MAX_ARGUMENTS);
 

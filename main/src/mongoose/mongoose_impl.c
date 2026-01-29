@@ -149,6 +149,16 @@ struct custom_api_handler {
 };
 static struct custom_api_handler *s_custom_handlers;
 
+struct attribute s_DO_attributes[] = {
+  {"sampletime", "int", NULL, offsetof(struct DO, sampletime), 0, false},
+  {"nighonly", "bool", NULL, offsetof(struct DO, nighonly), 0, false},
+  {"docontrol", "bool", NULL, offsetof(struct DO, docontrol), 0, false},
+  {"KD", "double", NULL, offsetof(struct DO, KD), 0, false},
+  {"KI", "double", NULL, offsetof(struct DO, KI), 0, false},
+  {"KP", "double", NULL, offsetof(struct DO, KP), 0, false},
+  {"setpoint", "double", NULL, offsetof(struct DO, setpoint), 0, false},
+  {NULL, NULL, NULL, 0, 0, false}
+};
 struct attribute s_modbInverter_attributes[] = {
   {"refresh_rate", "int", NULL, offsetof(struct modbInverter, refresh_rate), 0, false},
   {"InverterAddress", "int", NULL, offsetof(struct modbInverter, InverterAddress), 0, false},
@@ -405,6 +415,7 @@ struct attribute s_sysset_attributes[] = {
   {NULL, NULL, NULL, 0, 0, false}
 };
 
+struct apihandler_data s_apihandler_DO = {{"DO", "data", false, 0, 0, 0UL}, s_DO_attributes, sizeof(struct DO), (void (*)(void *)) glue_get_DO, (void (*)(void *)) glue_set_DO};
 struct apihandler_data s_apihandler_modbInverter = {{"modbInverter", "data", false, 0, 0, 0UL}, s_modbInverter_attributes, sizeof(struct modbInverter), (void (*)(void *)) glue_get_modbInverter, (void (*)(void *)) glue_set_modbInverter};
 struct apihandler_data s_apihandler_modbSensors = {{"modbSensors", "data", false, 0, 0, 0UL}, s_modbSensors_attributes, sizeof(struct modbSensors), (void (*)(void *)) glue_get_modbSensors, (void (*)(void *)) glue_set_modbSensors};
 struct apihandler_data s_apihandler_modbBattery = {{"modbBattery", "data", false, 0, 0, 0UL}, s_modbBattery_attributes, sizeof(struct modbBattery), (void (*)(void *)) glue_get_modbBattery, (void (*)(void *)) glue_set_modbBattery};
@@ -417,6 +428,7 @@ struct apihandler_data s_apihandler_system = {{"system", "data", false, 0, 0, 0U
 struct apihandler_data s_apihandler_sysset = {{"sysset", "data", false, 0, 0, 0UL}, s_sysset_attributes, sizeof(struct sysset), (void (*)(void *)) glue_get_sysset, (void (*)(void *)) glue_set_sysset};
 
 static struct apihandler *s_apihandlers[] = {
+  (struct apihandler *) &s_apihandler_DO,
   (struct apihandler *) &s_apihandler_modbInverter,
   (struct apihandler *) &s_apihandler_modbSensors,
   (struct apihandler *) &s_apihandler_modbBattery,
@@ -989,10 +1001,22 @@ static void http_ev_handler(struct mg_connection *c, int ev, void *ev_data) {
 
   if (ev == MG_EV_HTTP_MSG) {
     // Show this request
+    int len = 0, spaces = 0;
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-    MG_DEBUG(("%lu %.*s %.*s %lu -> %.*s %lu", c->id, hm->method.len,
-              hm->method.buf, hm->uri.len, hm->uri.buf, hm->body.len,
-              c->send.len > 15 ? 3 : 0, &c->send.buf[9], c->send.len));
+    struct mg_http_message tmp;
+    memset(&tmp, 0, sizeof(tmp));
+    len = mg_http_parse((char *) c->send.buf, c->send.len, &tmp);
+    if (len < 0 || (size_t) len > c->send.len) len = c->send.len;
+    while ((size_t) (len + spaces) < c->send.len &&
+           (size_t) spaces < c->send.len &&
+           (c->send.buf[c->send.len - spaces - 1] == '\r' ||
+            c->send.buf[c->send.len - spaces - 1] == '\n'))
+      spaces++;
+    MG_DEBUG(("%lu %.*s %.*s %.*s: %lu %.*s -> %lu %.*s", c->id, hm->method.len,
+              hm->method.buf, hm->uri.len, hm->uri.buf,
+              c->send.len > 15 ? 3 : 0, &c->send.buf[9], hm->body.len,
+              hm->body.len, hm->body.buf, c->send.len - len,
+              c->send.len - len - spaces, c->send.buf + len));
     if (c->data[0] == CONN_HANDLED) {
       c->data[0] = 0;
       c->is_resp = 0;
@@ -1108,6 +1132,48 @@ void mongoose_set_sntp_server(const char *url) {
 }
 #endif  // WIZARD_ENABLE_SNTP
 
+#if WIZARD_DNS_TYPE == 1
+static char s_dns_server[128];
+#elif WIZARD_DNS_TYPE == 2
+g_mgr.dns4.url = WIZARD_DNS_URL;
+#endif
+
+#if MG_ENABLE_TCPIP && WIZARD_ENABLE_WIFI
+static void wifi_event_handler(struct mg_tcpip_if *ifp, int ev, void *ev_data);
+#endif
+
+#if MG_ENABLE_TCPIP
+static void mif_fn(struct mg_tcpip_if *ifp, int ev, void *ev_data) {
+  if (ev == MG_TCPIP_EV_ST_CHG) {
+    MG_VERBOSE(("State change: %u", *(uint8_t *) ev_data));
+    if (*(uint8_t *) ev_data == MG_TCPIP_STATE_READY) {
+      // TODO(): Fire a READY event to (re)start connections
+    } else if (*(uint8_t *) ev_data == MG_TCPIP_STATE_DOWN) {
+      // TODO(): Fire a DOWN event on link down ?
+    }
+  }
+#if WIZARD_DNS_TYPE == 1
+  else if (ev == MG_TCPIP_EV_DHCP_DNS) {
+    mg_snprintf(s_dns_server, sizeof(s_dns_server), "udp://%M:53", mg_print_ip4,
+                (uint32_t *) ev_data);
+    ifp->mgr->dns4.url = s_dns_server;
+    MG_DEBUG(("Set DNS to %s", ifp->mgr->dns4.url));
+  }
+#endif
+#if WIZARD_ENABLE_SNTP && WIZARD_SNTP_TYPE == 1
+  else if (ev == MG_TCPIP_EV_DHCP_SNTP) {
+    mg_snprintf(s_sntp_server, sizeof(s_sntp_server), "udp://%M:123",
+                mg_print_ip4, (uint32_t *) ev_data);
+    MG_DEBUG(("Set SNTP to %s", s_sntp_server));
+  }
+#endif
+#if MG_ENABLE_TCPIP && WIZARD_ENABLE_WIFI
+  wifi_event_handler(ifp, ev, ev_data);
+#endif
+  (void) ifp;
+}
+#endif
+
 #if WIZARD_ENABLE_MQTT
 static struct mongoose_mqtt_handlers s_mqtt_handlers = {
     glue_mqtt_connect, glue_mqtt_on_connect, glue_mqtt_on_message,
@@ -1131,6 +1197,8 @@ static void mqtt_event_handler(struct mg_connection *c, int ev, void *ev_data) {
 static void mqtt_timer(void *arg) {
   if (g_mqtt_conn == NULL) {
     g_mqtt_conn = s_mqtt_handlers.connect_fn(mqtt_event_handler);
+  } else {
+    mg_mqtt_ping(g_mqtt_conn);
   }
   (void) arg;
 }
@@ -1287,9 +1355,51 @@ void glue_mdns_update_name(const char *newname) {
 }
 #endif  // WIZARD_ENABLE_MDNS
 
+#if MG_ENABLE_TCPIP && WIZARD_ENABLE_WIFI
+static struct mongoose_wifi_handlers s_wifi_handlers = {
+    glue_wifi_on_connect, glue_wifi_on_disconnect, glue_wifi_on_connect_error,
+    glue_wifi_on_scan_result, glue_wifi_on_scan_end};
+
+static void wifi_event_handler(struct mg_tcpip_if *ifp, int ev, void *ev_data) {
+  if (ev == MG_TCPIP_EV_ST_CHG) {
+    // Keep these separate from the main interface handler,
+    // to support other Wi-Fi implementations that don't use our TCP/IP stack
+    // (e.g.: ESP32) in the future
+    if (*(uint8_t *) ev_data == MG_TCPIP_STATE_READY) {
+      s_wifi_handlers.on_connect_fn(ifp);
+    } else if (*(uint8_t *) ev_data == MG_TCPIP_STATE_DOWN) {
+      s_wifi_handlers.on_disconnect_fn(ifp);
+    }
+  } else if (ev == MG_TCPIP_EV_WIFI_CONNECT_ERR) {
+    s_wifi_handlers.on_connect_error_fn(ifp);
+  } else if (ev == MG_TCPIP_EV_WIFI_SCAN_RESULT) {
+    struct mg_wifi_scan_bss_data *bss =
+        (struct mg_wifi_scan_bss_data *) ev_data;
+    s_wifi_handlers.on_scan_result_fn(ifp, bss);
+  } else if (ev == MG_TCPIP_EV_WIFI_SCAN_END) {
+    s_wifi_handlers.on_scan_end_fn(ifp);
+  }
+}
+
+void mongoose_set_wifi_handlers(struct mongoose_wifi_handlers *h) {
+  if (h->on_connect_fn) s_wifi_handlers.on_connect_fn = h->on_connect_fn;
+  if (h->on_disconnect_fn)
+    s_wifi_handlers.on_disconnect_fn = h->on_disconnect_fn;
+  if (h->on_connect_error_fn)
+    s_wifi_handlers.on_connect_error_fn = h->on_connect_error_fn;
+  if (h->on_scan_result_fn)
+    s_wifi_handlers.on_scan_result_fn = h->on_scan_result_fn;
+  if (h->on_scan_end_fn) s_wifi_handlers.on_scan_end_fn = h->on_scan_end_fn;
+}
+#endif  // WIZARD_ENABLE_WIFI
+
 void mongoose_init(void) {
   mg_mgr_init(&g_mgr);      // Initialise event manager
   mg_log_set(MG_LL_DEBUG);  // Set log level to debug
+
+#if MG_ENABLE_TCPIP
+  g_mgr.ifp->fn = mif_fn;  // add interface event handler
+#endif
 
 #if WIZARD_ENABLE_HTTP
   MG_INFO(("Starting HTTP listener"));
@@ -1305,13 +1415,10 @@ void mongoose_init(void) {
   mg_timer_add(&g_mgr, 1000, MG_TIMER_REPEAT, sntp_timer, &g_mgr);
 #endif
 
-#if WIZARD_DNS_TYPE == 2
-  g_mgr.dns4.url = WIZARD_DNS_URL;
-#endif
-
 #if WIZARD_ENABLE_MQTT
   MG_INFO(("Starting MQTT reconnection timer"));
-  mg_timer_add(&g_mgr, 1000, MG_TIMER_REPEAT, mqtt_timer, &g_mgr);
+  mg_timer_add(&g_mgr, 5000, MG_TIMER_RUN_NOW | MG_TIMER_REPEAT, mqtt_timer,
+               &g_mgr);
 #endif
 
 #if WIZARD_ENABLE_MODBUS

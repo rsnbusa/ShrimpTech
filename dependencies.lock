@@ -19,6 +19,13 @@ dependencies:
       registry_url: https://components.espressif.com/
       type: service
     version: 1.1.0
+  hayschan/autopid_for_esp_idf:
+    component_hash: abb01ee57353d22df70c27840ddec00b90544540c9a78ec18932737d7fbb7878
+    dependencies: []
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 1.0.2
   idf:
     source:
       type: idf
@@ -39,8 +46,9 @@ dependencies:
 direct_dependencies:
 - espressif/esp-modbus
 - espressif/esp_lcd_sh1107
+- hayschan/autopid_for_esp_idf
 - lvgl/lvgl
 - mb_example_common
-manifest_hash: 18ea644016440027d82ce5b2cd6a3d474e0e1316551b3b71f5caccd53c3cf82a
+manifest_hash: d9dbc4973d0a8278a6e418acb67fb275b32f90ddc875b3aa04b4efc07c5fa0e3
 target: esp32s3
 version: 2.0.0

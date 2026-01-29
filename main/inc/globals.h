@@ -335,4 +335,5 @@ EXTERN pvPanel_t pvPanelData;
 EXTERN sensor_t sensorData;
 // EXTERN wschedule_t scheduleData;
 
+EXTERN double doValue, setPoint, outputVal,KP,KI,KD;
 #endif // MAIN_GLOBALS_H
