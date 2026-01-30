@@ -73,6 +73,7 @@ void battery_task(void *pArg);
 void panels_task(void *pArg);
 void energy_task(void *pArg);
 void start_webserver(void *pArg);
+void PIDController(void *pArg);
 void generic_modbus_task(void *pArg);
 void print_energy_data(void* energy,  int *errors,char *color,int numerrs);
 void print_battery_data(void* batteryData, int *errors,char *color,int numerrs);

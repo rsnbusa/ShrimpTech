@@ -2022,7 +2022,8 @@ void root_sntpget(void *pArg)
         update_system_time_tracking(now);
 
         xTaskCreate(&start_schedule_timers,"sched",1024*10,NULL, 5, &scheduleHandle); 	       
-
+        if(theConf.doParms.docontrol)
+            xTaskCreate(&PIDController,"PID",1024*10,NULL, 5, NULL); 	            // start the {PID} task  
 
         start_blower_if_ready();
     }
@@ -5217,6 +5218,8 @@ void start_schedule_timers(void * pArg)
             for (ck_d = day_offset; ck_d < theConf.profiles[0].cycle[ck].duration; ck_d++)
             {
                 // Process horarios (hourly schedules) in day
+                time(&nows);        // get todays new time or it will use the one when we STARTED the SCHEDULE process
+
                 for (int ck_h = 0; ck_h < theConf.profiles[0].cycle[ck].numHorarios; ck_h++)
                 {
                     if(ck_h==0)
@@ -5227,14 +5230,6 @@ void start_schedule_timers(void * pArg)
                 // Day complete, wait and cleanup
                 uint8_t newhour=theConf.profiles[0].cycle[ck+1].horarios[0].hourStart; // just to avoid warning
                 uint32_t wait_next_day= handle_day_end(newhour);        // the first hour of next day. boundry of end fo cycles later
-
-                // uint32_t wait_next_day=handle_day_end(nows);
-
-                // ... maybe not used anymore
-                // theConf.work_day = ck_d;
-                // theConf.work_cycle = ck;
-                // theConf.dayCycle++;
-                write_to_flash();
 
                 if ((theConf.debug_flags >> dSCH) & 1U)
                     ESP_LOGI(TAG, "%sSave day %d", DBG_SCH, theConf.dayCycle);
@@ -5475,14 +5470,15 @@ void PIDController(void *pArg)
 {
     time_t now;
     struct tm timeinfo;
+    bool logged=false;
 
     // PID settings and gains
     setPoint=theConf.doParms.setpoint; // Desired DO setpoint
     KP = theConf.doParms.KP; // Proportional gain
     KI = theConf.doParms.KI; // Integral gain
     KD = theConf.doParms.KD; // Derivative gain
-    ESP_LOGI(TAG,"PID Controller Task Started SetPoint %.4f Kp %.4f KI %.4f KD %.4f Sample %d",setPoint,KP,KI,KD,
-            theConf.doParms.sampletime);
+    ESP_LOGW(TAG,"PID Controller Task Started SetPoint %.4f Kp %.4f KI %.4f KD %.4f Sample %d Night-Only: %s",setPoint,KP,KI,KD,
+            theConf.doParms.sampletime,theConf.doParms.nighonly ? "Yes" : "No");
 // setGains(double Kp, double Ki, double Kd);
     AutoPID myPID(&doValue, &setPoint, &outputVal, OUTPUT_MIN, OUTPUT_MAX, KP, KI, KD); // Create an AutoPID object
     myPID.setBangBang(theConf.doParms.setpoint-1.0,theConf.doParms.setpoint+1.0); // Set bang-bang control thresholds
@@ -5494,10 +5490,12 @@ void PIDController(void *pArg)
         localtime_r(&now, &timeinfo);
         if(theConf.doParms.nighonly)
         {
-            if(timeinfo.tm_hour<18)
+            if(timeinfo.tm_hour>6 && timeinfo.tm_hour<18)
             {
-                if ((theConf.debug_flags >> dDO) & 1U) 
+                if (((theConf.debug_flags >> dDO) & 1U) && !logged) {
                     ESP_LOGI(TAG, "Night Only DO Control Disabled Now %02d:%02d",timeinfo.tm_hour,timeinfo.tm_min);
+                    logged=true;
+                }
                 vTaskDelay(pdMS_TO_TICKS(60000)); // Delay for a short period
                 goto denuevo;
             }
@@ -5689,8 +5687,7 @@ sizeof(theConf) );
     xTaskCreate(&root_timer,"reptimer",1024*8,NULL, 5, NULL); 	        
     xTaskCreate(&rs485_task_manager,"modbus",1024*10,NULL, 5, NULL); 	            // start the modbus task  
     // printf("Active %d\n",theConf.doParms.docontrol); 
-    if(theConf.doParms.docontrol)
-        xTaskCreate(&PIDController,"PID",1024*10,NULL, 5, NULL); 	            // start the {PID} task   
+ 
     // delay(2000);  //used when debugging modbus to test just modbus without starting mesh/wifi
     // launch_sensors();
             // start the modbus task   
