@@ -87,7 +87,8 @@ extern "C" {
 #include "driver/gpio.h"
 #include "driver/i2c_master.h"
 #include "driver/uart.h"
-
+#include "onewire_bus.h"
+#include "ds18b20.h"
 // ============================================================================
 // ESP-IDF LCD
 // ============================================================================

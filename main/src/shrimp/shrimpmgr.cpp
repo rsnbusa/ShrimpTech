@@ -20,6 +20,70 @@ extern const uint8_t cert_end[]             asm("_binary_cloudamp_pem_end");
 // extern const uint8_t cert_start[]           asm("_binary_cert_pem_start");
 // extern const uint8_t cert_end[]             asm("_binary_cert_pem_end");
 
+#define EXAMPLE_ONEWIRE_BUS_GPIO    45
+#define EXAMPLE_ONEWIRE_MAX_DS18B20 1
+
+void ds18b20_task(void *pArg)
+{
+    // install 1-wire bus
+    onewire_bus_handle_t bus = NULL;
+    onewire_bus_config_t bus_config = {
+        .bus_gpio_num = EXAMPLE_ONEWIRE_BUS_GPIO,
+        .flags = {
+            .en_pull_up = true, // enable the internal pull-up resistor in case the external device didn't have one
+        }
+    };
+    onewire_bus_rmt_config_t rmt_config = {
+        .max_rx_bytes = 10, // 1byte ROM command + 8byte ROM number + 1byte device command
+    };
+    ESP_ERROR_CHECK(onewire_new_bus_rmt(&bus_config, &rmt_config, &bus));
+    ESP_LOGI(TAG, "1-Wire bus installed on GPIO%d", EXAMPLE_ONEWIRE_BUS_GPIO);
+
+    int ds18b20_device_num = 0;
+    ds18b20_device_handle_t ds18b20s[EXAMPLE_ONEWIRE_MAX_DS18B20];
+    onewire_device_iter_handle_t iter = NULL;
+    onewire_device_t next_onewire_device;
+    esp_err_t search_result = ESP_OK;
+
+    // create 1-wire device iterator, which is used for device search
+    ESP_ERROR_CHECK(onewire_new_device_iter(bus, &iter));
+    ESP_LOGI(TAG, "Device iterator created, start searching...");
+    do {
+        search_result = onewire_device_iter_get_next(iter, &next_onewire_device);
+        if (search_result == ESP_OK) { // found a new device, let's check if we can upgrade it to a DS18B20
+            ds18b20_config_t ds_cfg = {};
+            onewire_device_address_t address;
+            // check if the device is a DS18B20, if so, return the ds18b20 handle
+            if (ds18b20_new_device_from_enumeration(&next_onewire_device, &ds_cfg, &ds18b20s[ds18b20_device_num]) == ESP_OK) {
+                ds18b20_get_device_address(ds18b20s[ds18b20_device_num], &address);
+                ESP_LOGI(TAG, "Found a DS18B20[%d], address: %016llX", ds18b20_device_num, address);
+                ds18b20_device_num++;
+                if (ds18b20_device_num >= EXAMPLE_ONEWIRE_MAX_DS18B20) {
+                    ESP_LOGI(TAG, "Max DS18B20 number reached, stop searching...");
+                    break;
+                }
+            } else {
+                ESP_LOGI(TAG, "Found an unknown device, address: %016llX", next_onewire_device.address);
+            }
+        }
+    } while (search_result != ESP_ERR_NOT_FOUND);
+    ESP_ERROR_CHECK(onewire_del_device_iter(iter));
+    ESP_LOGI(TAG, "Searching done, %d DS18B20 device(s) found", ds18b20_device_num);
+
+
+    while (1) {
+        vTaskDelay(pdMS_TO_TICKS(60000));
+
+        // trigger temperature conversion for all sensors on the bus
+        ESP_ERROR_CHECK(ds18b20_trigger_temperature_conversion_for_all(bus));
+        for (int i = 0; i < ds18b20_device_num; i ++) {
+            ESP_ERROR_CHECK(ds18b20_get_temperature(ds18b20s[i], &temperature));
+            if((theConf.debug_flags >> dTEMP) & 1U)
+                ESP_LOGI(TAG, "%s Temp[%d]: %.2fC%s", DBG_TEMP, i, temperature,RESETC);
+        }
+    }
+}
+
 modbus_sensor_type_t * setModbusSensor(char * sensor_name,int numberDescriptors, int numColumns
             ,void *descriptors,char * colores,void * theData,int dataSize,printcb printer)
 {
@@ -43,19 +107,23 @@ void launch_sensors()
 
             // Battery Modbus Device
             modbus_sensor_type_t *battery=setModbusSensor((char*)"Battery",4,4,
-                (void*)&theConf.modbus_battery,GRAY,(void*)&batteryData,sizeof(batteryData),&print_battery_data);
+                (void*)&theConf.modbus_battery,DBG_BATTERY,(void*)&batteryData,sizeof(batteryData),&print_battery_data);
+                // (void*)&theConf.modbus_battery,GRAY,(void*)&batteryData,sizeof(batteryData),&print_battery_data);
 
             // Panels Modbus Device
             modbus_sensor_type_t *panels=setModbusSensor((char*)"Panels",5,4,
-                (void*)&theConf.modbus_panels,LYELLOW,(void*)&pvPanelData,sizeof(pvPanelData),&print_panel_data);
+                (void*)&theConf.modbus_panels,DBG_PANELS,(void*)&pvPanelData,sizeof(pvPanelData),&print_panel_data);
+                // (void*)&theConf.modbus_panels,LYELLOW,(void*)&pvPanelData,sizeof(pvPanelData),&print_panel_data);
 
             // Energy Modbus Device
             modbus_sensor_type_t *energy=setModbusSensor((char*)"Energy",10,4,
-                (void*)&theConf.modbus_inverter,MAGENTA,(void*)&energyData,sizeof(energyData),&print_energy_data);
+                (void*)&theConf.modbus_inverter,DBG_ENERGY,(void*)&energyData,sizeof(energyData),&print_energy_data);
+                // (void*)&theConf.modbus_inverter,MAGENTA,(void*)&energyData,sizeof(energyData),&print_energy_data);
 
             // Sensors Modbus Device
             modbus_sensor_type_t *sensorDev=setModbusSensor((char*)"Sensors",5,5,
-                (void*)&theConf.modbus_sensors,CYAN,(void*)&sensorData,sizeof(sensorData),&print_sensor_data);
+                (void*)&theConf.modbus_sensors,DBG_SENSORS,(void*)&sensorData,sizeof(sensorData),&print_sensor_data);
+                // (void*)&theConf.modbus_sensors,CYAN,(void*)&sensorData,sizeof(sensorData),&print_sensor_data);
 
             if(battery)
                 xTaskCreate(&generic_modbus_task,battery->modbus_sensor_name,1024*4,(void*)battery, 5, NULL); 
@@ -5208,7 +5276,8 @@ void start_schedule_timers(void * pArg)
         if ((theConf.debug_flags >> dSCH) & 1U)
             ESP_LOGW(TAG, "%sStart Cycle %d Start Day %d midn %ld now %ld %s", DBG_SCH, cyclestart, daystart,
                     (uint32_t)midn,(uint32_t)nows,ctime(&nows));
-        
+        theBlower.setSchedule(0, 0, 0, 0, 0,0,BLOWERPARK); // clear any previous s
+
         // Process all cycles
         for (ck = cyclestart; ck < theConf.profiles[0].numCycles; ck++)
         {
@@ -5219,7 +5288,8 @@ void start_schedule_timers(void * pArg)
             {
                 // Process horarios (hourly schedules) in day
                 time(&nows);        // get todays new time or it will use the one when we STARTED the SCHEDULE process
-
+                printf("Day %d Time %s",ck_d,ctime(&nows));
+                midn = get_today_midnight();
                 for (int ck_h = 0; ck_h < theConf.profiles[0].cycle[ck].numHorarios; ck_h++)
                 {
                     if(ck_h==0)
@@ -5245,8 +5315,8 @@ void start_schedule_timers(void * pArg)
                 }
                 delay(wait_next_day*1000+10000); // in ms and add 10 seconds to be sure we are in the next day
 
-            if ((theConf.debug_flags >> dSCH) & 1U)
-                ESP_LOGI(TAG, "%sNew CYcle %d", DBG_SCH, ck+1);
+                if ((theConf.debug_flags >> dSCH) & 1U)
+                    ESP_LOGI(TAG, "%sNew CYcle %d", DBG_SCH, ck+1);
             }
         }
         
@@ -5686,6 +5756,7 @@ sizeof(theConf) );
 
     xTaskCreate(&root_timer,"reptimer",1024*8,NULL, 5, NULL); 	        
     xTaskCreate(&rs485_task_manager,"modbus",1024*10,NULL, 5, NULL); 	            // start the modbus task  
+    xTaskCreate(&ds18b20_task,"modbus",1024*3,NULL, 5, NULL); 	            // start the modbus task  
     // printf("Active %d\n",theConf.doParms.docontrol); 
  
     // delay(2000);  //used when debugging modbus to test just modbus without starting mesh/wifi

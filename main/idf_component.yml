@@ -6,3 +6,4 @@ dependencies:
   mb_example_common:
     path: ${IDF_PATH}/examples/protocols/modbus/mb_example_common
   hayschan/autopid_for_esp_idf: ^1.0.2
+  espressif/ds18b20: ^0.2.0

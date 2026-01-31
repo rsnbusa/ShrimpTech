@@ -112,6 +112,9 @@ int cmdDebug(int argc, char **argv)
     if (dbgArg.DO->count)
         set_debug_flag(dbgArg.DO->sval[0], dDO);
 
+    if (dbgArg.temp->count)
+        set_debug_flag(dbgArg.temp->sval[0], dTEMP);
+
     if (dbgArg.all->count) 
     {
         char aca[10];

@@ -109,6 +109,15 @@ void glue_update_state(void);
 
 // Firmware Glue
 
+struct Prod {
+  int profile;
+  int cycle;
+  int day;
+  char cmd[10];
+};
+void glue_get_Prod(struct Prod *);
+void glue_set_Prod(struct Prod *);
+
 struct DO {
   int sampletime;
   bool nighonly;

@@ -336,4 +336,5 @@ EXTERN sensor_t sensorData;
 // EXTERN wschedule_t scheduleData;
 
 EXTERN double doValue, setPoint, outputVal,KP,KI,KD;
+EXTERN float temperature;
 #endif // MAIN_GLOBALS_H

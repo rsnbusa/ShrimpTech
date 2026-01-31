@@ -5,6 +5,14 @@
 // Default mock implementation of the API callbacks
 
 #include "mongoose_glue.h"
+struct Prod s_Prod = {1, 1, 1, "Start"};
+void glue_get_Prod(struct Prod *data) {
+  *data = s_Prod;  // Sync with your device
+}
+void glue_set_Prod(struct Prod *data) {
+  s_Prod = *data; // Sync with your device
+}
+
 struct DO s_DO = {10, false, false, 1.5, 0.05, 1.1, 5.1};
 void glue_get_DO(struct DO *data) {
   *data = s_DO;  // Sync with your device

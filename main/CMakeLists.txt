@@ -164,6 +164,10 @@ idf_component_register(
         app_update
         bt
         console
+        
+        # Managed components
+        espressif__onewire_bus
+        espressif__ds18b20
     
 )
 

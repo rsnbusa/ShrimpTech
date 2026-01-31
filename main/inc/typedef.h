@@ -137,7 +137,8 @@ enum {
     dMODBUS,
     dLIMITS,
     dRS485,
-    dDO
+    dDO,
+    dTEMP
 } debug_flags_t;
 
 typedef enum {
@@ -229,6 +230,7 @@ typedef struct dbg {
     struct arg_str *limits;    // limits tracking
     struct arg_str *rs485;     // RS485 debugging
     struct arg_str *DO;        // Dissolved Oxygen debugging
+    struct arg_str *temp;      // Temperature debugging
     struct arg_str *all;       // All commands on/off
     struct arg_end *end;
 } dbg_t;

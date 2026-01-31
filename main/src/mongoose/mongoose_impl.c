@@ -149,6 +149,13 @@ struct custom_api_handler {
 };
 static struct custom_api_handler *s_custom_handlers;
 
+struct attribute s_Prod_attributes[] = {
+  {"profile", "int", NULL, offsetof(struct Prod, profile), 0, false},
+  {"cycle", "int", NULL, offsetof(struct Prod, cycle), 0, false},
+  {"day", "int", NULL, offsetof(struct Prod, day), 0, false},
+  {"cmd", "string", NULL, offsetof(struct Prod, cmd), 10, false},
+  {NULL, NULL, NULL, 0, 0, false}
+};
 struct attribute s_DO_attributes[] = {
   {"sampletime", "int", NULL, offsetof(struct DO, sampletime), 0, false},
   {"nighonly", "bool", NULL, offsetof(struct DO, nighonly), 0, false},
@@ -415,6 +422,7 @@ struct attribute s_sysset_attributes[] = {
   {NULL, NULL, NULL, 0, 0, false}
 };
 
+struct apihandler_data s_apihandler_Prod = {{"Prod", "data", false, 0, 0, 0UL}, s_Prod_attributes, sizeof(struct Prod), (void (*)(void *)) glue_get_Prod, (void (*)(void *)) glue_set_Prod};
 struct apihandler_data s_apihandler_DO = {{"DO", "data", false, 0, 0, 0UL}, s_DO_attributes, sizeof(struct DO), (void (*)(void *)) glue_get_DO, (void (*)(void *)) glue_set_DO};
 struct apihandler_data s_apihandler_modbInverter = {{"modbInverter", "data", false, 0, 0, 0UL}, s_modbInverter_attributes, sizeof(struct modbInverter), (void (*)(void *)) glue_get_modbInverter, (void (*)(void *)) glue_set_modbInverter};
 struct apihandler_data s_apihandler_modbSensors = {{"modbSensors", "data", false, 0, 0, 0UL}, s_modbSensors_attributes, sizeof(struct modbSensors), (void (*)(void *)) glue_get_modbSensors, (void (*)(void *)) glue_set_modbSensors};
@@ -428,6 +436,7 @@ struct apihandler_data s_apihandler_system = {{"system", "data", false, 0, 0, 0U
 struct apihandler_data s_apihandler_sysset = {{"sysset", "data", false, 0, 0, 0UL}, s_sysset_attributes, sizeof(struct sysset), (void (*)(void *)) glue_get_sysset, (void (*)(void *)) glue_set_sysset};
 
 static struct apihandler *s_apihandlers[] = {
+  (struct apihandler *) &s_apihandler_Prod,
   (struct apihandler *) &s_apihandler_DO,
   (struct apihandler *) &s_apihandler_modbInverter,
   (struct apihandler *) &s_apihandler_modbSensors,
