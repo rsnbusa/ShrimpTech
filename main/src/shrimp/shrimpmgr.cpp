@@ -23,6 +23,29 @@ extern const uint8_t cert_end[]             asm("_binary_cloudamp_pem_end");
 #define EXAMPLE_ONEWIRE_BUS_GPIO    45
 #define EXAMPLE_ONEWIRE_MAX_DS18B20 1
 
+
+
+/**
+ * @brief Format current time for log entry
+ * 
+ * Gets current time and formats it without trailing newline.
+ * 
+ * @param time_buf Buffer to store formatted time (must be at least 26 chars)
+ * @return Pointer to formatted time string, or NULL if ctime fails
+ */
+static char* format_log_time(time_t now,char *time_buf, size_t buf_size)
+{
+    char *time_str = ctime(&now);
+    
+    if (time_str && buf_size > 0) {
+        strncpy(time_buf, time_str, buf_size - 1);
+        time_buf[buf_size - 1] = '\0';
+        time_buf[strcspn(time_buf, "\n")] = '\0';  // Remove newline
+        return time_buf;
+    }
+    return NULL;
+}
+
 void ds18b20_task(void *pArg)
 {
     // install 1-wire bus
@@ -1851,33 +1874,12 @@ void static mesh_manager(mesh_addr_t *from, mesh_data_t *data)
 }
 
 
-/**
- * @brief Format current time for log entry
- * 
- * Gets current time and formats it without trailing newline.
- * 
- * @param time_buf Buffer to store formatted time (must be at least 26 chars)
- * @return Pointer to formatted time string, or NULL if ctime fails
- */
-static char* format_log_time(char *time_buf, size_t buf_size)
-{
-    time_t now = time(NULL);
-    char *time_str = ctime(&now);
-    
-    if (time_str && buf_size > 0) {
-        strncpy(time_buf, time_str, buf_size - 1);
-        time_buf[buf_size - 1] = '\0';
-        time_buf[strcspn(time_buf, "\n")] = '\0';  // Remove newline
-        return time_buf;
-    }
-    return NULL;
-}
 
 err_t write_log(char *LTAG, char *que)
 {
     char time_buf[32];
-    
-    char *time_str = format_log_time(time_buf, sizeof(time_buf));
+    time_t now = time(NULL);
+    char *time_str = format_log_time(now,time_buf, sizeof(time_buf));
     if (!time_str) {
         ESP_LOGE(TAG, "Failed to format log time");
         return ESP_FAIL;
@@ -4901,31 +4903,29 @@ static start_timer_ctx_t* create_timer_context(uint8_t cycle, uint8_t day, int h
  */
 static void handle_past_schedule_in_progress(time_t endtime, time_t now, int ck,int ck_day,int ck_h, int num_horarios)
 {
-    time_t remaining = (endtime - now)/theConf.test_timer_div;
+    uint32_t remaining = (uint32_t)(endtime - now)/theConf.test_timer_div*1000;
     bool is_last = (ck_h == num_horarios - 1);
     void* timer_id = is_last ? (void*)0xFFFFFFFF : (void*)vanTimersEnd;
     
     turn_blower_onOff(true);  // Ensure blower is on
     if ((theConf.debug_flags >> dSCH) & 1U) {
-        char time_str[30];
-        ctime_r(&endtime, time_str);
-        time_str[strcspn(time_str, "\n")] = '\0';
-        char time_str2[30];
-        ctime_r(&now, time_str2);
-        time_str2[strcspn(time_str2, "\n")] = '\0';
-        ESP_LOGI(TAG, "%sScheduling Ending in %ld ms(%s ) now %s - %ld", 
-                 DBG_SCH, (long)remaining * 1000 , time_str, (long)endtime, time_str2, (long)now);
+        char time_str[30],time_str2[30];
+        format_log_time(endtime, time_str, 30);
+        format_log_time(now, time_str2, 30);
+        ESP_LOGI(TAG, "%sScheduling Ending in %ld ms(%s | %llu) now %s - %llu", 
+                 DBG_SCH, remaining , time_str, endtime, time_str2, now);
     }  
     elapsed[vanTimersStart++] = time(NULL);     // consider now as start time since its started manually
     if(remaining<=0)
         return ;
 
-    end_timers[vanTimersEnd] = xTimerCreate(NULL, pdMS_TO_TICKS(remaining * 1000 ), 
+    end_timers[vanTimersEnd] = xTimerCreate(NULL, pdMS_TO_TICKS(remaining ), 
                                             pdFALSE, timer_id, blower_end);
     if (end_timers[vanTimersEnd]) {
         xTimerStart(end_timers[vanTimersEnd], 10);
         vanTimersEnd++;
-        theBlower.setSchedule(ck,ck_day,ck_h,theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart,theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen,theConf.profiles[0].cycle[ck].horarios[ck_h].pwmDuty,0); // clear any previous schedule in blower
+        // it was started above, so set the schedule in blower
+        theBlower.setSchedule(ck,ck_day,ck_h,theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart,theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen,theConf.profiles[0].cycle[ck].horarios[ck_h].pwmDuty,BLOWERON); // clear any previous schedule in blower
     }
 }
 
@@ -4958,8 +4958,8 @@ static bool validate_timer_delay(time_t delay_ms)
 static bool create_future_timers(time_t starttime, time_t endtime, time_t now,
                                  start_timer_ctx_t* ctx, int ck_h, int num_horarios)
 {
-    time_t start_delay = (starttime - now) / theConf.test_timer_div * 1000 ;
-    time_t end_delay = (endtime - now) / theConf.test_timer_div * 1000 ;
+    uint32_t start_delay = (uint32_t)(starttime - now) / theConf.test_timer_div * 1000 ;
+    uint32_t end_delay = (uint32_t)(endtime - now) / theConf.test_timer_div * 1000 ;
     
     if (!validate_timer_delay(start_delay) || !validate_timer_delay(end_delay)) {
         free(ctx);
@@ -4968,19 +4968,16 @@ static bool create_future_timers(time_t starttime, time_t endtime, time_t now,
     
     // Create start timer
     if ((theConf.debug_flags >> dSCH) & 1U) {
-        char time_str[30];
-        ctime_r(&starttime, time_str);
-        time_str[strcspn(time_str, "\n")] = '\0';
-        char time_str2[30];
-        ctime_r(&now, time_str2);
-        time_str2[strcspn(time_str2, "\n")] = '\0';
-        ESP_LOGI(TAG, "%sScheduling timer %d Start in %ld ms [ %s | %ld ] now [ %s | %ld ] Mux %ld", 
-                 DBG_SCH, vanTimersStart, (long)start_delay, time_str,long(starttime), time_str2,(long)now,theConf.test_timer_div);
+        char time_str[30],time_str2[30];
+        format_log_time(starttime,time_str,30);
+        format_log_time(now,time_str2,30);
+        ESP_LOGI(TAG, "%sScheduling timer %d Start in %ld ms [ %s | %llu ] now [ %s | %llu ] Mux %ld", 
+                 DBG_SCH, vanTimersStart, start_delay, time_str,starttime, time_str2,now,theConf.test_timer_div);
     }
     
     start_timers[vanTimersStart] = xTimerCreate(NULL, pdMS_TO_TICKS(start_delay),
                                                 pdFALSE, (void*)ctx, blower_start);
-    if (!start_timers[vanTimersStart]) {
+    if (start_timers[vanTimersStart]==NULL) {
         ESP_LOGE(MESH_TAG, "Start Timer not created %d", vanTimersStart);
         free(ctx);
         return true; // Continue despite error
@@ -4993,16 +4990,13 @@ static bool create_future_timers(time_t starttime, time_t endtime, time_t now,
                                            pdFALSE, timer_id, blower_end);
 
     if ((theConf.debug_flags >> dSCH) & 1U) {
-        char time_str[30];
-        ctime_r(&endtime, time_str);
-        time_str[strcspn(time_str, "\n")] = '\0';
-        char time_str2[30];
-        ctime_r(&now, time_str2);
-        time_str2[strcspn(time_str2, "\n")] = '\0';
-        ESP_LOGI(TAG, "%sScheduling Timer %d Ending in %ld ms [%s | %ld ] now %s | [ %ld Mux %ld ]", 
-                 DBG_SCH, vanTimersEnd, (long)end_delay, time_str, (long)endtime, time_str2, (long)now,theConf.test_timer_div);
+        char time_str[30],time_str2[30];
+        format_log_time(endtime,time_str,30);
+        format_log_time(now,time_str2,30);
+        ESP_LOGI(TAG, "%sScheduling Timer %d Ending in %ld ms [%s | %llu ] now %s | [ %llu Mux %ld ]", 
+                 DBG_SCH, vanTimersEnd, end_delay, time_str, endtime, time_str2, now,theConf.test_timer_div);
     }                                           
-    if (!end_timers[vanTimersEnd]) { 
+    if (end_timers[vanTimersEnd]==NULL) { 
         ESP_LOGE(MESH_TAG, "End Timer not created %d", vanTimersEnd);
         xTimerDelete(start_timers[vanTimersStart], 0);
         return true;

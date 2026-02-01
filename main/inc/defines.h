@@ -265,3 +265,27 @@
 #define BK_GRAY 						"\e[100m"
 
 
+// Future PCB Design ports/gpios esp32s3
+// FRAM SPI
+// #define SI                              (01)
+// #define SCLK                            (39)
+// #define CS                              (38)
+// #define SO                              (40)
+
+// OLED I2C
+// #define OLED_SDA                        (47)
+// #define OLED_SCL                        (21)
+
+// MAX485 RS485 1 and 2
+// #define RS485_1_RX                      (02)
+// #define RS485_1_TX                      (42)
+// #define RS485_1_RTS                     (19)
+// #define RS485_2_RX                      (4)
+// #define RS485_2_TX                      (5)
+// #define RS485_2_RTS                     (6)
+
+// LEDS
+// #define WIFILED                         (41)     
+// #define MRPM                            (48)
+// #define DS18B20                         (45)
+// #define DOORSENSOR                      (14)
