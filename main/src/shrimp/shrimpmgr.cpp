@@ -108,22 +108,18 @@ void launch_sensors()
             // Battery Modbus Device
             modbus_sensor_type_t *battery=setModbusSensor((char*)"Battery",4,4,
                 (void*)&theConf.modbus_battery,DBG_BATTERY,(void*)&batteryData,sizeof(batteryData),&print_battery_data);
-                // (void*)&theConf.modbus_battery,GRAY,(void*)&batteryData,sizeof(batteryData),&print_battery_data);
 
             // Panels Modbus Device
             modbus_sensor_type_t *panels=setModbusSensor((char*)"Panels",5,4,
                 (void*)&theConf.modbus_panels,DBG_PANELS,(void*)&pvPanelData,sizeof(pvPanelData),&print_panel_data);
-                // (void*)&theConf.modbus_panels,LYELLOW,(void*)&pvPanelData,sizeof(pvPanelData),&print_panel_data);
 
             // Energy Modbus Device
             modbus_sensor_type_t *energy=setModbusSensor((char*)"Energy",10,4,
                 (void*)&theConf.modbus_inverter,DBG_ENERGY,(void*)&energyData,sizeof(energyData),&print_energy_data);
-                // (void*)&theConf.modbus_inverter,MAGENTA,(void*)&energyData,sizeof(energyData),&print_energy_data);
 
             // Sensors Modbus Device
             modbus_sensor_type_t *sensorDev=setModbusSensor((char*)"Sensors",5,5,
                 (void*)&theConf.modbus_sensors,DBG_SENSORS,(void*)&sensorData,sizeof(sensorData),&print_sensor_data);
-                // (void*)&theConf.modbus_sensors,CYAN,(void*)&sensorData,sizeof(sensorData),&print_sensor_data);
 
             if(battery)
                 xTaskCreate(&generic_modbus_task,battery->modbus_sensor_name,1024*4,(void*)battery, 5, NULL); 
@@ -5549,7 +5545,13 @@ static void sync_schedule_with_mesh(const start_timer_ctx_t *start_timer_ctx)
     send_schedule_sync_to_mesh(json_msg);
 }
 
-// auto pid
+/**
+ * @brief PID Controller for Blower will be a task launch by the Configuration Setup options setup
+ *  ! launched by after we have the correc timer SNTP check that rioutine root_sntpget
+ * @param pArg is void 
+ * @return no return as it is a task
+ * the outputVal variable is global and used by the blower control task to set the blower speed via VFD
+ */
 void PIDController(void *pArg)  
 {
     time_t now;
@@ -5557,28 +5559,33 @@ void PIDController(void *pArg)
     bool logged=false;
 
     // PID settings and gains
-    setPoint=theConf.doParms.setpoint; // Desired DO setpoint
-    KP = theConf.doParms.KP; // Proportional gain
-    KI = theConf.doParms.KI; // Integral gain
-    KD = theConf.doParms.KD; // Derivative gain
-    ESP_LOGW(TAG,"PID Controller Task Started SetPoint %.4f Kp %.4f KI %.4f KD %.4f Sample %d Night-Only: %s",setPoint,KP,KI,KD,
+    setPoint=theConf.doParms.setpoint;          // Desired DO setpoint
+    KP = theConf.doParms.KP;                    // Proportional gain
+    KI = theConf.doParms.KI;                    // Integral gain
+    KD = theConf.doParms.KD;                    // Derivative gain
+
+    if (((theConf.debug_flags >> dDO) & 1U) && !logged)
+        ESP_LOGW(TAG,"PID Controller Task Started SetPoint %.4f Kp %.4f KI %.4f KD %.4f Sample %d Night-Only: %s",setPoint,KP,KI,KD,
             theConf.doParms.sampletime,theConf.doParms.nighonly ? "Yes" : "No");
-// setGains(double Kp, double Ki, double Kd);
+
+// setGains(double Kp, double Ki, double Kd);       // call this to set gains dynamcially according to the HOUR of the day
     AutoPID myPID(&doValue, &setPoint, &outputVal, OUTPUT_MIN, OUTPUT_MAX, KP, KI, KD); // Create an AutoPID object
     myPID.setBangBang(theConf.doParms.setpoint-1.0,theConf.doParms.setpoint+1.0); // Set bang-bang control thresholds
     myPID.setTimeStep(10000); // Set PID update interval to 10000ms
 
+    // MUST BE AWARE of DO reading delays from the sensor and if any error to handle this scenerio
+
     while (true) {
         denuevo:
-        time(&now);  
+        time(&now);                     // the nightonly parameter requires knowing the current time
         localtime_r(&now, &timeinfo);
-        if(theConf.doParms.nighonly)
+        if(theConf.doParms.nighonly)            
         {
             if(timeinfo.tm_hour>6 && timeinfo.tm_hour<18)
             {
                 if (((theConf.debug_flags >> dDO) & 1U) && !logged) {
                     ESP_LOGI(TAG, "Night Only DO Control Disabled Now %02d:%02d",timeinfo.tm_hour,timeinfo.tm_min);
-                    logged=true;
+                    logged=true;        // display thsi only once
                 }
                 vTaskDelay(pdMS_TO_TICKS(60000)); // Delay for a short period
                 goto denuevo;
@@ -5594,7 +5601,15 @@ void PIDController(void *pArg)
             else
                 KD=1.0; // night time
 
-        doValue=sensorData.DO; // get the current DO value from sensorsData structure
+        doValue=sensorData.DO; // get the current DO value from sensorsData structure that mantains all sensor readings
+        if (doValue==0){
+            if (((theConf.debug_flags >> dDO) & 1U)) 
+                ESP_LOGE(TAG, "DO reading is ZERO, cannot run PID");
+            vTaskDelay(pdMS_TO_TICKS(theConf.doParms.sampletime*60*1000)); // Delay for a short period
+            // shall revert to standard schedule operations for now just wait and retry 
+            // myPID.run will return max Output if DO is zero which is kinda OK but not ideal
+        }
+
         myPID.run(); // Call every loop, updates automatically at the set time interval
 
         // print at setpoint when at setpoint +-1 degree
@@ -5602,7 +5617,8 @@ void PIDController(void *pArg)
             if ((theConf.debug_flags >> dDO) & 1U) 
                 ESP_LOGI(TAG, "At setpoint");
         }
-        
+        // send the VFD the current outputVal to set blower speed
+        // VFDSetSpeed(outputVal); // to be implemented in blower control task
         if ((theConf.debug_flags >> dDO) & 1U) 
             ESP_LOGI(TAG, "KD: %.4f DO: %.2f, SetPoint: %.2f, Output: %.2f", KD,doValue, setPoint, outputVal); // Log the values
 
