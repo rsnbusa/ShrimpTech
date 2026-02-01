@@ -287,5 +287,9 @@
 // LEDS
 // #define WIFILED                         (41)     
 // #define MRPM                            (48)
-// #define DS18B20                         (45)
+// #define DS18B20                         (13) 
 // #define DOORSENSOR                      (14)
+
+// // RS232C
+// #define TXD_RS232                      TXDO
+// #define RXD_RS232                      RXDO
