@@ -4978,8 +4978,8 @@ static bool create_future_timers(time_t starttime, time_t endtime, time_t now,
         char time_str2[30];
         ctime_r(&now, time_str2);
         time_str2[strcspn(time_str2, "\n")] = '\0';
-        ESP_LOGI(TAG, "%sScheduling timer %d Start in %ldms %s / %ld now %s / %ld", 
-                 DBG_SCH, vanTimersStart, (long)start_delay, time_str,long(starttime), time_str2,(long)now);
+        ESP_LOGI(TAG, "%sScheduling timer %d Start in %ld ms [ %s | %ld ] now [ %s | %ld ] Mux %ld", 
+                 DBG_SCH, vanTimersStart, (long)start_delay, time_str,long(starttime), time_str2,(long)now,theConf.test_timer_div);
     }
     
     start_timers[vanTimersStart] = xTimerCreate(NULL, pdMS_TO_TICKS(start_delay),
@@ -5003,8 +5003,8 @@ static bool create_future_timers(time_t starttime, time_t endtime, time_t now,
         char time_str2[30];
         ctime_r(&now, time_str2);
         time_str2[strcspn(time_str2, "\n")] = '\0';
-        ESP_LOGI(TAG, "%sScheduling Timer %d Ending in %ld ms(%s / %ld) now %s / %ld", 
-                 DBG_SCH, vanTimersEnd, (long)end_delay, time_str, (long)endtime, time_str2, (long)now);
+        ESP_LOGI(TAG, "%sScheduling Timer %d Ending in %ld ms [%s | %ld ] now %s | [ %ld Mux %ld ]", 
+                 DBG_SCH, vanTimersEnd, (long)end_delay, time_str, (long)endtime, time_str2, (long)now,theConf.test_timer_div);
     }                                           
     if (!end_timers[vanTimersEnd]) { 
         ESP_LOGE(MESH_TAG, "End Timer not created %d", vanTimersEnd);
@@ -5105,20 +5105,34 @@ static bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, tim
  */
 static void cleanup_all_timers()
 {
-    for (int i = 0; i < vanTimersStart; i++) {
-        if(start_timers[i]!=0)
-            xTimerDelete(start_timers[i], 0);
-            start_timers[i]=0;
+    uint8_t deleted=0;
+    for (int i = 0; i < vanTimersStart; i++) 
+    {
+        if(xTimerIsTimerActive(start_timers[i]) == pdFALSE) 
+        {
+        // Timer has expired/fired, delete it
+            xTimerDelete(start_timers[i], portMAX_DELAY);
+            deleted++;
+        }
     }
-    for (int i = 0; i < vanTimersEnd; i++) {
-        if(end_timers[i]!=0)
-            xTimerDelete(end_timers[i], 0);
-            end_timers[i]=0;
+    if ((theConf.debug_flags >> dSCH) & 1U)
+        ESP_LOGI(TAG, "%sDeleted %d Start timers", DBG_SCH, deleted);
+
+    deleted=0;
+    for (int i = 0; i < vanTimersEnd; i++) 
+    {
+        if(xTimerIsTimerActive(end_timers[i]) == pdFALSE) 
+        {
+        // Timer has expired/fired, delete it
+            xTimerDelete(end_timers[i], portMAX_DELAY);
+            deleted++;
+        }
     }
     
+    if ((theConf.debug_flags >> dSCH) & 1U)
+        ESP_LOGI(TAG, "%sDeleted %d End timers", DBG_SCH, deleted);
+    
     vanTimersStart = vanTimersEnd = 0;
-    bzero(&start_timers, sizeof(start_timers));
-    bzero(&end_timers, sizeof(end_timers));
 }
 
 /**
@@ -5129,14 +5143,16 @@ static void cleanup_all_timers()
 static uint32_t handle_day_end(uint8_t nextHour)
 {
 
-    if (!xSemaphoreTake(scheduleSem, portMAX_DELAY)) { //wait for blower last timer 
+    if (!xSemaphoreTake(scheduleSem, portMAX_DELAY)) { //wait for blower last timer given by blower end
         return 0;
     }
     
+    cleanup_all_timers();
+
     if ((theConf.debug_flags >> dSCH) & 1U) {
         ESP_LOGI(TAG, "%sDay ended NH %d", DBG_SCH,nextHour);
     }
-    vanTimersEnd=vanTimersStart=0;
+    // vanTimersEnd=vanTimersStart=0;
     time_t current = time(NULL);
     struct tm *timeinfo = localtime(&current);
     uint8_t currentHour= timeinfo->tm_hour;
@@ -5174,8 +5190,6 @@ static uint32_t handle_day_end(uint8_t nextHour)
         ESP_LOGI(TAG, "%sMidnight %s", DBG_SCH, time_str1);
     }
     
-
-    cleanup_all_timers();
     return midnight - current;     //return time to wait for next day midnight 00:00:00
 }
 
@@ -5297,10 +5311,10 @@ void start_schedule_timers(void * pArg)
                     if (!process_horario(ck, ck_d, ck_h, midn, nows))
                         goto restart_schedule; // Timer validation failed, restart
                 }
-                // Day complete, wait and cleanup
+                // Day complete scheduled all timers, wait and cleanup
                 uint8_t newhour=theConf.profiles[0].cycle[ck+1].horarios[0].hourStart; // just to avoid warning
                 uint32_t wait_next_day= handle_day_end(newhour);        // the first hour of next day. boundry of end fo cycles later
-
+                // above will wait for scheduesemaphore to be free meaning last blower timer ended
                 if ((theConf.debug_flags >> dSCH) & 1U)
                     ESP_LOGI(TAG, "%sSave day %d", DBG_SCH, theConf.dayCycle);
                 
@@ -5328,7 +5342,7 @@ void start_schedule_timers(void * pArg)
         continue;
         
 restart_schedule:
-        cleanup_all_timers();
+        cleanup_all_timers();       // just in case
     }
 } 
 
