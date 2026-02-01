@@ -4993,8 +4993,8 @@ static bool create_future_timers(time_t starttime, time_t endtime, time_t now,
         char time_str[30],time_str2[30];
         format_log_time(endtime,time_str,30);
         format_log_time(now,time_str2,30);
-        ESP_LOGI(TAG, "%sScheduling Timer %d Ending in %ld ms [%s | %llu ] now %s | [ %llu Mux %ld ]", 
-                 DBG_SCH, vanTimersEnd, end_delay, time_str, endtime, time_str2, now,theConf.test_timer_div);
+        ESP_LOGI(TAG, "%sScheduling Timer %d Ending in %ld ms [%s | %llu ] now %s | [ %llu Mux %ld ] is Last %s", 
+                 DBG_SCH, vanTimersEnd, end_delay, time_str, endtime, time_str2, now,theConf.test_timer_div, is_last ? "YES" : "NO" );
     }                                           
     if (end_timers[vanTimersEnd]==NULL) { 
         ESP_LOGE(MESH_TAG, "End Timer not created %d", vanTimersEnd);
@@ -5013,6 +5013,8 @@ static bool create_future_timers(time_t starttime, time_t endtime, time_t now,
     vanTimersStart++;
     vanTimersEnd++;
 
+    // should set the pool status to BLOWERON since it will be started soon It certainly is not PARKED
+    theBlower.setScheduleStatus(BLOWERON);
     if(vanTimersStart>=MAXHORARIOS || vanTimersEnd>=MAXHORARIOS)
     {
         ESP_LOGE(MESH_TAG, "FATAL too many timers Start %d End %d", vanTimersStart,vanTimersEnd);
