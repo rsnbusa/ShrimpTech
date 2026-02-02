@@ -5003,10 +5003,10 @@ static bool create_future_timers(time_t starttime, time_t endtime, time_t now,
     }
     
     // Start both timers
-    if (xTimerStart(start_timers[vanTimersStart], 10) != pdPASS) {
+    if (xTimerStart(start_timers[vanTimersStart], portMAX_DELAY) != pdPASS) {
         ESP_LOGE(MESH_TAG, "FATAL could not start Start Timer %d", vanTimersStart);
     }
-    if (xTimerStart(end_timers[vanTimersEnd], 10) != pdPASS) {
+    if (xTimerStart(end_timers[vanTimersEnd], portMAX_DELAY) != pdPASS) {
         ESP_LOGE(MESH_TAG, "FATAL could not start End Timer %d", vanTimersEnd);
     }
     
@@ -5322,8 +5322,11 @@ void start_schedule_timers(void * pArg)
                 delay(wait_next_day*1000+10000); // in ms and add 10 seconds to be sure we are in the next day
 
                 if ((theConf.debug_flags >> dSCH) & 1U)
-                    ESP_LOGI(TAG, "%sNew CYcle %d", DBG_SCH, ck+1);
+                    ESP_LOGI(TAG, "%sNew Day %d", DBG_SCH, ck_d+1);
             }
+
+            if ((theConf.debug_flags >> dSCH) & 1U)
+                ESP_LOGI(TAG, "%sNew Cycle %d", DBG_SCH, ck+1);
         }
         
         
@@ -5653,10 +5656,9 @@ void blower_start(TimerHandle_t xTimer)
             theConf.profiles[0].cycle[start_timer_ctx->cycle].horarios[start_timer_ctx->tostart].horarioLen,theConf.profiles[0].cycle[start_timer_ctx->cycle].horarios[start_timer_ctx->tostart].pwmDuty,BLOWERNEXT);
 
     if ((theConf.debug_flags >> dSCH) & 1U) {
+        char time_str2[30];
         time_t now = time(NULL);
-        char *time_str2 = ctime(&now);
-        time_str2[strcspn(time_str2, "\n")] = '\0';
-
+        format_log_time(now,time_str2,30);
         ESP_LOGI(TAG, "Timer %d Started Cycle %d Day %d Hora %d Start %d Horas %d PW %d Time: %s",
                  start_timer_ctx->timerNum, start_timer_ctx->cycle, start_timer_ctx->day, start_timer_ctx->horario,
                  start_timer_ctx->tostart, start_timer_ctx->horaslen, start_timer_ctx->pwm, time_str2);

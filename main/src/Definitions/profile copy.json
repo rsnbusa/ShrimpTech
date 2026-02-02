@@ -41,8 +41,8 @@
                     "horario":
                     [
                         {
-                            "h_start":18,
-                            "h_secs":2,
+                            "h_start":19,
+                            "h_secs":1,
                             "pwm_duty":100
                         },
                         {
