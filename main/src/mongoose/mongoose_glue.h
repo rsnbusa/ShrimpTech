@@ -334,6 +334,7 @@ void glue_get_limits(struct limits *);
 void glue_set_limits(struct limits *);
 
 struct profile {
+  char msg[30];
   char schedule[10000];
 };
 void glue_get_profile(struct profile *);

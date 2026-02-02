@@ -144,8 +144,8 @@ EXTERN bool mesh_on;
 // COUNTERS & STATISTICS
 // ============================================================================
 
-EXTERN uint8_t vanTimersStart;
-EXTERN uint8_t vanTimersEnd;
+EXTERN uint8_t countTimersStart;
+EXTERN uint8_t countTimersEnd;
 EXTERN uint8_t mqttErrors;
 EXTERN uint8_t ssignal;
 EXTERN uint8_t dia;

@@ -221,14 +221,14 @@ static int handle_production_stop(const ProductionCommandFields *fields, char *l
 
     // stop all timers
 
-    for (int a=0;a<vanTimersStart;a++)
+    for (int a=0;a<countTimersStart;a++)
         if(start_timers[a])
             xTimerStop(start_timers[a],10);
-    for (int a=0;a<vanTimersEnd;a++)
+    for (int a=0;a<countTimersEnd;a++)
         if(end_timers[a])
             xTimerStop(end_timers[a],10);
 
-    vanTimersStart=vanTimersEnd=0;
+    countTimersStart=countTimersEnd=0;
     
     theBlower.setSchedule(0, 0, 0, 0, 0,0,0); // start production means from 0 so reset all trackers for PF
 

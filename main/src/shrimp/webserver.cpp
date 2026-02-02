@@ -79,7 +79,7 @@ extern uint64_t s_action_timeout_reboot;  	// Reboot button
 #include "time_utils.h"
 extern void write_to_flash();
 extern char levels[6][10];			// log levels external in cmdConfig.cpp
-static bool restartf=false;
+static bool restartf=false,restart_profile=false;;
 extern 	int findLevel(char * cual);
 
 /**
@@ -775,6 +775,68 @@ err_t make_profile(char * prof)
  * @brief Set and validate profile configuration from web interface
  * @param data Pointer to profile structure with new configuration
  */
+int sanity_check_profile()
+{
+	// two main checks: cycle and horarios do not overlap
+	// and that the profile is valid for current date
+	for (int p = 0; p < MAX_PROFILES; ++p)
+	{
+		profile_t *prof = &theConf.profiles[p];
+		if (prof->numCycles == 0)
+		{
+			continue;
+		}
+		
+		// Check cycle overlaps (day ranges)
+		for (int c1 = 0; c1 < prof->numCycles; ++c1)
+		{
+			uint32_t start1 = prof->cycle[c1].day;
+			uint32_t end1 = start1 + prof->cycle[c1].duration; // end is exclusive
+			
+			for (int c2 = c1 + 1; c2 < prof->numCycles; ++c2)
+			{
+				uint32_t start2 = prof->cycle[c2].day;
+				uint32_t end2 = start2 + prof->cycle[c2].duration; // end is exclusive
+				
+				if ((start1 < end2) && (start2 < end1))
+				{
+					ESP_LOGE(TAG, "Profile %d: Cycle overlap between %d (day %u len %u) and %d (day %u len %u)",
+							 p, c1, (unsigned)start1, (unsigned)prof->cycle[c1].duration,
+							 c2, (unsigned)start2, (unsigned)prof->cycle[c2].duration);
+					return ESP_FAIL;		// abort process
+				}
+			}
+			
+			// Check horario overlaps within each cycle (hour ranges)
+			uint8_t num_h = prof->cycle[c1].numHorarios;
+			for (int h1 = 0; h1 < num_h; ++h1)
+			{
+				float h1_start = prof->cycle[c1].horarios[h1].hourStart;
+				float h1_end = h1_start + prof->cycle[c1].horarios[h1].horarioLen;
+				
+				for (int h2 = h1 + 1; h2 < num_h; ++h2)
+				{
+					float h2_start = prof->cycle[c1].horarios[h2].hourStart;
+					float h2_end = h2_start + prof->cycle[c1].horarios[h2].horarioLen;
+					
+					if ((h1_start < h2_end) && (h2_start < h1_end))
+					{
+						ESP_LOGE(TAG, "Profile %d Cycle %d: Horario overlap between %d (%.2f-%.2f) and %d (%.2f-%.2f)",
+								 p, c1, h1, (double)h1_start, (double)h1_end,
+								 h2, (double)h2_start, (double)h2_end);
+						return ESP_FAIL;		// abort process
+					}
+				}
+			}
+		}
+	}
+	return ESP_OK;
+}
+
+/**
+ * @brief Set and validate profile configuration from web interface
+ * @param data Pointer to profile structure with new configuration
+ */
 void my_set_profile(struct profile *data)
 {
 	if (!data)
@@ -813,11 +875,18 @@ void my_set_profile(struct profile *data)
 	}
 	
 	cJSON_Delete(prof_root);
-	
+	restart_profile = true;
 	// Parse and apply profile
 	err_t err = make_profile(s_profile.schedule);
 	if (err == ESP_OK)
 	{
+		if(sanity_check_profile()!=ESP_OK)
+		{
+			ESP_LOGE(TAG, "Profile sanity check failed, not applying profile");
+			strcpy(s_profile.msg,"Conflicts");
+			return;
+		}
+		strcpy(s_profile.msg,"OK");
 		write_to_flash();
 		show_profiles();
 		ESP_LOGI(TAG, "Profile successfully applied");
@@ -840,6 +909,9 @@ void my_get_profile(struct profile *data)
 		return;
 	}
 	
+	if(!restart_profile)
+		strcpy(s_profile.msg,"");
+
 	s_settings.disable_val = should_disable_settings();
 	
 	FILE* f = fopen(PROFILE_FILE, "r");

@@ -357,6 +357,7 @@ struct attribute s_limits_attributes[] = {
   {NULL, NULL, NULL, 0, 0, false}
 };
 struct attribute s_profile_attributes[] = {
+  {"msg", "string", NULL, offsetof(struct profile, msg), 30, false},
   {"schedule", "string", NULL, offsetof(struct profile, schedule), 10000, false},
   {NULL, NULL, NULL, 0, 0, false}
 };

@@ -70,7 +70,7 @@ void glue_set_limits(struct limits *data) {
   s_limits = *data; // Sync with your device
 }
 
-struct profile s_profile = {""};
+struct profile s_profile = {"", ""};
 void glue_get_profile(struct profile *data) {
   *data = s_profile;  // Sync with your device
 }

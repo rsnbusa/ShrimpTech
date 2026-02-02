@@ -513,7 +513,7 @@ void show_first_profile()
             
             for (int j = 0; j < cycle->numHorarios && j < MAXHORARIOS; j++) {
                 horario_t *horario = &cycle->horarios[j];
-                printf("    │ %-10d │ %-15d │ %-15u │ %-8d │\n", 
+                printf("    │ %-10d │ %-15.2f │ %-15.2f │ %-8d │\n", 
                        j, horario->hourStart, horario->horarioLen, horario->pwmDuty);
             }
             
