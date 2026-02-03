@@ -5320,7 +5320,7 @@ void start_schedule_timers(void * pArg)
                     time_t new_day=time(NULL);
                     char  time_str[30];
                     format_log_time(new_day, time_str, 30);
-                    ESP_LOGI(TAG, "%sCheck Wait %ld New day %s", DBG_SCH, wait_next_day,time_str);
+                    ESP_LOGI(TAG, "%sWait Midnight %ld New day %s", DBG_SCH, wait_next_day,time_str);
                 }
                 uint32_t howmuch= (wait_next_day*1000/theConf.test_timer_div)+10000;
                 delay(wait_next_day*1000/theConf.test_timer_div+10000); // in secs->ms and add 10 seconds to be sure we are in the next day
