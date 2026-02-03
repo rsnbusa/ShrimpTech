@@ -171,7 +171,8 @@ PV1V
 
 typedef struct {
     uint8_t hourStart;
-    uint8_t horarioLen;
+    uint8_t minutesStart;
+    uint32_t horarioLen;
     uint8_t pwmDuty;
 } horario_t;
 

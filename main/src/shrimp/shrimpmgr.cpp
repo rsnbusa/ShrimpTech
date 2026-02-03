@@ -3563,7 +3563,7 @@ void erase_config(void)
     
     // Set creation timestamp
     time((time_t*)&theConf.bornDate);
-    
+    theConf.test_timer_div = 1;
     // Get and store current firmware version
     const esp_app_desc_t *app_info = esp_app_get_description();
     if (app_info != NULL) {
@@ -4901,9 +4901,10 @@ static start_timer_ctx_t* create_timer_context(uint8_t cycle, uint8_t day, int h
  * @param ck_h Hour index
  * @param num_horarios Total horarios in cycle
  */
-static void handle_past_schedule_in_progress(start_timer_ctx_t * ctx,time_t endtime, time_t now, int ck,int ck_day,int ck_h, int num_horarios)
+static void handle_past_schedule_in_progress(start_timer_ctx_t * ctx,time_t endtime, time_t now, int ck
+        ,int ck_day,int ck_h, int num_horarios)
 {
-    uint32_t remaining = (uint32_t)(endtime -  now)/theConf.test_timer_div*1000;
+    uint32_t remaining = (endtime - now)*1000 / theConf.test_timer_div ;
     ctx->isLast=(ck_h == num_horarios - 1)? true : false;
     
     turn_blower_onOff(true);  // Ensure blower is on
@@ -5052,11 +5053,14 @@ static bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, tim
     }
     
     const auto& horario = theConf.profiles[0].cycle[ck].horarios[ck_h];
-    time_t starttime = time_t(midn + (uint64_t)(horario.hourStart * 3600.0));
-    time_t endtime = time_t(starttime + (uint64_t)( horario.horarioLen * 3600.0));
-    
+    time_t starttime = time_t(midn + (uint64_t)(horario.hourStart )*3600 +(uint64_t)(horario.minutesStart)*60);
+    time_t endtime = time_t(starttime + (uint64_t)( horario.horarioLen));
+    uint64_t son=endtime-starttime;
+    uint32_t son32=son;
+     
     if ((theConf.debug_flags >> dSCH) & 1U) 
-        ESP_LOGI(TAG, "%sC-%d D-%d H-%d %d", DBG_SCH, ck, ck_d, ck_h, horario.horarioLen * 3600.0);
+        ESP_LOGI(TAG, "%sC-%d D-%d H-%d %d secs %d hours", DBG_SCH, ck, ck_d, ck_h, horario.horarioLen,horario.horarioLen /3600 );
+        // ESP_LOGI(TAG, "%sC-%d D-%d H-%d %d", DBG_SCH, ck, ck_d, ck_h, horario.horarioLen * 3600.0);
     
     // Schedule already started
     if (starttime < now) { // past schedule
@@ -5130,11 +5134,13 @@ void cleanup_all_timers()
 static uint32_t handle_day_end(uint8_t nextHour)
 {
     char time_str1[30],time_str2[30];
-    
-    if (!xSemaphoreTake(scheduleSem, portMAX_DELAY)) { //wait for blower last timer given by blower end
+
+    if(countTimersEnd>0)       //no timers active
+    {
+      if (!xSemaphoreTake(scheduleSem, portMAX_DELAY)) { //wait for blower last timer given by blower end
         return 0;
     }
-    
+}
     cleanup_all_timers();
 
     if ((theConf.debug_flags >> dSCH) & 1U) {
@@ -5298,11 +5304,12 @@ void start_schedule_timers(void * pArg)
                         send_start_day_host(ck_d);
                     if (!process_horario(ck, ck_d, ck_h, midn, nows))
                     {
+                        printf("Failed process horario\n");
                         goto restart_schedule; // Timer validation failed, restart
                     }
                 }
                 // Day complete scheduled all timers, wait and cleanup
-                uint8_t newhour=theConf.profiles[0].cycle[ck+1].horarios[0].hourStart; // just to avoid warning
+                uint8_t newhour=theConf.profiles[0].cycle[ck].horarios[0].hourStart; // first hour of next day same cycle
                 uint32_t wait_next_day= handle_day_end(newhour);        // the first hour of next day. boundry of end fo cycles later
                 // above will wait for schedulesemaphore to be free meaning last blower timer ended
                 

@@ -292,7 +292,7 @@ void my_set_system(struct system *data) {
 	s_system = *data;
 	
 	// Apply settings with safe string operations
-	theConf.repeat = s_system.repeat_val;
+	theConf.test_timer_div = s_system.repeat_val;
 	theConf.baset = s_system.baset_val;
 	
 	SAFE_STRCPY(theConf.kpass, s_system.password_val, sizeof(theConf.kpass));
@@ -561,7 +561,7 @@ static err_t parse_horario(cJSON *hour_item, int profile_idx, int cycle_idx, int
 	}
 	
 	// Parse start hour
-	hmeta = cJSON_GetObjectItem(hour_item, "h_start");
+	hmeta = cJSON_GetObjectItem(hour_item, "h_start_hour");
 	if (!hmeta)
 	{
 		ESP_LOGE(TAG, "Profile %d Cycle %d Horario %d: Missing start hour", profile_idx, cycle_idx, hour_idx);
@@ -569,6 +569,15 @@ static err_t parse_horario(cJSON *hour_item, int profile_idx, int cycle_idx, int
 	}
 	theConf.profiles[profile_idx].cycle[cycle_idx].horarios[hour_idx].hourStart = (float)hmeta->valueint;
 	
+	// Parse minutes start
+	hmeta = cJSON_GetObjectItem(hour_item, "h_start_mins");
+	if (!hmeta)
+	{
+		ESP_LOGE(TAG, "Profile %d Cycle %d Horario %d: Missing Minutes", profile_idx, cycle_idx, hour_idx);
+		return ESP_FAIL;
+	}
+	theConf.profiles[profile_idx].cycle[cycle_idx].horarios[hour_idx].minutesStart = (float)hmeta->valueint;
+
 	// Parse duration
 	hmeta = cJSON_GetObjectItem(hour_item, "h_secs");
 	if (!hmeta)
@@ -811,13 +820,15 @@ int sanity_check_profile()
 			uint8_t num_h = prof->cycle[c1].numHorarios;
 			for (int h1 = 0; h1 < num_h; ++h1)
 			{
-				float h1_start = prof->cycle[c1].horarios[h1].hourStart;
-				float h1_end = h1_start + prof->cycle[c1].horarios[h1].horarioLen;
+				float h1_start = prof->cycle[c1].horarios[h1].hourStart
+					+ prof->cycle[c1].horarios[h1].minutesStart/60;;
+				float h1_end = h1_start + prof->cycle[c1].horarios[h1].horarioLen/3600;
 				
 				for (int h2 = h1 + 1; h2 < num_h; ++h2)
 				{
-					float h2_start = prof->cycle[c1].horarios[h2].hourStart;
-					float h2_end = h2_start + prof->cycle[c1].horarios[h2].horarioLen;
+					float h2_start = prof->cycle[c1].horarios[h2].hourStart+  
+						prof->cycle[c1].horarios[h2].minutesStart/60;
+					float h2_end = h2_start + prof->cycle[c1].horarios[h2].horarioLen/3600;
 					
 					if ((h1_start < h2_end) && (h2_start < h1_end))
 					{

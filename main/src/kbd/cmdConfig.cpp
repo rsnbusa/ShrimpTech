@@ -507,17 +507,17 @@ void show_first_profile()
         printf("  └─────────────────────────────────────────────────────────────┘\n");
         
         if (cycle->numHorarios > 0) {
-            printf("    ┌───────────────────────────────────────────────────────────┐\n");
-            printf("    │%s %-10s │ %-15s │ %-15s │ %-8s %s│\n",BK_BLUE, "Schedule", "Start Hour", "Duration", "PWM Duty",RESETC);
-            printf("    ├────────────┼─────────────────┼─────────────────┼──────────┤\n");
+            printf("    ┌───────────────────────────────────────────────────────────────┐\n");
+            printf("    │%s %-10s │ %-8s │ %-8s │ %-15s │ %-8s %s│\n",BK_BLUE, "Schedule", "Hour", "Minutes", "Duration", "PWM Duty",RESETC);
+            printf("    ├────────────┼──────────┼──────────┼─────────────────┼──────────┤\n");
             
             for (int j = 0; j < cycle->numHorarios && j < MAXHORARIOS; j++) {
                 horario_t *horario = &cycle->horarios[j];
-                printf("    │ %-10d │ %-15d │ %-15d │ %-8d │\n", 
-                       j, horario->hourStart, horario->horarioLen, horario->pwmDuty);
+                printf("    │ %-10d │ %-8d │ %-8d │ %-15d │ %-8d │\n", 
+                       j, (int)horario->hourStart, (int)horario->minutesStart, (int)horario->horarioLen, horario->pwmDuty);
             }
             
-            printf("    └────────────┴─────────────────┴─────────────────┴──────────┘\n");
+            printf("    └────────────┴──────────┴──────────┴─────────────────┴──────────┘\n");
         }
         printf("\n");
     }
