@@ -200,17 +200,13 @@ static int handle_production_stop(const ProductionCommandFields *fields, char *l
     }
     cleanup_all_timers();
 
-    // theConf.dayCycle = 0;
-    // theConf.work_day=theConf.work_cycle=0;
     write_to_flash();
     
     snprintf(logBuffer, PRODUCTION_LOG_BUFFER_SIZE, "CMd Prod Stop %s", fields->orderCommand);
     writeLog(logBuffer);
     
     if((theConf.debug_flags >> dXCMDS) & 1U)  
-        ESP_LOGI(MESH_TAG, "%sCMd Prod Stop %s", DBG_XCMDS, fields->orderCommand);
-
-    theBlower.setSchedule(0, 0, 0,0,0,0,BLOWERPARK);    // erase any previous schedule
+        ESP_LOGI(MESH_TAG, "%sCMd Prod Stop %s %d", DBG_XCMDS, fields->orderCommand,BLOWERPARK);
 
     vTaskDelete(scheduleHandle);
     xTaskCreate(&start_schedule_timers, "sched", 1024*10, NULL, 5, &scheduleHandle);
@@ -219,23 +215,13 @@ static int handle_production_stop(const ProductionCommandFields *fields, char *l
         send_start_production(fields->profileIndex, fields->dayIndex, 
                          theConf.test_timer_div, (char*)fields->orderCommand);
     schedulef = false;
-    theBlower.setSchedule(0, 0, 0,0,0,0,BLOWERPARK);
-
-    // stop all timers
-
-    for (int a=0;a<countTimersStart;a++)
-        if(start_timers[a])
-            xTimerStop(start_timers[a],10);
-    for (int a=0;a<countTimersEnd;a++)
-        if(end_timers[a])
-            xTimerStop(end_timers[a],10);
-
+    
     countTimersStart=countTimersEnd=0;
     
-    theBlower.setSchedule(0, 0, 0, 0, 0,0,0); // start production means from 0 so reset all trackers for PF
-
     // stop the blower itself
     turn_blower_onOff(false);
+    theBlower.setSchedule(0, 0, 0,0,0,0,BLOWERPARK); //order is important turn blower on off will set BLOWEROFF-ON
+
     return ESP_OK;
 }
 

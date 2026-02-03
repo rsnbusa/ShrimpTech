@@ -2,10 +2,10 @@
     "profiles":
     [
         {
-            "name":"Nuevo",
+            "name":"Test",
             "version":"1.0",
-            "issued":"10-11-2025",
-            "expires":"22-11-2026",
+            "issued":"3-2-2026",
+            "expires":"3-2-2027",
             "ciclos":
             [
                 {
@@ -14,22 +14,22 @@
                     "horario":
                     [
                         {
-                            "h_start":10.5,
-                            "h_secs":0.5,
-                            "pwm_duty":100
-                        },
-                        {
-                            "h_start":11.0,
-                            "h_secs":0.1,
-                            "pwm_duty":100
-                        },
-                        {
-                            "h_start":11.5,
-                            "h_secs":0.1,
+                            "h_start":11,
+                            "h_secs":1,
                             "pwm_duty":100
                         },
                         {
                             "h_start":12,
+                            "h_secs":1,
+                            "pwm_duty":100
+                        },
+                        {
+                            "h_start":13,
+                            "h_secs":1,
+                            "pwm_duty":100
+                        },
+                        {
+                            "h_start":14,
                             "h_secs":1,
                             "pwm_duty":100
                         }

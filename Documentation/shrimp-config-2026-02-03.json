@@ -1,0 +1,253 @@
+{
+  "exportedAt": "2026-01-14T00:03:37.417Z",
+  "cmdarr": [
+    {
+      "cmd": "Sensors",
+      "General": {
+        "refresh": 30
+      },
+      "DO": {
+        "offset": 0,
+        "start": 8192,
+        "points": 6,
+        "type": 6,
+        "mux": 1,
+        "address": 16
+      },
+      "PH": {
+        "offset": -1,
+        "start": 0,
+        "points": 0,
+        "type": 0,
+        "mux": 0,
+        "address": 0
+      },
+      "WaterTemp": {
+        "offset": -1,
+        "start": 0,
+        "points": 0,
+        "type": 0,
+        "mux": 0,
+        "address": 0
+      },
+      "Ambient": {
+        "offset": -1,
+        "start": 0,
+        "points": 0,
+        "type": 0,
+        "mux": 0,
+        "address": 0
+      },
+      "Humidity": {
+        "offset": -1,
+        "start": 0,
+        "points": 0,
+        "type": 0,
+        "mux": 0,
+        "address": 0
+      }
+    },
+    {
+      "cmd": "Panels",
+      "General": {
+        "InverterAddress": 100,
+        "refresh": 10
+      },
+      "charge": {
+        "offset": 0,
+        "start": 7,
+        "points": 2,
+        "type": 2,
+        "mux": 1
+      },
+      "pv1volts": {
+        "offset": 4,
+        "start": 23,
+        "points": 2,
+        "type": 3,
+        "mux": 1
+      },
+      "pv2volts": {
+        "offset": 8,
+        "start": 25,
+        "points": 2,
+        "type": 3,
+        "mux": 1
+      },
+      "pv1amps": {
+        "offset": 12,
+        "start": 27,
+        "points": 2,
+        "type": 3,
+        "mux": 1
+      },
+      "pv2amps": {
+        "offset": 16,
+        "start": 29,
+        "points": 2,
+        "type": 3,
+        "mux": 1
+      }
+    },
+    {
+      "cmd": "Inverter",
+      "General": {
+        "InverterAddress": 100,
+        "refresh": 10
+      },
+      "BatChHoy": {
+        "offset": 0,
+        "start": 15,
+        "points": 1,
+        "type": 1,
+        "mux": 1
+      },
+      "BatDscHoy": {
+        "offset": 2,
+        "start": 17,
+        "points": 1,
+        "type": 1,
+        "mux": 1
+      },
+      "BatChgTotal": {
+        "offset": 4,
+        "start": 4,
+        "points": 1,
+        "type": 1,
+        "mux": 1
+      },
+      "BatDscTotal": {
+        "offset": 6,
+        "start": 5,
+        "points": 1,
+        "type": 1,
+        "mux": 1
+      },
+      "GenkWhHoy": {
+        "offset": 8,
+        "start": 9,
+        "points": 2,
+        "type": 3,
+        "mux": 1
+      },
+      "UsedkwhHoy": {
+        "offset": 12,
+        "start": 11,
+        "points": 2,
+        "type": 3,
+        "mux": 1
+      },
+      "LoadUsedTotal": {
+        "offset": 16,
+        "start": 13,
+        "points": 2,
+        "type": 3,
+        "mux": 1
+      },
+      "BatChHoyAmps": {
+        "offset": 20,
+        "start": 2,
+        "points": 2,
+        "type": 3,
+        "mux": 1
+      },
+      "BatDscHoyAmps": {
+        "offset": 24,
+        "start": 3,
+        "points": 2,
+        "type": 3,
+        "mux": 1
+      }
+    },
+    {
+      "cmd": "Battery",
+      "General": {
+        "InverterAddress": 100,
+        "refresh": 11
+      },
+      "SOC": {
+        "offset": 0,
+        "start": 0,
+        "points": 1,
+        "type": 1,
+        "mux": 1
+      },
+      "SOH": {
+        "offset": 2,
+        "start": 1,
+        "points": 1,
+        "type": 1,
+        "mux": 1
+      },
+      "Cycles": {
+        "offset": 4,
+        "start": 6,
+        "points": 1,
+        "type": 1,
+        "mux": 1
+      },
+      "batTemp": {
+        "offset": 6,
+        "start": 21,
+        "points": 2,
+        "type": 3,
+        "mux": 1
+      }
+    },
+    {
+      "cmd": "limits",
+      "PVPanels": {
+        "VoltsMin": 340,
+        "VoltsMax": 390,
+        "AmpsMin": 14,
+        "AmpsMax": 15
+      },
+      "Battery": {
+        "SOCMin": 20,
+        "SOCMax": 80,
+        "SOHMin": 20,
+        "SOHMax": 100,
+        "CyclesMin": 0,
+        "CyclesMax": 5000,
+        "TempMin": 10,
+        "TempMax": 50
+      },
+      "Amps": {
+        "ChargeTodayMin": 780,
+        "ChargeTodayMax": 820,
+        "DischargeTodayMin": 720,
+        "DischargeTodayMax": 820,
+        "ChargeTotalMin": 720,
+        "ChargeTotalMax": 850,
+        "DischargeTotalMin": 720,
+        "DischargeTotalMax": 820
+      },
+      "Energy": {
+        "GeneratedTodayMin": 40,
+        "GeneratedTodayMax": 42,
+        "ConsumedTodayMin": 40,
+        "ConsumedTodayMax": 42,
+        "LoadConsumedTodayMin": 40,
+        "LoadConsumedTodayMax": 42,
+        "LoadConsumedTotalMin": 40,
+        "LoadConsumedTotalMax": 42,
+        "BatteryChargeTodayMin": 40,
+        "BatteryChargeTodayMax": 42,
+        "BatteryDischargeTodayMin": 40,
+        "BatteryDischargeTodayMax": 42
+      },
+      "Sensors": {
+        "DissolvedOxygenMin": 40,
+        "DissolvedOxygenMax": 70,
+        "PHMin": 50,
+        "PHMax": 70,
+        "WaterTempMin": 19,
+        "WaterTempMax": 31,
+        "AmbientTempMin": 19,
+        "AmbientTempMax": 32,
+        "HumidityMin": 50,
+        "HumidityMax": 90
+      }
+    }
+  ]
+}

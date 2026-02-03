@@ -567,7 +567,7 @@ static err_t parse_horario(cJSON *hour_item, int profile_idx, int cycle_idx, int
 		ESP_LOGE(TAG, "Profile %d Cycle %d Horario %d: Missing start hour", profile_idx, cycle_idx, hour_idx);
 		return ESP_FAIL;
 	}
-	theConf.profiles[profile_idx].cycle[cycle_idx].horarios[hour_idx].hourStart = (float)hmeta->valuedouble;
+	theConf.profiles[profile_idx].cycle[cycle_idx].horarios[hour_idx].hourStart = (float)hmeta->valueint;
 	
 	// Parse duration
 	hmeta = cJSON_GetObjectItem(hour_item, "h_secs");
@@ -576,7 +576,7 @@ static err_t parse_horario(cJSON *hour_item, int profile_idx, int cycle_idx, int
 		ESP_LOGE(TAG, "Profile %d Cycle %d Horario %d: Missing duration", profile_idx, cycle_idx, hour_idx);
 		return ESP_FAIL;
 	}
-	theConf.profiles[profile_idx].cycle[cycle_idx].horarios[hour_idx].horarioLen = (float)hmeta->valuedouble;
+	theConf.profiles[profile_idx].cycle[cycle_idx].horarios[hour_idx].horarioLen = (float)hmeta->valueint;
 	
 	// Parse PWM duty
 	hmeta = cJSON_GetObjectItem(hour_item, "pwm_duty");
@@ -821,9 +821,9 @@ int sanity_check_profile()
 					
 					if ((h1_start < h2_end) && (h2_start < h1_end))
 					{
-						ESP_LOGE(TAG, "Profile %d Cycle %d: Horario overlap between %d (%.2f-%.2f) and %d (%.2f-%.2f)",
-								 p, c1, h1, (double)h1_start, (double)h1_end,
-								 h2, (double)h2_start, (double)h2_end);
+						ESP_LOGE(TAG, "Profile %d Cycle %d: Horario overlap between %d (%d-%d) and %d (%d-%d)",
+								 p, c1, h1, (int)h1_start, (int)h1_end,
+								 h2, (int)h2_start, (int)h2_end);
 						return ESP_FAIL;		// abort process
 					}
 				}
