@@ -199,6 +199,7 @@ typedef struct {
     uint8_t horaslen;
     uint8_t pwm;
     uint8_t timerNum;
+    bool isLast;
 } start_timer_ctx_t;
 
 
