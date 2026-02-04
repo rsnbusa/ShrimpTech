@@ -5086,7 +5086,7 @@ static bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, tim
         {
             format_log_time(starttime, time_str, 30);
             format_log_time(now, now_str, 30);
-            MESP_LOGI(TAG, "%sStart already happened %lld (%s) %lld (%s)", DBG_SCH, starttime, time_str,now, now_str);
+            MESP_LOGW(TAG, "%sStart already happened %lld (%s) %lld (%s)", DBG_SCH, starttime, time_str,now, now_str);
         }
         countTimersStart++;   // cannot skip start timer count due to complicated timer numbering
 
@@ -5096,7 +5096,7 @@ static bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, tim
             {
                 format_log_time(endtime, time_str, 30);
                 format_log_time(now, now_str, 30);
-                    MESP_LOGI(TAG, "%sEnd already happened. Skip this schedule %lld (%s) %lld (%s)", 
+                    MESP_LOGW(TAG, "%sEnd already happened. Skip this schedule %lld (%s) %lld (%s)", 
                             DBG_SCH, endtime, time_str, now, now_str);
             }
             countTimersStart--;     // neither timer active so start from previous counter
@@ -5293,7 +5293,7 @@ void start_schedule_timers(void * pArg)
         format_log_time(nows, time_str, 30);
 
         countTimersEnd = countTimersStart = 0;
-        MESP_LOGI(TAG, "%sStarted Production cycles", DBG_SCH);
+        MESP_LOGW(TAG, "%sStarted Production cycles", DBG_SCH);
         if(!schedule_restartf)
             find_cycle_day(&cyclestart, &daystart);
         else
@@ -5305,7 +5305,7 @@ void start_schedule_timers(void * pArg)
         }
         schedulef = true;
         if ((theConf.debug_flags >> dSCH) & 1U)
-            MESP_LOGW(TAG, "%sStart Cycle %d Start Day %d midn %ld now %ld %s", DBG_SCH, cyclestart, daystart,
+            MESP_LOGI(TAG, "%sStart Cycle %d Start Day %d midn %ld now %ld %s", DBG_SCH, cyclestart, daystart,
                     (uint32_t)midn,(uint32_t)nows,time_str);
         
         // theBlower.setSchedule(0, 0, 0, 0, 0,0,BLOWERON); // since we are strarting a schedule, set blower status to ACTIVE/STANDBY
@@ -5350,7 +5350,7 @@ void start_schedule_timers(void * pArg)
                     time_t nmid=new_day+wait_next_day;
                     format_log_time(nmid, mid_str, 30);
 
-                    MESP_LOGI(TAG, "%sWait Midnight %ld (%s) New day %s", DBG_SCH, wait_next_day, mid_str, time_str);
+                    MESP_LOGW(TAG, "%sWait Midnight %ld (%s) New day %s", DBG_SCH, wait_next_day, mid_str, time_str);
                 }
                 uint32_t howmuch= (wait_next_day*1000/theConf.test_timer_div)+10000;
                 if (countTimersStart || countTimersEnd)
@@ -5389,7 +5389,7 @@ void start_schedule_timers(void * pArg)
         }
                 
         // All cycles complete
-        MESP_LOGW(TAG, "Production cycle ended");
+        MESP_LOGE(TAG, "Production cycle ended");
         theBlower.setSchedule(0, 0, 0, 0, 0,0,BLOWERCROP);
         schedulef = false;
         continue;
