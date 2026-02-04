@@ -4433,6 +4433,14 @@ esp_err_t wifi_connect_external_ap(void)
         return ESP_FAIL;
     }
     
+    // Create default WiFi AP interface
+    esp_netif_t* ap_netif = esp_netif_create_default_wifi_ap();
+    if (ap_netif == NULL)
+    {
+        MESP_LOGE(MESH_TAG, "Failed to create WiFi AP interface");
+        return ESP_FAIL;
+    }
+    
     // Initialize WiFi with default configuration
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ret = esp_wifi_init(&cfg);
@@ -4459,28 +4467,47 @@ esp_err_t wifi_connect_external_ap(void)
     }
     
     // Configure WiFi station with SSID and password from configuration
-    wifi_config_t wifi_config = {};
-    memset(&wifi_config, 0, sizeof(wifi_config_t));
+    wifi_config_t sta_config = {};
+    memset(&sta_config, 0, sizeof(wifi_config_t));
     
-    strncpy((char*)wifi_config.sta.ssid, theConf.thessid, sizeof(wifi_config.sta.ssid) - 1);
-    strncpy((char*)wifi_config.sta.password, theConf.thepass, sizeof(wifi_config.sta.password) - 1);
-    wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
-    wifi_config.sta.pmf_cfg.capable = true;
-    wifi_config.sta.pmf_cfg.required = false;
+    strncpy((char*)sta_config.sta.ssid, theConf.thessid, sizeof(sta_config.sta.ssid) - 1);
+    strncpy((char*)sta_config.sta.password, theConf.thepass, sizeof(sta_config.sta.password) - 1);
+    sta_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
+    sta_config.sta.pmf_cfg.capable = true;
+    sta_config.sta.pmf_cfg.required = false;
     
-    // Set WiFi mode to station
-    ret = esp_wifi_set_mode(WIFI_MODE_STA);
+    // Configure WiFi AP with SSID "SHRIMP" and password "csttpstt"
+    wifi_config_t ap_config = {};
+    memset(&ap_config, 0, sizeof(wifi_config_t));
+    
+    strncpy((char*)ap_config.ap.ssid, "SHRIMP", sizeof(ap_config.ap.ssid) - 1);
+    strncpy((char*)ap_config.ap.password, "csttpstt", sizeof(ap_config.ap.password) - 1);
+    ap_config.ap.ssid_len = strlen("SHRIMP");
+    ap_config.ap.channel = 0;
+    ap_config.ap.authmode = WIFI_AUTH_WPA2_PSK;
+    ap_config.ap.max_connection = 4;
+    
+    // Set WiFi mode to APSTA (AP + Station)
+    ret = esp_wifi_set_mode(WIFI_MODE_APSTA);
     if (ret != ESP_OK)
     {
-        MESP_LOGE(MESH_TAG, "Failed to set WiFi mode to STA: %s", esp_err_to_name(ret));
+        MESP_LOGE(MESH_TAG, "Failed to set WiFi mode to APSTA: %s", esp_err_to_name(ret));
         return ESP_FAIL;
     }
     
-    // Set WiFi configuration
-    ret = esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
+    // Set WiFi STA configuration
+    ret = esp_wifi_set_config(WIFI_IF_STA, &sta_config);
     if (ret != ESP_OK)
     {
-        MESP_LOGE(MESH_TAG, "Failed to set WiFi config: %s", esp_err_to_name(ret));
+        MESP_LOGE(MESH_TAG, "Failed to set WiFi STA config: %s", esp_err_to_name(ret));
+        return ESP_FAIL;
+    }
+    
+    // Set WiFi AP configuration
+    ret = esp_wifi_set_config(WIFI_IF_AP, &ap_config);
+    if (ret != ESP_OK)
+    {
+        MESP_LOGE(MESH_TAG, "Failed to set WiFi AP config: %s", esp_err_to_name(ret));
         return ESP_FAIL;
     }
     
@@ -4492,7 +4519,7 @@ esp_err_t wifi_connect_external_ap(void)
         return ESP_FAIL;
     }
     
-    MESP_LOGI(MESH_TAG, "WiFi STA initialization complete. Connecting to SSID: %s", theConf.thessid);
+    MESP_LOGI(MESH_TAG, "WiFi APSTA initialization complete. AP SSID: SHRIMP, STA connecting to: %s", theConf.thessid);
     return ESP_OK;
 }
 
@@ -5865,6 +5892,7 @@ sizeof(theConf), sizeof(TickType_t));
     {
         // printf("Start wifi mode\n");
         wifi_connect_external_ap(); //start wifi which will start many ither tasks from got ip event wiht SNTP starting the scheduler
+        xTaskCreate(&start_webserver, "webs", 1024 * 10, NULL, 5, NULL);
 
     }
     else  
