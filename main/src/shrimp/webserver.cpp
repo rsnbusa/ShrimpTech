@@ -117,7 +117,7 @@ bool check_key(uint64_t key)
 	char *encrypted_challenge = (char*)calloc(AES_BUFFER_SIZE, 1);
 	if (encrypted_challenge == NULL)
 	{
-		ESP_LOGE("KEY", "Failed to allocate memory for encryption");
+		MESP_LOGE("KEY", "Failed to allocate memory for encryption");
 		return false;
 	}
 
@@ -125,7 +125,7 @@ bool check_key(uint64_t key)
 	int ret = shrimp_aes_encrypt(SUPERSECRET, sizeof(SUPERSECRET), encrypted_challenge, encryption_key);
 	if (ret == ESP_FAIL)
 	{
-		ESP_LOGE("KEY", "AES encryption failed");
+		MESP_LOGE("KEY", "AES encryption failed");
 		free(encrypted_challenge);
 		return false;
 	}
@@ -252,7 +252,7 @@ void my_set_settings(struct settings *data) {
 	char *challenge_str = (char*)calloc(1, CHALLENGE_KEY_SIZE);
 	if (challenge_str == NULL)
 	{
-		ESP_LOGE("SETTINGS", "Failed to allocate memory for challenge");
+		MESP_LOGE("SETTINGS", "Failed to allocate memory for challenge");
 		strcpy(s_settings.msg_val, MSG_RETRY);
 		return;
 	}
@@ -265,14 +265,14 @@ void my_set_settings(struct settings *data) {
 	
 	if (!check_key(key_value) && theConf.cid != 0)	// there is a challenge so it must be met else we editing certain fields
 	{
-		ESP_LOGW("SETTINGS", "Invalid authentication key (expected CID: %d)", theConf.cid);
+		MESP_LOGW("SETTINGS", "Invalid authentication key (expected CID: %d)", theConf.cid);
 		s_settings = *data;
 		strcpy(s_settings.msg_val, MSG_RETRY);
 		return;
 	}
 	
 	// Challenge validated - apply settings
-	ESP_LOGI("SETTINGS", "Authentication successful, applying configuration");
+	MESP_LOGI("SETTINGS", "Authentication successful, applying configuration");
 	s_settings = *data;
 	apply_settings_to_config(data);
 	restartf = true;
@@ -285,7 +285,7 @@ void my_set_settings(struct settings *data) {
 void my_set_system(struct system *data) {
 	if (!data)
 	{
-		ESP_LOGE(TAG, "Invalid system data pointer");
+		MESP_LOGE(TAG, "Invalid system data pointer");
 		return;
 	}
 	
@@ -304,7 +304,7 @@ void my_set_system(struct system *data) {
 	}
 	else
 	{
-		ESP_LOGW(TAG, "Invalid log level, keeping current: %d", theConf.loglevel);
+		MESP_LOGW(TAG, "Invalid log level, keeping current: %d", theConf.loglevel);
 	}
 	
 	theConf.loginwait = s_system.logtime_val;
@@ -327,7 +327,7 @@ void my_set_system(struct system *data) {
 	}
 	
 	write_to_flash();
-	ESP_LOGI(TAG, "System settings applied successfully");
+	MESP_LOGI(TAG, "System settings applied successfully");
 }
 
 /**
@@ -338,7 +338,7 @@ void my_get_system(struct system *data)
 {
 	if (!data)
 	{
-		ESP_LOGE(TAG, "Invalid system data pointer");
+		MESP_LOGE(TAG, "Invalid system data pointer");
 		return;
 	}
 	
@@ -486,7 +486,7 @@ static err_t parse_profile_metadata(cJSON *pitem, int profile_index)
 	
 	if (!pitem)
 	{
-		ESP_LOGE(TAG, "Invalid profile item");
+		MESP_LOGE(TAG, "Invalid profile item");
 		return ESP_FAIL;
 	}
 	
@@ -516,12 +516,12 @@ static err_t parse_profile_metadata(cJSON *pitem, int profile_index)
 		}
 		else
 		{
-			ESP_LOGW(TAG, "Profile %d: Invalid issued date format", profile_index);
+			MESP_LOGW(TAG, "Profile %d: Invalid issued date format", profile_index);
 		}
 	}
 		else
 		{
-			ESP_LOGW(TAG, "Profile %d: Invalid issued date format", profile_index);
+			MESP_LOGW(TAG, "Profile %d: Invalid issued date format", profile_index);
 		}
 	
 	
@@ -535,7 +535,7 @@ static err_t parse_profile_metadata(cJSON *pitem, int profile_index)
 		}
 		else
 		{
-			ESP_LOGW(TAG, "Profile %d: Invalid expiry date format", profile_index);
+			MESP_LOGW(TAG, "Profile %d: Invalid expiry date format", profile_index);
 		}
 	}
 	
@@ -556,7 +556,7 @@ static err_t parse_horario(cJSON *hour_item, int profile_idx, int cycle_idx, int
 	
 	if (!hour_item)
 	{
-		ESP_LOGE(TAG, "Profile %d Cycle %d: Missing horario %d", profile_idx, cycle_idx, hour_idx);
+		MESP_LOGE(TAG, "Profile %d Cycle %d: Missing horario %d", profile_idx, cycle_idx, hour_idx);
 		return ESP_FAIL;
 	}
 	
@@ -564,7 +564,7 @@ static err_t parse_horario(cJSON *hour_item, int profile_idx, int cycle_idx, int
 	hmeta = cJSON_GetObjectItem(hour_item, "h_start_hour");
 	if (!hmeta)
 	{
-		ESP_LOGE(TAG, "Profile %d Cycle %d Horario %d: Missing start hour", profile_idx, cycle_idx, hour_idx);
+		MESP_LOGE(TAG, "Profile %d Cycle %d Horario %d: Missing start hour", profile_idx, cycle_idx, hour_idx);
 		return ESP_FAIL;
 	}
 	theConf.profiles[profile_idx].cycle[cycle_idx].horarios[hour_idx].hourStart = (float)hmeta->valueint;
@@ -573,7 +573,7 @@ static err_t parse_horario(cJSON *hour_item, int profile_idx, int cycle_idx, int
 	hmeta = cJSON_GetObjectItem(hour_item, "h_start_mins");
 	if (!hmeta)
 	{
-		ESP_LOGE(TAG, "Profile %d Cycle %d Horario %d: Missing Minutes", profile_idx, cycle_idx, hour_idx);
+		MESP_LOGE(TAG, "Profile %d Cycle %d Horario %d: Missing Minutes", profile_idx, cycle_idx, hour_idx);
 		return ESP_FAIL;
 	}
 	theConf.profiles[profile_idx].cycle[cycle_idx].horarios[hour_idx].minutesStart = (float)hmeta->valueint;
@@ -582,7 +582,7 @@ static err_t parse_horario(cJSON *hour_item, int profile_idx, int cycle_idx, int
 	hmeta = cJSON_GetObjectItem(hour_item, "h_secs");
 	if (!hmeta)
 	{
-		ESP_LOGE(TAG, "Profile %d Cycle %d Horario %d: Missing duration", profile_idx, cycle_idx, hour_idx);
+		MESP_LOGE(TAG, "Profile %d Cycle %d Horario %d: Missing duration", profile_idx, cycle_idx, hour_idx);
 		return ESP_FAIL;
 	}
 	theConf.profiles[profile_idx].cycle[cycle_idx].horarios[hour_idx].horarioLen = (float)hmeta->valueint;
@@ -591,7 +591,7 @@ static err_t parse_horario(cJSON *hour_item, int profile_idx, int cycle_idx, int
 	hmeta = cJSON_GetObjectItem(hour_item, "pwm_duty");
 	if (!hmeta)
 	{
-		ESP_LOGE(TAG, "Profile %d Cycle %d Horario %d: Missing PWM duty", profile_idx, cycle_idx, hour_idx);
+		MESP_LOGE(TAG, "Profile %d Cycle %d Horario %d: Missing PWM duty", profile_idx, cycle_idx, hour_idx);
 		return ESP_FAIL;
 	}
 	theConf.profiles[profile_idx].cycle[cycle_idx].horarios[hour_idx].pwmDuty = hmeta->valueint;
@@ -610,14 +610,14 @@ static err_t parse_cycle_horarios(cJSON *horas, int profile_idx, int cycle_idx)
 {
 	if (!horas)
 	{
-		ESP_LOGE(TAG, "Profile %d Cycle %d: Missing horario array", profile_idx, cycle_idx);
+		MESP_LOGE(TAG, "Profile %d Cycle %d: Missing horario array", profile_idx, cycle_idx);
 		return ESP_FAIL;
 	}
 	
 	int num_horarios = cJSON_GetArraySize(horas);
 	if (num_horarios < 1 || num_horarios > MAXHORARIOS)
 	{
-		ESP_LOGE(TAG, "Profile %d Cycle %d: Invalid horarios count %d (max %d)", 
+		MESP_LOGE(TAG, "Profile %d Cycle %d: Invalid horarios count %d (max %d)", 
 				 profile_idx, cycle_idx, num_horarios, MAXHORARIOS);
 		return ESP_FAIL;
 	}
@@ -650,7 +650,7 @@ static err_t parse_cycle(cJSON *cycle_item, int profile_idx, int cycle_idx)
 	
 	if (!cycle_item)
 	{
-		ESP_LOGE(TAG, "Profile %d: Missing cycle %d", profile_idx, cycle_idx);
+		MESP_LOGE(TAG, "Profile %d: Missing cycle %d", profile_idx, cycle_idx);
 		return ESP_FAIL;
 	}
 	
@@ -658,7 +658,7 @@ static err_t parse_cycle(cJSON *cycle_item, int profile_idx, int cycle_idx)
 	cycle_meta = cJSON_GetObjectItem(cycle_item, "startday");
 	if (!cycle_meta)
 	{
-		ESP_LOGE(TAG, "Profile %d Cycle %d: Missing startday", profile_idx, cycle_idx);
+		MESP_LOGE(TAG, "Profile %d Cycle %d: Missing startday", profile_idx, cycle_idx);
 		return ESP_FAIL;
 	}
 	theConf.profiles[profile_idx].cycle[cycle_idx].day = cycle_meta->valueint;
@@ -667,7 +667,7 @@ static err_t parse_cycle(cJSON *cycle_item, int profile_idx, int cycle_idx)
 	cycle_meta = cJSON_GetObjectItem(cycle_item, "dias");
 	if (!cycle_meta)
 	{
-		ESP_LOGE(TAG, "Profile %d Cycle %d: Missing duration (dias)", profile_idx, cycle_idx);
+		MESP_LOGE(TAG, "Profile %d Cycle %d: Missing duration (dias)", profile_idx, cycle_idx);
 		return ESP_FAIL;
 	}
 	theConf.profiles[profile_idx].cycle[cycle_idx].duration = cycle_meta->valueint;
@@ -687,14 +687,14 @@ static err_t parse_profile_cycles(cJSON *ciclos, int profile_idx)
 {
 	if (!ciclos)
 	{
-		ESP_LOGE(TAG, "Profile %d: Missing cycles array", profile_idx);
+		MESP_LOGE(TAG, "Profile %d: Missing cycles array", profile_idx);
 		return ESP_FAIL;
 	}
 	
 	int num_cycles = cJSON_GetArraySize(ciclos);
 	if (num_cycles < 1 || num_cycles > MAXCICLOS)
 	{
-		ESP_LOGE(TAG, "Profile %d: Invalid cycles count %d (max %d)", 
+		MESP_LOGE(TAG, "Profile %d: Invalid cycles count %d (max %d)", 
 				 profile_idx, num_cycles, MAXCICLOS);
 		return ESP_FAIL;
 	}
@@ -725,7 +725,7 @@ err_t make_profile(char * prof)
 	cJSON *root = cJSON_Parse(prof);
 	if (!root)
 	{
-		ESP_LOGE(TAG, "Failed to parse profile JSON");
+		MESP_LOGE(TAG, "Failed to parse profile JSON");
 		return ESP_FAIL;
 	}
 	
@@ -733,7 +733,7 @@ err_t make_profile(char * prof)
 	cJSON *profiles_array = cJSON_GetObjectItem(root, "profiles");
 	if (!profiles_array)
 	{
-		ESP_LOGE(TAG, "Missing 'profiles' array in JSON");
+		MESP_LOGE(TAG, "Missing 'profiles' array in JSON");
 		cJSON_Delete(root);
 		return ESP_FAIL;
 	}
@@ -742,7 +742,7 @@ err_t make_profile(char * prof)
 	int num_profiles = cJSON_GetArraySize(profiles_array);
 	if (num_profiles < MIN_PROFILES || num_profiles >= MAX_PROFILES_ALLOWED)
 	{
-		ESP_LOGE(TAG, "Invalid profile count: %d (expected %d-%d)", 
+		MESP_LOGE(TAG, "Invalid profile count: %d (expected %d-%d)", 
 				 num_profiles, MIN_PROFILES, MAX_PROFILES_ALLOWED - 1);
 		cJSON_Delete(root);
 		return ESP_FAIL;
@@ -754,7 +754,7 @@ err_t make_profile(char * prof)
 		cJSON *pitem = cJSON_GetArrayItem(profiles_array, a);
 		if (!pitem)
 		{
-			ESP_LOGE(TAG, "Failed to get profile %d", a);
+			MESP_LOGE(TAG, "Failed to get profile %d", a);
 			cJSON_Delete(root);
 			return ESP_FAIL;
 		}
@@ -776,7 +776,7 @@ err_t make_profile(char * prof)
 	}
 	
 	cJSON_Delete(root);
-	ESP_LOGI(TAG, "Successfully parsed %d profile(s)", num_profiles);
+	MESP_LOGI(TAG, "Successfully parsed %d profile(s)", num_profiles);
 	return ESP_OK;
 }
 
@@ -809,7 +809,7 @@ int sanity_check_profile()
 				
 				if ((start1 < end2) && (start2 < end1))
 				{
-					ESP_LOGE(TAG, "Profile %d: Cycle overlap between %d (day %u len %u) and %d (day %u len %u)",
+					MESP_LOGE(TAG, "Profile %d: Cycle overlap between %d (day %u len %u) and %d (day %u len %u)",
 							 p, c1, (unsigned)start1, (unsigned)prof->cycle[c1].duration,
 							 c2, (unsigned)start2, (unsigned)prof->cycle[c2].duration);
 					return ESP_FAIL;		// abort process
@@ -832,7 +832,7 @@ int sanity_check_profile()
 					
 					if ((h1_start < h2_end) && (h2_start < h1_end))
 					{
-						ESP_LOGE(TAG, "Profile %d Cycle %d: Horario overlap between %d (%d-%d) and %d (%d-%d)",
+						MESP_LOGE(TAG, "Profile %d Cycle %d: Horario overlap between %d (%d-%d) and %d (%d-%d)",
 								 p, c1, h1, (int)h1_start, (int)h1_end,
 								 h2, (int)h2_start, (int)h2_end);
 						return ESP_FAIL;		// abort process
@@ -852,7 +852,7 @@ void my_set_profile(struct profile *data)
 {
 	if (!data)
 	{
-		ESP_LOGE(TAG, "Invalid profile data pointer");
+		MESP_LOGE(TAG, "Invalid profile data pointer");
 		return;
 	}
 	
@@ -862,7 +862,7 @@ void my_set_profile(struct profile *data)
 	cJSON *prof_root = cJSON_Parse(s_profile.schedule);
 	if (!prof_root)
 	{
-		ESP_LOGE(TAG, "Invalid JSON Profile format");
+		MESP_LOGE(TAG, "Invalid JSON Profile format");
 		return;
 	}
 	
@@ -870,7 +870,7 @@ void my_set_profile(struct profile *data)
 	FILE* f = fopen(PROFILE_FILE, "w");
 	if (f == NULL)
 	{
-		ESP_LOGE(TAG, "Failed to open profile file for writing: %s", PROFILE_FILE);
+		MESP_LOGE(TAG, "Failed to open profile file for writing: %s", PROFILE_FILE);
 		cJSON_Delete(prof_root);
 		return;
 	}
@@ -880,7 +880,7 @@ void my_set_profile(struct profile *data)
 	
 	if (written <= 0)
 	{
-		ESP_LOGE(TAG, "Failed to write profile to file");
+		MESP_LOGE(TAG, "Failed to write profile to file");
 		cJSON_Delete(prof_root);
 		return;
 	}
@@ -893,18 +893,18 @@ void my_set_profile(struct profile *data)
 	{
 		if(sanity_check_profile()!=ESP_OK)
 		{
-			ESP_LOGE(TAG, "Profile sanity check failed, not applying profile");
+			MESP_LOGE(TAG, "Profile sanity check failed, not applying profile");
 			strcpy(s_profile.msg,"Conflicts");
 			return;
 		}
 		strcpy(s_profile.msg,"OK");
 		write_to_flash();
 		show_profiles();
-		ESP_LOGI(TAG, "Profile successfully applied");
+		MESP_LOGI(TAG, "Profile successfully applied");
 	}
 	else
 	{
-		ESP_LOGE(TAG, "Failed to parse and apply profile");
+		MESP_LOGE(TAG, "Failed to parse and apply profile");
 	}
 }
 
@@ -916,7 +916,7 @@ void my_get_profile(struct profile *data)
 {
 	if (!data)
 	{
-		ESP_LOGE(TAG, "Invalid profile data pointer");
+		MESP_LOGE(TAG, "Invalid profile data pointer");
 		return;
 	}
 	
@@ -928,7 +928,7 @@ void my_get_profile(struct profile *data)
 	FILE* f = fopen(PROFILE_FILE, "r");
 	if (f == NULL)
 	{
-		ESP_LOGW(TAG, "Profile file not found, using empty profile");
+		MESP_LOGW(TAG, "Profile file not found, using empty profile");
 		s_profile.schedule[0] = '\0';
 		*data = s_profile;
 		return;
@@ -937,7 +937,7 @@ void my_get_profile(struct profile *data)
 	// Read with size limit to prevent buffer overflow
 	if (fgets(s_profile.schedule, sizeof(s_profile.schedule), f) == NULL)
 	{
-		ESP_LOGE(TAG, "Failed to read profile file");
+		MESP_LOGE(TAG, "Failed to read profile file");
 		s_profile.schedule[0] = '\0';
 	}
 	
@@ -1075,7 +1075,7 @@ void my_get_limits(struct limits *data) // return limits saved in theblower
  */
 void app_spiffs(void)
 {
-    ESP_LOGI(TAG, "Initializing SPIFFS");
+    MESP_LOGI(TAG, "Initializing SPIFFS");
 
     esp_vfs_spiffs_conf_t conf = {
       .base_path = "/spiffs",
@@ -1090,47 +1090,47 @@ void app_spiffs(void)
 
     if (ret != ESP_OK) {
         if (ret == ESP_FAIL) {
-            ESP_LOGE(TAG, "Failed to mount or format filesystem");
+            MESP_LOGE(TAG, "Failed to mount or format filesystem");
         } else if (ret == ESP_ERR_NOT_FOUND) {
-            ESP_LOGE(TAG, "Failed to find SPIFFS partition");
+            MESP_LOGE(TAG, "Failed to find SPIFFS partition");
         } else {
-            ESP_LOGE(TAG, "Failed to initialize SPIFFS (%s)", esp_err_to_name(ret));
+            MESP_LOGE(TAG, "Failed to initialize SPIFFS (%s)", esp_err_to_name(ret));
         }
         return;
     }
 
 
-    ESP_LOGI(TAG, "Performing SPIFFS_check().");
+    MESP_LOGI(TAG, "Performing SPIFFS_check().");
     ret = esp_spiffs_check(conf.partition_label);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "SPIFFS_check() failed (%s)", esp_err_to_name(ret));
+        MESP_LOGE(TAG, "SPIFFS_check() failed (%s)", esp_err_to_name(ret));
         return;
     } else {
-        ESP_LOGI(TAG, "SPIFFS_check() successful");
+        MESP_LOGI(TAG, "SPIFFS_check() successful");
     }
 
 
     size_t total = 0, used = 0;
     ret = esp_spiffs_info(conf.partition_label, &total, &used);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to get SPIFFS partition information (%s). Formatting...", esp_err_to_name(ret));
+        MESP_LOGE(TAG, "Failed to get SPIFFS partition information (%s). Formatting...", esp_err_to_name(ret));
         esp_spiffs_format(conf.partition_label);
         return;
     } else {
-        ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
+        MESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
     }
 
     // Check consistency of reported partition size info.
     if (used > total) {
-        ESP_LOGW(TAG, "Number of used bytes cannot be larger than total. Performing SPIFFS_check().");
+        MESP_LOGW(TAG, "Number of used bytes cannot be larger than total. Performing SPIFFS_check().");
         ret = esp_spiffs_check(conf.partition_label);
         // Could be also used to mend broken files, to clean unreferenced pages, etc.
         // More info at https://github.com/pellepl/spiffs/wiki/FAQ#powerlosses-contd-when-should-i-run-spiffs_check
         if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "SPIFFS_check() failed (%s)", esp_err_to_name(ret));
+            MESP_LOGE(TAG, "SPIFFS_check() failed (%s)", esp_err_to_name(ret));
             return;
         } else {
-            ESP_LOGI(TAG, "SPIFFS_check() successful");
+            MESP_LOGI(TAG, "SPIFFS_check() successful");
         }
     }
 
@@ -1182,7 +1182,7 @@ void my_start_reboot(struct mg_str params) {		//Done button pressed,
  */
 void start_webserver(void *pArg)
 {
-	ESP_LOGW(MESH_TAG,"Starting webserver");
+	MESP_LOGW(MESH_TAG,"Starting webserver");
 	mongoose_init();
   	mongoose_set_http_handlers("settings", my_get_settings, my_set_settings);		
   	mongoose_set_http_handlers("system", my_get_system ,my_set_system);				

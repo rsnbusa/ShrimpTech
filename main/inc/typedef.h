@@ -1,13 +1,10 @@
 #ifndef TYPEDEF_H
 #define TYPEDEF_H
 #include "includes.h"
-#include "defines.h"
 #include "mongoose_glue.h"  // For website definitions
 #include "mbcontroller.h"    // For mb_parameter_descriptor_t
 
 // Mongoose send double for floats so we will typedef it back to float
-
-
 
 // ============================================================================
 // MODBUS TYPES

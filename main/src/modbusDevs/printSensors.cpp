@@ -36,13 +36,13 @@ bool check_limits(char * who,  int *limitlocation, int count,char *color,char *n
             {
                 limits_exceeded=true;
                 if (((theConf.debug_flags >> dLIMITS) & 1U))
-                    ESP_LOGW(TAG,"%s%s below minimum limit %d < %d",color,names[i],value,min);
+                    MESP_LOGW(TAG,"%s%s below minimum limit %d < %d",color,names[i],value,min);
             }
             else if (value>max)
             {
                 limits_exceeded=true;
                 if (((theConf.debug_flags >> dLIMITS) & 1U))
-                    ESP_LOGW(TAG,"%s%s above maximum limit %d > %d",color,names[i],value,max);
+                    MESP_LOGW(TAG,"%s%s above maximum limit %d > %d",color,names[i],value,max);
             }
         }
     }
@@ -82,7 +82,7 @@ void print_sensor_data(void *sensors, int *errors,char *color,int numerrs)
         if(errors[a]!=0)
         {
             if (((theConf.debug_flags >> dMODBUS) & 1U))
-                ESP_LOGE(TAG,"%sSensor Error CID %d=0x%x %s ",color,a,errors[a],esp_err_to_name(errors[a]));
+                MESP_LOGE(TAG,"%sSensor Error CID %d=0x%x %s ",color,a,errors[a],esp_err_to_name(errors[a]));
             hasErrors=true;
         }
     }
@@ -112,7 +112,7 @@ void print_sensor_data(void *sensors, int *errors,char *color,int numerrs)
         return;
 
 
-    ESP_LOGI(TAG, "%s WaterTemp:%.02f°C DO%%.%.02f%% DO:%.02fppm", color,
+    MESP_LOGI(TAG, "%s WaterTemp:%.02f°C DO%%.%.02f%% DO:%.02fppm", color,
              data->WTemp,
              data->percentDO * 100.0,
              data->DO);
@@ -147,7 +147,7 @@ void print_energy_data(void *energy, int *errors,char * color,int numerrs)
         if(errors[a]!=0)
         {
             if (((theConf.debug_flags >> dMODBUS) & 1U))
-                ESP_LOGE(TAG,"%sEnergyError CID %d=0x%x %s ",color,a,errors[a],esp_err_to_name(errors[a]));
+                MESP_LOGE(TAG,"%sEnergyError CID %d=0x%x %s ",color,a,errors[a],esp_err_to_name(errors[a]));
             hasErrors=true;
         }
     }
@@ -181,7 +181,7 @@ void print_energy_data(void *energy, int *errors,char * color,int numerrs)
     // Print charging or discharging data based on current state
     if (pvPanelData.chargeCurr)
     {
-        ESP_LOGI(TAG, "%s [CHARGING] - BatChgAH(Today:%u Total:%u) GenEnergy:%.02fkWh BatChg:%.02fkWh", color,
+        MESP_LOGI(TAG, "%s [CHARGING] - BatChgAH(Today:%u Total:%u) GenEnergy:%.02fkWh BatChg:%.02fkWh", color,
                  data->batChgAHToday,
                  data->batChgAHTotal,
                  data->generateEnergyToday,
@@ -189,7 +189,7 @@ void print_energy_data(void *energy, int *errors,char * color,int numerrs)
     }
     else
     {
-        ESP_LOGI(TAG, "%s [DISCHARGING] - BatDischgAH(Today:%u Total:%u) UsedEnergy:%.02fkWh LoadConsumTotal:%.02fkWh BatDischg:%.02fkWh GenLoadConsum:%.02fkWh", color,
+        MESP_LOGI(TAG, "%s [DISCHARGING] - BatDischgAH(Today:%u Total:%u) UsedEnergy:%.02fkWh LoadConsumTotal:%.02fkWh BatDischg:%.02fkWh GenLoadConsum:%.02fkWh", color,
                  data->batDischgAHToday,
                  data->batDischgAHTotal,
                  data->usedEnergyToday,
@@ -228,7 +228,7 @@ void print_battery_data(void *batteryData, int *errors,char *color,int numerrs)
         if(errors[a]!=0)
         {
             if (((theConf.debug_flags >> dMODBUS) & 1U))
-                ESP_LOGE(TAG,"%sBattery Error CID %d=0x%x %s ",color,a,errors[a],esp_err_to_name(errors[a]));
+                MESP_LOGE(TAG,"%sBattery Error CID %d=0x%x %s ",color,a,errors[a],esp_err_to_name(errors[a]));
             hasErrors=true;
         }
     }
@@ -257,7 +257,7 @@ void print_battery_data(void *batteryData, int *errors,char *color,int numerrs)
     if (!((theConf.debug_flags >> dMODBUS) & 1U))
         return;
 
-    ESP_LOGI(TAG, "%s- SOC:%d%% SOH:%d%% CycleCount:%d BmsTemp:%.02f°C", color,
+    MESP_LOGI(TAG, "%s- SOC:%d%% SOH:%d%% CycleCount:%d BmsTemp:%.02f°C", color,
              data->batSOC,
              data->batSOH,
              data->batteryCycleCount,
@@ -293,7 +293,7 @@ void print_panel_data(void *pvPanel, int *errors,char * color,int numerrs)
         if(errors[a]!=0)
         {
             if (((theConf.debug_flags >> dMODBUS) & 1U))
-                ESP_LOGE(TAG,"%sPanels Error CID %d=0x%x %s ",color,a,errors[a],esp_err_to_name(errors[a]));
+                MESP_LOGE(TAG,"%sPanels Error CID %d=0x%x %s ",color,a,errors[a],esp_err_to_name(errors[a]));
             hasErrors=true;
             // here the logic to ERROR MANAGEMNET reporting
         }
@@ -325,7 +325,7 @@ void print_panel_data(void *pvPanel, int *errors,char * color,int numerrs)
         return;
 
         
-    ESP_LOGI(TAG, "%s [%s] - String1:[%.02fV / %.02fA] String2:[%.02fV / %.02fA]", color,
+    MESP_LOGI(TAG, "%s [%s] - String1:[%.02fV / %.02fA] String2:[%.02fV / %.02fA]", color,
              data->chargeCurr ? "CHARGING" : "DISCHARGING",
              data->pv1Volts,                    
              data->pv1Amp,

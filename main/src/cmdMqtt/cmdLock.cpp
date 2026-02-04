@@ -61,14 +61,14 @@ static cJSON* validateLockCommand(cJSON *lockCommand)
 {
     if(!lockCommand)
     {
-        ESP_LOGE(MESH_TAG, "NO CMD argument passed. Internal error");
+        MESP_LOGE(MESH_TAG, "NO CMD argument passed. Internal error");
         return NULL;
     }
     
     cJSON *disconnectArray = cJSON_GetObjectItem(lockCommand, "disCon");
     if(!disconnectArray)
     {
-        ESP_LOGE(MESH_TAG, "Lock Cmd no disCon array");
+        MESP_LOGE(MESH_TAG, "Lock Cmd no disCon array");
         return NULL;
     }
     
@@ -101,14 +101,14 @@ static cJSON* createLockMessage(cJSON *meterIdNode, cJSON *lockStateNode)
 {
     if(!meterIdNode || !meterIdNode->valuestring || !lockStateNode)
     {
-        ESP_LOGE(MESH_TAG, "Invalid meter ID or lock state");
+        MESP_LOGE(MESH_TAG, "Invalid meter ID or lock state");
         return NULL;
     }
     
     cJSON *root = cJSON_CreateObject();
     if(!root)
     {
-        ESP_LOGE(MESH_TAG, "Error creating Root Lock");
+        MESP_LOGE(MESH_TAG, "Error creating Root Lock");
         return NULL;
     }
     
@@ -127,7 +127,7 @@ static void logLockOperation(cJSON *meterIdNode)
 {
     if(!meterIdNode || !meterIdNode->valuestring)
     {
-        ESP_LOGW(MESH_TAG, "Cannot log lock operation: invalid meter ID");
+        MESP_LOGW(MESH_TAG, "Cannot log lock operation: invalid meter ID");
         return;
     }
     
@@ -140,7 +140,7 @@ static void logLockOperation(cJSON *meterIdNode)
     }
     else
     {
-        ESP_LOGW(MESH_TAG, "Failed to allocate log buffer for lock operation");
+        MESP_LOGW(MESH_TAG, "Failed to allocate log buffer for lock operation");
     }
 }
 
@@ -156,14 +156,14 @@ static esp_err_t buildMeshMessageLock(const char *jsonString, meshunion_t **mesh
 {
     if(!jsonString || !meshMessage)
     {
-        ESP_LOGE(MESH_TAG, "Invalid parameters for buildMeshMessage");
+        MESP_LOGE(MESH_TAG, "Invalid parameters for buildMeshMessage");
         return ESP_FAIL;
     }
     
     *meshMessage = (meshunion_t*)calloc(1, MESH_MESSAGE_BUFFER_SIZE);
     if(!*meshMessage)
     {
-        ESP_LOGE(MESH_TAG, "Failed to allocate mesh message buffer");
+        MESP_LOGE(MESH_TAG, "Failed to allocate mesh message buffer");
         return ESP_FAIL;
     }
     
@@ -186,7 +186,7 @@ static esp_err_t sendLockCommandToMesh(meshunion_t *meshMessage, size_t jsonStri
 {
     if(!meshMessage)
     {
-        ESP_LOGE(MESH_TAG, "Mesh message is NULL");
+        MESP_LOGE(MESH_TAG, "Mesh message is NULL");
         return ESP_FAIL;
     }
     
@@ -200,11 +200,11 @@ static esp_err_t sendLockCommandToMesh(meshunion_t *meshMessage, size_t jsonStri
     
     if(err != ESP_OK)
     {
-        ESP_LOGE(MESH_TAG, "Failed to send lock command via mesh: %s", esp_err_to_name(err));
+        MESP_LOGE(MESH_TAG, "Failed to send lock command via mesh: %s", esp_err_to_name(err));
     }
     else if(meterIdNode && meterIdNode->valuestring)
     {
-        ESP_LOGI(MESH_TAG, "Lock command sent successfully to node: %s", meterIdNode->valuestring);
+        MESP_LOGI(MESH_TAG, "Lock command sent successfully to node: %s", meterIdNode->valuestring);
     }
     
     return err;
@@ -230,7 +230,7 @@ static esp_err_t processLockArrayItem(cJSON *arrayItem)
 {
     if(!arrayItem)
     {
-        ESP_LOGE(MESH_TAG, "Lock Cmd no Array error");
+        MESP_LOGE(MESH_TAG, "Lock Cmd no Array error");
         return ESP_FAIL;
     }
     
@@ -239,7 +239,7 @@ static esp_err_t processLockArrayItem(cJSON *arrayItem)
     
     if(!meterIdNode || !meterIdNode->valuestring || !lockStateNode)
     {
-        ESP_LOGE(MESH_TAG, "Lock Cmd no MID or STATE");
+        MESP_LOGE(MESH_TAG, "Lock Cmd no MID or STATE");
         return ESP_FAIL;
     }
     
@@ -254,7 +254,7 @@ static esp_err_t processLockArrayItem(cJSON *arrayItem)
     char *jsonString = cJSON_PrintUnformatted(root);
     if(!jsonString)
     {
-        ESP_LOGE(MESH_TAG, "Failed to serialize lock command to JSON");
+        MESP_LOGE(MESH_TAG, "Failed to serialize lock command to JSON");
         cJSON_Delete(root);
         return ESP_FAIL;
     }
@@ -346,7 +346,7 @@ int cmdLock(void *argument)
         // Continue processing other items even if one fails
         if(err != ESP_OK)
         {
-            ESP_LOGW(MESH_TAG, "Failed to process lock item %d, continuing with next", i);
+            MESP_LOGW(MESH_TAG, "Failed to process lock item %d, continuing with next", i);
         }
     }
     

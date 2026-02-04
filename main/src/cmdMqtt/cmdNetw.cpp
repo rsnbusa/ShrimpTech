@@ -40,13 +40,13 @@ static bool validate_network_command(cJSON *networkCommand, NetworkCommandFields
 {
     if(!networkCommand || !outFields)
     {
-        ESP_LOGE(MESH_TAG,"Network command argument invalid");
+        MESP_LOGE(MESH_TAG,"Network command argument invalid");
         return false;
     }
 
     if(!cJSON_IsObject(networkCommand))
     {
-        ESP_LOGE(MESH_TAG,"Network command payload invalid");
+        MESP_LOGE(MESH_TAG,"Network command payload invalid");
         return false;
     }
 
@@ -55,25 +55,25 @@ static bool validate_network_command(cJSON *networkCommand, NetworkCommandFields
 
     if(!ssidNode || !passwordNode)
     {
-        ESP_LOGE(MESH_TAG,"Network command missing required fields (ssid or password)");
+        MESP_LOGE(MESH_TAG,"Network command missing required fields (ssid or password)");
         return false;
     }
 
     if(!cJSON_IsString(ssidNode) || !ssidNode->valuestring || strlen(ssidNode->valuestring) == 0)
     {
-        ESP_LOGE(MESH_TAG,"Network SSID parameter invalid or empty");
+        MESP_LOGE(MESH_TAG,"Network SSID parameter invalid or empty");
         return false;
     }
 
     if(!cJSON_IsString(passwordNode) || !passwordNode->valuestring)
     {
-        ESP_LOGE(MESH_TAG,"Network password parameter invalid");
+        MESP_LOGE(MESH_TAG,"Network password parameter invalid");
         return false;
     }
 
     if(strlen(passwordNode->valuestring) < NETWORK_PASSWORD_MIN_LENGTH)
     {
-        ESP_LOGW(MESH_TAG,"Network password too short (%d chars, minimum %d)", 
+        MESP_LOGW(MESH_TAG,"Network password too short (%d chars, minimum %d)", 
                  (int)strlen(passwordNode->valuestring), NETWORK_PASSWORD_MIN_LENGTH);
         return false;
     }
@@ -94,13 +94,13 @@ static bool apply_network_config(const NetworkCommandFields *fields)
 
     if(!copy_string_safe(theConf.thessid, sizeof(theConf.thessid), fields->ssid))
     {
-        ESP_LOGE(MESH_TAG,"Failed to copy network SSID (too long)");
+        MESP_LOGE(MESH_TAG,"Failed to copy network SSID (too long)");
         return false;
     }
 
     if(!copy_string_safe(theConf.thepass, sizeof(theConf.thepass), fields->password))
     {
-        ESP_LOGE(MESH_TAG,"Failed to copy network password (too long)");
+        MESP_LOGE(MESH_TAG,"Failed to copy network password (too long)");
         return false;
     }
 
@@ -127,7 +127,7 @@ static void reboot_device_if_requested(cJSON *rebootNode)
     {
         if(strcmp(rebootNode->valuestring, "Y") == 0)
         {
-            ESP_LOGI(MESH_TAG,"Reboot requested, restarting device");
+            MESP_LOGI(MESH_TAG,"Reboot requested, restarting device");
             fclose(myFile);
             vTaskDelay(NETWORK_RESTART_DELAY_MS / portTICK_PERIOD_MS);
             esp_restart();
@@ -137,13 +137,13 @@ static void reboot_device_if_requested(cJSON *rebootNode)
 
 int cmdNetw(void *argument)
 {
-    ESP_LOGI(MESH_TAG,"Netw Cmd");
+    MESP_LOGI(MESH_TAG,"Netw Cmd");
     
     cJSON *networkCommand = (cJSON *)argument;
     
     if(networkCommand == NULL)
     {
-        ESP_LOGE(MESH_TAG,"Network command argument is NULL");
+        MESP_LOGE(MESH_TAG,"Network command argument is NULL");
         return ESP_FAIL;
     }
     
@@ -159,7 +159,7 @@ int cmdNetw(void *argument)
     if(!apply_network_config(&fields))
         return ESP_FAIL;
 
-    ESP_LOGI(MESH_TAG,"Network credentials updated");
+    MESP_LOGI(MESH_TAG,"Network credentials updated");
     log_network_update(theConf.thessid);
 
     cJSON *rebootNode = cJSON_GetObjectItem(networkCommand,"reboot");

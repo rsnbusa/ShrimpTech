@@ -56,20 +56,20 @@ static bool validate_battery_command(cJSON *batteryCommand, BatteryCommandFields
 {
     if(!batteryCommand || !out)
     {
-        ESP_LOGE(MESH_TAG,"Battery command argument invalid");
+        MESP_LOGE(MESH_TAG,"Battery command argument invalid");
         return false;
     }
 
     if(!cJSON_IsObject(batteryCommand))
     {
-        ESP_LOGE(MESH_TAG,"Battery command payload invalid");
+        MESP_LOGE(MESH_TAG,"Battery command payload invalid");
         return false;
     }
 
     cJSON *general = cJSON_GetObjectItem(batteryCommand,"General");
     if(!general || !cJSON_IsObject(general))
     {
-        ESP_LOGE(MESH_TAG,"Battery command missing General block");
+        MESP_LOGE(MESH_TAG,"Battery command missing General block");
         return false;
     }
 
@@ -77,7 +77,7 @@ static bool validate_battery_command(cJSON *batteryCommand, BatteryCommandFields
     cJSON *addrNode = cJSON_GetObjectItem(general,"InverterAddress");
     if(!refreshNode || !addrNode || !cJSON_IsNumber(refreshNode) || !cJSON_IsNumber(addrNode))
     {
-        ESP_LOGE(MESH_TAG,"Battery General block incomplete");
+        MESP_LOGE(MESH_TAG,"Battery General block incomplete");
         return false;
     }
 
@@ -91,7 +91,7 @@ static bool validate_battery_command(cJSON *batteryCommand, BatteryCommandFields
        !parse_channel(soh,&out->soh.mux,&out->soh.type,&out->soh.points,&out->soh.start,&out->soh.offset) ||
        !parse_channel(soc,&out->soc.mux,&out->soc.type,&out->soc.points,&out->soc.start,&out->soc.offset))
     {
-        ESP_LOGE(MESH_TAG,"Battery command missing or invalid channel blocks");
+        MESP_LOGE(MESH_TAG,"Battery command missing or invalid channel blocks");
         return false;
     }
 
@@ -145,21 +145,21 @@ static void log_battery_update(const BatteryCommandFields *fields)
 
 static void dump_battery_config(void)
 {
-    ESP_LOGI(MESH_TAG,"Battery cfg -> refresh:%d addr:%d", theConf.modbus_battery.refresh_rate, theConf.modbus_battery.batAddress);
-    ESP_LOGI(MESH_TAG,"batTemp mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_battery.tempMux, theConf.modbus_battery.tempType, theConf.modbus_battery.tempPoints, theConf.modbus_battery.tempStart, theConf.modbus_battery.tempOffset);
-    ESP_LOGI(MESH_TAG,"Cycles mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_battery.cycleMux, theConf.modbus_battery.cycleType, theConf.modbus_battery.cyclePoints, theConf.modbus_battery.cycleStart, theConf.modbus_battery.cycleOffset);
-    ESP_LOGI(MESH_TAG,"SOH mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_battery.SOHMux, theConf.modbus_battery.SOHType, theConf.modbus_battery.SOHPoints, theConf.modbus_battery.SOHStart, theConf.modbus_battery.SOHOffset);
-    ESP_LOGI(MESH_TAG,"SOC mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_battery.SOCMux, theConf.modbus_battery.SOCType, theConf.modbus_battery.SOCPoints, theConf.modbus_battery.SOCStart, theConf.modbus_battery.SOCOffset);
+    MESP_LOGI(MESH_TAG,"Battery cfg -> refresh:%d addr:%d", theConf.modbus_battery.refresh_rate, theConf.modbus_battery.batAddress);
+    MESP_LOGI(MESH_TAG,"batTemp mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_battery.tempMux, theConf.modbus_battery.tempType, theConf.modbus_battery.tempPoints, theConf.modbus_battery.tempStart, theConf.modbus_battery.tempOffset);
+    MESP_LOGI(MESH_TAG,"Cycles mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_battery.cycleMux, theConf.modbus_battery.cycleType, theConf.modbus_battery.cyclePoints, theConf.modbus_battery.cycleStart, theConf.modbus_battery.cycleOffset);
+    MESP_LOGI(MESH_TAG,"SOH mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_battery.SOHMux, theConf.modbus_battery.SOHType, theConf.modbus_battery.SOHPoints, theConf.modbus_battery.SOHStart, theConf.modbus_battery.SOHOffset);
+    MESP_LOGI(MESH_TAG,"SOC mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_battery.SOCMux, theConf.modbus_battery.SOCType, theConf.modbus_battery.SOCPoints, theConf.modbus_battery.SOCStart, theConf.modbus_battery.SOCOffset);
 }
 
 int cmdBattery(void *argument)
 {
-    ESP_LOGI(MESH_TAG,"Battery Cmd");
+    MESP_LOGI(MESH_TAG,"Battery Cmd");
 
     cJSON *batteryCommand = (cJSON *)argument;
     if(batteryCommand == NULL)
     {
-        ESP_LOGE(MESH_TAG,"Battery command argument is NULL");
+        MESP_LOGE(MESH_TAG,"Battery command argument is NULL");
         return ESP_FAIL;
     }
 
@@ -173,7 +173,7 @@ int cmdBattery(void *argument)
         return ESP_FAIL;
 
     apply_battery_config(&fields);
-    ESP_LOGI(MESH_TAG,"Battery configuration updated");
+    MESP_LOGI(MESH_TAG,"Battery configuration updated");
     log_battery_update(&fields);
 
     if((theConf.debug_flags >> dXCMDS) & 1U)  

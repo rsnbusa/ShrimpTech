@@ -71,7 +71,7 @@ static esp_err_t reopenLogFileAppend(void)
     myFile = fopen("/spiffs/log.txt", "a");
     if(myFile == NULL)
     {
-        ESP_LOGE(MESH_TAG, "Failed to open log file for append");
+        MESP_LOGE(MESH_TAG, "Failed to open log file for append");
         return ESP_FAIL;
     }
     
@@ -99,7 +99,7 @@ static esp_err_t readLogLines(int numLines, char **buffer, int *bytesRead)
 {
     if(numLines <= 0 || !buffer || !bytesRead)
     {
-        ESP_LOGE(MESH_TAG, "Invalid parameters for readLogLines");
+        MESP_LOGE(MESH_TAG, "Invalid parameters for readLogLines");
         return ESP_FAIL;
     }
     
@@ -112,7 +112,7 @@ static esp_err_t readLogLines(int numLines, char **buffer, int *bytesRead)
     myFile = fopen("/spiffs/log.txt", "r");
     if(!myFile)
     {
-        ESP_LOGE(MESH_TAG, "Failed to open log file for reading");
+        MESP_LOGE(MESH_TAG, "Failed to open log file for reading");
         reopenLogFileAppend();
         return ESP_FAIL;
     }
@@ -122,7 +122,7 @@ static esp_err_t readLogLines(int numLines, char **buffer, int *bytesRead)
     
     if(!logBuffer)
     {
-        ESP_LOGE(MESH_TAG, "Failed to allocate %d bytes for log buffer", totalSize);
+        MESP_LOGE(MESH_TAG, "Failed to allocate %d bytes for log buffer", totalSize);
         reopenLogFileAppend();
         return ESP_FAIL;
     }
@@ -146,7 +146,7 @@ static esp_err_t readLogLines(int numLines, char **buffer, int *bytesRead)
             }
             else
             {
-                ESP_LOGW(MESH_TAG, "Log buffer full, stopping at %d bytes", *bytesRead);
+                MESP_LOGW(MESH_TAG, "Log buffer full, stopping at %d bytes", *bytesRead);
                 break;
             }
         }
@@ -159,7 +159,7 @@ static esp_err_t readLogLines(int numLines, char **buffer, int *bytesRead)
     
     if(*bytesRead == 0)
     {
-        ESP_LOGW(MESH_TAG, "No log data read from file");
+        MESP_LOGW(MESH_TAG, "No log data read from file");
         free(logBuffer);
         reopenLogFileAppend();
         return ESP_FAIL;
@@ -182,7 +182,7 @@ static esp_err_t sendLogsToQueue(char *logData, int dataSize)
 {
     if(!logData || dataSize <= 0)
     {
-        ESP_LOGE(MESH_TAG, "Invalid log data for queue");
+        MESP_LOGE(MESH_TAG, "Invalid log data for queue");
         return ESP_FAIL;
     }
     
@@ -195,7 +195,7 @@ static esp_err_t sendLogsToQueue(char *logData, int dataSize)
     
     if(xQueueSend(mqttSender, &mqttMsg, 0) != pdTRUE)
     {
-        ESP_LOGE(MESH_TAG, "Error queueing msg logs");
+        MESP_LOGE(MESH_TAG, "Error queueing msg logs");
         return ESP_FAIL;
     }
     
@@ -216,7 +216,7 @@ static esp_err_t sendLogsToQueue(char *logData, int dataSize)
  */
 static esp_err_t eraseLogFile(void)
 {
-    ESP_LOGI(MESH_TAG, "Erase Log file cmd");
+    MESP_LOGI(MESH_TAG, "Erase Log file cmd");
     
     if(myFile)
     {
@@ -226,13 +226,13 @@ static esp_err_t eraseLogFile(void)
     
     if(remove("/spiffs/log.txt") != 0)
     {
-        ESP_LOGW(MESH_TAG, "Failed to remove log file (may not exist)");
+        MESP_LOGW(MESH_TAG, "Failed to remove log file (may not exist)");
     }
     
     myFile = fopen("/spiffs/log.txt", "a");
     if(myFile == NULL)
     {
-        ESP_LOGE(MESH_TAG, "Failed to open file for append after erase");
+        MESP_LOGE(MESH_TAG, "Failed to open file for append after erase");
         return ESP_FAIL;
     }
     
@@ -291,11 +291,11 @@ int cmdLogs(void *argument)
     cJSON *cmd = (cJSON *)argument;
     if(!cmd)
     {
-        ESP_LOGE(MESH_TAG, "NULL command argument");
+        MESP_LOGE(MESH_TAG, "NULL command argument");
         return ESP_FAIL;
     }
     
-    ESP_LOGI(MESH_TAG, "Log CMD");
+    MESP_LOGI(MESH_TAG, "Log CMD");
     
     /*
     Command format:
@@ -311,7 +311,7 @@ int cmdLogs(void *argument)
     {
         if(linesNode->valueint <= 0)
         {
-            ESP_LOGW(MESH_TAG, "Invalid number of lines requested: %d", linesNode->valueint);
+            MESP_LOGW(MESH_TAG, "Invalid number of lines requested: %d", linesNode->valueint);
             return ESP_FAIL;
         }
         
@@ -343,7 +343,7 @@ int cmdLogs(void *argument)
     {
         if(!eraseNode->valuestring)
         {
-            ESP_LOGW(MESH_TAG, "Erase node has no value");
+            MESP_LOGW(MESH_TAG, "Erase node has no value");
             return ESP_FAIL;
         }
         

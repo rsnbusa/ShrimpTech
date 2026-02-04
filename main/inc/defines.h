@@ -1,4 +1,12 @@
 
+extern void my_log(const char* tag, const char* format, ...);
+#define MESP_LOGI(tag, format, ...) my_log(tag, format, ##__VA_ARGS__)
+#define MESP_LOGW(tag, format, ...) my_log(tag, format, ##__VA_ARGS__)
+#define MESP_LOGE(tag, format, ...) my_log(tag, format, ##__VA_ARGS__)
+#define MESP_LOGD(tag, format, ...) my_log(tag, format, ##__VA_ARGS__)
+
+#define EXAMPLE_ONEWIRE_BUS_GPIO        (45)
+#define EXAMPLE_ONEWIRE_MAX_DS18B20     (1)
 #ifdef  CONFIG_IDF_TARGET_ESP32
 #define UTXD                            (25)
 #define URXD                            (27)

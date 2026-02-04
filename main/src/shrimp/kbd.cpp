@@ -71,14 +71,14 @@ static bool createPrompt(char *buffer, uint8_t poolId, uint8_t unitId)
 {
     if(!buffer)
     {
-        ESP_LOGE("KBD", "Prompt buffer is NULL");
+        MESP_LOGE("KBD", "Prompt buffer is NULL");
         return false;
     }
     
     int written = snprintf(buffer, PROMPT_BUFFER_SIZE, "Meter%02d-%02d>", poolId, unitId);
     if(written < 0 || written >= PROMPT_BUFFER_SIZE)
     {
-        ESP_LOGE("KBD", "Failed to create prompt string");
+        MESP_LOGE("KBD", "Failed to create prompt string");
         return false;
     }
     
@@ -321,7 +321,7 @@ void kbd(void *pArg)
   char *prompt = (char*)calloc(1, PROMPT_BUFFER_SIZE);
   if(!prompt)
   {
-        ESP_LOGE("KBD", "Failed to allocate prompt buffer");
+        MESP_LOGE("KBD", "Failed to allocate prompt buffer");
         vTaskDelete(NULL);
         return;
     }
@@ -341,7 +341,7 @@ void kbd(void *pArg)
       }
       else
       {
-          ESP_LOGW("KBD", "Using default prompt due to creation failure");
+          MESP_LOGW("KBD", "Using default prompt due to creation failure");
           free(prompt);
           prompt = NULL;
       }

@@ -65,7 +65,7 @@ static bool formatLogMessage(char *buffer, size_t bufferSize, const char *messag
  */
 static bool recycleLogFile()
 {
-    ESP_LOGW("LOG", "Log file full, recycling...");
+    MESP_LOGW("LOG", "Log file full, recycling...");
     
     if(myFile)
     {
@@ -78,7 +78,7 @@ static bool recycleLogFile()
     myFile = fopen(LOG_FILE_PATH, "a");
     if(!myFile)
     {
-        ESP_LOGE("LOG", "Failed to open file after recycling");
+        MESP_LOGE("LOG", "Failed to open file after recycling");
         return false;
     }
     
@@ -114,27 +114,27 @@ void writeLog(char *message)
 {
     if(!message)
     {
-        ESP_LOGW("LOG", "Attempted to write NULL message");
+        MESP_LOGW("LOG", "Attempted to write NULL message");
         return;
     }
 
     if(!myFile)
     {
-        ESP_LOGE("LOG", "Log file not initialized - call logFileInit() first");
+        MESP_LOGE("LOG", "Log file not initialized - call logFileInit() first");
         return;
     }
     
     char *logBuffer = (char*)calloc(LOG_BUFFER_SIZE, 1);
     if(!logBuffer)
     {
-        ESP_LOGE("LOG", "Failed to allocate log buffer");
+        MESP_LOGE("LOG", "Failed to allocate log buffer");
         return;
     }
 
     // Format message with timestamp
     if(!formatLogMessage(logBuffer, LOG_BUFFER_SIZE, message))
     {
-        ESP_LOGE("LOG", "Failed to format log message");
+        MESP_LOGE("LOG", "Failed to format log message");
         free(logBuffer);
         return;
     }
@@ -191,15 +191,15 @@ void logFileInit()
     {
         if(result == ESP_FAIL)
         {
-            ESP_LOGE("LOG", "Failed to mount or format filesystem");
+            MESP_LOGE("LOG", "Failed to mount or format filesystem");
         }
         else if(result == ESP_ERR_NOT_FOUND)
         {
-            ESP_LOGE("LOG", "Failed to find SPIFFS partition");
+            MESP_LOGE("LOG", "Failed to find SPIFFS partition");
         }
         else
         {
-            ESP_LOGE("LOG", "Failed to initialize SPIFFS: %s", esp_err_to_name(result));
+            MESP_LOGE("LOG", "Failed to initialize SPIFFS: %s", esp_err_to_name(result));
         }
         return;
     }
@@ -210,7 +210,7 @@ void logFileInit()
     
     if(result != ESP_OK)
     {
-        ESP_LOGE("LOG", "Failed to get SPIFFS partition info: %s. Formatting...", 
+        MESP_LOGE("LOG", "Failed to get SPIFFS partition info: %s. Formatting...", 
                  esp_err_to_name(result));
         esp_spiffs_format(conf.partition_label);
         return;
@@ -218,16 +218,16 @@ void logFileInit()
     
     // Calculate and display usage percentage
     int usagePercent = (totalBytes > 0) ? (usedBytes * 100 / totalBytes) : 0;
-    ESP_LOGI("LOG", "SPIFFS - Total: %d bytes, Used: %d bytes (%d%%)", 
+    MESP_LOGI("LOG", "SPIFFS - Total: %d bytes, Used: %d bytes (%d%%)", 
              totalBytes, usedBytes, usagePercent);
     
     // Open log file in append mode
     myFile = fopen(LOG_FILE_PATH, "a");
     if(!myFile)
     {
-        ESP_LOGE("LOG", "Failed to open log file: %s", LOG_FILE_PATH);
+        MESP_LOGE("LOG", "Failed to open log file: %s", LOG_FILE_PATH);
         return;
     }
     
-    ESP_LOGI("LOG", "Log file opened successfully: %s", LOG_FILE_PATH);
+    MESP_LOGI("LOG", "Log file opened successfully: %s", LOG_FILE_PATH);
 }

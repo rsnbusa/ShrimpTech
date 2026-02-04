@@ -42,7 +42,7 @@ int cmdBasetimer(int argc, char **argv)
             lev = 10;
         }
         
-        printf("First timer changed from %d to %d\n", theConf.baset, lev);
+        MESP_LOG(TAG,"First timer changed from %d to %d", theConf.baset, lev);
         theConf.baset = BASETIMER = lev;  // Will take effect in NEXT timer repeat
     }
 
@@ -55,7 +55,7 @@ int cmdBasetimer(int argc, char **argv)
             lev = 1;
         }
         
-        printf("Minute  changed from %d to %d\n", theConf.minute, lev);
+        MESP_LOG(TAG,"Minute  changed from %d to %d", theConf.minute, lev);
         theConf.minute =lev;  // Will take effect in NEXT timer repeat
     }
 
@@ -64,17 +64,17 @@ int cmdBasetimer(int argc, char **argv)
         int lev = basetimer.repeat->ival[0];
         
         if (lev < 1) {
-            printf("Error: Repeat timer value must be at least 1\n");
+            MESP_LOG(TAG,"Error: Repeat timer value must be at least 1");
             return 0;
         }
         
-        printf("Repeat timer changed from %d to %d\n", theConf.repeat, lev);
+        MESP_LOG(TAG,"Repeat timer changed from %d to %d", theConf.repeat, lev);
         theConf.repeat = lev;
     }
 
     // Save configuration to flash
     write_to_flash();
-    printf("Timer configuration saved to flash\n");
+    MESP_LOG(TAG,"Timer configuration saved to flash");
 
     return 0;
 }

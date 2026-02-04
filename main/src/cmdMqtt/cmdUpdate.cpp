@@ -20,26 +20,26 @@ static bool validate_update_command(cJSON *updateCommand, const char **outMeterI
 {
     if(!updateCommand || !outMeterId)
     {
-        ESP_LOGE(MESH_TAG, "Update command validation arguments invalid");
+        MESP_LOGE(MESH_TAG, "Update command validation arguments invalid");
         return false;
     }
     
     if(!cJSON_IsObject(updateCommand))
     {
-        ESP_LOGE(MESH_TAG, "Update command payload invalid");
+        MESP_LOGE(MESH_TAG, "Update command payload invalid");
         return false;
     }
     
     cJSON *meterIdNode = cJSON_GetObjectItem(updateCommand, "mid");
     if(!meterIdNode)
     {
-        ESP_LOGE(MESH_TAG, "Update command missing meter ID field");
+        MESP_LOGE(MESH_TAG, "Update command missing meter ID field");
         return false;
     }
     
     if(!cJSON_IsString(meterIdNode) || !meterIdNode->valuestring || strlen(meterIdNode->valuestring) == 0)
     {
-        ESP_LOGE(MESH_TAG, "Update meter ID parameter invalid or empty");
+        MESP_LOGE(MESH_TAG, "Update meter ID parameter invalid or empty");
         return false;
     }
     
@@ -77,7 +77,7 @@ static int send_update_mesh_message(cJSON *updateCommand)
     char *jsonMessage = cJSON_PrintUnformatted(updateCommand);
     if(!jsonMessage)
     {
-        ESP_LOGE(MESH_TAG, "Failed to serialize update command to JSON");
+        MESP_LOGE(MESH_TAG, "Failed to serialize update command to JSON");
         return ESP_FAIL;
     }
     
@@ -87,7 +87,7 @@ static int send_update_mesh_message(cJSON *updateCommand)
     meshunion_t *meshMessage = (meshunion_t*)calloc(1, UPDATE_MESSAGE_SIZE);
     if(!meshMessage)
     {
-        ESP_LOGE(MESH_TAG, "Failed to allocate mesh message buffer");
+        MESP_LOGE(MESH_TAG, "Failed to allocate mesh message buffer");
         free(jsonMessage);
         return ESP_FAIL;
     }
@@ -109,12 +109,12 @@ static int send_update_mesh_message(cJSON *updateCommand)
     
     if(err != ESP_OK)
     {
-        ESP_LOGE(MESH_TAG, "Failed to send update command via mesh: %d", err);
+        MESP_LOGE(MESH_TAG, "Failed to send update command via mesh: %d", err);
         log_update_error(err);
         return ESP_FAIL;
     }
     
-    ESP_LOGI(MESH_TAG, "Update command sent successfully");
+    MESP_LOGI(MESH_TAG, "Update command sent successfully");
     return ESP_OK;
 }
 
@@ -125,13 +125,13 @@ int cmdUpdate(void *argument)
      * {"cmd":"update","f":"xxxxxx","mid":"thismeter","bpk":12234,"ks":1234,"k":12313,"sk":"y/n","skn":9,"cha":"xxxxxxxx"}
      */
     
-    ESP_LOGI(MESH_TAG, "Update CMD");
+    MESP_LOGI(MESH_TAG, "Update CMD");
     
     cJSON *updateCommand = (cJSON *)argument;
     
     if(updateCommand == NULL)
     {
-        ESP_LOGE(MESH_TAG, "Update command argument is NULL");
+        MESP_LOGE(MESH_TAG, "Update command argument is NULL");
         return ESP_FAIL;
     }
     

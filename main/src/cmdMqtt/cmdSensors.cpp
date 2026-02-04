@@ -58,27 +58,27 @@ static bool validate_sensors_command(cJSON *sensorsCommand, SensorsCommandFields
 {
     if(!sensorsCommand || !out)
     {
-        ESP_LOGE(MESH_TAG,"Sensors command argument invalid");
+        MESP_LOGE(MESH_TAG,"Sensors command argument invalid");
         return false;
     }
 
     if(!cJSON_IsObject(sensorsCommand))
     {
-        ESP_LOGE(MESH_TAG,"Sensors command payload invalid");
+        MESP_LOGE(MESH_TAG,"Sensors command payload invalid");
         return false;
     }
 
     cJSON *general = cJSON_GetObjectItem(sensorsCommand,"General");
     if(!general || !cJSON_IsObject(general))
     {
-        ESP_LOGE(MESH_TAG,"Sensors command missing General block");
+        MESP_LOGE(MESH_TAG,"Sensors command missing General block");
         return false;
     }
 
     cJSON *refreshNode = cJSON_GetObjectItem(general,"refresh");
     if(!refreshNode || !cJSON_IsNumber(refreshNode))
     {
-        ESP_LOGE(MESH_TAG,"Sensors General block incomplete");
+        MESP_LOGE(MESH_TAG,"Sensors General block incomplete");
         return false;
     }
 
@@ -94,7 +94,7 @@ static bool validate_sensors_command(cJSON *sensorsCommand, SensorsCommandFields
        !parse_channel_with_address(ambientCh,&out->ambientCh.address,&out->ambientCh.mux,&out->ambientCh.type,&out->ambientCh.points,&out->ambientCh.start,&out->ambientCh.offset) ||
        !parse_channel_with_address(humidityCh,&out->humidityCh.address,&out->humidityCh.mux,&out->humidityCh.type,&out->humidityCh.points,&out->humidityCh.start,&out->humidityCh.offset))
     {
-        ESP_LOGE(MESH_TAG,"Sensors command missing or invalid channel blocks");
+        MESP_LOGE(MESH_TAG,"Sensors command missing or invalid channel blocks");
         return false;
     }
 
@@ -157,22 +157,22 @@ static void log_sensors_update(const SensorsCommandFields *fields)
 
 static void dump_sensors_config(void)
 {
-    ESP_LOGI(MESH_TAG,"Sensors cfg -> refresh:%d", theConf.modbus_sensors.refresh_rate);
-    ESP_LOGI(MESH_TAG,"DO addr:%d mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_sensors.DOAddress, theConf.modbus_sensors.DOMux, theConf.modbus_sensors.DOType, theConf.modbus_sensors.DOPoints, theConf.modbus_sensors.DOStart, theConf.modbus_sensors.DOOffset);
-    ESP_LOGI(MESH_TAG,"PH addr:%d mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_sensors.PHAddress, theConf.modbus_sensors.PHMux, theConf.modbus_sensors.PHType, theConf.modbus_sensors.PHPoints, theConf.modbus_sensors.PHStart, theConf.modbus_sensors.PHOffset);
-    ESP_LOGI(MESH_TAG,"WaterTemp addr:%d mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_sensors.WAddress, theConf.modbus_sensors.WMux, theConf.modbus_sensors.WType, theConf.modbus_sensors.WPoints, theConf.modbus_sensors.WStart, theConf.modbus_sensors.WOffset);
-    ESP_LOGI(MESH_TAG,"Ambient addr:%d mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_sensors.AAddress, theConf.modbus_sensors.AMux, theConf.modbus_sensors.AType, theConf.modbus_sensors.APoints, theConf.modbus_sensors.AStart, theConf.modbus_sensors.AOffset);
-    ESP_LOGI(MESH_TAG,"Humidity addr:%d mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_sensors.HAddress, theConf.modbus_sensors.humMux, theConf.modbus_sensors.humType, theConf.modbus_sensors.humPoints, theConf.modbus_sensors.humStart, theConf.modbus_sensors.HumOffset);
+    MESP_LOGI(MESH_TAG,"Sensors cfg -> refresh:%d", theConf.modbus_sensors.refresh_rate);
+    MESP_LOGI(MESH_TAG,"DO addr:%d mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_sensors.DOAddress, theConf.modbus_sensors.DOMux, theConf.modbus_sensors.DOType, theConf.modbus_sensors.DOPoints, theConf.modbus_sensors.DOStart, theConf.modbus_sensors.DOOffset);
+    MESP_LOGI(MESH_TAG,"PH addr:%d mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_sensors.PHAddress, theConf.modbus_sensors.PHMux, theConf.modbus_sensors.PHType, theConf.modbus_sensors.PHPoints, theConf.modbus_sensors.PHStart, theConf.modbus_sensors.PHOffset);
+    MESP_LOGI(MESH_TAG,"WaterTemp addr:%d mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_sensors.WAddress, theConf.modbus_sensors.WMux, theConf.modbus_sensors.WType, theConf.modbus_sensors.WPoints, theConf.modbus_sensors.WStart, theConf.modbus_sensors.WOffset);
+    MESP_LOGI(MESH_TAG,"Ambient addr:%d mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_sensors.AAddress, theConf.modbus_sensors.AMux, theConf.modbus_sensors.AType, theConf.modbus_sensors.APoints, theConf.modbus_sensors.AStart, theConf.modbus_sensors.AOffset);
+    MESP_LOGI(MESH_TAG,"Humidity addr:%d mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_sensors.HAddress, theConf.modbus_sensors.humMux, theConf.modbus_sensors.humType, theConf.modbus_sensors.humPoints, theConf.modbus_sensors.humStart, theConf.modbus_sensors.HumOffset);
 }
 
 int cmdSensors(void *argument)
 {
-    ESP_LOGI(MESH_TAG,"Sensors Cmd");
+    MESP_LOGI(MESH_TAG,"Sensors Cmd");
 
     cJSON *sensorsCommand = (cJSON *)argument;
     if(sensorsCommand == NULL)
     {
-        ESP_LOGE(MESH_TAG,"Sensors command argument is NULL");
+        MESP_LOGE(MESH_TAG,"Sensors command argument is NULL");
         return ESP_FAIL;
     }
 
@@ -188,7 +188,7 @@ int cmdSensors(void *argument)
         return ESP_FAIL;
 
     apply_sensors_config(&fields);
-    ESP_LOGI(MESH_TAG,"Sensors configuration updated");
+    MESP_LOGI(MESH_TAG,"Sensors configuration updated");
     log_sensors_update(&fields);
 
     if((theConf.debug_flags >> dXCMDS) & 1U)  

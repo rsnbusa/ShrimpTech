@@ -127,7 +127,7 @@ int cmdDebug(int argc, char **argv)
             theConf.debug_flags = 0;
     }
     
-    printf("Debug %x\n", theConf.debug_flags);
+    MESP_LOGI(TAG,"Debug %x ", theConf.debug_flags);
     write_to_flash();
 
     return 0;

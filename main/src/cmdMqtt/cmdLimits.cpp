@@ -91,13 +91,13 @@ static bool validate_limits_command(cJSON *limitsCommand, LimitsCommandFields *o
 {
     if(!limitsCommand || !out)
     {
-        ESP_LOGE(MESH_TAG,"Limits command argument invalid");
+        MESP_LOGE(MESH_TAG,"Limits command argument invalid");
         return false;
     }
 
     if(!cJSON_IsObject(limitsCommand))
     {
-        ESP_LOGE(MESH_TAG,"Limits command payload invalid");
+        MESP_LOGE(MESH_TAG,"Limits command payload invalid");
         return false;
     }
 
@@ -105,19 +105,19 @@ static bool validate_limits_command(cJSON *limitsCommand, LimitsCommandFields *o
     cJSON *pvPanels = cJSON_GetObjectItem(limitsCommand, "PVPanels");
     if(!pvPanels || !cJSON_IsObject(pvPanels))
     {
-        ESP_LOGE(MESH_TAG,"Limits command missing PVPanels section");
+        MESP_LOGE(MESH_TAG,"Limits command missing PVPanels section");
         return false;
     }
 
     if(!parse_limit_pair(pvPanels, "VoltsMin", "VoltsMax", &out->pvVoltsMin, &out->pvVoltsMax))
     {
-        ESP_LOGE(MESH_TAG,"PVPanels Volts limits invalid");
+        MESP_LOGE(MESH_TAG,"PVPanels Volts limits invalid");
         return false;
     }
 
     if(!parse_limit_pair(pvPanels, "AmpsMin", "AmpsMax", &out->pvAmpsMin, &out->pvAmpsMax))
     {
-        ESP_LOGE(MESH_TAG,"PVPanels Amps limits invalid");
+        MESP_LOGE(MESH_TAG,"PVPanels Amps limits invalid");
         return false;
     }
 
@@ -125,7 +125,7 @@ static bool validate_limits_command(cJSON *limitsCommand, LimitsCommandFields *o
     cJSON *battery = cJSON_GetObjectItem(limitsCommand, "Battery");
     if(!battery || !cJSON_IsObject(battery))
     {
-        ESP_LOGE(MESH_TAG,"Limits command missing Battery section");
+        MESP_LOGE(MESH_TAG,"Limits command missing Battery section");
         return false;
     }
 
@@ -134,7 +134,7 @@ static bool validate_limits_command(cJSON *limitsCommand, LimitsCommandFields *o
        !parse_limit_pair(battery, "CyclesMin", "CyclesMax", &out->batteryCyclesMin, &out->batteryCyclesMax) ||
        !parse_limit_pair(battery, "TempMin", "TempMax", &out->batteryTempMin, &out->batteryTempMax))
     {
-        ESP_LOGE(MESH_TAG,"Battery limits invalid");
+        MESP_LOGE(MESH_TAG,"Battery limits invalid");
         return false;
     }
 
@@ -142,7 +142,7 @@ static bool validate_limits_command(cJSON *limitsCommand, LimitsCommandFields *o
     cJSON *amps = cJSON_GetObjectItem(limitsCommand, "Amps");
     if(!amps || !cJSON_IsObject(amps))
     {
-        ESP_LOGE(MESH_TAG,"Limits command missing Amps section");
+        MESP_LOGE(MESH_TAG,"Limits command missing Amps section");
         return false;
     }
 
@@ -151,7 +151,7 @@ static bool validate_limits_command(cJSON *limitsCommand, LimitsCommandFields *o
        !parse_limit_pair(amps, "ChargeTotalMin", "ChargeTotalMax", &out->chargeTotalMin, &out->chargeTotalMax) ||
        !parse_limit_pair(amps, "DischargeTotalMin", "DischargeTotalMax", &out->dischargeTotalMin, &out->dischargeTotalMax))
     {
-        ESP_LOGE(MESH_TAG,"Amps limits invalid");
+        MESP_LOGE(MESH_TAG,"Amps limits invalid");
         return false;
     }
 
@@ -159,7 +159,7 @@ static bool validate_limits_command(cJSON *limitsCommand, LimitsCommandFields *o
     cJSON *energy = cJSON_GetObjectItem(limitsCommand, "Energy");
     if(!energy || !cJSON_IsObject(energy))
     {
-        ESP_LOGE(MESH_TAG,"Limits command missing Energy section");
+        MESP_LOGE(MESH_TAG,"Limits command missing Energy section");
         return false;
     }
 
@@ -170,7 +170,7 @@ static bool validate_limits_command(cJSON *limitsCommand, LimitsCommandFields *o
        !parse_limit_pair(energy, "BatteryChargeTodayMin", "BatteryChargeTodayMax", &out->batteryChargeTodayMin, &out->batteryChargeTodayMax) ||
        !parse_limit_pair(energy, "BatteryDischargeTodayMin", "BatteryDischargeTodayMax", &out->batteryDischargeTodayMin, &out->batteryDischargeTodayMax))
     {
-        ESP_LOGE(MESH_TAG,"Energy limits invalid");
+        MESP_LOGE(MESH_TAG,"Energy limits invalid");
         return false;
     }
 
@@ -178,7 +178,7 @@ static bool validate_limits_command(cJSON *limitsCommand, LimitsCommandFields *o
     cJSON *sensors = cJSON_GetObjectItem(limitsCommand, "Sensors");
     if(!sensors || !cJSON_IsObject(sensors))
     {
-        ESP_LOGE(MESH_TAG,"Limits command missing Sensors section");
+        MESP_LOGE(MESH_TAG,"Limits command missing Sensors section");
         return false;
     }
 
@@ -188,7 +188,7 @@ static bool validate_limits_command(cJSON *limitsCommand, LimitsCommandFields *o
        !parse_limit_pair(sensors, "AmbientTempMin", "AmbientTempMax", &out->ambientTempMin, &out->ambientTempMax) ||
        !parse_limit_pair(sensors, "HumidityMin", "HumidityMax", &out->humidityMin, &out->humidityMax))
     {
-        ESP_LOGE(MESH_TAG,"Sensors limits invalid");
+        MESP_LOGE(MESH_TAG,"Sensors limits invalid");
         return false;
     }
 
@@ -271,28 +271,28 @@ static void log_limits_update(const LimitsCommandFields *fields)
 
 static void dump_limits_config(void)
 {
-    ESP_LOGI(MESH_TAG,"=== LIMITS CONFIGURATION ===");
-    ESP_LOGI(MESH_TAG,"PV Panels -> Volts:%d-%d Amps:%d-%d", 
+    MESP_LOGI(MESH_TAG,"=== LIMITS CONFIGURATION ===");
+    MESP_LOGI(MESH_TAG,"PV Panels -> Volts:%d-%d Amps:%d-%d", 
              theConf.milim.vmin, theConf.milim.vmax,
              theConf.milim.amin, theConf.milim.amax);
-    ESP_LOGI(MESH_TAG,"Battery -> SOC:%d-%d%% SOH:%d-%d%% Cycles:%d-%d Temp:%d-%d°C", 
+    MESP_LOGI(MESH_TAG,"Battery -> SOC:%d-%d%% SOH:%d-%d%% Cycles:%d-%d Temp:%d-%d°C", 
              theConf.milim.bSOCmin, theConf.milim.bSOCmax,
              theConf.milim.bSOHmin, theConf.milim.bSOHmax,
              theConf.milim.bcyclemin, theConf.milim.bcyclemax,
              theConf.milim.btempmin, theConf.milim.btempmax);
-    ESP_LOGI(MESH_TAG,"Amps -> ChargeToday:%d-%d DischargeToday:%d-%d ChargeTotal:%d-%d DischargeTotal:%d-%d",
+    MESP_LOGI(MESH_TAG,"Amps -> ChargeToday:%d-%d DischargeToday:%d-%d ChargeTotal:%d-%d DischargeTotal:%d-%d",
              theConf.milim.bcAhoymin, theConf.milim.bcAhoymax,
              theConf.milim.bdAhoymin, theConf.milim.bdAhoymax,
              theConf.milim.bcATotmin, theConf.milim.bcATotmax,
              theConf.milim.bdATotmin, theConf.milim.bdATotmax);
-    ESP_LOGI(MESH_TAG,"Energy -> GenToday:%d-%dkWh ConsumedToday:%d-%dkWh LoadToday:%d-%dkWh",
+    MESP_LOGI(MESH_TAG,"Energy -> GenToday:%d-%dkWh ConsumedToday:%d-%dkWh LoadToday:%d-%dkWh",
              theConf.milim.kwgtodaymin, theConf.milim.kwgtodaymax,
              theConf.milim.kwctodaymin, theConf.milim.kwctodaymax,
              theConf.milim.kwloadhoymin, theConf.milim.kwloadhoymax);
-    ESP_LOGI(MESH_TAG,"Energy -> BatChargeToday:%d-%dkWh BatDischargeToday:%d-%dkWh",
+    MESP_LOGI(MESH_TAG,"Energy -> BatChargeToday:%d-%dkWh BatDischargeToday:%d-%dkWh",
              theConf.milim.kwbatchoymin, theConf.milim.kwbatchoymax,
              theConf.milim.kwbatdhoymin, theConf.milim.kwbatdhoymax);
-    ESP_LOGI(MESH_TAG,"Sensors -> DO:%d-%dppm PH:%d-%d WaterTemp:%d-%d°C AmbientTemp:%d-%d°C Humidity:%d-%d%%",
+    MESP_LOGI(MESH_TAG,"Sensors -> DO:%d-%dppm PH:%d-%d WaterTemp:%d-%d°C AmbientTemp:%d-%d°C Humidity:%d-%d%%",
              theConf.milim.domin, theConf.milim.domax,
              theConf.milim.phmin, theConf.milim.phmax,
              theConf.milim.wtempmin, theConf.milim.wtempmax,
@@ -302,12 +302,12 @@ static void dump_limits_config(void)
 
 int cmdLimits(void *argument)
 {
-    ESP_LOGI(MESH_TAG,"Limits Cmd");
+    MESP_LOGI(MESH_TAG,"Limits Cmd");
 
     cJSON *limitsCommand = (cJSON *)argument;
     if(limitsCommand == NULL)
     {
-        ESP_LOGE(MESH_TAG,"Limits command argument is NULL");
+        MESP_LOGE(MESH_TAG,"Limits command argument is NULL");
         return ESP_FAIL;
     }
 
@@ -331,7 +331,7 @@ int cmdLimits(void *argument)
         return ESP_FAIL;
 
     apply_limits_config(&fields);
-    ESP_LOGI(MESH_TAG,"Limits configuration updated");
+    MESP_LOGI(MESH_TAG,"Limits configuration updated");
     log_limits_update(&fields);
 
     if((theConf.debug_flags >> dLIMITS) & 1U)  

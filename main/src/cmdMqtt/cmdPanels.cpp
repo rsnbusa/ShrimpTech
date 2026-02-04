@@ -56,20 +56,20 @@ static bool validate_panels_command(cJSON *panelsCommand, PanelsCommandFields *o
 {
     if(!panelsCommand || !out)
     {
-        ESP_LOGE(MESH_TAG,"Panels command argument invalid");
+        MESP_LOGE(MESH_TAG,"Panels command argument invalid");
         return false;
     }
 
     if(!cJSON_IsObject(panelsCommand))
     {
-        ESP_LOGE(MESH_TAG,"Panels command payload invalid");
+        MESP_LOGE(MESH_TAG,"Panels command payload invalid");
         return false;
     }
 
     cJSON *general = cJSON_GetObjectItem(panelsCommand,"General");
     if(!general || !cJSON_IsObject(general))
     {
-        ESP_LOGE(MESH_TAG,"Panels command missing General block");
+        MESP_LOGE(MESH_TAG,"Panels command missing General block");
         return false;
     }
 
@@ -77,7 +77,7 @@ static bool validate_panels_command(cJSON *panelsCommand, PanelsCommandFields *o
     cJSON *addrNode = cJSON_GetObjectItem(general,"InverterAddress");
     if(!refreshNode || !addrNode || !cJSON_IsNumber(refreshNode) || !cJSON_IsNumber(addrNode))
     {
-        ESP_LOGE(MESH_TAG,"Panels General block incomplete");
+        MESP_LOGE(MESH_TAG,"Panels General block incomplete");
         return false;
     }
 
@@ -93,7 +93,7 @@ static bool validate_panels_command(cJSON *panelsCommand, PanelsCommandFields *o
        !parse_channel(pv1volts,&out->pv1volts.mux,&out->pv1volts.type,&out->pv1volts.points,&out->pv1volts.start,&out->pv1volts.offset) ||
        !parse_channel(charge,&out->charge.mux,&out->charge.type,&out->charge.points,&out->charge.start,&out->charge.offset))
     {
-        ESP_LOGE(MESH_TAG,"Panels command missing or invalid channel blocks");
+        MESP_LOGE(MESH_TAG,"Panels command missing or invalid channel blocks");
         return false;
     }
 
@@ -153,22 +153,22 @@ static void log_panels_update(const PanelsCommandFields *fields)
 
 static void dump_panels_config(void)
 {
-    ESP_LOGI(MESH_TAG,"Panels cfg -> refresh:%d addr:%d", theConf.modbus_panels.refresh_rate, theConf.modbus_panels.PVAddress);
-    ESP_LOGI(MESH_TAG,"PV2Amps mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_panels.PV2AmpsMux, theConf.modbus_panels.PV2AmpsType, theConf.modbus_panels.PV2AmpsPoints, theConf.modbus_panels.PV2AmpsStart, theConf.modbus_panels.PV2AmpsOffset);
-    ESP_LOGI(MESH_TAG,"PV2Volts mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_panels.PV2VMux, theConf.modbus_panels.PV2VoltsType, theConf.modbus_panels.PV2VPoints, theConf.modbus_panels.PV2VStart, theConf.modbus_panels.PV2VoltsOffset);
-    ESP_LOGI(MESH_TAG,"PV1Amps mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_panels.PV1AmpsMux, theConf.modbus_panels.PV1AmpsType, theConf.modbus_panels.PV1AmpsPoints, theConf.modbus_panels.PV1AmpsStart, theConf.modbus_panels.PV1_AmpsOffset);
-    ESP_LOGI(MESH_TAG,"PV1Volts mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_panels.PV1VMux, theConf.modbus_panels.PV1VType, theConf.modbus_panels.PV1VPoints, theConf.modbus_panels.PV1VStart, theConf.modbus_panels.PV1VoltsOffset);
-    ESP_LOGI(MESH_TAG,"Charge mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_panels.ChargeMux, theConf.modbus_panels.ChargeType, theConf.modbus_panels.ChargePoints, theConf.modbus_panels.ChargeStart, theConf.modbus_panels.Charge_StateOffset);
+    MESP_LOGI(MESH_TAG,"Panels cfg -> refresh:%d addr:%d", theConf.modbus_panels.refresh_rate, theConf.modbus_panels.PVAddress);
+    MESP_LOGI(MESH_TAG,"PV2Amps mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_panels.PV2AmpsMux, theConf.modbus_panels.PV2AmpsType, theConf.modbus_panels.PV2AmpsPoints, theConf.modbus_panels.PV2AmpsStart, theConf.modbus_panels.PV2AmpsOffset);
+    MESP_LOGI(MESH_TAG,"PV2Volts mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_panels.PV2VMux, theConf.modbus_panels.PV2VoltsType, theConf.modbus_panels.PV2VPoints, theConf.modbus_panels.PV2VStart, theConf.modbus_panels.PV2VoltsOffset);
+    MESP_LOGI(MESH_TAG,"PV1Amps mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_panels.PV1AmpsMux, theConf.modbus_panels.PV1AmpsType, theConf.modbus_panels.PV1AmpsPoints, theConf.modbus_panels.PV1AmpsStart, theConf.modbus_panels.PV1_AmpsOffset);
+    MESP_LOGI(MESH_TAG,"PV1Volts mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_panels.PV1VMux, theConf.modbus_panels.PV1VType, theConf.modbus_panels.PV1VPoints, theConf.modbus_panels.PV1VStart, theConf.modbus_panels.PV1VoltsOffset);
+    MESP_LOGI(MESH_TAG,"Charge mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_panels.ChargeMux, theConf.modbus_panels.ChargeType, theConf.modbus_panels.ChargePoints, theConf.modbus_panels.ChargeStart, theConf.modbus_panels.Charge_StateOffset);
 }
 
 int cmdPanels(void *argument)
 {
-    ESP_LOGI(MESH_TAG,"Panels Cmd");
+    MESP_LOGI(MESH_TAG,"Panels Cmd");
 
     cJSON *panelsCommand = (cJSON *)argument;
     if(panelsCommand == NULL)
     {
-        ESP_LOGE(MESH_TAG,"Panels command argument is NULL");
+        MESP_LOGE(MESH_TAG,"Panels command argument is NULL");
         return ESP_FAIL;
     }
 
@@ -187,7 +187,7 @@ int cmdPanels(void *argument)
         return ESP_FAIL;
 
     apply_panels_config(&fields);
-    ESP_LOGI(MESH_TAG,"Panels configuration updated");
+    MESP_LOGI(MESH_TAG,"Panels configuration updated");
     log_panels_update(&fields);
 
     if((theConf.debug_flags >> dXCMDS) & 1U)  

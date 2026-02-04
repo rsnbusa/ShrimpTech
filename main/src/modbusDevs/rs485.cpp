@@ -56,7 +56,7 @@ static esp_err_t master_init(void)
     MB_RETURN_ON_FALSE((err == ESP_OK), ESP_ERR_INVALID_STATE, TAG,
             "mb serial set mode failure, uart_set_mode() returned (0x%x).", (int)err);
 
-    ESP_LOGI(TAG, "Modbus master stack initialized...");
+    MESP_LOGI(TAG, "Modbus master stack initialized...");
     vTaskDelay(pdMS_TO_TICKS(5));
     return err;
 }
@@ -71,7 +71,7 @@ void rs485_task_manager(void *arg)
 
     ESP_ERROR_CHECK(master_init()); // once only
 
-    ESP_LOGI(TAG, "Start modbus manager..."); 
+    MESP_LOGI(TAG, "Start modbus manager..."); 
 
     while (true) // task loop read queue
     { 
@@ -82,7 +82,7 @@ void rs485_task_manager(void *arg)
             // printf("RSQueue in\n");
             if (mensaje.numCids <= 0 || mensaje.descriptors == NULL || mensaje.requester == NULL)
             {
-                ESP_LOGE(TAG, "rs485_task_manager: Invalid message received.");
+                MESP_LOGE(TAG, "rs485_task_manager: Invalid message received.");
                 // tell task he screwed up
                 memset(mensaje.errCode, ERROR_FILL, ERROR_BUF_LEN);       // all 0xff is general failure
                 xTaskNotifyGive(mensaje.requester);
@@ -93,7 +93,7 @@ void rs485_task_manager(void *arg)
             err = mbc_master_set_descriptor(mensaje.descriptors, mensaje.numCids);
             if (err != ESP_OK)
             {
-                ESP_LOGE(TAG, "Set descriptor fail, err = 0x%x (%s)", (int)err, esp_err_to_name(err));
+                MESP_LOGE(TAG, "Set descriptor fail, err = 0x%x (%s)", (int)err, esp_err_to_name(err));
                 // tell task he screwed up
                 memset(mensaje.errCode, ERROR_FILL, ERROR_BUF_LEN);       // all 0xff is general failure
                 xTaskNotifyGive(mensaje.requester);
@@ -127,7 +127,7 @@ void rs485_task_manager(void *arg)
                         {
                             if ((theConf.debug_flags >> dRS485) & 1U) 
                             {
-                                ESP_LOGE(TAG, "FAIL Characteristic #%u (%s) Addr %x read fail, err = 0x%x (%s).",       //timeout here
+                                MESP_LOGE(TAG, "FAIL Characteristic #%u (%s) Addr %x read fail, err = 0x%x (%s).",       //timeout here
                                             param_descriptor->cid,
                                             param_descriptor->param_key,
                                             param_descriptor->mb_slave_addr,
@@ -140,7 +140,7 @@ void rs485_task_manager(void *arg)
                 }
                 else
                 {
-                    ESP_LOGE(TAG, "Characteristic #%u get Queue Message info fail %d %s)",
+                    MESP_LOGE(TAG, "Characteristic #%u get Queue Message info fail %d %s)",
                                     cid,
                                     (int)err,
                                     esp_err_to_name(err));
@@ -154,11 +154,11 @@ void rs485_task_manager(void *arg)
         }
         else
         {
-            ESP_LOGE(TAG, "rs485_task_manager: Error receiving from queue.");
+            MESP_LOGE(TAG, "rs485_task_manager: Error receiving from queue.");
         }
 
     }
 // should not happend 
-    ESP_LOGI(TAG, "Destroy master...");
+    MESP_LOGI(TAG, "Destroy master...");
     ESP_ERROR_CHECK(mbc_master_destroy());
 }

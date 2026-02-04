@@ -42,13 +42,13 @@ static bool validate_mqtt_command(cJSON *mqttCommand, MqttCommandFields *outFiel
 {
     if(!mqttCommand || !outFields)
     {
-        ESP_LOGE(MESH_TAG,"MQTT command argument invalid");
+        MESP_LOGE(MESH_TAG,"MQTT command argument invalid");
         return false;
     }
 
     if(!cJSON_IsObject(mqttCommand))
     {
-        ESP_LOGE(MESH_TAG,"MQTT command payload invalid");
+        MESP_LOGE(MESH_TAG,"MQTT command payload invalid");
         return false;
     }
 
@@ -59,37 +59,37 @@ static bool validate_mqtt_command(cJSON *mqttCommand, MqttCommandFields *outFiel
 
     if(!serverNode || !userNode || !passwordNode || !certNode)
     {
-        ESP_LOGE(MESH_TAG,"MQTT command missing required fields");
+        MESP_LOGE(MESH_TAG,"MQTT command missing required fields");
         return false;
     }
 
     if(!cJSON_IsString(serverNode) || !serverNode->valuestring)
     {
-        ESP_LOGE(MESH_TAG,"MQTT server parameter invalid");
+        MESP_LOGE(MESH_TAG,"MQTT server parameter invalid");
         return false;
     }
 
     if(strlen(serverNode->valuestring) <= MQTT_SERVER_MIN_LENGTH)
     {
-        ESP_LOGW(MESH_TAG,"MQTT server parameter too short (%d chars)", (int)strlen(serverNode->valuestring));
+        MESP_LOGW(MESH_TAG,"MQTT server parameter too short (%d chars)", (int)strlen(serverNode->valuestring));
         return false;
     }
 
     if(!cJSON_IsString(userNode) || !userNode->valuestring || strlen(userNode->valuestring) == 0)
     {
-        ESP_LOGW(MESH_TAG,"MQTT user parameter invalid");
+        MESP_LOGW(MESH_TAG,"MQTT user parameter invalid");
         return false;
     }
 
     if(!cJSON_IsString(passwordNode) || !passwordNode->valuestring || strlen(passwordNode->valuestring) == 0)
     {
-        ESP_LOGW(MESH_TAG,"MQTT password parameter invalid");
+        MESP_LOGW(MESH_TAG,"MQTT password parameter invalid");
         return false;
     }
 
     if(!cJSON_IsString(certNode) || !certNode->valuestring || strlen(certNode->valuestring) == 0)
     {
-        ESP_LOGW(MESH_TAG,"MQTT certificate parameter invalid");
+        MESP_LOGW(MESH_TAG,"MQTT certificate parameter invalid");
         return false;
     }
 
@@ -113,26 +113,26 @@ static bool apply_mqtt_config(const MqttCommandFields *fields)
 
     if(!copy_string_safe(theConf.mqttServer, sizeof(theConf.mqttServer), fields->server))
     {
-        ESP_LOGE(MESH_TAG,"Failed to copy MQTT server parameter");
+        MESP_LOGE(MESH_TAG,"Failed to copy MQTT server parameter");
         return false;
     }
 
     if(!copy_string_safe(theConf.mqttUser, sizeof(theConf.mqttUser), fields->user))
     {
-        ESP_LOGE(MESH_TAG,"Failed to copy MQTT user parameter");
+        MESP_LOGE(MESH_TAG,"Failed to copy MQTT user parameter");
         return false;
     }
 
     if(!copy_string_safe(theConf.mqttPass, sizeof(theConf.mqttPass), fields->password))
     {
-        ESP_LOGE(MESH_TAG,"Failed to copy MQTT password parameter");
+        MESP_LOGE(MESH_TAG,"Failed to copy MQTT password parameter");
         return false;
     }
 
     size_t certLength = strlen(fields->certificate);
     if(certLength + 2 > sizeof(theConf.mqttcert))
     {
-        ESP_LOGE(MESH_TAG,"MQTT certificate too large (%d bytes)", (int)certLength);
+        MESP_LOGE(MESH_TAG,"MQTT certificate too large (%d bytes)", (int)certLength);
         return false;
     }
 
@@ -175,7 +175,7 @@ static void log_mqtt_update(const char *configuredServer, const char *requestedS
 
 int cmdMQTT(void *argument)
 {
-    ESP_LOGW(MESH_TAG,"Cmd MQTT in force!!!");
+    MESP_LOGW(MESH_TAG,"Cmd MQTT in force!!!");
     cJSON *mqttCommand = (cJSON *)argument;
 
     /*
@@ -184,7 +184,7 @@ int cmdMQTT(void *argument)
 
     if(mqttCommand == NULL)
     {
-        ESP_LOGE(MESH_TAG,"MQTT command argument is NULL");
+        MESP_LOGE(MESH_TAG,"MQTT command argument is NULL");
         return ESP_FAIL;
     }
 
@@ -195,7 +195,7 @@ int cmdMQTT(void *argument)
     if(!apply_mqtt_config(&fields))
         return ESP_FAIL;
 
-    ESP_LOGI(MESH_TAG,"MQTT server parameters updated");
+    MESP_LOGI(MESH_TAG,"MQTT server parameters updated");
     log_mqtt_update(theConf.mqttServer, fields.server);
 
     /* Allow log flush before forcing a reboot so clients reconnect with new broker data. */

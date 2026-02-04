@@ -80,7 +80,7 @@ void BlowerClass::format()
     }
     else
     {
-        ESP_LOGE(MESH_TAG, "format: failed to acquire semaphore");
+        MESP_LOGE(MESH_TAG, "format: failed to acquire semaphore");
         return;
     }
     saveBlower();
@@ -98,7 +98,7 @@ int BlowerClass::initBlower()
         loadBlower();
         if (framConfig.centinel != CENTINEL)
         {
-            ESP_LOGE(MESH_TAG, "FRAM Centinel %x failed... should format FRAM", framConfig.centinel);
+            MESP_LOGE(MESH_TAG, "FRAM Centinel %x failed... should format FRAM", framConfig.centinel);
             return ESP_FAIL;
         }
     }
@@ -136,7 +136,7 @@ void BlowerClass::loadBlower()
     }
     else
     {
-        ESP_LOGE(MESH_TAG, "loadBlower: failed to acquire semaphore");
+        MESP_LOGE(MESH_TAG, "loadBlower: failed to acquire semaphore");
     }
     framReads();
 }
@@ -158,7 +158,7 @@ void BlowerClass::saveBlower()
     }
     else
     {
-        ESP_LOGE(MESH_TAG, "saveBlower: failed to acquire semaphore");
+        MESP_LOGE(MESH_TAG, "saveBlower: failed to acquire semaphore");
     }
 }
 
@@ -317,7 +317,7 @@ void BlowerClass::setPVPanel(uint8_t chargeCurr, float pv1Volts, float pv2Volts,
 void BlowerClass::getPVPanel(uint8_t *chargeCurr, float *pv1Volts, float *pv2Volts, float *pv1Amp, float *pv2Amp)
 {
     if (!chargeCurr || !pv1Volts || !pv2Volts || !pv1Amp || !pv2Amp) {
-        ESP_LOGE(MESH_TAG, "getPVPanel: null pointer argument");
+        MESP_LOGE(MESH_TAG, "getPVPanel: null pointer argument");
         return;
     }
     *chargeCurr = framConfig.solarSystem.pvPanel.chargeCurr;
@@ -344,7 +344,7 @@ void BlowerClass::setBattery(uint8_t batSoc, uint8_t batSOH, uint16_t batteryCyc
 void BlowerClass::getBattery(uint8_t *batSoc, uint8_t *batSOH, uint16_t *batteryCycleCount, float *batBmsTemp)
 {
     if (!batSoc || !batSOH || !batteryCycleCount || !batBmsTemp) {
-        ESP_LOGE(MESH_TAG, "getBattery: null pointer argument");
+        MESP_LOGE(MESH_TAG, "getBattery: null pointer argument");
         return;
     }
     *batSoc = framConfig.solarSystem.battery.batSOC;
@@ -384,7 +384,7 @@ void BlowerClass::getEnergy(uint16_t *batChgAHToday, uint16_t *batDischgAHToday,
     if (!batChgAHToday || !batDischgAHToday || !batChgAHTotal || !batDischgAHTotal ||
         !generateEnergyToday || !usedEnergyToday || !gLoadConsumLineTotal ||
         !batChgkWhToday || !batDischgkWhToday || !genLoadConsumToday) {
-        ESP_LOGE(MESH_TAG, "getEnergy: null pointer argument");
+        MESP_LOGE(MESH_TAG, "getEnergy: null pointer argument");
         return;
     }
     *batChgAHToday = framConfig.solarSystem.energy.batChgAHToday;
@@ -406,7 +406,7 @@ void BlowerClass::getEnergy(uint16_t *batChgAHToday, uint16_t *batDischgAHToday,
 void BlowerClass::getSensors(float *DO, float *PH, float *WTemp, float *ATemp, float *AHum)
 {
     if (!DO || !PH || !WTemp || !ATemp || !AHum) {
-        ESP_LOGE(MESH_TAG, "getSensors: null pointer argument");
+        MESP_LOGE(MESH_TAG, "getSensors: null pointer argument");
         return;
     }
     *DO = framConfig.solarSystem.sensors.DO;
@@ -456,7 +456,7 @@ void BlowerClass::getSchedule(uint16_t *currentCycle, uint16_t *currentDay, uint
                               uint16_t *currentStartHour, uint16_t *currentEndHour, uint16_t *currentPwmDuty, uint16_t *status)
 {
     if (!currentCycle || !currentDay || !currentHorario || !currentStartHour || !currentEndHour || !currentPwmDuty || !status) {
-        ESP_LOGE(MESH_TAG, "getSchedule: null pointer argument");
+        MESP_LOGE(MESH_TAG, "getSchedule: null pointer argument");
         return;
     }
     *currentCycle = framConfig.solarSystem.wschedule.currentCycle;
@@ -478,7 +478,7 @@ void BlowerClass::setScheduleStruct(const wschedule_t &sched)
 void BlowerClass::getScheduleStruct(wschedule_t *sched)
 {
     if (!sched) {
-        ESP_LOGE(MESH_TAG, "getScheduleStruct: null pointer argument");
+        MESP_LOGE(MESH_TAG, "getScheduleStruct: null pointer argument");
         return;
     }
     memcpy(sched, &framConfig.solarSystem.wschedule, sizeof(wschedule_t));

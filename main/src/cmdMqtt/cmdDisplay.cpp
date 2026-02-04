@@ -40,13 +40,13 @@ extern void writeLog(char* que);
 int validateDisplayCommand(cJSON *cmd)
 {
     if(!cmd) {
-        ESP_LOGE(MESH_TAG, "Display command: NULL argument");
+        MESP_LOGE(MESH_TAG, "Display command: NULL argument");
         return ESP_FAIL;
     }
     
     cJSON *meterIdNode = cJSON_GetObjectItem(cmd, "mid");
     if(!meterIdNode) {
-        ESP_LOGE(MESH_TAG, "Display command: Missing 'mid' field");
+        MESP_LOGE(MESH_TAG, "Display command: Missing 'mid' field");
         return ESP_FAIL;
     }
     
@@ -65,7 +65,7 @@ int buildMeshMessage(const char *jsonString, meshunion_t **outMessage, size_t *o
     // Allocate buffer for mesh union message
     meshunion_t *meshMessage = (meshunion_t*)calloc(1, MESH_MESSAGE_BUFFER_SIZE);
     if(!meshMessage) {
-        ESP_LOGE(MESH_TAG, "Failed to allocate mesh message buffer");
+        MESP_LOGE(MESH_TAG, "Failed to allocate mesh message buffer");
         return ESP_FAIL;
     }
     
@@ -98,7 +98,7 @@ int sendDisplayCommandToMesh(meshunion_t *meshMessage, size_t messageSize)
     int err = esp_mesh_send(&GroupID, &data, MESH_DATA_P2P, NULL, MESH_OPT_SEND_GROUP);
     
     if(err != ESP_OK) {
-        ESP_LOGE(MESH_TAG, "Failed to send mesh message: %d", err);
+        MESP_LOGE(MESH_TAG, "Failed to send mesh message: %d", err);
         return ESP_FAIL;
     }
     
@@ -148,7 +148,7 @@ int sendDisplayCommandToMesh(meshunion_t *meshMessage, size_t messageSize)
 int cmdDisplay(void *argument)
 {
     cJSON *cmd = (cJSON *)argument;
-    ESP_LOGI(MESH_TAG, "Display CMD");
+    MESP_LOGI(MESH_TAG, "Display CMD");
     
     /*
     Command format:
@@ -164,7 +164,7 @@ int cmdDisplay(void *argument)
     // Serialize JSON command
     char *jsonString = cJSON_PrintUnformatted(cmd);
     if(!jsonString) {
-        ESP_LOGE(MESH_TAG, "Failed to serialize JSON command");
+        MESP_LOGE(MESH_TAG, "Failed to serialize JSON command");
         return ESP_FAIL;
     }
     

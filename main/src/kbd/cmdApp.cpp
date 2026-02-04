@@ -28,20 +28,20 @@ int cmdApp(int argc, char **argv)
             if (appSSID.newpass->count) {
                 // Update SSID in configuration
                 strcpy(theConf.thessid, appSSID.newpass->sval[0]);
-                printf("SSID changed to [%s]\n", theConf.thessid);
+                MESP_LOGI(TAG,"SSID changed to [%s]", theConf.thessid);
                 
                 // Save to flash and restart
                 write_to_flash();
-                printf("Restarting to apply changes...\n");
+                MESP_LOGI(TAG, "Restarting to apply changes...");
                 esp_restart();
             } else {
-                printf("Error: New SSID not provided. Use -n <new_ssid>\n");
+                MESP_LOGE(TAG, "Error: New SSID not provided. Use -n <new_ssid>");
             }
         } else {
-            printf("Error: Wrong password\n");
+            MESP_LOGE(TAG, "Error: Wrong password");
         }
     } else {
-        printf("Error: Password required. Use -p <password>\n");
+        MESP_LOGE(TAG, "Error: Password required. Use -p <password>");
     }
 
     return 0;

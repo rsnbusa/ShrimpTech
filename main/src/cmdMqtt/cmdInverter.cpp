@@ -56,20 +56,20 @@ static bool validate_inverter_command(cJSON *inverterCommand, InverterCommandFie
 {
     if(!inverterCommand || !out)
     {
-        ESP_LOGE(MESH_TAG,"Inverter command argument invalid");
+        MESP_LOGE(MESH_TAG,"Inverter command argument invalid");
         return false;
     }
 
     if(!cJSON_IsObject(inverterCommand))
     {
-        ESP_LOGE(MESH_TAG,"Inverter command payload invalid");
+        MESP_LOGE(MESH_TAG,"Inverter command payload invalid");
         return false;
     }
 
     cJSON *general = cJSON_GetObjectItem(inverterCommand,"General");
     if(!general || !cJSON_IsObject(general))
     {
-        ESP_LOGE(MESH_TAG,"Inverter command missing General block");
+        MESP_LOGE(MESH_TAG,"Inverter command missing General block");
         return false;
     }
 
@@ -77,7 +77,7 @@ static bool validate_inverter_command(cJSON *inverterCommand, InverterCommandFie
     cJSON *addrNode = cJSON_GetObjectItem(general,"InverterAddress"); 
     if(!refreshNode || !addrNode || !cJSON_IsNumber(refreshNode) || !cJSON_IsNumber(addrNode))
     {
-        ESP_LOGE(MESH_TAG,"Inverter General block incomplete");
+        MESP_LOGE(MESH_TAG,"Inverter General block incomplete");
         return false;
     }
 
@@ -102,7 +102,7 @@ static bool validate_inverter_command(cJSON *inverterCommand, InverterCommandFie
        !parse_channel(batChHoya,&out->batChHoya.mux,&out->batChHoya.type,&out->batChHoya.points,&out->batChHoya.start,&out->batChHoya.offset) ||
         !parse_channel(batDscHoya,&out->batDscHoya.mux,&out->batDscHoya.type,&out->batDscHoya.points,&out->batDscHoya.start,&out->batDscHoya.offset))
     {
-        ESP_LOGE(MESH_TAG,"Inverter command missing or invalid channel blocks");
+        MESP_LOGE(MESH_TAG,"Inverter command missing or invalid channel blocks");
         return false;
     }
 
@@ -192,27 +192,27 @@ static void log_inverter_update(const InverterCommandFields *fields)
 
 static void dump_inverter_config(void)
 {
-    ESP_LOGI(MESH_TAG,"Inverter cfg -> refresh:%d addr:%d", theConf.modbus_inverter.refresh_rate, theConf.modbus_inverter.InverterAddress);
-    ESP_LOGI(MESH_TAG,"LoadUsedHoy mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_inverter.I10_LoadUsedHoyMux, theConf.modbus_inverter.I10_LoadUsedHoyType, theConf.modbus_inverter.I10_LoadUsedHoyPoints, theConf.modbus_inverter.I10_LoadUsedHoyStart, theConf.modbus_inverter.I10_LoadUsedHoyOff);
-    ESP_LOGI(MESH_TAG,"BatDscHoy mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_inverter.I9_BatDscHoyMux, theConf.modbus_inverter.I9_BatDscHoyType, theConf.modbus_inverter.I9_BatDscHoyPoints, theConf.modbus_inverter.I9_BatDscHoyStart, theConf.modbus_inverter.I9_BatDscHoyOff);
-    ESP_LOGI(MESH_TAG,"BatChdHoy mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_inverter.I8_BatChdHoyMux, theConf.modbus_inverter.I8_BatChdHoyType, theConf.modbus_inverter.I8_BatChdHoyPoints, theConf.modbus_inverter.I8_BatChdHoyStart, theConf.modbus_inverter.I8_BatChdHoyOff);
-    ESP_LOGI(MESH_TAG,"LoadUsedTotal mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_inverter.I7_LoadUsedTotalMux, theConf.modbus_inverter.I7_LoadUsedTotalType, theConf.modbus_inverter.I7_LoadUsedTotalPoints, theConf.modbus_inverter.I7_LoadUsedTotalStart, theConf.modbus_inverter.I7_LoadUsedTotalOff);
-    ESP_LOGI(MESH_TAG,"UsedkwhHoy mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_inverter.I6_UsedkwhHoyMux, theConf.modbus_inverter.I6_UsedkwhHoyType, theConf.modbus_inverter.I6_UsedkwhHoyPoints, theConf.modbus_inverter.I6_UsedkwhHoyStart, theConf.modbus_inverter.I6_UsedkwhHoyOff);
-    ESP_LOGI(MESH_TAG,"GenkWhHoy mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_inverter.I5_GenkWhHoyMux, theConf.modbus_inverter.I5_GenkWhHoyType, theConf.modbus_inverter.I5_GenkWhHoyPoints, theConf.modbus_inverter.I5_GenkWhHoyStart, theConf.modbus_inverter.I5_GenkWhHoyOff);
-    ESP_LOGI(MESH_TAG,"BatDscTotal mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_inverter.I4_BatDscTotalMux, theConf.modbus_inverter.I4_BatDscTotalType, theConf.modbus_inverter.I4_BatDscTotalPoints, theConf.modbus_inverter.I4_BatDscTotalStart, theConf.modbus_inverter.I4_BatDscTotalOff);
-    ESP_LOGI(MESH_TAG,"BatChgTotal mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_inverter.I3_BatChgTotalMux, theConf.modbus_inverter.I3_BatChgTotalType, theConf.modbus_inverter.I3_BatChgTotalPoints, theConf.modbus_inverter.I3_BatChgTotalStart, theConf.modbus_inverter.I3_BatChgTotalOff);
-    ESP_LOGI(MESH_TAG,"BatDscHoy2 mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_inverter.I2_BatDscHoyMux, theConf.modbus_inverter.I2_BatDscHoyType, theConf.modbus_inverter.I2_BatDscHoyPoints, theConf.modbus_inverter.I2_BatDscHoyStart, theConf.modbus_inverter.I2_BatDscHoyOff);
-    ESP_LOGI(MESH_TAG,"BatChHoy mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_inverter.I1_BatChHoyMux, theConf.modbus_inverter.I1_BatChHoyType, theConf.modbus_inverter.I1_BatChHoyPoints, theConf.modbus_inverter.I1_BatChHoyStart, theConf.modbus_inverter.I1_BatChHoyOff);
+    MESP_LOGI(MESH_TAG,"Inverter cfg -> refresh:%d addr:%d", theConf.modbus_inverter.refresh_rate, theConf.modbus_inverter.InverterAddress);
+    MESP_LOGI(MESH_TAG,"LoadUsedHoy mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_inverter.I10_LoadUsedHoyMux, theConf.modbus_inverter.I10_LoadUsedHoyType, theConf.modbus_inverter.I10_LoadUsedHoyPoints, theConf.modbus_inverter.I10_LoadUsedHoyStart, theConf.modbus_inverter.I10_LoadUsedHoyOff);
+    MESP_LOGI(MESH_TAG,"BatDscHoy mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_inverter.I9_BatDscHoyMux, theConf.modbus_inverter.I9_BatDscHoyType, theConf.modbus_inverter.I9_BatDscHoyPoints, theConf.modbus_inverter.I9_BatDscHoyStart, theConf.modbus_inverter.I9_BatDscHoyOff);
+    MESP_LOGI(MESH_TAG,"BatChdHoy mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_inverter.I8_BatChdHoyMux, theConf.modbus_inverter.I8_BatChdHoyType, theConf.modbus_inverter.I8_BatChdHoyPoints, theConf.modbus_inverter.I8_BatChdHoyStart, theConf.modbus_inverter.I8_BatChdHoyOff);
+    MESP_LOGI(MESH_TAG,"LoadUsedTotal mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_inverter.I7_LoadUsedTotalMux, theConf.modbus_inverter.I7_LoadUsedTotalType, theConf.modbus_inverter.I7_LoadUsedTotalPoints, theConf.modbus_inverter.I7_LoadUsedTotalStart, theConf.modbus_inverter.I7_LoadUsedTotalOff);
+    MESP_LOGI(MESH_TAG,"UsedkwhHoy mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_inverter.I6_UsedkwhHoyMux, theConf.modbus_inverter.I6_UsedkwhHoyType, theConf.modbus_inverter.I6_UsedkwhHoyPoints, theConf.modbus_inverter.I6_UsedkwhHoyStart, theConf.modbus_inverter.I6_UsedkwhHoyOff);
+    MESP_LOGI(MESH_TAG,"GenkWhHoy mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_inverter.I5_GenkWhHoyMux, theConf.modbus_inverter.I5_GenkWhHoyType, theConf.modbus_inverter.I5_GenkWhHoyPoints, theConf.modbus_inverter.I5_GenkWhHoyStart, theConf.modbus_inverter.I5_GenkWhHoyOff);
+    MESP_LOGI(MESH_TAG,"BatDscTotal mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_inverter.I4_BatDscTotalMux, theConf.modbus_inverter.I4_BatDscTotalType, theConf.modbus_inverter.I4_BatDscTotalPoints, theConf.modbus_inverter.I4_BatDscTotalStart, theConf.modbus_inverter.I4_BatDscTotalOff);
+    MESP_LOGI(MESH_TAG,"BatChgTotal mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_inverter.I3_BatChgTotalMux, theConf.modbus_inverter.I3_BatChgTotalType, theConf.modbus_inverter.I3_BatChgTotalPoints, theConf.modbus_inverter.I3_BatChgTotalStart, theConf.modbus_inverter.I3_BatChgTotalOff);
+    MESP_LOGI(MESH_TAG,"BatDscHoy2 mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_inverter.I2_BatDscHoyMux, theConf.modbus_inverter.I2_BatDscHoyType, theConf.modbus_inverter.I2_BatDscHoyPoints, theConf.modbus_inverter.I2_BatDscHoyStart, theConf.modbus_inverter.I2_BatDscHoyOff);
+    MESP_LOGI(MESH_TAG,"BatChHoy mux:%.3f type:%d points:%d start:%d offset:%d", theConf.modbus_inverter.I1_BatChHoyMux, theConf.modbus_inverter.I1_BatChHoyType, theConf.modbus_inverter.I1_BatChHoyPoints, theConf.modbus_inverter.I1_BatChHoyStart, theConf.modbus_inverter.I1_BatChHoyOff);
 }
 
 int cmdInverter(void *argument)
 {
-    ESP_LOGI(MESH_TAG,"Inverter Cmd");
+    MESP_LOGI(MESH_TAG,"Inverter Cmd");
 
     cJSON *inverterCommand = (cJSON *)argument;
     if(inverterCommand == NULL)
     {
-        ESP_LOGE(MESH_TAG,"Inverter command argument is NULL");
+        MESP_LOGE(MESH_TAG,"Inverter command argument is NULL");
         return ESP_FAIL;
     }
 
@@ -227,7 +227,7 @@ int cmdInverter(void *argument)
         return ESP_FAIL;
 
     apply_inverter_config(&fields);
-    ESP_LOGI(MESH_TAG,"Inverter configuration updated");
+    MESP_LOGI(MESH_TAG,"Inverter configuration updated");
     log_inverter_update(&fields);
     
     if((theConf.debug_flags >> dXCMDS) & 1U)  

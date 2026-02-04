@@ -20,26 +20,26 @@ static bool validate_metrics_command(cJSON *metricsCommand, const char **outMete
 {
     if(!metricsCommand || !outMeterId)
     {
-        ESP_LOGE(MESH_TAG, "Metrics command validation arguments invalid");
+        MESP_LOGE(MESH_TAG, "Metrics command validation arguments invalid");
         return false;
     }
     
     if(!cJSON_IsObject(metricsCommand))
     {
-        ESP_LOGE(MESH_TAG, "Metrics command payload invalid");
+        MESP_LOGE(MESH_TAG, "Metrics command payload invalid");
         return false;
     }
     
     cJSON *meterIdNode = cJSON_GetObjectItem(metricsCommand, "mid");
     if(!meterIdNode)
     {
-        ESP_LOGE(MESH_TAG, "Metrics command missing meter ID field");
+        MESP_LOGE(MESH_TAG, "Metrics command missing meter ID field");
         return false;
     }
     
     if(!cJSON_IsString(meterIdNode) || !meterIdNode->valuestring || strlen(meterIdNode->valuestring) == 0)
     {
-        ESP_LOGE(MESH_TAG, "Metrics meter ID parameter invalid or empty");
+        MESP_LOGE(MESH_TAG, "Metrics meter ID parameter invalid or empty");
         return false;
     }
     
@@ -65,7 +65,7 @@ static int send_metrics_mesh_message(cJSON *metricsCommand)
     char *jsonMessage = cJSON_PrintUnformatted(metricsCommand);
     if(!jsonMessage)
     {
-        ESP_LOGE(MESH_TAG, "Failed to serialize metrics command to JSON");
+        MESP_LOGE(MESH_TAG, "Failed to serialize metrics command to JSON");
         return ESP_FAIL;
     }
     
@@ -75,7 +75,7 @@ static int send_metrics_mesh_message(cJSON *metricsCommand)
     meshunion_t *meshMessage = (meshunion_t*)calloc(1, METRICS_MESSAGE_SIZE);
     if(!meshMessage)
     {
-        ESP_LOGE(MESH_TAG, "Failed to allocate mesh message buffer");
+        MESP_LOGE(MESH_TAG, "Failed to allocate mesh message buffer");
         free(jsonMessage);
         return ESP_FAIL;
     }
@@ -97,11 +97,11 @@ static int send_metrics_mesh_message(cJSON *metricsCommand)
     
     if(err != ESP_OK)
     {
-        ESP_LOGE(MESH_TAG, "Failed to send metrics request via mesh: %d", err);
+        MESP_LOGE(MESH_TAG, "Failed to send metrics request via mesh: %d", err);
         return ESP_FAIL;
     }
     
-    ESP_LOGI(MESH_TAG, "Metrics request sent successfully");
+    MESP_LOGI(MESH_TAG, "Metrics request sent successfully");
     return ESP_OK;
 }
 
@@ -112,13 +112,13 @@ int cmdSendMetrics(void *argument)
      * {"cmd":"mqttmetrics","f":"xxxxxx","mid":"thismeter"}
      */
     
-    ESP_LOGI(MESH_TAG, "Metrics CMD");
+    MESP_LOGI(MESH_TAG, "Metrics CMD");
     
     cJSON *metricsCommand = (cJSON *)argument;
     
     if(metricsCommand == NULL)
     {
-        ESP_LOGE(MESH_TAG, "Metrics command argument is NULL");
+        MESP_LOGE(MESH_TAG, "Metrics command argument is NULL");
         return ESP_FAIL;
     }
     

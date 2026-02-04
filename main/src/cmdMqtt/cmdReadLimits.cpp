@@ -13,12 +13,12 @@ extern void writeLog(char* que);
 int cmdReadLimits(void *argument)
 {
     if((theConf.debug_flags >> dLIMITS) & 1U) 
-        ESP_LOGI(MESH_TAG,"ReadLimits Cmd");
+        MESP_LOGI(MESH_TAG,"ReadLimits Cmd");
 
     cJSON *readLimitsCommand = (cJSON *)argument;
     if(readLimitsCommand == NULL)
     {
-        ESP_LOGE(MESH_TAG,"ReadLimits command argument is NULL");
+        MESP_LOGE(MESH_TAG,"ReadLimits command argument is NULL");
         return ESP_FAIL;
     }
 
@@ -26,7 +26,7 @@ int cmdReadLimits(void *argument)
     cJSON *response = cJSON_CreateObject();
     if(!response)
     {
-        ESP_LOGE(MESH_TAG,"Failed to create response JSON");
+        MESP_LOGE(MESH_TAG,"Failed to create response JSON");
         return ESP_FAIL;
     }
 
@@ -96,20 +96,20 @@ int cmdReadLimits(void *argument)
     char *jsonString = cJSON_PrintUnformatted(response);
     if(!jsonString)
     {
-        ESP_LOGE(MESH_TAG,"Failed to print response JSON");
+        MESP_LOGE(MESH_TAG,"Failed to print response JSON");
         cJSON_Delete(response);
         return ESP_FAIL;
     }
 
     if((theConf.debug_flags >> dLIMITS) & 1U) 
-        ESP_LOGI(MESH_TAG,"ReadLimits response: %s", jsonString);
+        MESP_LOGI(MESH_TAG,"ReadLimits response: %s", jsonString);
 
     // Create message for MQTT sender queue
     mqttSender_t mqttMsg = {0};
     mqttMsg.msg = (char*)calloc(strlen(jsonString) + 1, 1);
     if(!mqttMsg.msg)
     {
-        ESP_LOGE(MESH_TAG,"Failed to allocate memory for limits response");
+        MESP_LOGE(MESH_TAG,"Failed to allocate memory for limits response");
         free(jsonString);
         cJSON_Delete(response);
         return ESP_FAIL;
@@ -123,7 +123,7 @@ int cmdReadLimits(void *argument)
     // Send via MQTT (this will be handled by the MQTT sender task)
     if(xQueueSend(mqttSender, &mqttMsg, 0) != pdTRUE)
     {
-        ESP_LOGE(MESH_TAG,"Failed to queue limits response");
+        MESP_LOGE(MESH_TAG,"Failed to queue limits response");
         free(mqttMsg.msg);
         free(jsonString);
         cJSON_Delete(response);

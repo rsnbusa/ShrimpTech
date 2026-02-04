@@ -43,7 +43,7 @@ void generic_modbus_task(void *pArg)
     // Extract sensor configuration from task parameter
     modbus_sensor_type_t *modbus_sensor = (modbus_sensor_type_t*)pArg;
     
-    ESP_LOGI(TAG, "%s%s monitoring task started", modbus_sensor->color, modbus_sensor->modbus_sensor_name);
+    MESP_LOGI(TAG, "%s%s monitoring task started", modbus_sensor->color, modbus_sensor->modbus_sensor_name);
     
     // Get sensor configuration and refresh rate
     void *sensor_specs = modbus_sensor->modbus_sensor_specs;
@@ -60,11 +60,11 @@ void generic_modbus_task(void *pArg)
     
     if (descriptors == NULL)
     {
-        ESP_LOGW(TAG, "%s task: No valid sensors configured, task exiting", modbus_sensor->modbus_sensor_name);
+        MESP_LOGW(TAG, "%s task: No valid sensors configured, task exiting", modbus_sensor->modbus_sensor_name);
         vTaskDelete(NULL);
     }
 
-    ESP_LOGI(TAG, "%s task: Initialized %d descriptors, refresh rate: %d min", 
+    MESP_LOGI(TAG, "%s task: Initialized %d descriptors, refresh rate: %d min", 
              modbus_sensor->modbus_sensor_name, sensor_count, refresh_rate);
     
     // Prepare message structure for RS485 communication
@@ -84,7 +84,7 @@ void generic_modbus_task(void *pArg)
         // Send read request to RS485 handler task
         if (xQueueSend(rs485Q, &mensaje, pdMS_TO_TICKS(100)) != pdPASS)
         {
-            ESP_LOGE(TAG, "%s task: Failed to send message to RS485 queue", modbus_sensor->modbus_sensor_name);
+            MESP_LOGE(TAG, "%s task: Failed to send message to RS485 queue", modbus_sensor->modbus_sensor_name);
         }
         else
         {

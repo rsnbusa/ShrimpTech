@@ -59,7 +59,7 @@ descriptor_array_t* initialize_sensor_descriptors(
     descriptor_array_t *descriptors = (descriptor_array_t*)calloc(1, sizeof(mb_parameter_descriptor_t) * MAXSENSORS);
     if (descriptors == NULL)
     {
-        ESP_LOGE(TAG, "%s task: Failed to allocate memory for descriptors", whichDev);
+        MESP_LOGE(TAG, "%s task: Failed to allocate memory for descriptors", whichDev);
         return NULL;
     }
 
@@ -101,14 +101,14 @@ descriptor_array_t* initialize_sensor_descriptors(
         {
             if (columns < 5)
             {
-                ESP_LOGI(TAG, "%s%s Descriptor %d/%d: \tOffset=%d \tStart=%d \tPoints=%d \tType=%d[%s] \tMux=%.02f",
+                MESP_LOGI(TAG, "%s%s Descriptor %d/%d: \tOffset=%d \tStart=%d \tPoints=%d \tType=%d[%s] \tMux=%.02f",
                     GRAY, whichDev, a, sensor_count, 
                     offset, start, points, type, 
                     TYPES_NAME[type], mux);
             }
             else
             {
-                ESP_LOGI(TAG, "%s%s Descriptor %d/%d: \tAddress=%d \tOffset=%d \tStart=%d \tPoints=%d \tType=%d[%s] \tMux=%.02f",
+                MESP_LOGI(TAG, "%s%s Descriptor %d/%d: \tAddress=%d \tOffset=%d \tStart=%d \tPoints=%d \tType=%d[%s] \tMux=%.02f",
                     GRAY, whichDev, a, sensor_count, 
                     address, offset, start, points, type, 
                     TYPES_NAME[type], mux);
@@ -121,7 +121,7 @@ descriptor_array_t* initialize_sensor_descriptors(
         char *label = (char*)calloc(1, 20);
         if (label == NULL)
         {
-            ESP_LOGE(TAG, "%s task: Failed to allocate param_key for sensor %d", whichDev, sensor_count);
+            MESP_LOGE(TAG, "%s task: Failed to allocate param_key for sensor %d", whichDev, sensor_count);
             continue;
         }
         sprintf(label, "%s%d", whichDev, sensor_count);
@@ -131,7 +131,7 @@ descriptor_array_t* initialize_sensor_descriptors(
         char *label_units = (char*)calloc(1, 20);
         if (label_units == NULL)
         {
-            ESP_LOGE(TAG, "%s task: Failed to allocate param_units for sensor %d", whichDev, sensor_count);
+            MESP_LOGE(TAG, "%s task: Failed to allocate param_units for sensor %d", whichDev, sensor_count);
             continue;
         }
         sprintf(label_units, "%d", (int)mux);

@@ -1,6 +1,7 @@
 #ifndef FORWARDS_H
 #define FORWARDS_H
 
+void my_log(const char* tag, const char* format, ...);
 /**
  * @file forwards.h
  * @brief Forward declarations for all public functions in the ShrimpIoT project

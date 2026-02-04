@@ -27,7 +27,7 @@ bool FramI2C::begin(int sdaPin, int sclPin, SemaphoreHandle_t *framSemaphore)
 {
     if(!framSemaphore)
     {
-        ESP_LOGE("FRAM", "Invalid semaphore pointer");
+        MESP_LOGE("FRAM", "Invalid semaphore pointer");
         return false;
     }
 
@@ -45,7 +45,7 @@ bool FramI2C::begin(int sdaPin, int sclPin, SemaphoreHandle_t *framSemaphore)
     esp_err_t ret = i2c_new_master_bus(&busConfig, &busHandle);
     if(ret != ESP_OK)
     {
-        ESP_LOGE("FRAM", "Failed to create I2C master bus: %d", ret);
+        MESP_LOGE("FRAM", "Failed to create I2C master bus: %d", ret);
         return false;
     }
 
@@ -59,7 +59,7 @@ bool FramI2C::begin(int sdaPin, int sclPin, SemaphoreHandle_t *framSemaphore)
     ret = i2c_master_bus_add_device(busHandle, &deviceConfig, &deviceHandle);
     if(ret != ESP_OK)
     {
-        ESP_LOGE("FRAM", "Failed to add I2C device: %d", ret);
+        MESP_LOGE("FRAM", "Failed to add I2C device: %d", ret);
         return false;
     }
 
@@ -71,11 +71,11 @@ bool FramI2C::begin(int sdaPin, int sclPin, SemaphoreHandle_t *framSemaphore)
     if(*framSemaphore)
     {
         xSemaphoreGive(*framSemaphore);  // Initialize as available
-        ESP_LOGI("FRAM", "Initialized successfully: %d words", intframWords);
+        MESP_LOGI("FRAM", "Initialized successfully: %d words", intframWords);
     }
     else
     {
-        ESP_LOGE("FRAM", "Failed to allocate semaphore");
+        MESP_LOGE("FRAM", "Failed to allocate semaphore");
         return false;
     }
 
@@ -88,7 +88,7 @@ int FramI2C::i2c_master_read_slave(uint16_t framAddress, uint8_t *readBuffer, si
 {
     if(!readBuffer)
     {
-        ESP_LOGE("FRAM", "Invalid read buffer pointer");
+        MESP_LOGE("FRAM", "Invalid read buffer pointer");
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -124,7 +124,7 @@ int FramI2C::i2c_master_read_slave(uint16_t framAddress, uint8_t *readBuffer, si
 
     if(result != ESP_OK)
     {
-        ESP_LOGE("FRAM", "Read failed at address 0x%03X: %d", framAddress, result);
+        MESP_LOGE("FRAM", "Read failed at address 0x%03X: %d", framAddress, result);
     }
 
     return result;
@@ -134,7 +134,7 @@ esp_err_t FramI2C::i2c_master_write_slave(uint16_t framAddress, uint8_t *writeDa
 {
     if(!writeData)
     {
-        ESP_LOGE("FRAM", "Invalid write buffer pointer");
+        MESP_LOGE("FRAM", "Invalid write buffer pointer");
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -149,7 +149,7 @@ esp_err_t FramI2C::i2c_master_write_slave(uint16_t framAddress, uint8_t *writeDa
     uint8_t* packetBuffer = (uint8_t*)malloc(writeSize + 2);
     if(!packetBuffer)
     {
-        ESP_LOGE("FRAM", "Failed to allocate %d byte write buffer", writeSize + 2);
+        MESP_LOGE("FRAM", "Failed to allocate %d byte write buffer", writeSize + 2);
         return ESP_ERR_NO_MEM;
     }
 
@@ -176,7 +176,7 @@ esp_err_t FramI2C::i2c_master_write_slave(uint16_t framAddress, uint8_t *writeDa
 
     if(result != ESP_OK)
     {
-        ESP_LOGE("FRAM", "Write failed at address 0x%03X: %d", framAddress, result);
+        MESP_LOGE("FRAM", "Write failed at address 0x%03X: %d", framAddress, result);
     }
 
     return result;
@@ -224,13 +224,13 @@ int FramI2C::format(uint8_t *fillPattern, uint32_t bufferSize, bool eraseAll)
     uint16_t currentAddress = 0;
     uint16_t writeLength = (bufferSize > remainingWords) ? remainingWords : bufferSize;
 
-    ESP_LOGI("FRAM", "Starting format operation for %d bytes", intframWords);
+    MESP_LOGI("FRAM", "Starting format operation for %d bytes", intframWords);
 
     // Allocate write buffer
     uint8_t *writeBuffer = (uint8_t*)malloc(writeLength);
     if(!writeBuffer)
     {
-        ESP_LOGE("FRAM", "Failed to allocate %d byte format buffer", writeLength);
+        MESP_LOGE("FRAM", "Failed to allocate %d byte format buffer", writeLength);
         return ESP_ERR_NO_MEM;
     }
 
@@ -251,7 +251,7 @@ int FramI2C::format(uint8_t *fillPattern, uint32_t bufferSize, bool eraseAll)
         result = writeMany(currentAddress, writeBuffer, chunkSize);
         if(result != ESP_OK)
         {
-            ESP_LOGE("FRAM", "Format failed at address 0x%03X: %d", currentAddress, result);
+            MESP_LOGE("FRAM", "Format failed at address 0x%03X: %d", currentAddress, result);
             free(writeBuffer);
             return result;
         }
@@ -262,7 +262,7 @@ int FramI2C::format(uint8_t *fillPattern, uint32_t bufferSize, bool eraseAll)
     }
 
     free(writeBuffer);
-    ESP_LOGI("FRAM", "Format complete: %d bytes written", bytesWritten);
+    MESP_LOGI("FRAM", "Format complete: %d bytes written", bytesWritten);
     
     return ESP_OK;
 }
@@ -283,7 +283,7 @@ int FramI2C::write_bytes(uint32_t address, uint8_t* source, uint32_t count)
 {
     if(!source)
     {
-        ESP_LOGE("FRAM", "Invalid source buffer for write_bytes");
+        MESP_LOGE("FRAM", "Invalid source buffer for write_bytes");
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -302,7 +302,7 @@ int FramI2C::read_bytes(uint32_t address, uint8_t* destination, uint32_t count)
 {
     if(!destination)
     {
-        ESP_LOGE("FRAM", "Invalid destination buffer for read_bytes");
+        MESP_LOGE("FRAM", "Invalid destination buffer for read_bytes");
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -320,7 +320,7 @@ int FramI2C::write_Blower(uint8_t *blowerData, uint16_t dataSize)
 {
     if(!blowerData)
     {
-        ESP_LOGE("FRAM", "Invalid blower data pointer");
+        MESP_LOGE("FRAM", "Invalid blower data pointer");
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -328,7 +328,7 @@ int FramI2C::write_Blower(uint8_t *blowerData, uint16_t dataSize)
     int result = write_bytes(BLOWER_BASE_ADDRESS, blowerData, dataSize);
     
     if(result != ESP_OK)
-        ESP_LOGE("FRAM", "Failed to write blower data: 0x%x", result);
+        MESP_LOGE("FRAM", "Failed to write blower data: 0x%x", result);
 
     return result;
 }
@@ -344,7 +344,7 @@ int FramI2C::read_Blower(uint8_t* blowerData, uint16_t dataSize)
 {
     if(!blowerData)
     {
-        ESP_LOGE("FRAM", "Invalid blower data pointer");
+        MESP_LOGE("FRAM", "Invalid blower data pointer");
         return ESP_ERR_INVALID_ARG;
     }
 

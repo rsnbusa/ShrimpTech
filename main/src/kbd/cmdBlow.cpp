@@ -40,26 +40,14 @@ float randomFloat(float min, float max)
 void seed_blower()
 {
     theBlower.setPVPanel(pvPanelData.chargeCurr, pvPanelData.pv1Volts, pvPanelData.pv2Volts,pvPanelData.pv1Amp, pvPanelData.pv2Amp);
-    // theBlower.setPVPanel(randomInt(0, 1), randomFloat(340, 390), randomFloat(340, 390), 
-    //                      randomFloat(14, 15), randomFloat(14, 15));
     theBlower.setBattery(batteryData.batSOC, batteryData.batSOH, batteryData.batteryCycleCount, batteryData.batBmsTemp);
-    // theBlower.setBattery(randomInt(20, 80), randomInt(20, 100), randomInt(0, 5000), 
-                        //  randomFloat(10, 40));
     theBlower.setEnergy(energyData.batChgAHToday, energyData.batDischgAHToday, 
                        energyData.batChgAHTotal, energyData.batDischgAHTotal, 
                        energyData.generateEnergyToday, energyData.usedEnergyToday, 
                        energyData.gLoadConsumLineTotal, energyData.batChgkWhToday, 
                        energyData.batDischgkWhToday, energyData.genLoadConsumToday);
-    // theBlower.setEnergy(randomInt(780, 820), randomInt(720, 820), randomInt(720, 850), 
-    //                     randomInt(720, 820), randomFloat(40, 42), randomFloat(40, 42), 
-    //                     randomFloat(40, 42), randomFloat(40, 42), randomFloat(40, 42), 
-    //                     randomFloat(40, 42));
     theBlower.setSensors(sensorData.WTemp, randomFloat(4, 8), sensorData.DO, 
                          randomFloat(22, 32), randomFloat(40, 99));
-    // theBlower.setSensors(sensorData.WTemp, randomFloat(4, 8), sensorData.DO, 
-    //                      randomFloat(22, 32), randomFloat(40, 99));
-    // theBlower.setSensors(randomFloat(4, 8), randomFloat(4, 8), randomFloat(18, 30), 
-    //                      randomFloat(22, 32), randomFloat(40, 99));
 }
 
 /**
@@ -82,14 +70,13 @@ int cmdBlow(int argc, char **argv)
     if (blowArgs.seed->count) {
         srand(time(NULL));
         seed_blower();
-        printf("Blower seeded with random test data\n");
         return 0;
     }
 
     // Set MINUTES for simulation
     if (blowArgs.minute->count) {
         int minutes = blowArgs.minute->ival[0];
-        esp_rom_printf("Setting MINUTES to %d from %d\n", minutes, theConf.test_timer_div);
+        MESP_LOGI(TAG,"Setting MINUTES to %d from %d", minutes, theConf.test_timer_div);
         if(minutes<0) minutes=1;
         theConf.test_timer_div = minutes;
         write_to_flash();
@@ -98,7 +85,7 @@ int cmdBlow(int argc, char **argv)
     // Set modbus for simulation
     if (blowArgs.modbus->count) {
         int modbuss = blowArgs.modbus->ival[0];
-        esp_rom_printf("Setting Modbus to %d from %d\n", modbuss, theConf.modbus_mux);
+        MESP_LOGI(TAG,"Setting Modbus to %d from %d", modbuss, theConf.modbus_mux);
         if(modbuss<0) modbuss=1;
         theConf.modbus_mux = modbuss;
         write_to_flash();
@@ -111,12 +98,12 @@ int cmdBlow(int argc, char **argv)
         theBlower.setBattery(0, 0, 0, 0);
         theBlower.setEnergy(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         theBlower.setSensors(0, 0, 0, 0, 0);
-        printf("Blower initialized with zeros\n");
+        MESP_LOGI(TAG,"Blower initialized with zeros");
         return 0;
     }
 
     // No valid arguments provided
-    printf("Error: No valid arguments. Use -s to seed or -i to initialize\n");
+    MESP_LOGI(TAG,"Error: No valid arguments. Use -s to seed or -i to initialize");
     return 0;
 }
 

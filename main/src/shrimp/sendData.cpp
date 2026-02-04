@@ -66,7 +66,7 @@ meshunion_t *sendData(bool forced)
     meshunion_t *nodeDataPacket = (meshunion_t*)calloc(1, sizeof(meshunion_t));
     if(!nodeDataPacket)
     {
-        ESP_LOGE(SENDDATA_TAG, "Failed to allocate memory for mesh data packet");
+        MESP_LOGE(SENDDATA_TAG, "Failed to allocate memory for mesh data packet");
         return NULL;
     }
 
@@ -102,7 +102,7 @@ meshunion_t *sendData(bool forced)
     solarSystem_t *solarSystemData = theBlower.getPtrSolarsystem();
     if(!solarSystemData)
     {
-        ESP_LOGE(SENDDATA_TAG, "Failed to get solar system data pointer");
+        MESP_LOGE(SENDDATA_TAG, "Failed to get solar system data pointer");
         free(nodeDataPacket);
         return NULL;
     }
@@ -113,7 +113,7 @@ meshunion_t *sendData(bool forced)
            solarSystemData,
            sizeof(solarSystem_t));
     
-    ESP_LOGD(SENDDATA_TAG, "Data packet created: Pool=%d, Unit=%d, Msg=%d",
+    MESP_LOGD(SENDDATA_TAG, "Data packet created: Pool=%d, Unit=%d, Msg=%d",
              nodeDataPacket->nodedata.nodeid,
              nodeDataPacket->nodedata.subnode,
              nodeDataPacket->nodedata.msgnum);

@@ -20,14 +20,14 @@ static cJSON* validateFormatCommand(cJSON *cmd)
 {
     if(!cmd)
     {
-        ESP_LOGE(MESH_TAG, "Format command is NULL");
+        MESP_LOGE(MESH_TAG, "Format command is NULL");
         return NULL;
     }
     
     cJSON *meterIdNode = cJSON_GetObjectItem(cmd, "mid");
     if(!meterIdNode)
     {
-        ESP_LOGE(MESH_TAG, "Format command missing required 'mid' field");
+        MESP_LOGE(MESH_TAG, "Format command missing required 'mid' field");
         return NULL;
     }
     
@@ -42,7 +42,7 @@ static void logFormatOperation(cJSON *meterIdNode)
 {
     if(!meterIdNode || !meterIdNode->valuestring)
     {
-        ESP_LOGW(MESH_TAG, "Cannot log format operation: invalid meter ID");
+        MESP_LOGW(MESH_TAG, "Cannot log format operation: invalid meter ID");
         return;
     }
     
@@ -55,7 +55,7 @@ static void logFormatOperation(cJSON *meterIdNode)
     }
     else
     {
-        ESP_LOGW(MESH_TAG, "Failed to allocate log buffer for format operation");
+        MESP_LOGW(MESH_TAG, "Failed to allocate log buffer for format operation");
     }
 }
 
@@ -69,14 +69,14 @@ static esp_err_t buildMeshMessageFormat(const char *jsonString, meshunion_t **me
 {
     if(!jsonString || !meshMessage)
     {
-        ESP_LOGE(MESH_TAG, "Invalid parameters for buildMeshMessage");
+        MESP_LOGE(MESH_TAG, "Invalid parameters for buildMeshMessage");
         return ESP_FAIL;
     }
     
     *meshMessage = (meshunion_t*)calloc(1, MESH_MESSAGE_BUFFER_SIZE);
     if(!*meshMessage)
     {
-        ESP_LOGE(MESH_TAG, "Failed to allocate mesh message buffer");
+        MESP_LOGE(MESH_TAG, "Failed to allocate mesh message buffer");
         return ESP_FAIL;
     }
     
@@ -100,7 +100,7 @@ static esp_err_t sendFormatCommandToMesh(meshunion_t *meshMessage, size_t jsonSt
 {
     if(!meshMessage)
     {
-        ESP_LOGE(MESH_TAG, "Mesh message is NULL");
+        MESP_LOGE(MESH_TAG, "Mesh message is NULL");
         return ESP_FAIL;
     }
     
@@ -114,11 +114,11 @@ static esp_err_t sendFormatCommandToMesh(meshunion_t *meshMessage, size_t jsonSt
     
     if(err != ESP_OK)
     {
-        ESP_LOGE(MESH_TAG, "Failed to send format command via mesh: %s", esp_err_to_name(err));
+        MESP_LOGE(MESH_TAG, "Failed to send format command via mesh: %s", esp_err_to_name(err));
     }
     else if(meterIdNode && meterIdNode->valuestring)
     {
-        ESP_LOGI(MESH_TAG, "Format command sent successfully to node: %s", meterIdNode->valuestring);
+        MESP_LOGI(MESH_TAG, "Format command sent successfully to node: %s", meterIdNode->valuestring);
     }
     
     return err;
@@ -127,7 +127,7 @@ static esp_err_t sendFormatCommandToMesh(meshunion_t *meshMessage, size_t jsonSt
 int cmdFormat(void *argument)
 {
     cJSON *cmd = (cJSON *)argument;
-    ESP_LOGI(MESH_TAG, "Format CMD");
+    MESP_LOGI(MESH_TAG, "Format CMD");
     
     /*
     Command format:
@@ -145,7 +145,7 @@ int cmdFormat(void *argument)
     char *jsonString = cJSON_PrintUnformatted(cmd);
     if(!jsonString)
     {
-        ESP_LOGE(MESH_TAG, "Failed to serialize format command to JSON");
+        MESP_LOGE(MESH_TAG, "Failed to serialize format command to JSON");
         return ESP_FAIL;
     }
     

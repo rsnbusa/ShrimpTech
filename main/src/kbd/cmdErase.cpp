@@ -32,8 +32,8 @@ extern void erase_config();
  */
 int cmdErase(int argc, char **argv)
 {
-    printf("Erase Controller...");
+    MESP_LOGI(TAG,"Erase Controller...");
     erase_config();
-    printf("done\n");
+    MESP_LOGI(TAG,"done");
     return 0;
 }

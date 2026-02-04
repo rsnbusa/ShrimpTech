@@ -170,7 +170,7 @@ char *data;
     {
     // Advertise if connected
     case BLE_GAP_EVENT_CONNECT:
-        ESP_LOGI("GAP", "BLE GAP EVENT CONNECT %s", event->connect.status == 0 ? "OK!" : "FAILED!");
+        MESP_LOGI("GAP", "BLE GAP EVENT CONNECT %s", event->connect.status == 0 ? "OK!" : "FAILED!");
         if (event->connect.status != 0)
         {
             ble_app_advertise();
@@ -178,14 +178,14 @@ char *data;
         break;
     // Advertise again after completion of the event
     case BLE_GAP_EVENT_DISCONNECT:
-        ESP_LOGI("GAP", "BLE GAP EVENT DISCONNECTED");
+        MESP_LOGI("GAP", "BLE GAP EVENT DISCONNECTED");
         if (event->connect.status != 0)
         {
             ble_app_advertise();
         }
         break;
     case BLE_GAP_EVENT_ADV_COMPLETE:
-        ESP_LOGI("GAP", "BLE GAP EVENT");
+        MESP_LOGI("GAP", "BLE GAP EVENT");
         ble_app_advertise();
         break;
     default:
@@ -239,7 +239,7 @@ void connect_ble(void)
 
     int rc = ble_gatts_count_cfg(serial_service);
     if (rc != 0) {
-        ESP_LOGE("BLE", "Failed to count BLE services: %d", rc);
+        MESP_LOGE("BLE", "Failed to count BLE services: %d", rc);
     }
     ble_gatts_add_svcs(serial_service);             // 4 - Initialize NimBLE configuration - queues gatt services.
     ble_hs_cfg.sync_cb = ble_app_on_sync;      // 5 - Initialize application
