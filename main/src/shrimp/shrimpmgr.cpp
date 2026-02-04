@@ -23,7 +23,31 @@ extern const uint8_t cert_end[]             asm("_binary_cloudamp_pem_end");
 #define EXAMPLE_ONEWIRE_BUS_GPIO    45
 #define EXAMPLE_ONEWIRE_MAX_DS18B20 1
 
+#define MESP_LOGI(tag, format, ...) my_log(tag, format, ##__VA_ARGS__)
+#define MESP_LOGW(tag, format, ...) my_log(tag, format, ##__VA_ARGS__)
+#define MESP_LOGE(tag, format, ...) my_log(tag, format, ##__VA_ARGS__)
 
+// Custom logging function with custom timestamp
+void my_log(const char* tag, const char* format, ...) {
+    // Generate custom timestamp
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    struct tm* tm_info = localtime(&tv.tv_sec);
+    
+    char timestamp[32];
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", tm_info);
+    
+    // Print custom timestamp
+    printf("[%s.%03ld] %s: ", timestamp, tv.tv_usec / 1000, tag);
+    
+    // Print the actual message
+    va_list args;
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    
+    printf("\n");
+}
 
 /**
  * @brief Format current time for log entry
@@ -5318,9 +5342,12 @@ void start_schedule_timers(void * pArg)
                 {
                     ESP_LOGI(TAG, "%sSave day %d", DBG_SCH, theConf.dayCycle);
                     time_t new_day=time(NULL);
-                    char  time_str[30];
+                    char  time_str[30],mid_str[30];
                     format_log_time(new_day, time_str, 30);
-                    ESP_LOGI(TAG, "%sWait Midnight %ld New day %s", DBG_SCH, wait_next_day,time_str);
+                    time_t nmid=new_day+wait_next_day;
+                    format_log_time(nmid, mid_str, 30);
+
+                    ESP_LOGI(TAG, "%sWait Midnight %ld (%s) New day %s", DBG_SCH, wait_next_day, mid_str, time_str);
                 }
                 uint32_t howmuch= (wait_next_day*1000/theConf.test_timer_div)+10000;
                 delay(wait_next_day*1000/theConf.test_timer_div+10000); // in secs->ms and add 10 seconds to be sure we are in the next day
@@ -5714,7 +5741,6 @@ void app_main(void)
 {
     esp_err_t ret;
 
-
     init_process();  
 
     // printf("DO Active %d Setpoint %f KP %f KI %f KD %f Night %d\n",theConf.doParms.docontrol,theConf.doParms.setpoint,
@@ -5751,7 +5777,6 @@ void app_main(void)
 #ifdef DEBB
     xTaskCreate(&kbd,"kbd",1024*10,NULL, 5, NULL); 	        // keyboard commands
 #endif
-
 printf("PV PAnel %d Battery %d Energy %d Solar System %d SolarPad %d Union %d SmpMsg %d timet %d float %d Config %d tickType %d\n",sizeof(pvPanel_t),sizeof(battery_t),
 sizeof(energy_t),sizeof(solarSystem_t),sizeof(solarDef_t),sizeof(meshunion_t),sizeof(shrimpMsg_t),sizeof(time_t),sizeof(float),
 sizeof(theConf), sizeof(TickType_t)); 
