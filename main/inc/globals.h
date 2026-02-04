@@ -118,6 +118,7 @@ EXTERN FILE *myFile;
 // ============================================================================
 
 EXTERN bool schedulef;
+EXTERN bool schedule_restartf;
 EXTERN bool pausef;
 EXTERN bool donef;
 EXTERN bool mqttf;

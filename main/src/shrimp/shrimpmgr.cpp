@@ -17,15 +17,8 @@
 extern const uint8_t cert_start[]           asm("_binary_cloudamp_pem_start");
 extern const uint8_t cert_end[]             asm("_binary_cloudamp_pem_end");
 
-// extern const uint8_t cert_start[]           asm("_binary_cert_pem_start");
-// extern const uint8_t cert_end[]             asm("_binary_cert_pem_end");
-
-
-
-
-
 // Custom logging function with custom timestamp
-void my_log(const char* tag, const char* format, ...) {
+void my_log(const char *color,const char* tag, const char* format, ...) {
     // Generate custom timestamp
     struct timeval tv;
     gettimeofday(&tv, NULL);
@@ -35,7 +28,7 @@ void my_log(const char* tag, const char* format, ...) {
     strftime(timestamp, sizeof(timestamp), "%d-%m %H:%M:%S", tm_info);
     
     // Print custom timestamp
-    printf("%s[%s] %s: ", RESETC,timestamp, tag);
+    printf("%s[%s]%s %s: ", color,timestamp, RESETC, tag);
     
     // Print the actual message
     va_list args;
@@ -2069,8 +2062,10 @@ static void update_system_time_tracking(time_t now)
 static void start_blower_if_ready(void)
 {
     wschedule_t* scheduleData = theBlower.getSchedulePtr();
-    if (theBlower.getScheduleStatus() != BLOWERPARK)        // parked is the only status that does not start blower
+    if (theBlower.getScheduleStatus() < BLOWERCROP)        // parked is the only status that does not start blower
    {
+        schedule_restartf=true;
+
         char *aca=(char*)calloc(100,1);
         if(aca)
         {
@@ -2083,8 +2078,10 @@ static void start_blower_if_ready(void)
                 free(aca);
         }
          xSemaphoreGive(workTaskSem);
-   }    
-    
+   }  
+   else
+        schedule_restartf=false;
+  
     if (theConf.wifi_mode != WIFI_MESH)
         root_set_senddata_timer();
 }
@@ -5297,8 +5294,15 @@ void start_schedule_timers(void * pArg)
 
         countTimersEnd = countTimersStart = 0;
         MESP_LOGI(TAG, "%sStarted Production cycles", DBG_SCH);
-        
-        find_cycle_day(&cyclestart, &daystart);
+        if(!schedule_restartf)
+            find_cycle_day(&cyclestart, &daystart);
+        else
+        {
+            wschedule_t* scheduleData = theBlower.getSchedulePtr();
+            cyclestart = scheduleData->currentCycle;
+            daystart = scheduleData->currentDay;
+            schedule_restartf= false;
+        }
         schedulef = true;
         if ((theConf.debug_flags >> dSCH) & 1U)
             MESP_LOGW(TAG, "%sStart Cycle %d Start Day %d midn %ld now %ld %s", DBG_SCH, cyclestart, daystart,
@@ -5314,6 +5318,9 @@ void start_schedule_timers(void * pArg)
             // Process days in cycle
             for (ck_d = day_offset; ck_d < theConf.profiles[0].cycle[ck].duration; ck_d++)
             {
+                // start here if PF
+                theBlower.setSchedule(ck,ck_d,0,0,0,0,BLOWERON); // set the schedule in blower to indicate we are in active schedule mode
+
                 // Process horarios (hourly schedules) in day
                 time(&nows);        // get todays new time or it will use the one when we STARTED the SCHEDULE process
                 format_log_time(nows, time_str, 30);
@@ -5369,7 +5376,7 @@ void start_schedule_timers(void * pArg)
                         .tv_usec = 0
                     };
                 settimeofday(&tv, NULL);*/
-                
+
                 time_t nuevo=time(NULL);
                 format_log_time(nuevo, time_str, 30);
 

@@ -1,9 +1,9 @@
 
-extern void my_log(const char* tag, const char* format, ...);
-#define MESP_LOGI(tag, format, ...) my_log(tag, format, ##__VA_ARGS__)
-#define MESP_LOGW(tag, format, ...) my_log(tag, format, ##__VA_ARGS__)
-#define MESP_LOGE(tag, format, ...) my_log(tag, format, ##__VA_ARGS__)
-#define MESP_LOGD(tag, format, ...) my_log(tag, format, ##__VA_ARGS__)
+extern void my_log(const char * color,const char* tag, const char* format, ...);
+#define MESP_LOGI(tag, format, ...) my_log(GRAY,tag, format, ##__VA_ARGS__)
+#define MESP_LOGW(tag, format, ...) my_log(BK_YELLOW,tag, format, ##__VA_ARGS__)
+#define MESP_LOGE(tag, format, ...) my_log(BK_RED,tag, format, ##__VA_ARGS__)
+#define MESP_LOGD(tag, format, ...) my_log(BLUE,tag, format, ##__VA_ARGS__)
 
 #define EXAMPLE_ONEWIRE_BUS_GPIO        (45)
 #define EXAMPLE_ONEWIRE_MAX_DS18B20     (1)
