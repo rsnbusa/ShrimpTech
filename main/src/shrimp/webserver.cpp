@@ -1194,7 +1194,9 @@ void start_webserver(void *pArg)
   	mongoose_set_http_handlers("modbBattery", my_get_modbBattery ,my_set_modbBattery);				
   	mongoose_set_http_handlers("modbPanels", my_get_modbPanels ,my_set_modbPanels);				
   	mongoose_set_http_handlers("DO", my_get_DO ,my_set_DO);				
-  	mongoose_set_http_handlers("reboot", my_check_reboot ,my_start_reboot);				
+  	mongoose_set_http_handlers("reboot", my_check_reboot ,my_start_reboot);		
+	if(webserverf)
+		s_settings.disable_val=11;		
 	//web timeout if not done in 2 minutes restart
 	webTimer=xTimerCreate("restart",pdMS_TO_TICKS(WEB_TIMEOUT_MS),pdFALSE,( void * ) 0, [] ( TimerHandle_t xTimer){	
 			theConf.meterconf=CONF_STATE_PENDING;

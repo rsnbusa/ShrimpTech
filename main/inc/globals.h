@@ -117,6 +117,7 @@ EXTERN FILE *myFile;
 // SYSTEM STATE FLAGS
 // ============================================================================
 
+EXTERN bool webserverf;
 EXTERN bool schedulef;
 EXTERN bool schedule_restartf;
 EXTERN bool pausef;

@@ -5797,7 +5797,7 @@ void app_main(void)
     esp_err_t ret;
 
     init_process();  
-
+webserverf=false;
 
     // printf("DO Active %d Setpoint %f KP %f KI %f KD %f Night %d\n",theConf.doParms.docontrol,theConf.doParms.setpoint,
     //     theConf.doParms.KP,theConf.doParms.KI,theConf.doParms.KD,theConf.doParms.nighonly);
@@ -5892,6 +5892,7 @@ sizeof(theConf), sizeof(TickType_t));
     {
         // printf("Start wifi mode\n");
         wifi_connect_external_ap(); //start wifi which will start many ither tasks from got ip event wiht SNTP starting the scheduler
+        webserverf=true;
         xTaskCreate(&start_webserver, "webs", 1024 * 10, NULL, 5, NULL);
 
     }

@@ -94,7 +94,7 @@ void glue_set_system(struct system *data) {
   s_system = *data; // Sync with your device
 }
 
-struct sysset s_sysset = {"", "", 0, 0, false, false, 0, 0, "", "", "", 0, 0, 0, 0, 0, 0, ""};
+struct sysset s_sysset = {0, "", "", 0, 0, false, false, 0, 0, "", "", "", 0, 0, 0, 0, 0, 0, ""};
 void glue_get_sysset(struct sysset *data) {
   *data = s_sysset;  // Sync with your device
 }
