@@ -47,7 +47,7 @@ void my_log(const char *color,const char* tag, const char* format, ...) {
  * @param time_buf Buffer to store formatted time (must be at least 26 chars)
  * @return Pointer to formatted time string, or NULL if ctime fails
  */
-static char* format_log_time(time_t now,char *time_buf, size_t buf_size)
+char* format_log_time(time_t now,char *time_buf, size_t buf_size)
 {
     char *time_str = ctime(&now);
     
@@ -204,7 +204,7 @@ void print_blower(char * title,solarSystem_t *msolar,bool dumphex)
 void show_lvgl(void *showLVGL)
 {
     show_lvgl_t                  *msg=(show_lvgl_t *)showLVGL;
-	static _lock_t               lvgl_api_lock;
+	_lock_t               lvgl_api_lock;
     if(msg)
     {
         // printf("lvgl clean\n");
@@ -332,7 +332,7 @@ void schedule_timeout(TimerHandle_t xTimer)
  * @param cual Command name to search for
  * @return int Index of the command in internal_cmds array, ESP_FAIL if not found
  */
-static int findInternalCmds(const char * cual)
+int findInternalCmds(const char * cual)
 {
 	for (int a=0;a<MAXINTCMDS;a++)
 	{
@@ -1451,7 +1451,7 @@ err_t root_mesh_broadcast_msg(char *msg)        // csjon format only
  * @param data Mesh data containing meter information
  * @return true if processed successfully, false on error
  */
-static bool handle_meter_data(mesh_addr_t *from, mesh_data_t *data)
+bool handle_meter_data(mesh_addr_t *from, mesh_data_t *data)
 {
     meshunion_t *aNode = (meshunion_t*)calloc(data->size, 1);
     if (!aNode) {
@@ -1480,7 +1480,7 @@ static bool handle_meter_data(mesh_addr_t *from, mesh_data_t *data)
  * @param data Mesh data containing Modbus configuration
  * @return true if processed successfully, false on error
  */
-static bool handle_modbus_config(mesh_data_t *data)
+bool handle_modbus_config(mesh_data_t *data)
 {
     meshunion_t *aNode = (meshunion_t*)calloc(data->size, 1);
     if (!aNode) {
@@ -1536,7 +1536,7 @@ void process_binary_mesh_msg(mesh_addr_t *from, mesh_data_t *data, uint32_t rese
  * 
  * @param order Order name (start, stop, pause, resume)
  */
-static void log_production_order(const char *order)
+void log_production_order(const char *order)
 {
     if ((theConf.debug_flags >> dMESH) & 1U)
         MESP_LOGI(MESH_TAG, "%sMesh Production Cmd order to %s", DBG_MESH, order);
@@ -1555,7 +1555,7 @@ static void log_production_order(const char *order)
 /**
  * @brief Handle production start order
  */
-static void handle_production_start(void)
+void handle_production_start(void)
 {
     log_production_order("Start");
     xSemaphoreGive(workTaskSem);
@@ -1564,7 +1564,7 @@ static void handle_production_start(void)
 /**
  * @brief Handle production stop order
  */
-static void handle_production_stop(void)
+void handle_production_stop(void)
 {
     log_production_order("Stop");
     
@@ -1578,7 +1578,7 @@ static void handle_production_stop(void)
 /**
  * @brief Handle production pause order
  */
-static void handle_production_pause(void)
+void handle_production_pause(void)
 {
     log_production_order("Pause");
     pausef = true;
@@ -1587,7 +1587,7 @@ static void handle_production_pause(void)
 /**
  * @brief Handle production resume order
  */
-static void handle_production_resume(void)
+void handle_production_resume(void)
 {
     log_production_order("Resume");
     pausef = false;
@@ -1603,7 +1603,7 @@ static void handle_production_resume(void)
  * @param pday Day cycle
  * @param pmux Timer multiplexer
  */
-static void update_production_config(cJSON *prof, cJSON *pday, cJSON *pmux)
+void update_production_config(cJSON *prof, cJSON *pday, cJSON *pmux)
 {
     theConf.activeProfile = prof->valueint;
     theConf.dayCycle = pday->valueint;
@@ -1677,7 +1677,7 @@ int findPoolNode(mesh_addr_t *este)
  * @param data Mesh data structure (modified: pointer advanced, size reduced)
  * @return Parsed cJSON object, or NULL on error
  */
-static cJSON* parse_mesh_json_data(mesh_data_t *data)
+cJSON* parse_mesh_json_data(mesh_data_t *data)
 {
     if (data->size < 5) {  // Need at least 4-byte header + 1 byte data
         MESP_LOGE(MESH_TAG, "Mesh data too small: %d bytes", data->size);
@@ -1701,7 +1701,7 @@ static cJSON* parse_mesh_json_data(mesh_data_t *data)
  * Processes schedule confirmation from pool nodes. Root node tracks
  * confirmations and stops schedule timer when all nodes respond.
  */
-static void handle_schedule_command(cJSON *elcmd, mesh_addr_t *from)
+void handle_schedule_command(cJSON *elcmd, mesh_addr_t *from)
 {
     if (!esp_mesh_is_root())
         return;
@@ -1732,7 +1732,7 @@ static void handle_schedule_command(cJSON *elcmd, mesh_addr_t *from)
  * 
  * Allocates buffer, copies metric data, and queues for MQTT transmission.
  */
-static void handle_metricresp_command(cJSON *elcmd, mesh_data_t *data, mesh_addr_t *from)
+void handle_metricresp_command(cJSON *elcmd, mesh_data_t *data, mesh_addr_t *from)
 {
     if ((theConf.debug_flags >> dMESH) & 1U)
         MESP_LOGI(MESH_TAG, "Mesh Metrics respond cmd");
@@ -1760,9 +1760,9 @@ static void handle_metricresp_command(cJSON *elcmd, mesh_data_t *data, mesh_addr
  * @param from Source mesh address
  * @param data Mesh data structure
  */
-static void dispatch_mesh_command(int cualf, cJSON *elcmd, mesh_addr_t *from, mesh_data_t *data)
+void dispatch_mesh_command(int cualf, cJSON *elcmd, mesh_addr_t *from, mesh_data_t *data)
 {
-    static char cualMID[20];
+    char cualMID[20];
     esp_err_t err;
 
     switch (cualf) {
@@ -1830,7 +1830,7 @@ static void dispatch_mesh_command(int cualf, cJSON *elcmd, mesh_addr_t *from, me
 }
 
 //here we received all mesh traffic data
-void static mesh_manager(mesh_addr_t *from, mesh_data_t *data)
+void mesh_manager(mesh_addr_t *from, mesh_data_t *data)
 {
     cJSON *elcmd;
     uint32_t reserved;
@@ -2012,7 +2012,7 @@ void write_to_flash()
  * @param localtime Pointer to timeval structure to receive fallback time
  * @return true if sync successful, false if using fallback time
  */
-static bool sntp_sync_with_fallback(timeval *localtime)
+bool sntp_sync_with_fallback(timeval *localtime)
 {
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     sntp_setservername(0, "pool.ntp.org");
@@ -2042,7 +2042,7 @@ static bool sntp_sync_with_fallback(timeval *localtime)
  * 
  * @param now Current time_t
  */
-static void update_system_time_tracking(time_t now)
+void update_system_time_tracking(time_t now)
 {
     setenv("TZ", LOCALTIME, 1);
     tzset();
@@ -2059,7 +2059,7 @@ static void update_system_time_tracking(time_t now)
 /**
  * @brief Start blower and data collection timers if ready
  */
-static void start_blower_if_ready(void)
+void start_blower_if_ready(void)
 {
     wschedule_t* scheduleData = theBlower.getSchedulePtr();
     if (theBlower.getScheduleStatus() < BLOWERCROP)        // parked is the only status that does not start blower
@@ -2121,7 +2121,7 @@ void root_sntpget(void *pArg)
  * Drains the mqttSender queue and frees all message buffers and parameters.
  * Used during reconnection to clean up partial/stale messages.
  */
-static void clear_mqtt_sender_queue(void)
+void clear_mqtt_sender_queue(void)
 {
     mqttSender_t mensaje;
     
@@ -2148,7 +2148,7 @@ static void clear_mqtt_sender_queue(void)
  * @param retry Pointer to retry counter to increment
  * @return true if reconnection successful and tasks restarted, false otherwise
  */
-static bool mqtt_reconnect_attempt(int *retry)
+bool mqtt_reconnect_attempt(int *retry)
 {
     esp_err_t err;
     EventBits_t uxBits;
@@ -2237,7 +2237,7 @@ void root_reconnectTask(void *pArg)
 }
 
 
-static void root_mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data);
+void root_mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data);
 
 /**
  * @brief Log MQTT error message to system log
@@ -2247,7 +2247,7 @@ static void root_mqtt_event_handler(void *handler_args, esp_event_base_t base, i
  * @param error_msg Error message suffix
  * @param error_code Optional error code (can be NULL)
  */
-static void log_mqtt_error(const char *error_msg, const char *error_code)
+void log_mqtt_error(const char *error_msg, const char *error_code)
 {
     char *msg = (char*)calloc(1, 100);
     if(msg)
@@ -2263,7 +2263,7 @@ static void log_mqtt_error(const char *error_msg, const char *error_code)
  * 
  * Launches reconnection task if not already running.
  */
-static void handle_mqtt_tcp_error(void)
+void handle_mqtt_tcp_error(void)
 {
     if(!recoTaskHandle)
     {
@@ -2284,7 +2284,7 @@ static void handle_mqtt_tcp_error(void)
  * Processes incoming MQTT message: allocates buffer, copies data,
  * updates statistics, and queues for processing.
  */
-static void handle_mqtt_data_event(esp_mqtt_event_handle_t event)
+void handle_mqtt_data_event(esp_mqtt_event_handle_t event)
 {
     if(event->data_len == 0)
     {
@@ -2339,7 +2339,7 @@ static void handle_mqtt_data_event(esp_mqtt_event_handle_t event)
  * 
  * Subscribes to command queue and sets connection flags.
  */
-static void handle_mqtt_connected_event(void)
+void handle_mqtt_connected_event(void)
 {
     int err = esp_mqtt_client_subscribe(clientCloud, cmdQueue, 0);
     if(err == 0 && (theConf.debug_flags >> dMQTT) & 1U)
@@ -2354,7 +2354,7 @@ static void handle_mqtt_connected_event(void)
  * 
  * Clears connection flags and sets disconnect event bit.
  */
-static void handle_mqtt_disconnected_event(void)
+void handle_mqtt_disconnected_event(void)
 {
     xEventGroupSetBits(wifi_event_group, DISCO_BIT);
     xEventGroupClearBits(wifi_event_group, MQTT_BIT);
@@ -2363,7 +2363,7 @@ static void handle_mqtt_disconnected_event(void)
     sendMeterf = false;
 }
 
-static void root_mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
+void root_mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
     esp_mqtt_event_handle_t event = (esp_mqtt_event_handle_t)event_data;
     
@@ -2424,7 +2424,7 @@ static void root_mqtt_event_handler(void *handler_args, esp_event_base_t base, i
 }
 
 
-static int findCommand(const char * cual)
+int findCommand(const char * cual)
 {
 	for (int a=0;a<MAXCMDS;a++)
 	{
@@ -2443,7 +2443,7 @@ static int findCommand(const char * cual)
  * @param cmditem cJSON object containing the command
  * @return void
  */
-static void process_mqtt_command_item(cJSON *cmditem)
+void process_mqtt_command_item(cJSON *cmditem)
 {
 	cJSON *order = cJSON_GetObjectItem(cmditem, "cmd");
 	if (!order)
@@ -2474,7 +2474,7 @@ static void process_mqtt_command_item(cJSON *cmditem)
  * @param elcmd Parsed cJSON object containing cmdarr
  * @return void
  */
-static void process_mqtt_command_array(cJSON *elcmd)
+void process_mqtt_command_array(cJSON *elcmd)
 {
 	cJSON *monton = cJSON_GetObjectItem(elcmd, "cmdarr");
 	if (!monton)
@@ -2608,7 +2608,7 @@ void root_mqttMgr(void *pArg)
 //                                                <-------- Site/Port -->
 // echo "" | openssl s_client -showcerts -connect m13.cloudmqtt.com:28747 | sed -n "1,/Root/d; /BEGIN/,/END/p" | openssl x509 -outform PEM >hive.pem
 
-static void setup_mqtt_config(void)
+void setup_mqtt_config(void)
 {
     char who[20];
     
@@ -2632,7 +2632,7 @@ static void setup_mqtt_config(void)
     }
 }
 
-static esp_mqtt_client_handle_t root_setupMqtt(void)
+esp_mqtt_client_handle_t root_setupMqtt(void)
 {
     setup_mqtt_config();
     
@@ -2647,7 +2647,7 @@ static esp_mqtt_client_handle_t root_setupMqtt(void)
     return clientCloud;
 }
 
-static bool launch_mqtt_manager_task(void)
+bool launch_mqtt_manager_task(void)
 {
     if (xTaskCreate(&root_mqttMgr, "mqtt", 1024*10, NULL, 10, &mqttMgrHandle) != pdPASS)
     {
@@ -2657,7 +2657,7 @@ static bool launch_mqtt_manager_task(void)
     return true;
 }
 
-static bool launch_mqtt_sender_task(void)
+bool launch_mqtt_sender_task(void)
 {
     if (xTaskCreate(&root_mqtt_sender, "mqttsend", 1024*20, NULL, 14, &mqttSendHandle) != pdPASS)
     {
@@ -2667,15 +2667,15 @@ static bool launch_mqtt_sender_task(void)
     return true;
 }
 
-static void root_mqtt_app_start(void)
+void root_mqtt_app_start(void)
 {
     launch_mqtt_manager_task();
     launch_mqtt_sender_task();
 }
 
-static uint8_t last_mesh_layer = 0;
+uint8_t last_mesh_layer = 0;
 
-static void handle_child_connected(mesh_event_child_connected_t *child_connected)
+void handle_child_connected(mesh_event_child_connected_t *child_connected)
 {
     mesh_addr_t id = {0};
     esp_mesh_get_id(&id);
@@ -2701,7 +2701,7 @@ static void handle_child_connected(mesh_event_child_connected_t *child_connected
     }
 }
 
-static void handle_child_disconnected(mesh_event_child_disconnected_t *child_disconnected)
+void handle_child_disconnected(mesh_event_child_disconnected_t *child_disconnected)
 {
     MESP_LOGI(MESH_TAG, "<MESH_EVENT_CHILD_DISCONNECTED>aid:%d, " MACSTR "",
              child_disconnected->aid, MAC2STR(child_disconnected->mac));
@@ -2720,7 +2720,7 @@ static void handle_child_disconnected(mesh_event_child_disconnected_t *child_dis
     }
 }
 
-static void handle_parent_connected(mesh_event_connected_t *connected)
+void handle_parent_connected(mesh_event_connected_t *connected)
 {
     mesh_addr_t id = {0};
     esp_mesh_get_id(&id);
@@ -2738,7 +2738,7 @@ static void handle_parent_connected(mesh_event_connected_t *connected)
     meshf = true;
 }
 
-static void handle_parent_disconnected(mesh_event_disconnected_t *disconnected)
+void handle_parent_disconnected(mesh_event_disconnected_t *disconnected)
 {
     MESP_LOGI(MESH_TAG, "<MESH_EVENT_PARENT_DISCONNECTED>reason:%d", disconnected->reason);
 
@@ -2919,7 +2919,7 @@ void mesh_event_handler(void *arg, esp_event_base_t event_base,
 } 
 
 // Emergency/login helpers build JSON payloads and manage queue ownership in one place
-static bool enqueue_mesh_emergency(const char *msg, uint32_t err)
+bool enqueue_mesh_emergency(const char *msg, uint32_t err)
 {
     mqttSender_t meshMsg;
     memset(&meshMsg, 0, sizeof(meshMsg));
@@ -2953,7 +2953,7 @@ static bool enqueue_mesh_emergency(const char *msg, uint32_t err)
     return true;
 }
 
-static char *build_login_payload(const char *title)
+char *build_login_payload(const char *title)
 {
     cJSON *root = cJSON_CreateObject();
     if(!root)
@@ -3020,7 +3020,7 @@ void login_timeout(TimerHandle_t timer)
  * Creates and initializes binary semaphores for flash access,
  * table management, reconnection handling, and work scheduling
  */
-static void init_system_semaphores(void)
+void init_system_semaphores(void)
 {
     flashSem = xSemaphoreCreateBinary();
     xSemaphoreGive(flashSem);
@@ -3044,7 +3044,7 @@ static void init_system_semaphores(void)
  * Initializes the non-volatile storage, handling cases where
  * partitions need to be erased and reinitialized
  */
-static void init_nvs_flash(void)
+void init_nvs_flash(void)
 {
     esp_err_t err = nvs_flash_init();
     
@@ -3063,7 +3063,7 @@ static void init_nvs_flash(void)
  * Reads configuration from flash storage and validates the centinel
  * value. Erases and resets if validation fails.
  */
-static void load_and_validate_config(void)
+void load_and_validate_config(void)
 {
     read_flash();
     
@@ -3087,7 +3087,7 @@ static void load_and_validate_config(void)
  * 
  * Records reset reason, increments boot count, and persists to flash
  */
-static void update_system_state(void)
+void update_system_state(void)
 {
     theConf.lastResetCode = esp_rom_get_reset_reason(0);
     theConf.bootcount++;
@@ -3099,7 +3099,7 @@ static void update_system_state(void)
  * 
  * Sets up all the global flags used for mesh, WiFi, MQTT, and scheduling
  */
-static void init_global_state_flags(void)
+void init_global_state_flags(void)
 {
     // Scheduling and mesh state
     mesh_init_done = false;
@@ -3147,7 +3147,7 @@ static void init_global_state_flags(void)
  * 
  * Constructs the MQTT topic strings based on pool ID and configuration
  */
-static void init_mqtt_queue_names(void)
+void init_mqtt_queue_names(void)
 {
     snprintf(cmdQueue, sizeof(cmdQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTCMD);
     snprintf(infoQueue, sizeof(infoQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTINFO);
@@ -3159,7 +3159,7 @@ static void init_mqtt_queue_names(void)
  * 
  * Initializes lookup table for internal mesh commands
  */
-static void init_internal_mesh_commands(void)
+void init_internal_mesh_commands(void)
 {
     strncpy(internal_cmds[SCHEDULE], "schstart", sizeof(internal_cmds[SCHEDULE]) - 1);
     strncpy(internal_cmds[BOOTRESP], "bootresp", sizeof(internal_cmds[BOOTRESP]) - 1);
@@ -3187,7 +3187,7 @@ static void init_internal_mesh_commands(void)
  * Commands are initialized at index time based on their order in the registry.
  */
 // External MQTT command registry helper keeps string copies safe and handlers aligned
-static void register_external_mqtt_commands(void)
+void register_external_mqtt_commands(void)
 {
     int idx = 0;
 
@@ -3224,7 +3224,7 @@ static void register_external_mqtt_commands(void)
  * 
  * Sets up output pins with appropriate initial states
  */
-static void init_gpio_pins(void)
+void init_gpio_pins(void)
 {
     gpio_config_t io_conf = {};
     
@@ -3254,7 +3254,7 @@ static void init_gpio_pins(void)
  * 
  * Sets up AES encryption context
  */
-static void init_crypto_engine(void)
+void init_crypto_engine(void)
 {
     esp_aes_init(&actx);
 }
@@ -3268,7 +3268,7 @@ static void init_crypto_engine(void)
  * @param queue_name Name for logging purposes
  * @return true if queue created successfully, false otherwise
  */
-static bool create_queue_safe(QueueHandle_t *queue_ptr, uint32_t queue_size, 
+bool create_queue_safe(QueueHandle_t *queue_ptr, uint32_t queue_size, 
                                uint32_t item_size, const char *queue_name)
 {
     *queue_ptr = xQueueCreate(queue_size, item_size);
@@ -3284,7 +3284,7 @@ static bool create_queue_safe(QueueHandle_t *queue_ptr, uint32_t queue_size,
  * 
  * Creates queues for MQTT, mesh, RS485, and emergency messages
  */
-static void init_system_queues(void)
+void init_system_queues(void)
 {
     create_queue_safe(&mqtt911, 5, sizeof(mqttMsg_t), "emergency");
     create_queue_safe(&meshQueue, MAXNODES, sizeof(mqttSender_t), "mesh send");
@@ -3300,7 +3300,7 @@ static void init_system_queues(void)
  * 
  * @return Calculated permanent time in milliseconds, minimum 500ms
  */
-static uint32_t calculate_permanent_delivery_time(void)
+uint32_t calculate_permanent_delivery_time(void)
 {
     uint32_t permanent_time = (theConf.totalnodes / theConf.conns) * EXPECTED_DELIVERY_TIME;
     
@@ -3321,7 +3321,7 @@ static uint32_t calculate_permanent_delivery_time(void)
  * 
  * Creates timers for meter collection, transmission, login timeout, and confirmation
  */
-static void init_system_timers(void)
+void init_system_timers(void)
 {
     // Validate and set login wait time
     if (theConf.loginwait == 0) {
@@ -3386,7 +3386,7 @@ static void init_system_timers(void)
  * 
  * Sets up logging file and optionally initializes system time from stored date
  */
-static void init_logging_system(void)
+void init_logging_system(void)
 {
 #ifdef LOGOPT
     logFileInit();  // Initialize log file
@@ -3404,7 +3404,7 @@ static void init_logging_system(void)
  * 
  * Creates event groups for WiFi/MQTT state management and other async events
  */
-static void init_event_groups(void)
+void init_event_groups(void)
 {
     wifi_event_group = xEventGroupCreate();
     if (wifi_event_group == NULL) {
@@ -3421,7 +3421,7 @@ static void init_event_groups(void)
  * 
  * Creates Defaults for Dissolved Oxygen PID
  */
-static void init_DO_Defaults(void)
+void init_DO_Defaults(void)
 {
     theConf.doParms.setpoint=5.5;
     theConf.doParms.KP=1.5;
@@ -3470,25 +3470,15 @@ void init_process(void)
 /**
  * @brief Initialize default modbus sensor configuration
  */
-static void init_default_modbus_config(void)
+void init_default_modbus_config(void)
 {
-    modbSensors local_modbSensors = {
-        15, 42, 1.5, 1, 0, 0, -1, 20, 1, 1, 0, 0, -1, 19, 1, 1, 0, 0, -1,
-        17, 1, 1, 6, 8192, 0, 16, 1, 1, 2, 8192, 0, 16
-    };
-    modbInverter local_modbInverter = {
-        10, 1, 10, 1, 2, 61530, 0, 10, 1, 1, 61518, 0, 10, 1, 1, 61517, 0,
-        10, 1, 2, 61528, 0, 10, 1, 1, 61526, 0, 10, 1, 1, 61527, 0,
-        10, 1, 2, 61522, 0, 10, 1, 2, 61520, 0, 10, 1, 1, 61518, 0,
-        10, 1, 1, 61517, 0
-    };
-    modbBattery local_modbBattery = {
-        30, 3, 10, 1, 1, 276, 0, 1, 1, 1, 268, 0, 1, 1, 1, 260, 0, 1, 1, 1, 256, 0
-    };
-    modbPanels local_modbPanels = {
-        30, 4, 10, 1, 1, 272, 0, 10, 1, 1, 271, 0, 10, 1, 1, 264, 0,
-        10, 1, 1, 263, 0, 1, 1, 1, 267, 0
-    };
+    modbSensors local_modbSensors = {15, 42, 1.5, 1, 0, 0, -1, 20, 1, 1, 0, 0, -1, 19, 1, 1, 0, 0, -1, 17, 1, 1, 6, 8192, 0, 16, 1, 1, 2, 8192, 0, 16};
+    
+    modbInverter local_modbInverter =  {10, 1, 10, 1, 2, 61530, 0, 10, 1, 1, 61518, 0, 10, 1, 1, 61517, 0, 10, 1, 2, 61528, 0, 10, 1, 1, 61526, 0, 10, 1, 1, 61527, 0, 10, 1, 2, 61522, 0, 10, 1, 2, 61520, 0, 10, 1, 1, 61518, 0, 10, 1, 1, 61517, 0};
+
+    modbBattery local_modbBattery = {30, 3, 10, 1, 1, 276, 0, 1, 1, 1, 268, 0, 1, 1, 1, 260, 0, 1, 1, 1, 256, 0};
+
+    modbPanels local_modbPanels = {30, 4, 10, 1, 1, 272, 0, 10, 1, 1, 271, 0, 10, 1, 1, 264, 0, 10, 1, 1, 263, 0, 1, 1, 1, 267, 0};
     
     theConf.modbus_sensors = local_modbSensors;
     theConf.modbus_inverter = local_modbInverter;
@@ -3499,7 +3489,7 @@ static void init_default_modbus_config(void)
 /**
  * @brief Initialize default network and MQTT configuration
  */
-static void init_default_network_config(void)
+void init_default_network_config(void)
 {
     // Default MQTT server certificate and credentials
     strncpy(theConf.mqttServer, DEFAULTMQTT, sizeof(theConf.mqttServer) - 1);
@@ -3521,7 +3511,7 @@ static void init_default_network_config(void)
 /**
  * @brief Initialize default limits configuration
  */
-static void init_default_limits(void)
+void init_default_limits(void)
 {
     struct limits start_limits = {
         90, 50, 32, 19, 31, 19, 70, 50, 70, 40, 42, 40, 42, 40, 42, 40,
@@ -3534,7 +3524,7 @@ static void init_default_limits(void)
 /**
  * @brief Initialize default timing configuration
  */
-static void init_default_timing(void)
+void init_default_timing(void)
 {
     theConf.loglevel = 3;
     theConf.baset = 10;
@@ -3612,7 +3602,7 @@ void erase_config(void)
  * 
  * Polls hostflag with timeout warnings every 10 retries (3 seconds)
  */
-static void wait_for_mqtt_host(void)
+void wait_for_mqtt_host(void)
 {
     int whost = 0;
     while (!hostflag) {
@@ -3632,7 +3622,7 @@ static void wait_for_mqtt_host(void)
  * 
  * @param msg Message structure containing msg and param pointers
  */
-static void free_message_resources(mqttSender_t *msg)
+void free_message_resources(mqttSender_t *msg)
 {
     if (msg == NULL) {
         return;
@@ -3658,7 +3648,7 @@ static void free_message_resources(mqttSender_t *msg)
  * @param msg Message to publish
  * @return true if successfully published, false on failure
  */
-static bool publish_and_wait_ack(mqttSender_t *msg, uint32_t *endTime)
+bool publish_and_wait_ack(mqttSender_t *msg, uint32_t *endTime)
 {
     if (msg == NULL || msg->msg == NULL) {
         return false;
@@ -3698,7 +3688,7 @@ static bool publish_and_wait_ack(mqttSender_t *msg, uint32_t *endTime)
  * @param startTime Start time for timing measurement
  * @return true if message sent successfully, false if connection failed
  */
-static bool process_queued_message(mqttSender_t *msg, uint32_t startTime)
+bool process_queued_message(mqttSender_t *msg, uint32_t startTime)
 {
     uint32_t endTime = 0;
     
@@ -3738,7 +3728,7 @@ static bool process_queued_message(mqttSender_t *msg, uint32_t startTime)
  * disco if true will disconnect after sending all messages -> used in Mesh Mode and NOT wifi_mesh
  * @return true if all messages sent, false if connection lost
  */
-static bool send_queued_messages(bool disco)
+bool send_queued_messages(bool disco)
 {
     mqttSender_t mensaje;
     uint32_t startTime = xmillis();
@@ -3772,7 +3762,7 @@ static bool send_queued_messages(bool disco)
  *  
  * @return true if session completed successfully
  */
-static bool mqtt_send_session(void)
+bool mqtt_send_session(void)
 {
     EventBits_t uxBits;
     
@@ -3900,7 +3890,7 @@ void root_mqtt_sender(void *pArg)
  * @param cycles Total number of cycles per day
  * @return Current cycle index
  */
-static int calculate_current_cycle(time_t now, int cycles)
+int calculate_current_cycle(time_t now, int cycles)
 {
     struct tm timeinfo;
     localtime_r(&now, &timeinfo);
@@ -3925,7 +3915,7 @@ static int calculate_current_cycle(time_t now, int cycles)
  * 
  * @param context Context string describing the failure
  */
-static void send_emergency_and_restart(const char *context)
+void send_emergency_and_restart(const char *context)
 {
     mqttSender_t emergencyMsg;
     
@@ -3961,7 +3951,7 @@ static void send_emergency_and_restart(const char *context)
  * 
  * @return true if timer successfully created and started, false otherwise
  */
-static bool create_and_start_collection_timer(void)
+bool create_and_start_collection_timer(void)
 {
     firstTimer = xTimerCreate(
         "Timer",
@@ -4044,7 +4034,7 @@ void post_root()
  * 
  * Sets up MQTT, emergency task, blink indicator, and login timer
  */
-static void init_root_node(void)
+void init_root_node(void)
 {
     loadedf = true;
     meshf = true;
@@ -4066,7 +4056,7 @@ static void init_root_node(void)
  * 
  * Launches sensor monitoring for child node
  */
-static void init_child_node(void)
+void init_child_node(void)
 {
     launch_sensors();
     MESP_LOGI(MESH_TAG, "Child node initialized with sensors launched");
@@ -4079,7 +4069,7 @@ static void init_child_node(void)
  * 
  * @param event IP event data containing IP information
  */
-static void handle_ip_got_ip(ip_event_got_ip_t *event)
+void handle_ip_got_ip(ip_event_got_ip_t *event)
 {
     if (event == NULL) {
         return;
@@ -4114,7 +4104,7 @@ static void handle_ip_got_ip(ip_event_got_ip_t *event)
  * 
  * Disables indicators and logs the disconnection
  */
-static void handle_ip_lost_ip(void)
+void handle_ip_lost_ip(void)
 {
     MESP_LOGI(MESH_TAG, "Lost IP address");
     hostflag = false;
@@ -4167,7 +4157,7 @@ void blinkSSID(void *pArg)
  * 
  * Starts SSID blink task to indicate active station connection
  */
-static void handle_sta_connected(void)
+void handle_sta_connected(void)
 {
     xTaskCreate(&blinkSSID, "bssid", 4096, (void*)SSIDBLINKTIME, 5, &ssidHandle);
     MESP_LOGI(MESH_TAG, "Station connected to AP, starting SSID blink");
@@ -4178,7 +4168,7 @@ static void handle_sta_connected(void)
  * 
  * Stops SSID blink task and cleans up task handle
  */
-static void handle_sta_disconnected(void)
+void handle_sta_disconnected(void)
 {
     if (ssidHandle != NULL) {
         gpio_set_level((gpio_num_t)BEATPIN, 1);
@@ -4193,7 +4183,7 @@ static void handle_sta_disconnected(void)
  * 
  * Initiates WiFi connection to mesh network
  */
-static void handle_sta_start(void)
+void handle_sta_start(void)
 {
     esp_wifi_connect();
     MESP_LOGI(MESH_TAG, "WiFi STA started, connecting to network");
@@ -4209,7 +4199,7 @@ static void handle_sta_start(void)
  * @param event_id WiFi event ID
  * @param event_data Event data (type depends on event_id)
  */
-static void wifi_event_handler_ap(void* arg, esp_event_base_t event_base,
+void wifi_event_handler_ap(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data)
 {
     if (event_id == WIFI_EVENT_AP_STACONNECTED) {
@@ -4225,7 +4215,7 @@ static void wifi_event_handler_ap(void* arg, esp_event_base_t event_base,
  * 
  * Creates SSID in format: APPNAME + last 3 bytes of MAC in hex
  */
-static void generate_ap_ssid(void)
+void generate_ap_ssid(void)
 {
     uint8_t mac[6];
     esp_wifi_get_mac(WIFI_IF_AP, mac);
@@ -4237,7 +4227,7 @@ static void generate_ap_ssid(void)
 /**
  * @brief Setup WiFi AP SSID and password
  */
-static void setup_ap_credentials(void)
+void setup_ap_credentials(void)
 {
     generate_ap_ssid();
     strcpy(appsw, DEFAULT_MESH_PASSW);
@@ -4249,7 +4239,7 @@ static void setup_ap_credentials(void)
  * 
  * @param wifi_config Config structure to populate
  */
-static void setup_wifi_ap_config(wifi_config_t *wifi_config)
+void setup_wifi_ap_config(wifi_config_t *wifi_config)
 {
     if (!wifi_config) {
         return;
@@ -4308,8 +4298,8 @@ void wifi_init_network(void)
     MESP_LOGI(TAG, "WiFi AP initialized and web server started");
 }
 // WiFi STA connection state variables
-static bool s_wifi_sta_connected = false;
-static int s_wifi_sta_retry_num = 0;
+bool s_wifi_sta_connected = false;
+int s_wifi_sta_retry_num = 0;
 #define WIFI_STA_MAXIMUM_RETRY  5
 
 /**
@@ -4323,7 +4313,7 @@ static int s_wifi_sta_retry_num = 0;
  * - WIFI_EVENT_STA_START: Initiates connection to external AP
  * - WIFI_EVENT_STA_DISCONNECTED: Handles disconnection and retry logic
  */
-static void wifi_sta_event_handler(void* arg, esp_event_base_t event_base,
+void wifi_sta_event_handler(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data)
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
@@ -4359,7 +4349,7 @@ static void wifi_sta_event_handler(void* arg, esp_event_base_t event_base,
  * Handles IP events:
  * - IP_EVENT_STA_GOT_IP: Successfully obtained IP address from external AP
  */
-static void ip_sta_got_ip_handler(void* arg, esp_event_base_t event_base,
+void ip_sta_got_ip_handler(void* arg, esp_event_base_t event_base,
                                    int32_t event_id, void* event_data)
 {
     if (event_id == IP_EVENT_STA_GOT_IP)
@@ -4528,7 +4518,7 @@ esp_err_t wifi_connect_external_ap(void)
  * 
  * Creates random CID and displays SSID with CID for user information.
  */
-static void generate_meter_cid(void)
+void generate_meter_cid(void)
 {
     int cid = esp_random() % 99999999;
     char tmp[50];
@@ -4544,7 +4534,7 @@ static void generate_meter_cid(void)
 /**
  * @brief Display configuration status on LVGL display
  */
-static void display_config_status(void)
+void display_config_status(void)
 {
     showLVGL((char*)"CONF", 600000, 1);
 }
@@ -4554,7 +4544,7 @@ static void display_config_status(void)
  * 
  * Blocks indefinitely for webserver to complete configuration.
  */
-static void wait_for_webserver_config(void)
+void wait_for_webserver_config(void)
 {
     while (true) {
         delay(1000);  // Webserver will restart after configuration
@@ -4589,7 +4579,7 @@ void meter_configure(void)
  * 
  * Sets up network interfaces, WiFi drivers, and registers event handlers.
  */
-static void init_wifi_stack(void)
+void init_wifi_stack(void)
 {
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -4618,7 +4608,7 @@ static void init_wifi_stack(void)
  * @param ssid Buffer to store SSID (min 30 bytes)
  * @param password Buffer to store password (min 18 bytes)
  */
-static void load_mesh_credentials(char *ssid, char *password)
+void load_mesh_credentials(char *ssid, char *password)
 {
     if (!ssid || !password) {
         return;
@@ -4645,7 +4635,7 @@ static void load_mesh_credentials(char *ssid, char *password)
  * @param ssid Router SSID
  * @param password Router password
  */
-static void setup_mesh_config(mesh_cfg_t *cfg, const char *ssid, const char *password)
+void setup_mesh_config(mesh_cfg_t *cfg, const char *ssid, const char *password)
 {
     if (!cfg || !ssid || !password) {
         return;
@@ -4669,7 +4659,7 @@ static void setup_mesh_config(mesh_cfg_t *cfg, const char *ssid, const char *pas
 /**
  * @brief Initialize core mesh parameters and event handlers
  */
-static void init_mesh_parameters(void)
+void init_mesh_parameters(void)
 {
     ESP_ERROR_CHECK(esp_mesh_init());
     ESP_ERROR_CHECK(esp_event_handler_register(MESH_EVENT, ESP_EVENT_ANY_ID, 
@@ -4687,7 +4677,7 @@ static void init_mesh_parameters(void)
  * @param cfg Mesh configuration to apply
  * @return true if successful, false if fatal error
  */
-static bool apply_mesh_config(const mesh_cfg_t *cfg)
+bool apply_mesh_config(const mesh_cfg_t *cfg)
 {
     if (!cfg) {
         return false;
@@ -4711,7 +4701,7 @@ static bool apply_mesh_config(const mesh_cfg_t *cfg)
 /**
  * @brief Setup mesh topology and broadcast addressing
  */
-static void setup_mesh_topology(void)
+void setup_mesh_topology(void)
 {
     esp_err_t err = esp_mesh_set_group_id(&GroupID, 1);
     if (err != ESP_OK) {
@@ -4777,7 +4767,7 @@ time_t get_today_midnight() {
  * 
  * @return true if configuration is valid, false otherwise
  */
-static bool is_profile_config_valid(void)
+bool is_profile_config_valid(void)
 {
     if (theConf.activeProfile < 0 || theConf.dayCycle < 0 || theConf.activeProfile >= MAXPROFILES) {
         MESP_LOGE(TAG, "Invalid Profile %d or Day Start %d", theConf.activeProfile, theConf.dayCycle);
@@ -4845,7 +4835,7 @@ void find_cycle_day(uint8_t *ciclo, uint8_t *dia)
  * 
  * @return true if stopped successfully, false otherwise
  */
-static bool stop_send_meter_timer(void)
+bool stop_send_meter_timer(void)
 {
     return (xTimerStop(sendMeterTimer, 0) == pdPASS);
 }
@@ -4917,7 +4907,7 @@ esp_err_t root_check_schedule(mesh_addr_t *who, void* ladata)
  * @param timer_num Timer array index
  * @return Allocated context or NULL on failure
  */
-static start_timer_ctx_t* create_timer_context(uint8_t cycle, uint8_t day, int horario, int timer_num)
+start_timer_ctx_t* create_timer_context(uint8_t cycle, uint8_t day, int horario, int timer_num)
 {
     start_timer_ctx_t* ctx = (start_timer_ctx_t*)calloc(1, sizeof(start_timer_ctx_t));
     if (!ctx) {
@@ -4946,10 +4936,10 @@ static start_timer_ctx_t* create_timer_context(uint8_t cycle, uint8_t day, int h
  * @param ck_h Hour index
  * @param num_horarios Total horarios in cycle
  */
-static void handle_past_schedule_in_progress(start_timer_ctx_t * ctx,time_t endtime, time_t now, int ck
+void handle_past_schedule_in_progress(start_timer_ctx_t * ctx,time_t endtime, time_t now, int ck
         ,int ck_day,int ck_h, int num_horarios)
 {
-    uint32_t remaining = (endtime - now)*1000 / theConf.test_timer_div ;
+    timer_t remaining = ((endtime - now) * 1000) / theConf.test_timer_div ;
     ctx->isLast=(ck_h == num_horarios - 1)? true : false;
     
     turn_blower_onOff(true);  // Ensure blower is on
@@ -4957,21 +4947,32 @@ static void handle_past_schedule_in_progress(start_timer_ctx_t * ctx,time_t endt
         char time_str[30],time_str2[30];
         format_log_time(endtime, time_str, 30);
         format_log_time(now, time_str2, 30);
-        MESP_LOGI(TAG, "%sScheduling Ending in %ld ms(%s | %llu) now %s - %llu Last %s", 
-                 DBG_SCH, remaining , time_str, endtime, time_str2, now,ctx->isLast ? "YES" : "NO");
+        MESP_LOGI(TAG, "%sScheduling Ending %d in %lld ms(%s | %lld) now %s - %lld Last %s", 
+                 DBG_SCH,countTimersEnd, remaining , time_str, endtime, time_str2, now,ctx->isLast ? "YES" : "NO");
     }  
     elapsed[countTimersEnd] = time(NULL);     // consider now as start time since its started manually. countimersstart is 1 ahead so use countendtimers
     if(remaining<=0)
+    {
+        MESP_LOGE(TAG, "Remaining time invalid past %lld", remaining);
         return ;
+    }
     ctx->timerNum=countTimersEnd;
-    end_timers[countTimersEnd] = xTimerCreate("PEND", pdMS_TO_TICKS(remaining ), 
+    uint32_t finaltime=remaining;
+
+    end_timers[countTimersEnd] = xTimerCreate("PEND", pdMS_TO_TICKS(finaltime ), 
                                             pdFALSE, (void*)ctx, blower_end);
     if (end_timers[countTimersEnd]!=NULL) {
         xTimerStart(end_timers[countTimersEnd], 10);
         countTimersEnd++;
+        countTimersStart++;
         // it was started above, so set the schedule in blower
         theBlower.setSchedule(ck,ck_day,ck_h,theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart,theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen,theConf.profiles[0].cycle[ck].horarios[ck_h].pwmDuty,BLOWERON); // clear any previous schedule in blower
     }
+    else
+    {
+        MESP_LOGE(MESH_TAG, "Past End Timer not created %d", countTimersEnd);
+        free(ctx);
+    }   
 }
 
 /**
@@ -4980,7 +4981,7 @@ static void handle_past_schedule_in_progress(start_timer_ctx_t * ctx,time_t endt
  * @param delay_ms Calculated delay in milliseconds
  * @return true if delay is valid, false if timer div too large
  */
-static bool validate_timer_delay(time_t delay_ms)
+bool validate_timer_delay(time_t delay_ms)
 {
     if (delay_ms < 10) {
         MESP_LOGE(TAG, "MUX too big %d-%d", theConf.test_timer_div,delay_ms);
@@ -5000,28 +5001,34 @@ static bool validate_timer_delay(time_t delay_ms)
  * @param num_horarios Total horarios
  * @return true on success, false if validation failed
  */
-static bool create_future_timers(time_t starttime, time_t endtime, time_t now,
+bool create_future_timers(time_t starttime, time_t endtime, time_t now,
                                  start_timer_ctx_t* ctx, int ck_h, int num_horarios)
 {
     char time_str[30],time_str2[30];
 
-    uint32_t start_delay = (uint32_t)(starttime - now) / theConf.test_timer_div * 1000 ;
-    uint32_t end_delay = (uint32_t)(endtime - now) / theConf.test_timer_div * 1000 ;
+    if(starttime<=now || endtime<=now)
+    {
+        MESP_LOGE(MESH_TAG, "FATAL create_future_timers called with past times Start %llu Now %llu End %llu", starttime, now, endtime);
+        return false;
+    }
+
+    timer_t start_delay = ((starttime - now) / theConf.test_timer_div) * 1000 ;
+    timer_t end_delay = ((endtime - now) / theConf.test_timer_div) * 1000 ;
     
     if (!validate_timer_delay(start_delay) || !validate_timer_delay(end_delay)) {
         free(ctx);
         return false;
     }
-    
+    int delay_int =start_delay;
     // Create start timer
     if ((theConf.debug_flags >> dSCH) & 1U) {
         format_log_time(starttime,time_str,30);
         format_log_time(now,time_str2,30);
-        MESP_LOGI(TAG, "%sScheduling timer %d Start in %ld ms [ %s | %llu ] now [ %s | %llu ] Mux %ld", 
-                 DBG_SCH, countTimersStart, start_delay, time_str,starttime, time_str2,now,theConf.test_timer_div);
+        MESP_LOGI(TAG, "%sScheduling timer %d Start in %d ms [ %s | %llu ] now [ %s | %llu ] Mux %ld", 
+                 DBG_SCH, countTimersStart, delay_int, time_str,starttime, time_str2,now,theConf.test_timer_div);
     }
     
-    start_timers[countTimersStart] = xTimerCreate("TSTART", pdMS_TO_TICKS(start_delay),
+    start_timers[countTimersStart] = xTimerCreate("TSTART", pdMS_TO_TICKS(delay_int),
                                                 pdFALSE, (void*)ctx, blower_start);
     if (start_timers[countTimersStart]==NULL) {
         MESP_LOGE(MESH_TAG, "Start Timer not created %d", countTimersStart);
@@ -5030,17 +5037,18 @@ static bool create_future_timers(time_t starttime, time_t endtime, time_t now,
     }
     
     // Create end timer
+    delay_int =end_delay;
 
     ctx->isLast=(ck_h == num_horarios - 1)? true : false;
-    end_timers[countTimersEnd] = xTimerCreate("TEND", pdMS_TO_TICKS(end_delay),
+    end_timers[countTimersEnd] = xTimerCreate("TEND", pdMS_TO_TICKS(delay_int),
                                            pdFALSE, (void*) ctx, blower_end);
 
     if ((theConf.debug_flags >> dSCH) & 1U) {
 
         format_log_time(endtime,time_str,30);
         format_log_time(now,time_str2,30);
-        MESP_LOGI(TAG, "%sScheduling Timer %d Ending in %ld ms [%s | %llu ] now %s | [ %llu Mux %ld ] is Last %s", 
-                 DBG_SCH, countTimersEnd, end_delay, time_str, endtime, time_str2, now,theConf.test_timer_div, ctx->isLast ? "YES" : "NO" );
+        MESP_LOGI(TAG, "%sScheduling Timer %d Ending in %d ms [%s | %llu ] now %s | [ %llu Mux %ld ] is Last %s", 
+                 DBG_SCH, countTimersEnd, delay_int, time_str, endtime, time_str2, now,theConf.test_timer_div, ctx->isLast ? "YES" : "NO" );
     }                                           
     if (end_timers[countTimersEnd]==NULL) { 
         MESP_LOGE(MESH_TAG, "End Timer not created %d", countTimersEnd);
@@ -5084,7 +5092,7 @@ static bool create_future_timers(time_t starttime, time_t endtime, time_t now,
  * @param now Current timestamp
  * @return true to continue, false to restart
  */
-static bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, time_t now) // this cycle,day,hour,midnight and now
+bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, time_t now) // this cycle,day,hour,midnight and now
 {
     char  time_str[30],now_str[30];
 
@@ -5100,12 +5108,12 @@ static bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, tim
     const auto& horario = theConf.profiles[0].cycle[ck].horarios[ck_h];
     time_t starttime = time_t(midn + (uint64_t)(horario.hourStart )*3600 +(uint64_t)(horario.minutesStart)*60);
     time_t endtime = time_t(starttime + (uint64_t)( horario.horarioLen));
-    uint64_t son=endtime-starttime;
-    uint32_t son32=son;
+    int64_t son=endtime-starttime;
+    int32_t son32=son;
      
     if ((theConf.debug_flags >> dSCH) & 1U) 
-        MESP_LOGI(TAG, "%sC-%d D-%d H-%d %d secs %d hours", DBG_SCH, ck, ck_d, ck_h, horario.horarioLen,horario.horarioLen /3600 );
-        // MESP_LOGI(TAG, "%sC-%d D-%d H-%d %d", DBG_SCH, ck, ck_d, ck_h, horario.horarioLen * 3600.0);
+        MESP_LOGI(TAG, "%sC-%d D-%d H-%d %d secs %d hours Start %lld End %lld", DBG_SCH, ck, ck_d, ck_h,
+             horario.horarioLen,horario.horarioLen /3600,starttime,endtime );
     
     // Schedule already started
     if (starttime < now) { // past schedule
@@ -5115,7 +5123,7 @@ static bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, tim
             format_log_time(now, now_str, 30);
             MESP_LOGW(TAG, "%sStart already happened %lld (%s) %lld (%s)", DBG_SCH, starttime, time_str,now, now_str);
         }
-        countTimersStart++;   // cannot skip start timer count due to complicated timer numbering
+        // countTimersStart++;   // cannot skip start timer count due to complicated timer numbering
 
         if (endtime < now) 
         {
@@ -5164,7 +5172,10 @@ void cleanup_all_timers()
             deletedEnd++;
         }
     }
-
+    bzero(start_timers, sizeof(start_timers));
+    bzero(end_timers, sizeof(end_timers));
+    bzero(elapsed, sizeof(elapsed));
+    
     if ((theConf.debug_flags >> dSCH) & 1U)
         MESP_LOGI(TAG, "%sStart Deleted %d End Deleted %d", DBG_SCH, deletedStart,deletedEnd);
     
@@ -5176,7 +5187,7 @@ void cleanup_all_timers()
  * 
  * @param now Initial start timestamp
  */
-static uint32_t handle_day_end(uint8_t nextHour)
+uint32_t handle_day_end(uint8_t nextHour)
 {
     char time_str1[30],time_str2[30];
 
@@ -5238,7 +5249,7 @@ static uint32_t handle_day_end(uint8_t nextHour)
  * 
  * @param ck_d Current day counter within cycle
  */
-static void send_start_day_host(uint8_t ck_d)
+void send_start_day_host(uint8_t ck_d)
 {
     time_t now;
     time(&now);
@@ -5351,7 +5362,7 @@ void start_schedule_timers(void * pArg)
                 // Process horarios (hourly schedules) in day
                 time(&nows);        // get todays new time or it will use the one when we STARTED the SCHEDULE process
                 format_log_time(nows, time_str, 30);
-                // MESP_LOGI(TAG, "Day %d Time %s",ck_d,time_str);
+                MESP_LOGI(TAG, "Day %d Time %s",ck_d,time_str);
                 midn = get_today_midnight();
                 for (int ck_h = 0; ck_h < theConf.profiles[0].cycle[ck].numHorarios; ck_h++)
                 {
@@ -5435,7 +5446,7 @@ restart_schedule:
  * @param partition_label Name of the SPIFFS partition to mount
  * @return true if registration and mount successful, false otherwise
  */
-static bool spiffs_register_and_mount(const char* partition_label)
+bool spiffs_register_and_mount(const char* partition_label)
 {
     esp_vfs_spiffs_conf_t conf = {
         .base_path = "/spiffs",
@@ -5468,7 +5479,7 @@ static bool spiffs_register_and_mount(const char* partition_label)
  * @return true if check passed, false if errors detected
  * @see https://github.com/pellepl/spiffs/wiki/FAQ#powerlosses-contd-when-should-i-run-spiffs_check
  */
-static bool spiffs_perform_check(const char* partition_label)
+bool spiffs_perform_check(const char* partition_label)
 {
     MESP_LOGI(TAG, "Performing SPIFFS_check()");
     esp_err_t ret = esp_spiffs_check(partition_label);
@@ -5490,7 +5501,7 @@ static bool spiffs_perform_check(const char* partition_label)
  * @param partition_label Name of the SPIFFS partition to verify
  * @return true if partition info valid, false if formatting required
  */
-static bool spiffs_verify_partition_info(const char* partition_label)
+bool spiffs_verify_partition_info(const char* partition_label)
 {
     size_t total = 0, used = 0;
     esp_err_t ret = esp_spiffs_info(partition_label, &total, &used);
@@ -5551,7 +5562,7 @@ void app_spiffs_log(void)
  * @param start_timer_ctx Timer context with schedule information
  * @return Allocated JSON string or NULL on failure (caller must free)
  */
-static char* create_schedule_start_json(const start_timer_ctx_t *start_timer_ctx)
+char* create_schedule_start_json(const start_timer_ctx_t *start_timer_ctx)
 {
     cJSON *root = cJSON_CreateObject();
     if (!root) {
@@ -5576,7 +5587,7 @@ static char* create_schedule_start_json(const start_timer_ctx_t *start_timer_ctx
  * @param json_msg JSON formatted message (will be freed by sender)
  * @return true if queued successfully, false otherwise
  */
-static bool send_schedule_sync_to_mesh(char *json_msg)
+bool send_schedule_sync_to_mesh(char *json_msg)
 {
     mqttSender_t meshMsg;
     bzero(&meshMsg, sizeof(meshMsg));
@@ -5607,7 +5618,7 @@ static bool send_schedule_sync_to_mesh(char *json_msg)
  * 
  * @param start_timer_ctx Timer context with schedule parameters
  */
-static void sync_schedule_with_mesh(const start_timer_ctx_t *start_timer_ctx)
+void sync_schedule_with_mesh(const start_timer_ctx_t *start_timer_ctx)
 {
     int err = esp_mesh_get_routing_table((mesh_addr_t *)&poolNodesTable.address_table,
                                          MAXNODES * 6, &poolNodesTable.existing_nodes);

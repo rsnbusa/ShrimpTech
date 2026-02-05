@@ -376,7 +376,6 @@ struct attribute s_settings_attributes[] = {
   {NULL, NULL, NULL, 0, 0, false}
 };
 struct attribute s_system_attributes[] = {
-  {"disable_val", "int", NULL, offsetof(struct system, disable_val), 0, false},
   {"mqttreco_val", "int", NULL, offsetof(struct system, mqttreco_val), 0, false},
   {"otf_val", "bool", NULL, offsetof(struct system, otf_val), 0, false},
   {"version_val", "string", NULL, offsetof(struct system, version_val), 20, false},
@@ -402,7 +401,6 @@ struct attribute s_system_attributes[] = {
   {NULL, NULL, NULL, 0, 0, false}
 };
 struct attribute s_sysset_attributes[] = {
-  {"disable_val", "int", NULL, offsetof(struct sysset, disable_val), 0, false},
   {"idf_val", "string", NULL, offsetof(struct sysset, idf_val), 100, false},
   {"compile_val", "string", NULL, offsetof(struct sysset, compile_val), 100, false},
   {"boot_val", "int", NULL, offsetof(struct sysset, boot_val), 0, false},

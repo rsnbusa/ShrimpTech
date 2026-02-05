@@ -24770,8 +24770,8 @@ void mg_phy_init(struct mg_phy *phy, uint8_t phy_addr, uint8_t config) {
                      (uint16_t) (phy->read_reg(phy_addr, MG_PHY_REG_BCR) &
                                  (uint16_t) ~MG_BIT(10)));
       // now do clock stuff
-      phy->write_reg(phy_addr, MG_PHY_KSZ8x_REG_PC2R,
-                     (uint16_t) (MG_BIT(15) | MG_BIT(8) | MG_BIT(7)));
+      //phy->write_reg(phy_addr, MG_PHY_KSZ8x_REG_PC2R,
+      //               (uint16_t) (MG_BIT(15) | MG_BIT(8) | MG_BIT(7)));
     } else if (id1 == MG_PHY_LAN87x) {
       // nothing to do
     } else if (id1 == MG_PHY_RTL82x && id2 == MG_PHY_RTL8201) {

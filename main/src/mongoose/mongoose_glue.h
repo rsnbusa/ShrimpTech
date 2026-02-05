@@ -357,7 +357,6 @@ void glue_get_settings(struct settings *);
 void glue_set_settings(struct settings *);
 
 struct system {
-  int disable_val;
   int mqttreco_val;
   bool otf_val;
   char version_val[20];
@@ -385,7 +384,6 @@ void glue_get_system(struct system *);
 void glue_set_system(struct system *);
 
 struct sysset {
-  int disable_val;
   char idf_val[100];
   char compile_val[100];
   int boot_val;
