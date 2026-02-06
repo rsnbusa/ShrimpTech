@@ -3346,7 +3346,7 @@ void init_system_timers(void)
         (theConf.wifi_mode > 0) ? root_collect_meter_data : wifi_send_meter_data;
     BaseType_t collection_autoreload = 
         (theConf.wifi_mode > 0) ? pdFALSE : pdTRUE;
-    
+    printf("coolect %d\n", collection_period);
     collectTimer = xTimerCreate("Timer", pdMS_TO_TICKS(collection_period),
                                collection_autoreload, (void*)0, collection_callback);
     
@@ -4470,9 +4470,9 @@ esp_err_t wifi_connect_external_ap(void)
     wifi_config_t ap_config = {};
     memset(&ap_config, 0, sizeof(wifi_config_t));
     
-    strncpy((char*)ap_config.ap.ssid, "SHRIMP", sizeof(ap_config.ap.ssid) - 1);
+    strncpy((char*)ap_config.ap.ssid, "shrimp", sizeof(ap_config.ap.ssid) - 1);
     strncpy((char*)ap_config.ap.password, "csttpstt", sizeof(ap_config.ap.password) - 1);
-    ap_config.ap.ssid_len = strlen("SHRIMP");
+    ap_config.ap.ssid_len = strlen("shrimp");
     ap_config.ap.channel = 0;
     ap_config.ap.authmode = WIFI_AUTH_WPA2_PSK;
     ap_config.ap.max_connection = 4;
@@ -4947,8 +4947,8 @@ void handle_past_schedule_in_progress(start_timer_ctx_t * ctx,time_t endtime, ti
         char time_str[30],time_str2[30];
         format_log_time(endtime, time_str, 30);
         format_log_time(now, time_str2, 30);
-        MESP_LOGI(TAG, "%sScheduling Ending %d in %lld ms(%s | %lld) now %s - %lld Last %s", 
-                 DBG_SCH,countTimersEnd, remaining , time_str, endtime, time_str2, now,ctx->isLast ? "YES" : "NO");
+        // MESP_LOGI(TAG, "%sScheduling Ending %d in %lld ms(%s | %lld) now %s - %lld Last %s", 
+        //          DBG_SCH,countTimersEnd, remaining , time_str, endtime, time_str2, now,ctx->isLast ? "YES" : "NO");
     }  
     elapsed[countTimersEnd] = time(NULL);     // consider now as start time since its started manually. countimersstart is 1 ahead so use countendtimers
     if(remaining<=0)
@@ -5025,7 +5025,8 @@ bool create_future_timers(time_t starttime, time_t endtime, time_t now,
         format_log_time(starttime,time_str,30);
         format_log_time(now,time_str2,30);
         MESP_LOGI(TAG, "%sScheduling timer %d Start in %d ms [ %s | %llu ] now [ %s | %llu ] Mux %ld", 
-                 DBG_SCH, countTimersStart, delay_int, time_str,starttime, time_str2,now,theConf.test_timer_div);
+                 DBG_SCH, ctx->timerNum, delay_int, time_str,starttime, time_str2,now,theConf.test_timer_div);
+                //  DBG_SCH, countTimersStart, delay_int, time_str,starttime, time_str2,now,theConf.test_timer_div);
     }
     
     start_timers[countTimersStart] = xTimerCreate("TSTART", pdMS_TO_TICKS(delay_int),
@@ -5048,7 +5049,8 @@ bool create_future_timers(time_t starttime, time_t endtime, time_t now,
         format_log_time(endtime,time_str,30);
         format_log_time(now,time_str2,30);
         MESP_LOGI(TAG, "%sScheduling Timer %d Ending in %d ms [%s | %llu ] now %s | [ %llu Mux %ld ] is Last %s", 
-                 DBG_SCH, countTimersEnd, delay_int, time_str, endtime, time_str2, now,theConf.test_timer_div, ctx->isLast ? "YES" : "NO" );
+                 DBG_SCH, ctx->timerNum, delay_int, time_str, endtime, time_str2, now,theConf.test_timer_div, ctx->isLast ? "YES" : "NO" );
+                //  DBG_SCH, countTimersEnd, delay_int, time_str, endtime, time_str2, now,theConf.test_timer_div, ctx->isLast ? "YES" : "NO" );
     }                                           
     if (end_timers[countTimersEnd]==NULL) { 
         MESP_LOGE(MESH_TAG, "End Timer not created %d", countTimersEnd);
@@ -5100,7 +5102,7 @@ bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, time_t now
     //     delay(1000);
     // }
     // create a context structure for every pair of start-end timers
-    start_timer_ctx_t* ctx = create_timer_context(ck, ck_d, ck_h, countTimersStart);
+    start_timer_ctx_t* ctx = create_timer_context(ck, ck_d, ck_h, countTimersEnd);  //all tiemr are in pairs
     if (!ctx) {
         return false;
     }
@@ -5112,8 +5114,8 @@ bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, time_t now
     int32_t son32=son;
      
     if ((theConf.debug_flags >> dSCH) & 1U) 
-        MESP_LOGI(TAG, "%sC-%d D-%d H-%d %d secs %d hours Start %lld End %lld", DBG_SCH, ck, ck_d, ck_h,
-             horario.horarioLen,horario.horarioLen /3600,starttime,endtime );
+        MESP_LOGI(TAG, "%sC-%d D-%d H-%d %d secs %d hours Start %lld End %lld Timer %d", DBG_SCH, ck, ck_d, ck_h,
+             horario.horarioLen,horario.horarioLen /3600,starttime,endtime ,countTimersEnd);
     
     // Schedule already started
     if (starttime < now) { // past schedule
@@ -5121,7 +5123,8 @@ bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, time_t now
         {
             format_log_time(starttime, time_str, 30);
             format_log_time(now, now_str, 30);
-            MESP_LOGW(TAG, "%sStart already happened %lld (%s) %lld (%s)", DBG_SCH, starttime, time_str,now, now_str);
+            MESP_LOGW(TAG, "%sStart already happened %lld (%s) %lld (%s) Mux %d", DBG_SCH, starttime, time_str,now, now_str,
+                theConf.test_timer_div);
         }
         // countTimersStart++;   // cannot skip start timer count due to complicated timer numbering
 
@@ -5131,8 +5134,8 @@ bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, time_t now
             {
                 format_log_time(endtime, time_str, 30);
                 format_log_time(now, now_str, 30);
-                    MESP_LOGW(TAG, "%sEnd already happened. Skip this schedule %lld (%s) %lld (%s)", 
-                            DBG_SCH, endtime, time_str, now, now_str);
+                    MESP_LOGW(TAG, "%sEnd already happened. Skip this schedule %lld (%s) %lld (%s) Mux %d", 
+                            DBG_SCH, endtime, time_str, now, now_str, theConf.test_timer_div);
             }
             free(ctx);      // now we free ctx for this timer... its done working
         } else  // we have the end timer active so create it
@@ -5186,13 +5189,22 @@ void cleanup_all_timers()
  * 
  * @param now Initial start timestamp
  */
-uint32_t handle_day_end(uint8_t nextHour)
+uint32_t handle_day_end(uint8_t workingday)
 {
     char time_str1[30],time_str2[30];
 
+    time_t current = time(NULL);
+    struct tm *timeinfo = localtime(&current);
+    uint8_t currentDay= timeinfo->tm_mday;
+
     if(countTimersEnd==0)       //no timers active
     {
-        return 0;
+        timeinfo->tm_hour = 0;
+        timeinfo->tm_min = 0;
+        timeinfo->tm_sec = 0;
+        timeinfo->tm_mday++;  // Move to next day Zero hours
+        time_t midnight = mktime(timeinfo);
+        return uint32_t(midnight-current);
     }
 
       if (!xSemaphoreTake(scheduleSem, portMAX_DELAY)) { //wait for blower last timer given by blower end
@@ -5202,20 +5214,23 @@ uint32_t handle_day_end(uint8_t nextHour)
     cleanup_all_timers();
 
     if ((theConf.debug_flags >> dSCH) & 1U) {
-        MESP_LOGI(TAG, "%sDay ended NH %d", DBG_SCH,nextHour);
+        MESP_LOGI(TAG, "%sDay ended Working day %d Today %d", DBG_SCH,workingday,currentDay);
     }
 
-    time_t current = time(NULL);
-    struct tm *timeinfo = localtime(&current);
-    uint8_t currentHour= timeinfo->tm_hour;
+    if(currentDay>workingday)
+        return 0; // we have passed midnight and we are already in the next day, so start immediately
+    // we are in the same day, but we have passed the scheduled end time, so we need to wait for midnight to start the next day cycle
+    // time_t current = time(NULL);
+    // struct tm *timeinfo = localtime(&current);
+    // uint8_t currentHour= timeinfo->tm_hour;
 
-    if(nextHour>currentHour)
-    {
-        if ((theConf.debug_flags >> dSCH) & 1U) {
-            MESP_LOGI(TAG, "%sAfter current hour NH %d CH %d", DBG_SCH,nextHour,currentHour);
-        }
-        return 0; // we have passed midnight and next hour is still ahead of current time.
-    }
+    // if(nextHour>currentHour)
+    // {
+    //     if ((theConf.debug_flags >> dSCH) & 1U) {
+    //         MESP_LOGI(TAG, "%sAfter current hour NH %d CH %d", DBG_SCH,nextHour,currentHour);
+    //     }
+    //     return 0; // we have passed midnight and next hour is still ahead of current time.
+    // }
   
     // need to wait for midnight and then start normal scheduling process
    
@@ -5382,12 +5397,13 @@ void start_schedule_timers(void * pArg)
                 //         settimeofday(&tv, NULL);
 
                 //     }
-                }
+                // }
                 // start here if PF
                 theBlower.setSchedule(ck,ck_d,0,0,0,0,BLOWERON); // set the schedule in blower to indicate we are in active schedule mode
 
                 // Process horarios (hourly schedules) in day
                 time(&nows);        // get todays new time or it will use the one when we STARTED the SCHEDULE process
+                struct tm *hoytimeinfo = localtime(&nows);
                 format_log_time(nows, time_str, 30);
                 MESP_LOGI(TAG, "Day %d Time %s",ck_d,time_str);
                 midn = get_today_midnight();
@@ -5404,7 +5420,7 @@ void start_schedule_timers(void * pArg)
                 // Day complete scheduled all timers, wait and cleanup
                 uint8_t newhour=theConf.profiles[0].cycle[ck].horarios[0].hourStart; // first hour of next day same cycle
 
-                uint32_t wait_next_day= handle_day_end(newhour);        // the first hour of next day. boundry of end fo cycles later
+                uint32_t wait_next_day= handle_day_end(hoytimeinfo->tm_mday);        // the first hour of next day. boundry of end fo cycles later
                 // uint32_t wait_next_day= handle_day_end(newhour);        // the first hour of next day. boundry of end fo cycles later
                 // above will wait for schedulesemaphore to be free meaning last blower timer ended
 
@@ -5420,10 +5436,11 @@ void start_schedule_timers(void * pArg)
                     MESP_LOGW(TAG, "%sWait Midnight %ld (%s) New day %s", DBG_SCH, wait_next_day, mid_str, time_str);
                 }
                 uint32_t howmuch= (wait_next_day*1000/theConf.test_timer_div)+10000;
-                if (countTimersStart || countTimersEnd)
+      
+                // if (countTimersStart || countTimersEnd)
                     delay(howmuch); // in secs->ms and add 10 seconds to be sure we are in the next day
-                else
-                    delay(1000); // in secs->ms and add 10 seconds to be sure
+                // else
+                    // delay(1000); // in secs->ms and add 10 seconds to be sure
    
                     /* for simultions only erase in production
 

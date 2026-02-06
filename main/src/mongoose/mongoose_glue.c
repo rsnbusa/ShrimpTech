@@ -5,6 +5,38 @@
 // Default mock implementation of the API callbacks
 
 #include "mongoose_glue.h"
+struct energy s_energy = {0, 0, 0, 0, 0};
+void glue_get_energy(struct energy *data) {
+  *data = s_energy;  // Sync with your device
+}
+void glue_set_energy(struct energy *data) {
+  s_energy = *data; // Sync with your device
+}
+
+struct panels s_panels = {0, 0, 0, 0, ""};
+void glue_get_panels(struct panels *data) {
+  *data = s_panels;  // Sync with your device
+}
+void glue_set_panels(struct panels *data) {
+  s_panels = *data; // Sync with your device
+}
+
+struct sensors s_sensors = {0, 0, 0, 0, 0};
+void glue_get_sensors(struct sensors *data) {
+  *data = s_sensors;  // Sync with your device
+}
+void glue_set_sensors(struct sensors *data) {
+  s_sensors = *data; // Sync with your device
+}
+
+struct battery s_battery = {0, 0, 0, 0};
+void glue_get_battery(struct battery *data) {
+  *data = s_battery;  // Sync with your device
+}
+void glue_set_battery(struct battery *data) {
+  s_battery = *data; // Sync with your device
+}
+
 struct Prod s_Prod = {1, 1, 1, "Start"};
 void glue_get_Prod(struct Prod *data) {
   *data = s_Prod;  // Sync with your device

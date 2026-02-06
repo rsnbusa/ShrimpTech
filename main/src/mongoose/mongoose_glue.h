@@ -109,6 +109,45 @@ void glue_update_state(void);
 
 // Firmware Glue
 
+struct energy {
+  int bdisamphoy;
+  int bcharamphoy;
+  int genkwhhoy;
+  int bchkwhhoy;
+  int loadkwhhoy;
+};
+void glue_get_energy(struct energy *);
+void glue_set_energy(struct energy *);
+
+struct panels {
+  int pv2amps;
+  int pv2volts;
+  int pv1amps;
+  int pv1volts;
+  char chargingstate[15];
+};
+void glue_get_panels(struct panels *);
+void glue_set_panels(struct panels *);
+
+struct sensors {
+  int humidity;
+  double airtemp;
+  double ph;
+  double wtemp;
+  double doxy;
+};
+void glue_get_sensors(struct sensors *);
+void glue_set_sensors(struct sensors *);
+
+struct battery {
+  double temp;
+  int cycles;
+  int soh;
+  int soc;
+};
+void glue_get_battery(struct battery *);
+void glue_set_battery(struct battery *);
+
 struct Prod {
   int profile;
   int cycle;

@@ -149,6 +149,37 @@ struct custom_api_handler {
 };
 static struct custom_api_handler *s_custom_handlers;
 
+struct attribute s_energy_attributes[] = {
+  {"bdisamphoy", "int", NULL, offsetof(struct energy, bdisamphoy), 0, false},
+  {"bcharamphoy", "int", NULL, offsetof(struct energy, bcharamphoy), 0, false},
+  {"genkwhhoy", "int", NULL, offsetof(struct energy, genkwhhoy), 0, false},
+  {"bchkwhhoy", "int", NULL, offsetof(struct energy, bchkwhhoy), 0, false},
+  {"loadkwhhoy", "int", NULL, offsetof(struct energy, loadkwhhoy), 0, false},
+  {NULL, NULL, NULL, 0, 0, false}
+};
+struct attribute s_panels_attributes[] = {
+  {"pv2amps", "int", NULL, offsetof(struct panels, pv2amps), 0, false},
+  {"pv2volts", "int", NULL, offsetof(struct panels, pv2volts), 0, false},
+  {"pv1amps", "int", NULL, offsetof(struct panels, pv1amps), 0, false},
+  {"pv1volts", "int", NULL, offsetof(struct panels, pv1volts), 0, false},
+  {"chargingstate", "string", NULL, offsetof(struct panels, chargingstate), 15, false},
+  {NULL, NULL, NULL, 0, 0, false}
+};
+struct attribute s_sensors_attributes[] = {
+  {"humidity", "int", NULL, offsetof(struct sensors, humidity), 0, false},
+  {"airtemp", "double", NULL, offsetof(struct sensors, airtemp), 0, false},
+  {"ph", "double", NULL, offsetof(struct sensors, ph), 0, false},
+  {"wtemp", "double", NULL, offsetof(struct sensors, wtemp), 0, false},
+  {"doxy", "double", NULL, offsetof(struct sensors, doxy), 0, false},
+  {NULL, NULL, NULL, 0, 0, false}
+};
+struct attribute s_battery_attributes[] = {
+  {"temp", "double", NULL, offsetof(struct battery, temp), 0, false},
+  {"cycles", "int", NULL, offsetof(struct battery, cycles), 0, false},
+  {"soh", "int", NULL, offsetof(struct battery, soh), 0, false},
+  {"soc", "int", NULL, offsetof(struct battery, soc), 0, false},
+  {NULL, NULL, NULL, 0, 0, false}
+};
 struct attribute s_Prod_attributes[] = {
   {"profile", "int", NULL, offsetof(struct Prod, profile), 0, false},
   {"cycle", "int", NULL, offsetof(struct Prod, cycle), 0, false},
@@ -422,6 +453,10 @@ struct attribute s_sysset_attributes[] = {
   {NULL, NULL, NULL, 0, 0, false}
 };
 
+struct apihandler_data s_apihandler_energy = {{"energy", "data", false, 0, 0, 0UL}, s_energy_attributes, sizeof(struct energy), (void (*)(void *)) glue_get_energy, (void (*)(void *)) glue_set_energy};
+struct apihandler_data s_apihandler_panels = {{"panels", "data", false, 0, 0, 0UL}, s_panels_attributes, sizeof(struct panels), (void (*)(void *)) glue_get_panels, (void (*)(void *)) glue_set_panels};
+struct apihandler_data s_apihandler_sensors = {{"sensors", "data", false, 0, 0, 0UL}, s_sensors_attributes, sizeof(struct sensors), (void (*)(void *)) glue_get_sensors, (void (*)(void *)) glue_set_sensors};
+struct apihandler_data s_apihandler_battery = {{"battery", "data", false, 0, 0, 0UL}, s_battery_attributes, sizeof(struct battery), (void (*)(void *)) glue_get_battery, (void (*)(void *)) glue_set_battery};
 struct apihandler_data s_apihandler_Prod = {{"Prod", "data", false, 0, 0, 0UL}, s_Prod_attributes, sizeof(struct Prod), (void (*)(void *)) glue_get_Prod, (void (*)(void *)) glue_set_Prod};
 struct apihandler_data s_apihandler_DO = {{"DO", "data", false, 0, 0, 0UL}, s_DO_attributes, sizeof(struct DO), (void (*)(void *)) glue_get_DO, (void (*)(void *)) glue_set_DO};
 struct apihandler_data s_apihandler_modbInverter = {{"modbInverter", "data", false, 0, 0, 0UL}, s_modbInverter_attributes, sizeof(struct modbInverter), (void (*)(void *)) glue_get_modbInverter, (void (*)(void *)) glue_set_modbInverter};
@@ -436,6 +471,10 @@ struct apihandler_data s_apihandler_system = {{"system", "data", false, 0, 0, 0U
 struct apihandler_data s_apihandler_sysset = {{"sysset", "data", false, 0, 0, 0UL}, s_sysset_attributes, sizeof(struct sysset), (void (*)(void *)) glue_get_sysset, (void (*)(void *)) glue_set_sysset};
 
 static struct apihandler *s_apihandlers[] = {
+  (struct apihandler *) &s_apihandler_energy,
+  (struct apihandler *) &s_apihandler_panels,
+  (struct apihandler *) &s_apihandler_sensors,
+  (struct apihandler *) &s_apihandler_battery,
   (struct apihandler *) &s_apihandler_Prod,
   (struct apihandler *) &s_apihandler_DO,
   (struct apihandler *) &s_apihandler_modbInverter,

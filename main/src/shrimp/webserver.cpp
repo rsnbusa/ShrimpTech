@@ -67,6 +67,10 @@
 //
 // below are the structures for the mongoose interface as well as Actions (independent from data)
 
+extern struct battery s_battery;			// battery reading  
+extern struct sensors s_sensors;			// sensors reading  
+extern struct panels s_panels;				// panels reading  
+extern struct energy s_energy;				// energy reading  
 extern struct settings s_settings;			// main controller settings --> First Sidebar
 extern struct system s_system;				// system setting like mqtt server etc. --> Second sidebar
 extern struct profile s_profile;			// schedule profile cycles and working timers --> 5th sidebar
@@ -225,6 +229,71 @@ static void apply_settings_to_config(struct settings *data)
 }
 
 /**
+ * @brief Get current battery for the web interface
+ * @param data Pointer to battery structure to populate
+ */
+void my_get_battery(struct battery *data) {
+
+	solarSystem_t *solarData = theBlower.getPtrSolarsystem();
+	s_battery.soc=solarData->battery.batSOC;
+	s_battery.soh=solarData->battery.batSOH;	
+	s_battery.temp=solarData->battery.batBmsTemp;
+	s_battery.cycles=solarData->battery.batteryCycleCount;
+
+	*data = s_battery;
+}
+
+/**
+ * @brief Get current sensors for the web interface
+ * @param data Pointer to sensors structure to populate
+ */
+void my_get_sensors(struct sensors *data) {
+
+	solarSystem_t *solarData = theBlower.getPtrSolarsystem();
+	s_sensors.airtemp = solarData->sensors.ATemp;
+	s_sensors.humidity = solarData->sensors.AHum;
+	s_sensors.wtemp = solarData->sensors.WTemp;
+	s_sensors.ph = solarData->sensors.PH;
+	s_sensors.doxy = solarData->sensors.DO;
+
+
+	*data = s_sensors;
+}
+
+/**
+ * @brief Get current panels for the web interface
+ * @param data Pointer to panels structure to populate
+ */
+void my_get_panels(struct panels *data) {
+
+	solarSystem_t *solarData = theBlower.getPtrSolarsystem();
+	s_panels.pv1volts = solarData->pvPanel.pv1Volts;
+	s_panels.pv2volts = solarData->pvPanel.pv2Volts;
+	s_panels.pv1amps = solarData->pvPanel.pv1Amp;
+	s_panels.pv2amps = solarData->pvPanel.pv2Amp;
+	strcpy(s_panels.chargingstate, "Charging");
+	*data = s_panels;
+}
+
+/**
+ * @brief Get current energy for the web interface
+ * @param data Pointer to energy structure to populate
+ */
+void my_get_energy(struct energy *data) {
+
+	solarSystem_t *solarData = theBlower.getPtrSolarsystem();
+
+	s_energy.bdisamphoy=solarData->energy.batDischgAHToday;
+	s_energy.bcharamphoy=solarData->energy.batChgAHToday;
+	s_energy. genkwhhoy=solarData->energy.generateEnergyToday;
+	s_energy. bchkwhhoy=solarData->energy.batChgkWhToday;
+	s_energy. loadkwhhoy=solarData->energy.genLoadConsumToday;
+
+
+	*data = s_energy;
+}
+
+/**
  * @brief Get current settings for the web interface
  * @param data Pointer to settings structure to populate
  */
@@ -299,7 +368,7 @@ void my_set_system(struct system *data) {
 	
 	// Apply settings with safe string operations
 	theConf.test_timer_div = s_system.repeat_val;
-	theConf.baset = s_system.baset_val;
+	theConf.repeat = s_system.baset_val;
 	
 	SAFE_STRCPY(theConf.kpass, s_system.password_val, sizeof(theConf.kpass));
 	
@@ -359,8 +428,8 @@ void my_get_system(struct system *data)
 		SAFE_STRCPY(s_system.version_val, mip->version, sizeof(s_system.version_val));
 	}
 	
-	s_system.repeat_val = theConf.repeat;
-	s_system.baset_val = theConf.baset;
+	s_system.repeat_val = theConf.test_timer_div;
+	s_system.baset_val = theConf.repeat;
 	
 	SAFE_STRCPY(s_system.password_val, theConf.kpass, sizeof(s_system.password_val));
 	SAFE_STRCPY(s_system.loglevel_val, levels[theConf.loglevel], sizeof(s_system.loglevel_val));
@@ -1180,6 +1249,10 @@ void start_webserver(void *pArg)
 	mongoose_init();
 	if(webserverf)
 		s_settings.disable_val=11;		
+  	mongoose_set_http_handlers("battery", my_get_battery, NULL);		
+  	mongoose_set_http_handlers("sensors", my_get_sensors, NULL);		
+  	mongoose_set_http_handlers("panels", my_get_panels, NULL);		
+  	mongoose_set_http_handlers("energy", my_get_energy, NULL);		
   	mongoose_set_http_handlers("settings", my_get_settings, my_set_settings);		
   	mongoose_set_http_handlers("system", my_get_system ,my_set_system);				
   	mongoose_set_http_handlers("sysset", my_get_sysset ,my_set_sysset);				
