@@ -231,7 +231,6 @@ static void apply_settings_to_config(struct settings *data)
 void my_get_settings(struct settings *data) {
 	// Check if settings should be disabled based on configuration state
 	s_settings.disable_val = should_disable_settings();
-	MESP_LOGE(TAG, "Get Settings Disable %d", s_settings.disable_val);
 	// Set challenge initial value
 	sprintf(s_settings.mac_val, "%d", theConf.cid);
 	
@@ -352,7 +351,6 @@ void my_get_system(struct system *data)
 	// 	s_settings.disable_val=11;	
 	// else
 	// 	s_system.disable_val = (theConf.meterconf > CONF_STATE_CONFIRMED) ? 1 : 0;
-	MESP_LOGE(TAG, "Get System Disable %d", s_settings.disable_val);
 	s_system.meshid_val = theConf.poolid;
 	
 	const esp_app_desc_t *mip = esp_app_get_description();
@@ -413,7 +411,6 @@ void my_set_DO(struct DO *data) {
 void my_get_sysset(struct sysset *data) 		// get data for general configuration and display
 {
 	// set s_sysset strucutre to stored values in Meter or theConf structures
-	MESP_LOGI(TAG, "Getting system settings %d",s_settings.disable_val);
 	const esp_app_desc_t *mip=esp_app_get_description();
 	strcpy(s_sysset.idf_val,mip->version);
 	strcpy(s_sysset.compile_val,mip->idf_ver);
@@ -929,7 +926,6 @@ void my_get_profile(struct profile *data)
 		MESP_LOGE(TAG, "Invalid profile data pointer");
 		return;
 	}
-		MESP_LOGE(TAG,"Get Profile Disable %d",s_settings.disable_val);
 
 	if(!restart_profile)
 		strcpy(s_profile.msg,"");
@@ -976,7 +972,6 @@ void my_get_modbInverter(struct modbInverter *data) // return limits saved in th
    	// 	s_settings.disable_val=1;
 	// else
    	// 	s_settings.disable_val=0;
-		MESP_LOGE(TAG,"Get System Disable %d",s_settings.disable_val);
 
 	*data=theConf.modbus_inverter;
 }
@@ -997,12 +992,6 @@ void my_set_modbSensors(struct modbSensors *data) // save limits from web to the
  */
 void my_get_modbSensors(struct modbSensors *data) // return limits saved in theblower
 {
-	// if( theConf.meterconf>CONF_STATE_PENDING)
-   	// 	s_settings.disable_val=1;
-	// else
-   	// 	s_settings.disable_val=0;
-		MESP_LOGE(TAG,"Get Sensors Disable %d",s_settings.disable_val);
-
 	*data=theConf.modbus_sensors;
 }
 
@@ -1022,12 +1011,6 @@ void my_set_modbBattery(struct modbBattery *data) // save limits from web to the
  */
 void my_get_modbBattery(struct modbBattery *data) // return limits saved in theblower
 {
-	// if( theConf.meterconf>CONF_STATE_PENDING)
-   	// 	s_settings.disable_val=1;
-	// else
-   	// 	s_settings.disable_val=0;
-		MESP_LOGE(TAG,"Get Battery Disable %d",s_settings.disable_val);
-
 	*data=theConf.modbus_battery;
 }
 
@@ -1037,11 +1020,6 @@ void my_get_modbBattery(struct modbBattery *data) // return limits saved in theb
  */
 void my_get_modbPanels(struct modbPanels *data) // return limits saved in theblower
 {
-	// if( theConf.meterconf>CONF_STATE_PENDING)
-   	// 	s_settings.disable_val=1;
-	// else
-   	// 	s_settings.disable_val=0;
-		MESP_LOGE(TAG,"Get Panels Disable %d",s_settings.disable_val);
 
 	*data=theConf.modbus_panels;
 }
@@ -1073,11 +1051,6 @@ void my_set_limits(struct limits *data) // save limits from web to theblower
  */
 void my_get_limits(struct limits *data) // return limits saved in theblower
 {
-	// if( theConf.meterconf>CONF_STATE_PENDING)
-   	// 	s_settings.disable_val=1;
-	// else
-   	// 	s_settings.disable_val=0;
-		MESP_LOGE(TAG,"Get Limits Disable %d",s_settings.disable_val);
 
 	*data=theConf.milim;
 }

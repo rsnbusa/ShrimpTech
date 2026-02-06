@@ -5134,7 +5134,6 @@ bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, time_t now
                     MESP_LOGW(TAG, "%sEnd already happened. Skip this schedule %lld (%s) %lld (%s)", 
                             DBG_SCH, endtime, time_str, now, now_str);
             }
-            countTimersStart--;     // neither timer active so start from previous counter
             free(ctx);      // now we free ctx for this timer... its done working
         } else  // we have the end timer active so create it
             handle_past_schedule_in_progress(ctx,endtime, now, ck,ck_d,ck_h, 
@@ -5191,12 +5190,15 @@ uint32_t handle_day_end(uint8_t nextHour)
 {
     char time_str1[30],time_str2[30];
 
-    if(countTimersEnd>0)       //no timers active
+    if(countTimersEnd==0)       //no timers active
     {
-      if (!xSemaphoreTake(scheduleSem, portMAX_DELAY)) { //wait for blower last timer given by blower end
         return 0;
     }
-}
+
+      if (!xSemaphoreTake(scheduleSem, portMAX_DELAY)) { //wait for blower last timer given by blower end
+        return 0;
+        }
+    
     cleanup_all_timers();
 
     if ((theConf.debug_flags >> dSCH) & 1U) {
@@ -5348,14 +5350,39 @@ void start_schedule_timers(void * pArg)
         
         // theBlower.setSchedule(0, 0, 0, 0, 0,0,BLOWERON); // since we are strarting a schedule, set blower status to ACTIVE/STANDBY
 
+            time_t first_cycle_day=time(NULL);
+            struct tm *first_timeinfo = localtime(&first_cycle_day);
+
         // Process all cycles
         for (ck = cyclestart; ck < theConf.profiles[0].numCycles; ck++)
         {
-            int day_offset = (ck == cyclestart) ? daystart : 0;
-            
+            int day_offset = (ck == cyclestart) ? daystart : 0;     // when starting cycle use daystart passed by cmd else 0 start
+
             // Process days in cycle
             for (ck_d = day_offset; ck_d < theConf.profiles[0].cycle[ck].duration; ck_d++)
-            {
+            { 
+                // if(ck_d!=day_offset)    
+                // {
+                //     time_t right_now=time(NULL);
+                //     struct tm *timeinfo = localtime(&right_now);
+                //     if(first_timeinfo->tm_mday==timeinfo->tm_mday) // if we have changed day since first cycle day
+                //     {
+                //         first_cycle_day=right_now;
+                //         first_timeinfo = localtime(&first_cycle_day);
+                //         timeinfo->tm_hour = 0;
+                //         timeinfo->tm_min = 0;
+                //         timeinfo->tm_sec = 0;
+                //         timeinfo->tm_mday++;  // Move to next day Zero hours
+                //         time_t midn = mktime(timeinfo);
+
+                //         struct timeval tv = {
+                //                 .tv_sec = midn,
+                //                 .tv_usec = 0
+                //             };
+                //         settimeofday(&tv, NULL);
+
+                //     }
+                }
                 // start here if PF
                 theBlower.setSchedule(ck,ck_d,0,0,0,0,BLOWERON); // set the schedule in blower to indicate we are in active schedule mode
 
@@ -5376,9 +5403,11 @@ void start_schedule_timers(void * pArg)
                 }
                 // Day complete scheduled all timers, wait and cleanup
                 uint8_t newhour=theConf.profiles[0].cycle[ck].horarios[0].hourStart; // first hour of next day same cycle
+
                 uint32_t wait_next_day= handle_day_end(newhour);        // the first hour of next day. boundry of end fo cycles later
+                // uint32_t wait_next_day= handle_day_end(newhour);        // the first hour of next day. boundry of end fo cycles later
                 // above will wait for schedulesemaphore to be free meaning last blower timer ended
-                
+
                 // need to wait for next day
                 if ((theConf.debug_flags >> dSCH) & 1U)
                 {
