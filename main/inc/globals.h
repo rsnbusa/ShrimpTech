@@ -339,4 +339,5 @@ EXTERN sensor_t sensorData;
 
 EXTERN double doValue, setPoint, outputVal,KP,KI,KD;
 EXTERN float temperature;
+EXTERN start_timer_ctx_t * ctx_timers[MAXHORARIOS];
 #endif // MAIN_GLOBALS_H

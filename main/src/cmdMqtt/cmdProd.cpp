@@ -11,7 +11,7 @@
 
 extern void writeLog(char *que);
 extern void save_ota_version(char *version);
-extern void cleanup_all_timers();
+extern void cleanup_all_timers(int howmany);
 
 // Production command constants
 #define PRODUCTION_LOG_BUFFER_SIZE 200
@@ -198,7 +198,7 @@ static int handle_production_stop(const ProductionCommandFields *fields, char *l
             MESP_LOGI(MESH_TAG, "%sCMd Prod Stop but not scheduling %s", DBG_XCMDS, fields->orderCommand);
         return ESP_OK;
     }
-    cleanup_all_timers();
+    cleanup_all_timers(countTimersEnd);
 
     write_to_flash();
     
