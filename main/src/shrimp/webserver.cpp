@@ -252,11 +252,9 @@ void my_get_sensors(struct sensors *data) {
 	solarSystem_t *solarData = theBlower.getPtrSolarsystem();
 	s_sensors.airtemp = solarData->sensors.ATemp;
 	s_sensors.humidity = solarData->sensors.AHum;
-	s_sensors.wtemp = solarData->sensors.WTemp;
+	s_sensors.wtemp = solarData->sensors.DO;// ERROR HERE FLIPPED WIHT DO
 	s_sensors.ph = solarData->sensors.PH;
-	s_sensors.doxy = solarData->sensors.DO;
-
-
+	s_sensors.doxy = solarData->sensors.WTemp;
 	*data = s_sensors;
 }
 
@@ -271,7 +269,10 @@ void my_get_panels(struct panels *data) {
 	s_panels.pv2volts = solarData->pvPanel.pv2Volts;
 	s_panels.pv1amps = solarData->pvPanel.pv1Amp;
 	s_panels.pv2amps = solarData->pvPanel.pv2Amp;
-	strcpy(s_panels.chargingstate, "Charging");
+	if(solarData->pvPanel.chargeCurr)
+		strcpy(s_panels.chargingstate, "Charging");
+	else
+		strcpy(s_panels.chargingstate, "Discharging");
 	*data = s_panels;
 }
 

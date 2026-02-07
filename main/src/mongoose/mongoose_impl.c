@@ -167,14 +167,14 @@ struct attribute s_panels_attributes[] = {
 };
 struct attribute s_sensors_attributes[] = {
   {"humidity", "int", NULL, offsetof(struct sensors, humidity), 0, false},
-  {"airtemp", "double", NULL, offsetof(struct sensors, airtemp), 0, false},
-  {"ph", "double", NULL, offsetof(struct sensors, ph), 0, false},
-  {"wtemp", "double", NULL, offsetof(struct sensors, wtemp), 0, false},
-  {"doxy", "double", NULL, offsetof(struct sensors, doxy), 0, false},
+  {"airtemp", "double", "%.02f", offsetof(struct sensors, airtemp), 0, false},
+  {"ph", "double", "%.02f", offsetof(struct sensors, ph), 0, false},
+  {"wtemp", "double", "%.02f", offsetof(struct sensors, wtemp), 0, false},
+  {"doxy", "double", "%.02f", offsetof(struct sensors, doxy), 0, false},
   {NULL, NULL, NULL, 0, 0, false}
 };
 struct attribute s_battery_attributes[] = {
-  {"temp", "double", NULL, offsetof(struct battery, temp), 0, false},
+  {"temp", "double", "%.02f", offsetof(struct battery, temp), 0, false},
   {"cycles", "int", NULL, offsetof(struct battery, cycles), 0, false},
   {"soh", "int", NULL, offsetof(struct battery, soh), 0, false},
   {"soc", "int", NULL, offsetof(struct battery, soc), 0, false},

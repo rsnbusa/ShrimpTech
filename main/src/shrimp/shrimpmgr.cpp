@@ -3341,7 +3341,7 @@ void init_system_timers(void)
     
     // Meter collection timer (based on WiFi mode)
     // uint32_t collection_period = theConf.repeat * 25000;        // for testing every 10s
-    uint32_t collection_period = theConf.repeat * 60000;        // in minutes to ms
+    uint32_t collection_period = theConf.repeat * 10000;        // in minutes to ms
     TimerCallbackFunction_t collection_callback = 
         (theConf.wifi_mode > 0) ? root_collect_meter_data : wifi_send_meter_data;
     BaseType_t collection_autoreload = 

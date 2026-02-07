@@ -116,6 +116,9 @@ void print_sensor_data(void *sensors, int *errors,char *color,int numerrs)
              data->WTemp,
              data->percentDO * 100.0,
              data->DO);
+    // save data to frame blower sensors
+             theBlower.setSensors(data->WTemp, 0, data->DO, 
+                        temperature, 0);
 }
 
 // ============================================================================
@@ -197,6 +200,13 @@ void print_energy_data(void *energy, int *errors,char * color,int numerrs)
                  data->batDischgkWhToday,
                  data->genLoadConsumToday);   
     }
+
+    // save data to frame blower Energy
+    theBlower.setEnergy(data->batChgAHToday, data->batDischgAHToday, 
+                       data->batChgAHTotal, data->batDischgAHTotal, 
+                       data->generateEnergyToday, data->usedEnergyToday, 
+                       data->gLoadConsumLineTotal, data->batChgkWhToday, 
+                       data->batDischgkWhToday, data->genLoadConsumToday);
 }
 
 // ============================================================================
@@ -262,6 +272,9 @@ void print_battery_data(void *batteryData, int *errors,char *color,int numerrs)
              data->batSOH,
              data->batteryCycleCount,
              data->batBmsTemp);
+
+    // save data to frame blower battery
+    theBlower.setBattery(data->batSOC, data->batSOH, data->batteryCycleCount, data->batBmsTemp);
 }
 
 // ============================================================================
@@ -331,4 +344,7 @@ void print_panel_data(void *pvPanel, int *errors,char * color,int numerrs)
              data->pv1Amp,
              data->pv2Volts,
              data->pv2Amp);
+
+    // save data to frame blower Panels
+    theBlower.setPVPanel(data->chargeCurr, data->pv1Volts, data->pv2Volts,data->pv1Amp, data->pv2Amp);  
 }
