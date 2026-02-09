@@ -181,7 +181,9 @@ static int handle_production_start(const ProductionCommandFields *fields, char *
     
     xSemaphoreGive(workTaskSem);        // start the schedule task!!!! and the schedulef flag
 
-    theBlower.setSchedule(0, 0, 0, 0, 0,0,0); // start production means from 0 so reset all trackers for PF
+    theBlower.setSchedule(0,0, 0, 0, 0, 0,0,0); // start production means from 0 so reset all trackers for PF
+    theConf.activeProfile = fields->profileIndex;
+    write_to_flash();   
 
     if(theConf.wifi_mode)           // in mesh mode inform nodes to confirm their start
         send_start_production(fields->profileIndex, fields->dayIndex, 
@@ -220,7 +222,7 @@ static int handle_production_stop(const ProductionCommandFields *fields, char *l
     
     // stop the blower itself
     turn_blower_onOff(false);
-    theBlower.setSchedule(0, 0, 0,0,0,0,BLOWERPARK); //order is important turn blower on off will set BLOWEROFF-ON
+    theBlower.setSchedule(0,0, 0, 0,0,0,0,BLOWERPARK); //order is important turn blower on off will set BLOWEROFF-ON
 
     return ESP_OK;
 }
@@ -292,7 +294,7 @@ static int handle_production_crop(const ProductionCommandFields *fields, char *l
                          theConf.test_timer_div, (char*)fields->orderCommand);
     writeLog(logBuffer);
 
-    theBlower.setSchedule(0, 0, 0,0,0,0,BLOWERCROP);
+    theBlower.setSchedule(0,0, 0, 0,0,0,0,BLOWERCROP);
         //TODO should stop all timer
     return ESP_OK;
 }
@@ -318,7 +320,7 @@ static int handle_production_park(const ProductionCommandFields *fields, char *l
                          theConf.test_timer_div, (char*)fields->orderCommand);
     writeLog(logBuffer);
 
-    theBlower.setSchedule(0, 0, 0,0,0,0,BLOWERPARK);
+    theBlower.setSchedule(0,0, 0, 0,0,0,0,BLOWERPARK);
         //TODO should stop all timer
     return ESP_OK;
 }

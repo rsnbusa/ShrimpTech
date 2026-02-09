@@ -118,6 +118,7 @@ typedef struct {
  */
 #pragma pack(push, 1)  // Ensure no padding for direct hardware mapping
 typedef struct {
+    uint16_t  currentProfile;
     uint16_t  currentCycle;          
     uint16_t  currentDay;
     uint16_t  currentHorario; 
@@ -472,7 +473,7 @@ public:
      * @param currentPwmDuty Current PWM duty cycle percentage
      * @param status Schedule status (0=off, 1=on)
      */
-    void setSchedule(uint16_t currentCycle, uint16_t currentDay, uint16_t currentHorario,
+    void setSchedule(uint16_t currentProfile,uint16_t currentCycle, uint16_t currentDay, uint16_t currentHorario,
                      uint16_t currentStartHour, uint16_t currentEndHour, uint16_t currentPwmDuty, uint16_t status);
 
     /**

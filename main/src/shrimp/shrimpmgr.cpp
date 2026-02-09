@@ -4920,9 +4920,9 @@ start_timer_ctx_t* create_timer_context(uint8_t cycle, uint8_t day, int horario,
     ctx->cycle = cycle;
     ctx->day = day;
     ctx->horario = horario;
-    ctx->tostart = theConf.profiles[0].cycle[cycle].horarios[horario].hourStart;
-    ctx->horaslen = theConf.profiles[0].cycle[cycle].horarios[horario].horarioLen;
-    ctx->pwm = theConf.profiles[0].cycle[cycle].horarios[horario].pwmDuty;
+    ctx->tostart = theConf.profiles[theConf.activeProfile].cycle[cycle].horarios[horario].hourStart;
+    ctx->horaslen = theConf.profiles[theConf.activeProfile].cycle[cycle].horarios[horario].horarioLen;
+    ctx->pwm = theConf.profiles[theConf.activeProfile].cycle[cycle].horarios[horario].pwmDuty;
     ctx->timerNum = horario;
     ctx->isLast = (horario == cuantos-1) ? true : false;
     
@@ -4999,8 +4999,8 @@ void handle_past_schedule_in_progress(time_t endtime, time_t now, int ck
         format_log_time(endtime, time_str, 30);
         format_log_time(now, time_str2, 30);
 
-      printf( "%sScheduling Ending %d in %lld ms(%s | %lld) now %s - %lld Last %s\n", 
-                 DBG_SCH,countTimersEnd, remaining , time_str, endtime, time_str2, now,ctx_timers[ck_h]->isLast ? "YES" : "NO");
+      printf( "%sScheduling Profile %d Ending %d in %lld ms(%s | %lld) now %s - %lld Last %s\n", 
+                 DBG_SCH, theConf.activeProfile,countTimersEnd, remaining , time_str, endtime, time_str2, now,ctx_timers[ck_h]->isLast ? "YES" : "NO");
     }  
     elapsed[ck_h] = time(NULL);     // consider now as start time since its started manually. countimersstart is 1 ahead so use countendtimers
     if(remaining<=0)
@@ -5019,7 +5019,7 @@ void handle_past_schedule_in_progress(time_t endtime, time_t now, int ck
     countTimersEnd++;
     countTimersStart++;
     // it was started above, so set the schedule in blower
-    theBlower.setSchedule(ck,ck_day,ck_h,theConf.profiles[0].cycle[ck].horarios[ck_h].hourStart,theConf.profiles[0].cycle[ck].horarios[ck_h].horarioLen,theConf.profiles[0].cycle[ck].horarios[ck_h].pwmDuty,BLOWERON); // clear any previous schedule in blower 
+    theBlower.setSchedule(theConf.activeProfile,ck,ck_day,ck_h,theConf.profiles[theConf.activeProfile].cycle[ck].horarios[ck_h].hourStart,theConf.profiles[theConf.activeProfile].cycle[ck].horarios[ck_h].horarioLen,theConf.profiles[theConf.activeProfile].cycle[ck].horarios[ck_h].pwmDuty,BLOWERON); // clear any previous schedule in blower 
 }
 
 /**
@@ -5071,8 +5071,8 @@ bool create_future_timers(time_t starttime, time_t endtime, time_t now,
     if ((theConf.debug_flags >> dSCH) & 1U) {
         format_log_time(starttime,time_str,30);
         format_log_time(now,time_str2,30);
-        MESP_LOGI(TAG, "%sScheduling timer %d Start in %d ms [ %s | %llu ] now [ %s | %llu ] Mux %ld", 
-                 DBG_SCH, ctx_timers[ck_h]->timerNum, delay_int, time_str,starttime, time_str2,now,theConf.test_timer_div);
+        MESP_LOGI(TAG, "%s Profile %d  %d Start in %d ms [ %s | %llu ] now [ %s | %llu ] Mux %ld", 
+                 DBG_SCH, theConf.activeProfile,ctx_timers[ck_h]->timerNum, delay_int, time_str,starttime, time_str2,now,theConf.test_timer_div);
                 //  DBG_SCH, countTimersStart, delay_int, time_str,starttime, time_str2,now,theConf.test_timer_div);
     }
     
@@ -5094,7 +5094,7 @@ bool create_future_timers(time_t starttime, time_t endtime, time_t now,
 
         format_log_time(endtime,time_str,30);
         format_log_time(now,time_str2,30);
-        MESP_LOGI(TAG, "%sScheduling Timer %d Ending in %d ms [%s | %llu ] now %s | [ %llu Mux %ld ] is Last %s", 
+        MESP_LOGI(TAG, "%s Profile %d  %d Ending in %d ms [%s | %llu ] now %s | [ %llu Mux %ld ] is Last %s", 
                  DBG_SCH, ck_h, delay_int, time_str, endtime, time_str2, now,theConf.test_timer_div, ctx_timers[ck_h]->isLast ? "YES" : "NO" );
                 //  DBG_SCH, countTimersEnd, delay_int, time_str, endtime, time_str2, now,theConf.test_timer_div, ctx->isLast ? "YES" : "NO" );
     }                                           
@@ -5136,14 +5136,14 @@ bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, time_t now
     //     return false;
     // }
     
-    const auto& horario = theConf.profiles[0].cycle[ck].horarios[ck_h];
+    const auto& horario = theConf.profiles[theConf.activeProfile].cycle[ck].horarios[ck_h];
     time_t starttime = time_t(midn + (uint64_t)(horario.hourStart )*3600 +(uint64_t)(horario.minutesStart)*60);
     time_t endtime = time_t(starttime + (uint64_t)( horario.horarioLen));
     int64_t son=endtime-starttime;
     int32_t son32=son;
      
     if ((theConf.debug_flags >> dSCH) & 1U) 
-        MESP_LOGI(TAG, "%sC-%d D-%d H-%d %d secs %d hours Start %lld End %lld Timer %d", DBG_SCH, ck, ck_d, ck_h,
+        MESP_LOGI(TAG, "%sP-%d C-%d D-%d H-%d %d secs %d hours Start %lld End %lld Timer %d", DBG_SCH,  theConf.activeProfile,ck, ck_d, ck_h,
              horario.horarioLen,horario.horarioLen /3600,starttime,endtime ,countTimersEnd);
     
     // Schedule already started
@@ -5152,7 +5152,7 @@ bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, time_t now
         {
             format_log_time(starttime, time_str, 30);
             format_log_time(now, now_str, 30);
-            MESP_LOGW(TAG, "%sStart already happened %lld (%s) %lld (%s) Mux %d", DBG_SCH, starttime, time_str,now, now_str,
+            MESP_LOGW(TAG, "%sP-%d Start already happened %lld (%s) %lld (%s) Mux %d", DBG_SCH, theConf.activeProfile, starttime, time_str,now, now_str,
                 theConf.test_timer_div);
         }
         // countTimersStart++;   // cannot skip start timer count due to complicated timer numbering
@@ -5163,19 +5163,19 @@ bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, time_t now
             {
                 format_log_time(endtime, time_str, 30);
                 format_log_time(now, now_str, 30);
-                    MESP_LOGW(TAG, "%sEnd already happened. Skip this schedule %lld (%s) %lld (%s) Mux %d", 
-                            DBG_SCH, endtime, time_str, now, now_str, theConf.test_timer_div);
+                    MESP_LOGW(TAG, "%sP-%d End already happened. Skip this schedule %lld (%s) %lld (%s) Mux %d", 
+                            DBG_SCH, theConf.activeProfile, endtime, time_str, now, now_str, theConf.test_timer_div);
             }
             // free(ctx);      // now we free ctx for this timer... its done working
         } else  // we have the end timer active so create it
             handle_past_schedule_in_progress(endtime, now, ck,ck_d,ck_h, 
-                                            theConf.profiles[0].cycle[ck].numHorarios);
+                                            theConf.profiles[theConf.activeProfile].cycle[ck].numHorarios);
         return true;
     }
     
     // Future schedule
     return create_future_timers(starttime, endtime, now, ck_h,
-                               theConf.profiles[0].cycle[ck].numHorarios);
+                               theConf.profiles[theConf.activeProfile].cycle[ck].numHorarios);
 }
 
 /**
@@ -5440,7 +5440,7 @@ void start_schedule_timers(void * pArg)
         time_t midn = get_today_midnight();
 
         if ((theConf.debug_flags >> dSCH) & 1U)
-            MESP_LOGW(TAG, "%sSchedule start: Cycle %d Start Day %d midn %ld now %ld %s", DBG_SCH, cyclestart, daystart,
+            MESP_LOGW(TAG, "%sSchedule start: Profile %d Cycle %d Start Day %d midn %ld now %ld %s", DBG_SCH,  theConf.activeProfile,cyclestart, daystart,
                     (uint32_t)midn,(uint32_t)nows,time_str);
         
         // theBlower.setSchedule(0, 0, 0, 0, 0,0,BLOWERON); // since we are strarting a schedule, set blower status to ACTIVE/STANDBY
@@ -5449,16 +5449,16 @@ void start_schedule_timers(void * pArg)
             struct tm *first_timeinfo = localtime(&first_cycle_day);
 
         // Process all cycles
-        for (ck = cyclestart; ck < theConf.profiles[0].numCycles; ck++)
+        for (ck = cyclestart; ck < theConf.profiles[theConf.activeProfile].numCycles; ck++)
         {
             int day_offset = (ck == cyclestart) ? daystart : 0;     // when starting cycle use daystart passed by cmd else 0 start
      
             // every start of cycle create the timers, start and end will all be the same every day for this cycle, so we create them once and then just start and stop them. if we have a power loss we will know where we are in the cycle and day and we can just start the timers from there
-            make_timer(ck,ck_d,theConf.profiles[0].cycle[ck].numHorarios);
+            make_timer(ck,ck_d,theConf.profiles[theConf.activeProfile].cycle[ck].numHorarios);
             // Process days in cycle
-            for (ck_d = day_offset; ck_d < theConf.profiles[0].cycle[ck].duration; ck_d++)
+            for (ck_d = day_offset; ck_d < theConf.profiles[theConf.activeProfile].cycle[ck].duration; ck_d++)
             { 
-                theBlower.setSchedule(ck,ck_d,0,0,0,0,BLOWERON); // set the schedule in blower to indicate we are in active schedule mode
+                theBlower.setSchedule(theConf.activeProfile, ck,ck_d,0,0,0,0,BLOWERON); // set the schedule in blower to indicate we are in active schedule mode
 
                 // Process horarios (hourly schedules) in day
                 time(&nows);        // get todays new time or it will use the one when we STARTED the SCHEDULE process
@@ -5466,7 +5466,7 @@ void start_schedule_timers(void * pArg)
                 format_log_time(nows, time_str, 30);
                 MESP_LOGI(TAG, "Day %d Time %s",ck_d,time_str);
                 midn = get_today_midnight();
-                for (int ck_h = 0; ck_h < theConf.profiles[0].cycle[ck].numHorarios; ck_h++)
+                for (int ck_h = 0; ck_h < theConf.profiles[theConf.activeProfile].cycle[ck].numHorarios; ck_h++)
                 {
                     if(ck_h==0)
                     {
@@ -5479,7 +5479,7 @@ void start_schedule_timers(void * pArg)
                     }
                 }
                 // Day complete scheduled all timers, wait and cleanup
-                uint8_t newhour=theConf.profiles[0].cycle[ck].horarios[0].hourStart; // first hour of next day same cycle
+                uint8_t newhour=theConf.profiles[theConf.activeProfile].cycle[ck].horarios[0].hourStart; // first hour of next day same cycle
                 uint32_t wait_next_day= handle_day_end(hoytimeinfo->tm_mday);        // the first hour of next day. boundry of end fo cycles later
                 uint32_t howmuch= (wait_next_day*1000/theConf.test_timer_div)+10000;
                 // wait_mid_night(10000); // in secs->ms and add 10 seconds to be sure we are in the next day
@@ -5513,14 +5513,14 @@ void start_schedule_timers(void * pArg)
                     MESP_LOGI(TAG, "%sNew Day %d %s", DBG_SCH, ck_d+1,time_str);
             }
             // cycle complete, cleanup all timers and start next cycle
-            cleanup_all_timers(theConf.profiles[0].cycle[ck].numHorarios);       // just in case, should be already cleaned by day end handler
+            cleanup_all_timers(theConf.profiles[theConf.activeProfile].cycle[ck].numHorarios);       // just in case, should be already cleaned by day end handler
             if ((theConf.debug_flags >> dSCH) & 1U)
                 MESP_LOGI(TAG, "%sNew Cycle %d", DBG_SCH, ck+1);
         }
                 
         // All cycles complete
         MESP_LOGE(TAG, "Production cycle ended");
-        theBlower.setSchedule(0, 0, 0, 0, 0,0,BLOWERCROP);
+        theBlower.setSchedule(0, 0, 0, 0, 0,0,0,BLOWERCROP);
         schedulef = false;
         continue;
         
@@ -5843,8 +5843,8 @@ void blower_start(TimerHandle_t xTimer)
     
     turn_blower_onOff(true);
 
-    theBlower.setSchedule( start_timer_ctx->cycle, start_timer_ctx->day, start_timer_ctx->horario, theConf.profiles[0].cycle[start_timer_ctx->cycle].horarios[start_timer_ctx->tostart].hourStart,
-            theConf.profiles[0].cycle[start_timer_ctx->cycle].horarios[start_timer_ctx->tostart].horarioLen,theConf.profiles[0].cycle[start_timer_ctx->cycle].horarios[start_timer_ctx->tostart].pwmDuty,BLOWERNEXT);
+    theBlower.setSchedule(theConf.activeProfile, start_timer_ctx->cycle, start_timer_ctx->day, start_timer_ctx->horario, theConf.profiles[theConf.activeProfile].cycle[start_timer_ctx->cycle].horarios[start_timer_ctx->tostart].hourStart,
+            theConf.profiles[theConf.activeProfile].cycle[start_timer_ctx->cycle].horarios[start_timer_ctx->tostart].horarioLen,theConf.profiles[theConf.activeProfile].cycle[start_timer_ctx->cycle].horarios[start_timer_ctx->tostart].pwmDuty,BLOWERNEXT);
 
     if ((theConf.debug_flags >> dSCH) & 1U) {
         time_t now = time(NULL);
