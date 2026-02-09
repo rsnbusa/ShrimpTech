@@ -65,7 +65,7 @@ void ds18b20_task(void *pArg)
     // install 1-wire bus
     onewire_bus_handle_t bus = NULL;
     onewire_bus_config_t bus_config = {
-        .bus_gpio_num = EXAMPLE_ONEWIRE_BUS_GPIO,
+        .bus_gpio_num = ONEWIRE_BUS_GPIO,
         .flags = {
             .en_pull_up = true, // enable the internal pull-up resistor in case the external device didn't have one
         }
@@ -74,10 +74,10 @@ void ds18b20_task(void *pArg)
         .max_rx_bytes = 10, // 1byte ROM command + 8byte ROM number + 1byte device command
     };
     ESP_ERROR_CHECK(onewire_new_bus_rmt(&bus_config, &rmt_config, &bus));
-    MESP_LOGI(TAG, "1-Wire bus installed on GPIO%d", EXAMPLE_ONEWIRE_BUS_GPIO);
+    MESP_LOGI(TAG, "1-Wire bus installed on GPIO%d", ONEWIRE_BUS_GPIO);
 
     int ds18b20_device_num = 0;
-    ds18b20_device_handle_t ds18b20s[EXAMPLE_ONEWIRE_MAX_DS18B20];
+    ds18b20_device_handle_t ds18b20s[ONEWIRE_MAX_DS18B20];
     onewire_device_iter_handle_t iter = NULL;
     onewire_device_t next_onewire_device;
     esp_err_t search_result = ESP_OK;
@@ -95,7 +95,7 @@ void ds18b20_task(void *pArg)
                 ds18b20_get_device_address(ds18b20s[ds18b20_device_num], &address);
                 MESP_LOGI(TAG, "Found a DS18B20[%d], address: %016llX", ds18b20_device_num, address);
                 ds18b20_device_num++;
-                if (ds18b20_device_num >= EXAMPLE_ONEWIRE_MAX_DS18B20) {
+                if (ds18b20_device_num >= ONEWIRE_MAX_DS18B20) {
                     MESP_LOGI(TAG, "Max DS18B20 number reached, stop searching...");
                     break;
                 }
@@ -318,7 +318,7 @@ void showLVGL(char *que, uint32_t cuanto,uint8_t bigf)
 // }
 
 
-// pending to iumplemnent loigic to tiuem out and account for confirmation from child nodes
+// pending to iumplemnent loigic to timeout and account for confirmation from child nodes
 
 void schedule_timeout(TimerHandle_t xTimer)
 {
@@ -375,18 +375,9 @@ int get_routing_table()
 
         // if skip is implemented can not zero this
         bzero(&masterNode,sizeof(masterNode));  //always zero this stuff
-        // taskENTER_CRITICAL( &xTimerLock );
         err=esp_mesh_get_routing_table((mesh_addr_t *) &masterNode.theTable.big_table,MAXNODES * 6, &masterNode.existing_nodes);
-        // taskEXIT_CRITICAL( &xTimerLock );
 
         counting_nodes=masterNode.existing_nodes;  //copy for counting purposes
-        // for (int a=0;a<counting_nodes;a++) 
-        // {
-        //     masterNode.theTable.thedata[a]=NULL;       //no data yet
-        //     masterNode.theTable.sendit[a]=true;        //default send it
-        //     masterNode.theTable.skipcounter[a]=0;      
-        //     masterNode.theTable.lastkwh[a]=0;
-        // }
         time_t  now;
         theBlower.setStatsLastNodeCount(masterNode.existing_nodes);
         time(&now);
@@ -1315,7 +1306,6 @@ esp_err_t send_datos_to_root()
         MESP_LOGE(MESH_TAG, "Error send datos root msg");
         return ESP_FAIL;
     }
-
     print_blower("send datos root", &myNode->nodedata.solarData.solarSystem, false);
 
     if (theConf.delay_mesh > 0)
