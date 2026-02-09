@@ -117,7 +117,7 @@ void print_sensor_data(void *sensors, int *errors,char *color,int numerrs)
              data->percentDO * 100.0,
              data->DO);
     // save data to frame blower sensors
-             theBlower.setSensors(data->WTemp, 0, data->DO, 
+             theBlower.setSensors( data->DO,  0,data->WTemp,
                         temperature, 0);
 }
 

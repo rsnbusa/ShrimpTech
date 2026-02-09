@@ -252,9 +252,10 @@ void my_get_sensors(struct sensors *data) {
 	solarSystem_t *solarData = theBlower.getPtrSolarsystem();
 	s_sensors.airtemp = solarData->sensors.ATemp;
 	s_sensors.humidity = solarData->sensors.AHum;
-	s_sensors.wtemp = solarData->sensors.DO;// ERROR HERE FLIPPED WIHT DO
+	s_sensors.wtemp = solarData->sensors.WTemp;
 	s_sensors.ph = solarData->sensors.PH;
-	s_sensors.doxy = solarData->sensors.WTemp;
+	s_sensors.doxy = solarData->sensors.DO;
+
 	*data = s_sensors;
 }
 

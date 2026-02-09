@@ -14,27 +14,27 @@
                     "horario":
                     [
                         {
-                            "h_start_hour":10,
-                            "h_start_mins":20,
-                            "h_secs":120,
+                            "h_start_hour":6,
+                            "h_start_mins":0,
+                            "h_secs":3600,
                             "pwm_duty":100
                         },
                         {
-                            "h_start_hour":10,
-                            "h_start_mins":25,
+                            "h_start_hour":7,
+                            "h_start_mins":30,
+                            "h_secs":3600,
+                            "pwm_duty":100
+                        },
+                        {
+                            "h_start_hour":9,
+                            "h_start_mins":15,
                             "h_secs":600,
                             "pwm_duty":100
                         },
                         {
-                            "h_start_hour":11,
-                            "h_start_mins":0,
-                            "h_secs":1200,
-                            "pwm_duty":100
-                        },
-                        {
-                            "h_start_hour":11,
-                            "h_start_mins":32,
-                            "h_secs":1800,
+                            "h_start_hour":9,
+                            "h_start_mins":30,
+                            "h_secs":3600,
                             "pwm_duty":100
                         }
                     ]

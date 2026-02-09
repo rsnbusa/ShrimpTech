@@ -194,7 +194,7 @@ typedef struct {
     uint8_t day;
     uint8_t horario;
     uint8_t tostart;
-    uint8_t horaslen;
+    uint32_t horaslen;
     uint8_t pwm;
     uint8_t timerNum;
     bool isLast;
@@ -247,6 +247,7 @@ typedef struct cfg {
     struct arg_lit *system  ;   // system data x
     struct arg_lit *all;        // All commands on/off
     struct arg_lit *DO;         // DO setup
+    struct arg_lit *timers;     // Timers setup
     struct arg_end *end;
 } cfg_t;
 

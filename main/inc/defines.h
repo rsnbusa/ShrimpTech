@@ -175,6 +175,7 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 #define MQTTINFO                        "info"
 #define MQTTALARM                       "alarm"
 #define MQTTLIMITS                      "limits"
+#define MQTTCONTROL                     "control"
 #define MQTTEMER                        "911"
 #define MQTTBROADCAST                   "broadcast"
 #define MQTTDISCO                       "answer"

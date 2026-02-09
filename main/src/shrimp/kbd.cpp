@@ -133,18 +133,19 @@ void kbd(void *pArg)
   // Define Command Arguments - Configuration Display
   // ===================================================================
   
-  configArgs.sch      = arg_lit0(NULL, "sch",       "Show Schedule configuration");
-  configArgs.meshnet  = arg_lit0(NULL, "mesh",      "Show Mesh & Network configuration");
-  configArgs.mqtt     = arg_lit0(NULL, "mqtt",      "Show MQTT configuration ");
+  configArgs.sch      = arg_lit0(NULL, "sch",       "Show Schedule ");
+  configArgs.meshnet  = arg_lit0(NULL, "mesh",      "Show Mesh & Network ");
+  configArgs.mqtt     = arg_lit0(NULL, "mqtt",      "Show MQTT  ");
   configArgs.profile  = arg_lit0(NULL, "profile",   "Show Profile configuration");
-  configArgs.blow     = arg_lit0(NULL, "blow",      "Show Blower data");
-  configArgs.modbus   = arg_lit0(NULL, "modbus",    "Show modbus configuration");
-  configArgs.limits   = arg_lit0(NULL, "limits",    "Show limits configuration");
-  configArgs.prod     = arg_lit0(NULL, "produc",    "Show Porduction configuration");
+  configArgs.blow     = arg_lit0(NULL, "blow",      "Show Blower ");
+  configArgs.modbus   = arg_lit0(NULL, "modbus",    "Show modbus ");
+  configArgs.limits   = arg_lit0(NULL, "limits",    "Show limits ");
+  configArgs.prod     = arg_lit0(NULL, "produc",    "Show Porduction ");
   configArgs.stats    = arg_lit0(NULL, "stats",     "Show stats");
-  configArgs.system   = arg_lit0(NULL, "sys",       "Show system configuration");
-  configArgs.DO       = arg_lit0(NULL, "do",        "Show Dissolved Oxygen configuration");
-  configArgs.all      = arg_lit0(NULL, "all",       "Show all sections");
+  configArgs.system   = arg_lit0(NULL, "sys",       "Show system ");
+  configArgs.timers   = arg_lit0(NULL, "timers",    "Show Timers status");
+  configArgs.DO       = arg_lit0(NULL, "do",        "Show DO ");
+  configArgs.all      = arg_lit0(NULL, "all",       "Show all ");
   configArgs.end      = arg_end(CONFIG_MAX_ARGUMENTS);
 
   // ===================================================================

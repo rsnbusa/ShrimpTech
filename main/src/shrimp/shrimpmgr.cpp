@@ -1240,6 +1240,7 @@ void set_sta_cmd(char *cjText)      //message from Root giving stations ids and 
 
     struct timeval now = {0};
     now.tv_sec = cjtime->valueint;
+    printf("set sta_cmd Setting settimeofday\n");
     settimeofday(&now, NULL);
 
     time_t nowt;
@@ -3153,6 +3154,7 @@ void init_mqtt_queue_names(void)
     snprintf(infoQueue, sizeof(infoQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTINFO);
     snprintf(alarmQueue, sizeof(alarmQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTALARM);
     snprintf(limitsQueue, sizeof(limitsQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTLIMITS);
+    snprintf(controlQueue, sizeof(controlQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTCONTROL);
 }
 /**
  * @brief Initialize internal mesh command strings
@@ -3658,7 +3660,7 @@ bool publish_and_wait_ack(mqttSender_t *msg, uint32_t *endTime)
                                         (char*)msg->msg, msg->lenMsg, QOS1, NORETAIN);
     
     if ((theConf.debug_flags >> dMQTT) & 1U) {
-        MESP_LOGI(MESH_TAG, "%sPublish msgid %x len %d", DBG_MQTT, msgid, msg->lenMsg);
+        MESP_LOGI(MESH_TAG, "%sPublish %s msgid %x len %d", DBG_MQTT, (char*)msg->queue, msgid, msg->lenMsg);
     }
     
     if (msgid == ESP_FAIL) {
@@ -4922,7 +4924,7 @@ start_timer_ctx_t* create_timer_context(uint8_t cycle, uint8_t day, int horario,
     ctx->horaslen = theConf.profiles[0].cycle[cycle].horarios[horario].horarioLen;
     ctx->pwm = theConf.profiles[0].cycle[cycle].horarios[horario].pwmDuty;
     ctx->timerNum = horario;
-    ctx->isLast = (horario == cuantos) ? true : false;
+    ctx->isLast = (horario == cuantos-1) ? true : false;
     
      if ((theConf.debug_flags >> dSCH) & 1U) {
         MESP_LOGI(TAG, "%sCreated timer context for Cycle %d Day %d Hour %d Start %d Len %d PWM %d Last %s", 
@@ -4987,15 +4989,17 @@ bool make_timer(int ck,int ck_d,int cuantos)
 void handle_past_schedule_in_progress(time_t endtime, time_t now, int ck
         ,int ck_day,int ck_h, int num_horarios) // ck_h is timernum
 {
+    char time_str[30],time_str2[30];
+
     timer_t remaining = ((endtime - now) * 1000) / theConf.test_timer_div ;
     ctx_timers[ck_h]->isLast=(ck_h == num_horarios - 1)? true : false;
     
     turn_blower_onOff(true);  // Ensure blower is on
     if ((theConf.debug_flags >> dSCH) & 1U) {
-        char time_str[30],time_str2[30];
         format_log_time(endtime, time_str, 30);
         format_log_time(now, time_str2, 30);
-        MESP_LOGI(TAG, "%sScheduling Ending %d in %lld ms(%s | %lld) now %s - %lld Last %s", 
+
+      printf( "%sScheduling Ending %d in %lld ms(%s | %lld) now %s - %lld Last %s\n", 
                  DBG_SCH,countTimersEnd, remaining , time_str, endtime, time_str2, now,ctx_timers[ck_h]->isLast ? "YES" : "NO");
     }  
     elapsed[ck_h] = time(NULL);     // consider now as start time since its started manually. countimersstart is 1 ahead so use countendtimers
@@ -5074,7 +5078,6 @@ bool create_future_timers(time_t starttime, time_t endtime, time_t now,
     
     // set the correct timing here
     xTimerChangePeriod(start_timers[ck_h], pdMS_TO_TICKS(delay_int), portMAX_DELAY);
-
     if(xTimerStart(start_timers[ck_h], portMAX_DELAY) != pdPASS)
         MESP_LOGE(MESH_TAG, "Failed to start start timer %d for past schedule",ck_h);
     
@@ -5201,6 +5204,7 @@ void cleanup_all_timers(int howmany)
         }
         if(ctx_timers[i])
         {
+            bzero(ctx_timers[i], sizeof(start_timer_ctx_t)); // just in case
             free(ctx_timers[i]);
             ctx_timers[i]=NULL; // free the context structure for this timer
         }
@@ -5213,6 +5217,23 @@ void cleanup_all_timers(int howmany)
         MESP_LOGI(TAG, "%sStart Deleted %d End Deleted %d", DBG_SCH, deletedStart,deletedEnd);
     
     countTimersStart = countTimersEnd = 0;
+}
+
+void stop_all_timers()
+{
+    for (int i = 0; i < countTimersEnd; i++) 
+    {
+        if(start_timers[i])
+        {
+            if(xTimerIsTimerActive(start_timers[i]) == pdTRUE) 
+                    xTimerStop(start_timers[i], portMAX_DELAY);
+        }   
+        if(end_timers[i])
+        {
+            if(xTimerIsTimerActive(end_timers[i]) == pdTRUE) 
+                xTimerStop(end_timers[i], portMAX_DELAY);
+        }
+    }
 }
 
 /**
@@ -5235,6 +5256,7 @@ uint32_t handle_day_end(uint8_t workingday)
         timeinfo->tm_sec = 0;
         timeinfo->tm_mday++;  // Move to next day Zero hours
         time_t midnight = mktime(timeinfo);
+        stop_all_timers(); // just in case, should be already stopped by day end handler
         return uint32_t(midnight-current);
     }
 
@@ -5329,14 +5351,14 @@ void send_start_day_host(uint8_t ck_d)
     
     if(theConf.wifi_mode==0)
     {  
-        esp_mqtt_client_publish(clientCloud, (char*)alarmQueue, (char*)json_msg, strlen(json_msg), QOS1, NORETAIN);
+        esp_mqtt_client_publish(clientCloud, (char*)controlQueue, (char*)json_msg, strlen(json_msg), QOS1, NORETAIN);
         free(json_msg);
         return;
     }
 
     mqttSender_t mensaje;
     bzero(&mensaje, sizeof(mensaje));
-    mensaje.queue = alarmQueue;
+    mensaje.queue = controlQueue;
     mensaje.msg = json_msg;
     mensaje.lenMsg = strlen(json_msg);
     
@@ -5353,6 +5375,29 @@ void send_start_day_host(uint8_t ck_d)
     }
 }
 
+/**
+ * @brief Production wait for midnight from current time
+ * 
+ * Waits for the specified duration (in milliseconds) until midnight. Resets timer counts after waiting.
+ * 
+ * @param pArg Unused task parameter
+ */
+
+ void wait_mid_night(uint32_t cuanto)
+ {
+    char time_str[30],time_mid[30];
+    timer_t checkMidnight;
+    if ((theConf.debug_flags >> dSCH) & 1U)
+    {
+        time_t now = time(NULL);
+        checkMidnight = time(NULL) + cuanto/1000;
+        format_log_time(now, time_str, 30);
+        format_log_time(checkMidnight, time_mid, 30);
+        MESP_LOGI(TAG, "%sDay Ended Now %s Waiting for %s will take %d ms ", DBG_SCH, time_str, time_mid, cuanto);
+    }
+    vTaskDelay(pdMS_TO_TICKS(cuanto));
+    countTimersStart = countTimersEnd = 0; // reset timer counts after waiting
+ }
 
 /**
  * @brief Production schedule timer management task
@@ -5367,19 +5412,20 @@ void start_schedule_timers(void * pArg)
 {
     time_t nows;
     time(&nows);
-    time_t midn = get_today_midnight();
     uint8_t cyclestart, daystart;
     char  time_str[30],mid_str[30];
 
     while (true)
     {
+        //wiat for External Cmds or Restart to start the schedule process, this is set by the cmdProd MQTT command or by the restart schedule command that is sent when we have a power loss and we want to restart the schedule process from where we left off
         if (!xSemaphoreTake(workTaskSem, portMAX_DELAY)) {
             continue;
         }
+
         format_log_time(nows, time_str, 30);
 
         countTimersEnd = countTimersStart = 0;
-        MESP_LOGW(TAG, "%sStarted Production cycles", DBG_SCH);
+        // MESP_LOGW(TAG, "%sStarted Production cycles %s", DBG_SCH,time_str);
         if(!schedule_restartf)
             find_cycle_day(&cyclestart, &daystart);
         else
@@ -5389,9 +5435,12 @@ void start_schedule_timers(void * pArg)
             daystart = scheduleData->currentDay;
             schedule_restartf= false;
         }
+        // schedule is now active and we know where we are in the cycle and day, so we can set a flag in the blower to indicate we are in active schedule mode and if we have a power loss we will know where we are in the cycle and day and we can just start the timers from there
         schedulef = true;
+        time_t midn = get_today_midnight();
+
         if ((theConf.debug_flags >> dSCH) & 1U)
-            MESP_LOGI(TAG, "%sStart Cycle %d Start Day %d midn %ld now %ld %s", DBG_SCH, cyclestart, daystart,
+            MESP_LOGW(TAG, "%sSchedule start: Cycle %d Start Day %d midn %ld now %ld %s", DBG_SCH, cyclestart, daystart,
                     (uint32_t)midn,(uint32_t)nows,time_str);
         
         // theBlower.setSchedule(0, 0, 0, 0, 0,0,BLOWERON); // since we are strarting a schedule, set blower status to ACTIVE/STANDBY
@@ -5403,6 +5452,8 @@ void start_schedule_timers(void * pArg)
         for (ck = cyclestart; ck < theConf.profiles[0].numCycles; ck++)
         {
             int day_offset = (ck == cyclestart) ? daystart : 0;     // when starting cycle use daystart passed by cmd else 0 start
+     
+            // every start of cycle create the timers, start and end will all be the same every day for this cycle, so we create them once and then just start and stop them. if we have a power loss we will know where we are in the cycle and day and we can just start the timers from there
             make_timer(ck,ck_d,theConf.profiles[0].cycle[ck].numHorarios);
             // Process days in cycle
             for (ck_d = day_offset; ck_d < theConf.profiles[0].cycle[ck].duration; ck_d++)
@@ -5418,7 +5469,9 @@ void start_schedule_timers(void * pArg)
                 for (int ck_h = 0; ck_h < theConf.profiles[0].cycle[ck].numHorarios; ck_h++)
                 {
                     if(ck_h==0)
+                    {
                         send_start_day_host(ck_d);
+                    }
                     if (!process_horario(ck, ck_d, ck_h, midn, nows))
                     {
                         printf("Failed process horario\n");
@@ -5427,38 +5480,22 @@ void start_schedule_timers(void * pArg)
                 }
                 // Day complete scheduled all timers, wait and cleanup
                 uint8_t newhour=theConf.profiles[0].cycle[ck].horarios[0].hourStart; // first hour of next day same cycle
-
                 uint32_t wait_next_day= handle_day_end(hoytimeinfo->tm_mday);        // the first hour of next day. boundry of end fo cycles later
-                // uint32_t wait_next_day= handle_day_end(newhour);        // the first hour of next day. boundry of end fo cycles later
-                // above will wait for schedulesemaphore to be free meaning last blower timer ended
-
-                // need to wait for next day
-                if ((theConf.debug_flags >> dSCH) & 1U)
-                {
-                    MESP_LOGI(TAG, "%sSave day %d", DBG_SCH, ck_d+1);
-                    time_t new_day=time(NULL);
-                    format_log_time(new_day, time_str, 30);
-                    time_t nmid=new_day+wait_next_day;
-                    format_log_time(nmid, mid_str, 30);
-
-                    MESP_LOGW(TAG, "%sWait Midnight %ld (%s) New day %s", DBG_SCH, wait_next_day, mid_str, time_str);
-                }
                 uint32_t howmuch= (wait_next_day*1000/theConf.test_timer_div)+10000;
-      
-                // if (countTimersStart || countTimersEnd)
-                    delay(howmuch); // in secs->ms and add 10 seconds to be sure we are in the next day
-                // else
+                // wait_mid_night(10000); // in secs->ms and add 10 seconds to be sure we are in the next day
+                wait_mid_night(howmuch); // in secs->ms and add 10 seconds to be sure we are in the next day
+                    // else
                     // delay(1000); // in secs->ms and add 10 seconds to be sure
    
-                    /* for simultions only erase in production
+                    // for simultions only erase in production
 
-                delay(5000); // in secs->ms and add 10 seconds to be sure we are in the next day
-
+                // delay(5000); // in secs->ms and add 10 seconds to be sure we are in the next day
+/*
                 time_t midnn = time(NULL);
                 struct tm *timeinfo = localtime(&midnn);
                 
-                timeinfo->tm_hour = 0;
-                timeinfo->tm_min = 0;
+                timeinfo->tm_hour = 10;
+                timeinfo->tm_min = 19;
                 timeinfo->tm_sec = 0;
                 timeinfo->tm_mday++;  // Move to next day Zero hours
                 time_t midn = mktime(timeinfo);
@@ -5475,6 +5512,7 @@ void start_schedule_timers(void * pArg)
                 if ((theConf.debug_flags >> dSCH) & 1U)
                     MESP_LOGI(TAG, "%sNew Day %d %s", DBG_SCH, ck_d+1,time_str);
             }
+            // cycle complete, cleanup all timers and start next cycle
             cleanup_all_timers(theConf.profiles[0].cycle[ck].numHorarios);       // just in case, should be already cleaned by day end handler
             if ((theConf.debug_flags >> dSCH) & 1U)
                 MESP_LOGI(TAG, "%sNew Cycle %d", DBG_SCH, ck+1);
@@ -5920,6 +5958,7 @@ sizeof(theConf), sizeof(TickType_t));
 
     if(theConf.meterconf>2)
     {
+        printf("Reconfigure\n");
         // allow for meter configuration without without erasing meter data
         xTaskCreate(&blinkConf,"displ",1024,(void*)800, 5, &configureHandle); 	        //blink we are not configured
         // reconfTimer=xTimerCreate("Reconf",pdMS_TO_TICKS(300000),pdFALSE,( void * ) 0, [] ( TimerHandle_t xTimer){esp_restart();});   //monitor activity and tiemout if no work done-> use lambda
@@ -5955,7 +5994,7 @@ sizeof(theConf), sizeof(TickType_t));
 
     if(theConf.wifi_mode==WIFI_MESH)
     {
-        // printf("Start wifi mode\n");
+        printf("Start wifi mode\n");
         wifi_connect_external_ap(); //start wifi which will start many ither tasks from got ip event wiht SNTP starting the scheduler
         webserverf=true;
         xTaskCreate(&start_webserver, "webs", 1024 * 10, NULL, 5, NULL);

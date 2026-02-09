@@ -16,6 +16,56 @@ char modb_names[][30]={
 };
 
 char schStatus[][11]={"INACTIVE  ","BLOWERON  ","NEXTHOUR  ","HARVESTING","PARKED    "};
+void show_timers()
+{
+     TickType_t remainingTicksStart, remainingTicksEnd ;
+    uint32_t startremaining, endremaining;;
+
+    printf("%s\n",RESETC);
+    printf("  ┌──────────────────────────────────────────────────────────────────────────────────┐\n");
+    printf("  │%s%s                                   TIMERS   STATUS                                %s│\n",RESETC,BK_RED,RESETC);
+    printf("  ├──────────────────────────────────────────────────────────────────────────────────┤\n");
+    
+    printf("  │ Timer │ Cycle │  Day  │  Hour │ Start │ Seconds │ Last │ SRemaining │ ERemaining │\n");
+    printf("  ├───────┼───────┼───────┼───────┼───────┼─────────┼──────┼────────────┼────────────┤\n");
+    
+    for (int a=0;a<countTimersEnd;a++)
+    {
+        if (ctx_timers[a])
+        {
+            if(xTimerIsTimerActive(start_timers[ctx_timers[a]->timerNum])==pdTRUE)
+            {
+                remainingTicksStart = xTimerGetExpiryTime(start_timers[ctx_timers[a]->timerNum]) - xTaskGetTickCount();
+                startremaining=pdTICKS_TO_MS(remainingTicksStart);
+            }
+
+            if(xTimerIsTimerActive(end_timers[ctx_timers[a]->timerNum])==pdTRUE)
+            {
+                remainingTicksEnd = xTimerGetExpiryTime(end_timers[ctx_timers[a]->timerNum]) - xTaskGetTickCount();
+                endremaining=pdTICKS_TO_MS(remainingTicksEnd);
+            }
+            char time_str[20];
+            // format_time(ctx_timers[a]->time, time_str, sizeof(time_str));
+            printf("  │ %-2d-%-2d │ %-5d │ %-5d │ %-5d │ %-5d │ %-7ld │ %-4s │ %-10ld │ %-10ld │\n", a,
+                    ctx_timers[a]->timerNum,
+                    ctx_timers[a]->cycle,
+                    ctx_timers[a]->day,
+                    ctx_timers[a]->horario,
+                    ctx_timers[a]->tostart,
+                    ctx_timers[a]->horaslen,
+                    ctx_timers[a]->isLast ? "Yes" : "No",
+                    startremaining,
+                    endremaining);
+
+        }
+         else
+         {
+             MESP_LOGI(TAG, "Timer %d - Inactive", a);
+         }
+    }
+        printf("  └───────┴───────┴───────┴───────┴───────┴─────────┴──────┴────────────┴────────────┘\n");
+
+}
 /**
  * @brief Display complete Modbus configuration for all devices
  * 
@@ -341,6 +391,7 @@ void show_mqtt_config()
     printf("│ Command Topic: %-65s│\n", cmdQueue);
     printf("│ Info Topic:    %-65s│\n", infoQueue);
     printf("│ Alarm Topic:   %-65s│\n", alarmQueue);
+    printf("│ Control Topic: %-65s│\n", controlQueue);
     printf("│ Server: [%-30s] | User: [%-10s] | Pass: [%-8s]│\n", theConf.mqttServer, theConf.mqttUser, theConf.mqttPass);
     printf("└─────────────────────────────────────────────────────────────────────────────────┘\n\n");
 }
@@ -683,6 +734,8 @@ int cmdConfig(int argc, char **argv)
            show_modbus();
     if (configArgs.all->count || configArgs.DO->count)         
            show_DO();
+    if (configArgs.all->count || configArgs.timers->count)         
+           show_timers();
     
     printf("%s", RESETC);
     return 0;
