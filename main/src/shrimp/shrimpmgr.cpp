@@ -684,7 +684,8 @@ int check_my_metrics(char *cmd, char *mid)
     cJSON_Delete(elcmd);
     return ESP_OK;
 }
-
+// do not think the shrimp app needs an Update. This is more for the meter app to update its kwh and bpk values and other params.
+/*
 int update_my_meter(char *cmd)
 {
     if (!cmd) {
@@ -758,7 +759,7 @@ int update_my_meter(char *cmd)
     cJSON_Delete(elcmd);
     return ESP_OK;
 }
-
+*/
 // internal Mesh network message, we use cjson since no big limit
 // used to give to all connecting nodes certain "global" system parameter
 // Date, last known ssid and passw, time slot, mqtt params and Application location params like prov, canton,etc
@@ -835,6 +836,7 @@ esp_err_t root_send_data_to_node(mesh_addr_t thismac)
 
     return ESP_OK;
 }   
+// todo review if applicable to shrimp app
 
 int root_sendNodeACK(void *parg)
 {
@@ -866,7 +868,7 @@ int root_sendNodeACK(void *parg)
 
     return ESP_OK;
 }
-
+// todo review if applicable to shrimp app, this is used to send confirmation messages to central server via mqtt sender queue, the cb version is used when we need to send a confirmation that includes the source node address, so the central can know which node sent the message and act accordingly, for example when a node sends a lock command to a meter, the meter will send a confirmation back with the node address so the central can know which meter was locked or unlocked and update its records accordingly. The non-cb version is used when we just need to send a confirmation message without needing to include the source node address, for example when we want to send a confirmation of a command that was received and processed by the root, but it is not related to any specific node, like a command to change the display or update some global parameter.
 esp_err_t root_send_confirmation_central(char *msg, uint16_t size, char *cualQ)
 {
     if (!msg || !cualQ || size == 0) {
@@ -897,7 +899,7 @@ esp_err_t root_send_confirmation_central(char *msg, uint16_t size, char *cualQ)
 
     return ESP_OK;
 }
-
+// todo review if applicable to shrimp app, this is used to send a confirmation message that includes the source node address, so the central can know which node sent the message and act accordingly, for example when a node sends a lock command to a meter, the meter will send a confirmation back with the node address so the central can know which meter was locked or unlocked and update its records accordingly. The non-cb version is used when we just need to send a confirmation message without needing to include the source node address, for example when we want to send a confirmation of a command that was received and processed by the root, but it is not related to any specific node, like a command to change the display or update some global parameter.
 esp_err_t root_send_confirmation_central_cb(char *msg, char *cualQ, mesh_addr_t *from)
 {
     if (!msg || !cualQ || !from) {
@@ -1781,9 +1783,9 @@ void dispatch_mesh_command(int cualf, cJSON *elcmd, mesh_addr_t *from, mesh_data
         break;
 
     case UPDATEMETER:
-        if ((theConf.debug_flags >> dMESH) & 1U)
-            MESP_LOGI(MESH_TAG, "Mesh Update Mesh Cmd");
-        update_my_meter((char*)data->data);
+        // if ((theConf.debug_flags >> dMESH) & 1U)
+        //     MESP_LOGI(MESH_TAG, "Mesh Update Mesh Cmd");
+        // update_my_meter((char*)data->data);
         break;
 
     case FORMAT:
