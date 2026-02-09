@@ -73,6 +73,7 @@ static void set_debug_flag(const char* value, int bit_position)
  */
 int cmdDebug(int argc, char **argv)
 {
+    char debug_names[][10]={"schedule","mesh","ble","mqtt","xcmds","blow","logic","modbus","limits","rs485","DO","temp"};
     int nerrors = arg_parse(argc, argv, (void **)&dbgArg);
     if (nerrors != 0) {
         arg_print_errors(stderr, dbgArg.end, argv[0]);
@@ -127,6 +128,12 @@ int cmdDebug(int argc, char **argv)
             theConf.debug_flags = 0;
     }
     
+    for (int i=0; i<sizeof(debug_names)/sizeof(debug_names[0]); i++)
+    {
+        if((theConf.debug_flags >> i) & 1U)
+            printf("%s ", debug_names[i]);
+    }
+    printf("\n");
     MESP_LOGI(TAG,"Debug %x ", theConf.debug_flags);
     write_to_flash();
 

@@ -19,7 +19,6 @@
 
 #ifndef MONGOOSE_H
 #define MONGOOSE_H
-
 #define MG_VERSION "7.20"
 
 #ifdef __cplusplus
@@ -892,7 +891,7 @@ struct timeval {
 
 
 #ifndef MG_ENABLE_LOG
-#define MG_ENABLE_LOG 1
+#define MG_ENABLE_LOG 0
 #endif
 
 #ifndef MG_ENABLE_CUSTOM_CALLOC

@@ -153,7 +153,6 @@ static inline int should_disable_settings(void)
 		que= 11;
 	else	
 		que=(theConf.meterconf > CONF_STATE_PENDING) ? 1 : 0;
-		printf("Should %d\n",que);
 	return que;
 }
 
