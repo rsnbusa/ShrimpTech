@@ -332,11 +332,11 @@ void show_device_info(time_t bootdate, time_t guardDate)
     printf("├─────────────────────────────────────────────────────────────┤\n");
        //  printf("%s", RESETC);
     if(theConf.wifi_mode==0)
-       printf("│ Network: %-2s |          | Base Time: %2d | Repeat Timer: %2d   │\n", 
-              theConf.wifi_mode?"M ":"W ", theConf.baset, theConf.repeat);
-    if(theConf.wifi_mode)
-       printf("│ Network: %-2s | MeshW: %c | Base Time: %2d | Repeat Timer: %2d   │\n", 
-           theConf.wifi_mode?"M ":"W ", theConf.mesh_wifi?'Y':'N', theConf.baset, theConf.repeat);
+       printf("│ Network: %-2s |          | MQTT Time: %2d | MuxDiv Timer: %2d   │\n", 
+              "W ", theConf.collectimer, theConf.test_timer_div);
+    if(theConf.wifi_mode)   
+       printf("│ Network: %-2s | MeshW: %c | MQTT Time: %2d | MuxDiv Timer: %2d   │\n", 
+           "M ", theConf.mesh_wifi?'Y':'N', theConf.collectimer, theConf.test_timer_div);
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
 
 }

@@ -369,7 +369,7 @@ void my_set_system(struct system *data) {
 	
 	// Apply settings with safe string operations
 	theConf.test_timer_div = s_system.repeat_val;
-	theConf.repeat = s_system.baset_val;
+	theConf.collectimer = s_system.baset_val;
 	
 	SAFE_STRCPY(theConf.kpass, s_system.password_val, sizeof(theConf.kpass));
 	
@@ -430,7 +430,7 @@ void my_get_system(struct system *data)
 	}
 	
 	s_system.repeat_val = theConf.test_timer_div;
-	s_system.baset_val = theConf.repeat;
+	s_system.baset_val = theConf.collectimer;
 	
 	SAFE_STRCPY(s_system.password_val, theConf.kpass, sizeof(s_system.password_val));
 	SAFE_STRCPY(s_system.loglevel_val, levels[theConf.loglevel], sizeof(s_system.loglevel_val));

@@ -383,7 +383,7 @@ typedef struct config {
     char                mqttServer[100], mqttUser[50],mqttPass[50],thessid[40], thepass[20];
     uint32_t            totalnodes;  // Exact number of nodes in this pool
     uint16_t            conns;       // Time to wait before sending metrics in ms
-    uint16_t            repeat;
+    uint16_t            collectimer;
     char                kpass[20];
     time_t              lastKnownDate;
     int                 mqttcertlen;

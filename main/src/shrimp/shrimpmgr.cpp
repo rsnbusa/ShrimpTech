@@ -750,9 +750,9 @@ int update_my_meter(char *cmd)
         // if(skn)
         //     theConf.maxSkips=skn->valueint;
         if (baset)
-            theConf.baset = baset->valueint;
+            theConf.collectimer = baset->valueint;
         if (repeatt)
-            theConf.repeat = repeatt->valueint;
+            theConf.test_timer_div = repeatt->valueint;
 
         if (sk || skn || baset || repeatt)
             write_to_flash();
@@ -1302,7 +1302,7 @@ void wifi_send_meter_data(TimerHandle_t algo)
         MESP_LOGE(MESH_TAG, "Error publishing meter data to MQTT HQ");
         free(shmsg);
         return;
-    }
+    }        
 
     free(shmsg);
 }
@@ -1537,7 +1537,7 @@ void process_binary_mesh_msg(mesh_addr_t *from, mesh_data_t *data, uint32_t rese
  * 
  * @param order Order name (start, stop, pause, resume)
  */
-void log_production_order(const char *order)
+void log_production_order(uint8_t prof,uint8_t pday,uint8_t  pmux,const char *order)
 {
     if ((theConf.debug_flags >> dMESH) & 1U)
         MESP_LOGI(MESH_TAG, "%sMesh Production Cmd order to %s", DBG_MESH, order);
@@ -1548,7 +1548,7 @@ void log_production_order(const char *order)
         return;
     }
 
-    snprintf(log_msg, 200, "Mesh Production Cmd order to %s", order);
+    snprintf(log_msg, 200, "Mesh Production Cmd order to %s Profile %d Day %d Mux %d", order, prof, pday, pmux  );
     writeLog(log_msg);
     free(log_msg);
 }
@@ -1556,18 +1556,18 @@ void log_production_order(const char *order)
 /**
  * @brief Handle production start order
  */
-void handle_production_start(void)
+void handle_production_start(uint8_t prof,uint8_t pday,uint8_t  pmux)
 {
-    log_production_order("Start");
+    log_production_order(prof, pday, pmux,"Start");
     xSemaphoreGive(workTaskSem);
 }
 
 /**
  * @brief Handle production stop order
  */
-void handle_production_stop(void)
+void handle_production_stop(uint8_t prof,uint8_t pday,uint8_t  pmux)
 {
-    log_production_order("Stop");
+    log_production_order(prof, pday, pmux,"Stop");
     
     if (scheduleHandle) {
         vTaskDelete(scheduleHandle);
@@ -1579,18 +1579,18 @@ void handle_production_stop(void)
 /**
  * @brief Handle production pause order
  */
-void handle_production_pause(void)
+void handle_production_pause(uint8_t prof,uint8_t pday,uint8_t  pmux)
 {
-    log_production_order("Pause");
+    log_production_order(prof, pday, pmux,"Pause");
     pausef = true;
 }
 
 /**
  * @brief Handle production resume order
  */
-void handle_production_resume(void)
+void handle_production_resume(uint8_t prof,uint8_t pday,uint8_t  pmux)
 {
-    log_production_order("Resume");
+    log_production_order(prof, pday, pmux,"Resume");
     pausef = false;
 }
 
@@ -1646,14 +1646,15 @@ void child_production(cJSON *elcmd)
     update_production_config(prof, pday, pmux);
 
     // Dispatch to appropriate handler based on order
+
     if (strcmp(order_str, "start") == 0) {
-        handle_production_start();
+        handle_production_start(prof->valueint, pday->valueint, pmux->valueint);
     } else if (strcmp(order_str, "stop") == 0) {
-        handle_production_stop();
+        handle_production_stop(prof->valueint, pday->valueint, pmux->valueint);
     } else if (strcmp(order_str, "pause") == 0) {
-        handle_production_pause();
+        handle_production_pause(prof->valueint, pday->valueint, pmux->valueint);
     } else if (strcmp(order_str, "resume") == 0) {
-        handle_production_resume();
+        handle_production_resume(prof->valueint, pday->valueint, pmux->valueint);
     } else {
         MESP_LOGW(MESH_TAG, "%sUnknown production order: %s", DBG_MESH, order_str);
     }
@@ -1913,7 +1914,7 @@ err_t write_log(char *LTAG, char *que)
         return ESP_FAIL;
     }
 
-    snprintf(log_entry, 1000, "%s:%s:%s\n", LTAG, time_str, que);
+    snprintf(log_entry, 1000, "[%s][%s] %s\n", LTAG, time_str, que);
     fprintf(f, "%s", log_entry);
 
     fclose(f);
@@ -2389,7 +2390,7 @@ void root_mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t 
         break;
     case MQTT_EVENT_PUBLISHED:
         if((theConf.debug_flags >> dMQTT) & 1U)
-            MESP_LOGI(MESH_TAG, "%sMQTT_EVENT_PUBLISHED, msg_id=%d", DBG_MQTT, event->msg_id);
+            MESP_LOGI(MESH_TAG, "%sMQTT_EVENT_PUBLISHED, msg_id=%d Heap %d", DBG_MQTT, event->msg_id,esp_get_free_heap_size());
         xEventGroupSetBits(wifi_event_group, PUB_BIT);
         break;
     case MQTT_EVENT_DATA:
@@ -3114,7 +3115,7 @@ void init_global_state_flags(void)
     oledDisp = NULL;
     meshf = false;
     mqttErrors = 0;
-    BASETIMER = theConf.baset;
+    BASETIMER = theConf.collectimer;
     
     // Mesh configuration
     mesh_layer = -1;
@@ -3311,8 +3312,8 @@ uint32_t calculate_permanent_delivery_time(void)
         permanent_time = 500;
     }
     
-    if (theConf.repeat < 1) {
-        theConf.repeat = 1;
+    if (theConf.collectimer < 1) {
+        theConf.collectimer = 1;
     }
     
     return permanent_time;
@@ -3342,8 +3343,7 @@ void init_system_timers(void)
     );
     
     // Meter collection timer (based on WiFi mode)
-    // uint32_t collection_period = theConf.repeat * 25000;        // for testing every 10s
-    uint32_t collection_period = theConf.repeat * 10000;        // in minutes to ms
+    uint32_t collection_period = theConf.collectimer * 60000;        // in minutes to ms
     TimerCallbackFunction_t collection_callback = 
         (theConf.wifi_mode > 0) ? root_collect_meter_data : wifi_send_meter_data;
     BaseType_t collection_autoreload = 
@@ -3530,7 +3530,7 @@ void init_default_timing(void)
 {
     theConf.loglevel = 3;
     theConf.baset = 10;
-    theConf.repeat = 25;                            // Change before production
+    theConf.collectimer = 25;                            // Change before production
     theConf.totalnodes = EXPECTED_NODES;
     theConf.conns = EXPECTED_CONNS;
     bzero(&start_timers,sizeof(start_timers));
@@ -3876,8 +3876,8 @@ void root_mqtt_sender(void *pArg)
 
 //     // collect_meter_data(NULL);           // first time 
     
-//     // collectTimer=xTimerCreate("Timer",pdMS_TO_TICKS(permanent_time*theConf.repeat),pdFALSE,( void * ) ulCount, collect_meter_data);    //no repeat, manually start it
-//     // collectTimer=xTimerCreate("Timer",pdMS_TO_TICKS(permanent_time*theConf.repeat),pdTRUE,( void * ) ulCount, collect_meter_data);    // every hour for now
+//     // collectTimer=xTimerCreate("Timer",pdMS_TO_TICKS(permanent_time*theConf.collectimer),pdFALSE,( void * ) ulCount, collect_meter_data);    //no repeat, manually start it
+//     // collectTimer=xTimerCreate("Timer",pdMS_TO_TICKS(permanent_time*theConf.collectimer),pdTRUE,( void * ) ulCount, collect_meter_data);    // every hour for now
 //     if( xTimerStart(collectTimer, 0 ) != pdPASS )
 //         MESP_LOGE(MESH_TAG,"Repeat Timer failed");
 //  }
@@ -3957,7 +3957,7 @@ bool create_and_start_collection_timer(void)
 {
     firstTimer = xTimerCreate(
         "Timer",
-        pdMS_TO_TICKS(100 * theConf.baset),
+        pdMS_TO_TICKS(100 * theConf.collectimer),
         pdFALSE,
         (void*)10,
         [](TimerHandle_t xTimer) {
@@ -4006,8 +4006,8 @@ void root_set_senddata_timer()
     localtime_r(&now, &timeinfo);
     
     // Ensure baset has a minimum value
-    if (theConf.baset < 1) {
-        theConf.baset = 10;
+    if (theConf.collectimer < 1) {
+        theConf.collectimer = 10;
     }
     
     int cycles = theConf.totalnodes / theConf.conns;
@@ -4015,7 +4015,7 @@ void root_set_senddata_timer()
         cycles = 1;
     }
     
-    MESP_LOGI(MESH_TAG, "Setting senddata timer: cycles=%d, baset=%d", cycles, theConf.baset);
+    MESP_LOGI(MESH_TAG, "Setting senddata timer: cycles=%d, baset=%d", cycles, theConf.collectimer);
     
     if (esp_mesh_is_root()) {
         calculate_current_cycle(now, cycles);
@@ -4999,7 +4999,7 @@ void handle_past_schedule_in_progress(time_t endtime, time_t now, int ck
         format_log_time(endtime, time_str, 30);
         format_log_time(now, time_str2, 30);
 
-      printf( "%sScheduling Profile %d Ending %d in %lld ms(%s | %lld) now %s - %lld Last %s\n", 
+      printf( "%sScheduling Profile %d Timer Ending %d in %lld ms(%s | %lld) now %s - %lld Last %s\n", 
                  DBG_SCH, theConf.activeProfile,countTimersEnd, remaining , time_str, endtime, time_str2, now,ctx_timers[ck_h]->isLast ? "YES" : "NO");
     }  
     elapsed[ck_h] = time(NULL);     // consider now as start time since its started manually. countimersstart is 1 ahead so use countendtimers
@@ -5071,7 +5071,7 @@ bool create_future_timers(time_t starttime, time_t endtime, time_t now,
     if ((theConf.debug_flags >> dSCH) & 1U) {
         format_log_time(starttime,time_str,30);
         format_log_time(now,time_str2,30);
-        MESP_LOGI(TAG, "%s Profile %d  %d Start in %d ms [ %s | %llu ] now [ %s | %llu ] Mux %ld", 
+        MESP_LOGI(TAG, "%s Profile %d  Timer %d Start in %d ms [ %s | %llu ] now [ %s | %llu ] Mux %ld", 
                  DBG_SCH, theConf.activeProfile,ctx_timers[ck_h]->timerNum, delay_int, time_str,starttime, time_str2,now,theConf.test_timer_div);
                 //  DBG_SCH, countTimersStart, delay_int, time_str,starttime, time_str2,now,theConf.test_timer_div);
     }
@@ -5094,8 +5094,8 @@ bool create_future_timers(time_t starttime, time_t endtime, time_t now,
 
         format_log_time(endtime,time_str,30);
         format_log_time(now,time_str2,30);
-        MESP_LOGI(TAG, "%s Profile %d  %d Ending in %d ms [%s | %llu ] now %s | [ %llu Mux %ld ] is Last %s", 
-                 DBG_SCH, ck_h, delay_int, time_str, endtime, time_str2, now,theConf.test_timer_div, ctx_timers[ck_h]->isLast ? "YES" : "NO" );
+        MESP_LOGI(TAG, "%s Profile %d  Timer %d Ending in %d ms [%s | %llu ] now %s | [ %llu Mux %ld ] is Last %s", 
+                 DBG_SCH, theConf.activeProfile, ctx_timers[ck_h]->timerNum, delay_int, time_str, endtime, time_str2, now, theConf.test_timer_div, ctx_timers[ck_h]->isLast ? "YES" : "NO" );
                 //  DBG_SCH, countTimersEnd, delay_int, time_str, endtime, time_str2, now,theConf.test_timer_div, ctx->isLast ? "YES" : "NO" );
     }                                           
 
@@ -5902,7 +5902,7 @@ void app_main(void)
     esp_err_t ret;
 
     init_process();  
-webserverf=false;
+    webserverf=false;
 
     // printf("DO Active %d Setpoint %f KP %f KI %f KD %f Night %d\n",theConf.doParms.docontrol,theConf.doParms.setpoint,
     //     theConf.doParms.KP,theConf.doParms.KI,theConf.doParms.KD,theConf.doParms.nighonly);
@@ -5938,9 +5938,9 @@ webserverf=false;
 #ifdef DEBB
     xTaskCreate(&kbd,"kbd",1024*10,NULL, 5, NULL); 	        // keyboard commands
 #endif
-printf("PV PAnel %d Battery %d Energy %d Solar System %d SolarPad %d Union %d SmpMsg %d timet %d float %d Config %d tickType %d\n",sizeof(pvPanel_t),sizeof(battery_t),
-sizeof(energy_t),sizeof(solarSystem_t),sizeof(solarDef_t),sizeof(meshunion_t),sizeof(shrimpMsg_t),sizeof(time_t),sizeof(float),
-sizeof(theConf), sizeof(TickType_t)); 
+// printf("PV PAnel %d Battery %d Energy %d Solar System %d SolarPad %d Union %d SmpMsg %d timet %d float %d Config %d tickType %d\n",sizeof(pvPanel_t),sizeof(battery_t),
+// sizeof(energy_t),sizeof(solarSystem_t),sizeof(solarDef_t),sizeof(meshunion_t),sizeof(shrimpMsg_t),sizeof(time_t),sizeof(float),
+// sizeof(theConf), sizeof(TickType_t)); 
 
     if(theConf.meterconf==0  )  // is this meter NOT configured
     {
