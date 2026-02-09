@@ -5319,7 +5319,7 @@ uint32_t handle_day_end(uint8_t workingday)
  * 
  * @param ck_d Current day counter within cycle
  */
-void send_start_day_host(uint8_t ck_d)
+void send_start_day_host(uint8_t ck_d, char *msg, char * cualQueue)
 {
     time_t now;
     time(&now);
@@ -5339,7 +5339,7 @@ void send_start_day_host(uint8_t ck_d)
     cJSON_AddNumberToObject(root, "poolid", theConf.poolid);
     cJSON_AddNumberToObject(root, "unitid", theConf.unitid);
     cJSON_AddNumberToObject(root, "day", ck_d);
-    cJSON_AddStringToObject(root, "msg", "Started Day Cycle");
+    cJSON_AddStringToObject(root, "msg", msg);
     
     char *json_msg = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
@@ -5351,14 +5351,14 @@ void send_start_day_host(uint8_t ck_d)
     
     if(theConf.wifi_mode==0)
     {  
-        esp_mqtt_client_publish(clientCloud, (char*)controlQueue, (char*)json_msg, strlen(json_msg), QOS1, NORETAIN);
+        esp_mqtt_client_publish(clientCloud, (char*)cualQueue, (char*)json_msg, strlen(json_msg), QOS1, NORETAIN);
         free(json_msg);
         return;
     }
 
     mqttSender_t mensaje;
     bzero(&mensaje, sizeof(mensaje));
-    mensaje.queue = controlQueue;
+    mensaje.queue = cualQueue;
     mensaje.msg = json_msg;
     mensaje.lenMsg = strlen(json_msg);
     
@@ -5470,7 +5470,7 @@ void start_schedule_timers(void * pArg)
                 {
                     if(ck_h==0)
                     {
-                        send_start_day_host(ck_d);
+                        send_start_day_host(ck_d, "Started Day Cycle", controlQueue);
                     }
                     if (!process_horario(ck, ck_d, ck_h, midn, nows))
                     {
@@ -5835,9 +5835,11 @@ void blower_start(TimerHandle_t xTimer)
     theBlower.getEnergy(&currentamps,&dummy,&dummy,&dummy,&dummyf,&dummyf,&dummyf,&dummyf,&dummyf,&dummyf); // get current amps form the blower
 
     if(energy_amps>currentamps)
+    {
         if ((theConf.debug_flags >> dSCH) & 1U) 
             MESP_LOGW(TAG, "Schedule Start Check Energy NOT OK amps Availble %d needed %d",currentamps,energy_amps); 
-        // todo send mqtt msg to host Emergency/Alarm
+            send_start_day_host(start_timer_ctx->day, "Schedule Start Check Energy NOT OK", alarmQueue);
+    }
     
     turn_blower_onOff(true);
 
