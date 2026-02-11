@@ -976,7 +976,7 @@ esp_err_t root_average_Solar(solarSystem_t *accum, solarSystem_t *src, uint8_t c
 
     return ESP_OK;
 }
-
+/* original routine to send collected nodes to central server via mqtt
 esp_err_t root_send_collected_nodes(uint32_t cuantos)        //root only
 {
     if (cuantos == 0) {
@@ -1078,6 +1078,167 @@ esp_err_t root_send_collected_nodes(uint32_t cuantos)        //root only
 
     //must set the wifi_event_bit SEND_MQTT_BIT, else it will just collect the message in the queue
     xEventGroupSetBits(wifi_event_group, SENDMQTT_BIT); // Send everything now !!!!!
+
+    return ESP_OK;
+}*/
+/**
+ * @brief Helper to restart collection timer
+ */
+static inline void restart_collect_timer()
+{
+    if (xTimerStart(collectTimer, 0) != pdPASS)
+        MESP_LOGE(MESH_TAG, "Failed to restart collect timer");
+}
+
+/**
+ * @brief Count and validate nodes with data
+ * 
+ * @param node_count Total nodes in routing table
+ * @return Number of valid nodes, or -1 on complete failure
+ */
+static int count_valid_nodes(uint32_t node_count)
+{
+    int valid = 0;
+    for (uint32_t a = 0; a < node_count; a++) {
+        if (masterNode.theTable.thedata[a])
+            valid++;
+        else
+            MESP_LOGE(MESH_TAG, "Null data at node %d " MACSTR, a, 
+                     MAC2STR(masterNode.theTable.big_table[a].addr));
+    }
+    return valid;
+}
+
+/**
+ * @brief Aggregate solar data from all valid nodes
+ * 
+ * @param valid_count Number of valid nodes to average
+ * @return Pointer to aggregated solar data, or NULL on error
+ */
+static solarSystem_t* aggregate_node_data(uint32_t node_count, int valid_count)
+{
+    if (valid_count <= 0)
+        return nullptr;
+
+    solarSystem_t *solarPad = (solarSystem_t*)calloc(1, sizeof(solarSystem_t));
+    if (!solarPad) {
+        MESP_LOGE(MESH_TAG, "No RAM for solarPad");
+        return nullptr;
+    }
+
+    for (uint32_t a = 0; a < node_count; a++) {
+        if (!masterNode.theTable.thedata[a])
+            continue;
+
+        meshunion_t *meshMsg = (meshunion_t*)masterNode.theTable.thedata[a];
+        solarSystem_t *solar = &meshMsg->nodedata.solarData.solarSystem;
+        root_average_Solar(solarPad, solar, valid_count);
+    }
+
+    return solarPad;
+}
+
+/**
+ * @brief Create shrimp message from aggregated data
+ * 
+ * @param solarPad Aggregated solar system data
+ * @param valid_count Number of nodes averaged
+ * @return Pointer to shrimpMsg_t, or NULL on error
+ */
+static shrimpMsg_t* create_shrimp_message(solarSystem_t *solarPad, int valid_count)
+{
+    shrimpMsg_t *shmsg = (shrimpMsg_t*)calloc(1, sizeof(shrimpMsg_t));
+    if (!shmsg) {
+        MESP_LOGE(MESH_TAG, "No RAM for shrimpMsg_t");
+        return nullptr;
+    }
+
+    memcpy(&shmsg->poolAvgMetrics, solarPad, sizeof(solarSystem_t));
+    
+    wschedule_t *scheduleData = theBlower.getSchedulePtr();
+    if (scheduleData)
+        memcpy(&shmsg->poolAvgMetrics.wschedule, scheduleData, sizeof(wschedule_t));
+
+    print_blower("Root Average Solar Data", &shmsg->poolAvgMetrics, false);
+    
+    shmsg->msgTime    = time(NULL);
+    shmsg->poolid     = theConf.poolid;
+    shmsg->countnodes = valid_count;
+    shmsg->centinel   = 0x12345678;
+    shmsg->lim_errs   = globalErrors;
+
+    return shmsg;
+}
+
+esp_err_t root_send_collected_nodes(uint32_t cuantos)        //root only
+{
+    // Early return for empty node list
+    if (cuantos == 0) {
+        MESP_LOGW(MESH_TAG, "No nodes to send");
+        sendMeterf = false;
+        restart_collect_timer();
+        return ESP_OK;
+    }
+
+    // Log collection attempt
+    if ((theConf.debug_flags >> dMESH) & 1U)
+        MESP_LOGW(MESH_TAG, "%sCollected NODES heap %d nodes %d", 
+                 DBG_MESH, esp_get_free_heap_size(), cuantos);
+
+    // Validate and count nodes with data
+    int valid_nodes = count_valid_nodes(cuantos);
+    if (valid_nodes <= 0) {
+        MESP_LOGE(MESH_TAG, "No valid node data to aggregate");
+        sendMeterf = false;
+        restart_collect_timer();
+        return ESP_FAIL;
+    }
+
+    // Aggregate data from all valid nodes
+    solarSystem_t *solarPad = aggregate_node_data(cuantos, valid_nodes);
+    if (!solarPad) {
+        sendMeterf = false;
+        restart_collect_timer();
+        return ESP_FAIL;
+    }
+
+    // Create MQTT message with aggregated data
+    shrimpMsg_t *shmsg = create_shrimp_message(solarPad, valid_nodes);
+    free(solarPad);  // No longer needed after message creation
+    
+    if (!shmsg) {
+        sendMeterf = false;
+        restart_collect_timer();
+        return ESP_FAIL;
+    }
+
+    // Clean up routing table
+    if (root_delete_routing_table() != ESP_OK) {
+        MESP_LOGE(MESH_TAG, "Error deleting routing table");
+        free(shmsg);
+        sendMeterf = false;
+        restart_collect_timer();
+        return ESP_FAIL;
+    }
+
+    // Queue message for MQTT transmission
+    mqttSender_t mqttMsg = {0};
+    mqttMsg.queue  = infoQueue;
+    mqttMsg.msg    = (char*)shmsg;  // freed by mqtt sender
+    mqttMsg.lenMsg = sizeof(shrimpMsg_t);
+    mqttMsg.code   = NULL;
+    mqttMsg.param  = NULL;
+
+    if (xQueueSend(mqttSender, &mqttMsg, 0) != pdTRUE) {
+        MESP_LOGE(MESH_TAG, "Error queueing MQTT message");
+        free(shmsg);
+        sendMeterf = false;
+        restart_collect_timer();
+        return ESP_FAIL;
+    }
+
+    // Trigger immediate MQTT transmission
+    xEventGroupSetBits(wifi_event_group, SENDMQTT_BIT);
 
     return ESP_OK;
 }
@@ -3100,7 +3261,6 @@ void init_global_state_flags(void)
     mesh_on = false;
     logCount = 0;
     pausef = schedulef = false;
-    ck = ck_d = ck_h = 0;
     scheduleHandle = NULL;
     wifiready = false;
     showHandle = NULL;
@@ -4901,7 +5061,7 @@ esp_err_t root_check_schedule(mesh_addr_t *who, void* ladata)
  * @param timer_num Timer array index
  * @return Allocated context or NULL on failure
  */
-start_timer_ctx_t* create_timer_context(uint8_t cycle, uint8_t day, int horario, int cuantos)
+start_timer_ctx_t* create_timer_context(uint8_t cycle,  int horario, int cuantos)
 {
     start_timer_ctx_t* ctx = (start_timer_ctx_t*)calloc(1, sizeof(start_timer_ctx_t));
     if (!ctx) {
@@ -4910,7 +5070,7 @@ start_timer_ctx_t* create_timer_context(uint8_t cycle, uint8_t day, int horario,
     }
     
     ctx->cycle = cycle;
-    ctx->day = day;
+    ctx->day = 0;
     ctx->horario = horario;
     ctx->tostart = theConf.profiles[theConf.activeProfile].cycle[cycle].horarios[horario].hourStart;
     ctx->horaslen = theConf.profiles[theConf.activeProfile].cycle[cycle].horarios[horario].horarioLen;
@@ -4920,12 +5080,12 @@ start_timer_ctx_t* create_timer_context(uint8_t cycle, uint8_t day, int horario,
     
      if ((theConf.debug_flags >> dSCH) & 1U) {
         MESP_LOGI(TAG, "%sCreated timer context for Cycle %d Day %d Hour %d Start %d Len %d PWM %d Last %s", 
-                 DBG_SCH, cycle, day, horario, ctx->tostart, ctx->horaslen, ctx->pwm, ctx->isLast ? "YES" : "NO");
+                 DBG_SCH, ctx->cycle, ctx->day, horario, ctx->tostart, ctx->horaslen, ctx->pwm, ctx->isLast ? "YES" : "NO");
     }   
     return ctx;
 }
 
-bool make_timer(int ck,int ck_d,int cuantos)
+bool make_timer(int ck,int cuantos)
 {
 
     if (cuantos >= MAXHORARIOS  || cuantos <= 0) 
@@ -4936,10 +5096,10 @@ bool make_timer(int ck,int ck_d,int cuantos)
   
     for (int a=0;a<cuantos;a++)
     {
-        ctx_timers[a] = create_timer_context(ck, ck_d, a, cuantos);
+        ctx_timers[a] = create_timer_context(ck, a, cuantos);
         if (!ctx_timers[a] ) 
         {
-            MESP_LOGE(MESH_TAG, "Failed to create timer context for cycle %d day %d hour %d", ck, ck_d, a);  
+            MESP_LOGE(MESH_TAG, "Failed to create timer context for cycle %d hour %d", ck, a);  
             return ESP_FAIL;
         }
 
@@ -4947,7 +5107,7 @@ bool make_timer(int ck,int ck_d,int cuantos)
                                            pdFALSE, (void*) ctx_timers[a], blower_start);
         if (start_timers[a] == NULL) 
         {
-            MESP_LOGE(MESH_TAG, "Failed to create start timer for cycle %d day %d hour %d", ck, ck_d, a);
+            MESP_LOGE(MESH_TAG, "Failed to create start timer for cycle %d hour %d", ck, a);
             for (int b=0;b<a;b++)
                 free(ctx_timers[b]);
             return ESP_FAIL;   
@@ -4957,7 +5117,7 @@ bool make_timer(int ck,int ck_d,int cuantos)
                                            pdFALSE, (void*) ctx_timers[a], blower_end);
         if (end_timers[a] == NULL) 
         {
-            MESP_LOGE(MESH_TAG, "Failed to create end timer for cycle %d day %d hour %d", ck, ck_d, a);
+            MESP_LOGE(MESH_TAG, "Failed to create end timer for cycle %d hour %d", ck, a);
             for (int b=0;b<a;b++)
                 free(ctx_timers[b]);       //  free all ctx up to this point
             return ESP_FAIL;   
@@ -4991,8 +5151,8 @@ void handle_past_schedule_in_progress(time_t endtime, time_t now, int ck
         format_log_time(endtime, time_str, 30);
         format_log_time(now, time_str2, 30);
 
-      printf( "%sScheduling Profile %d Timer Ending %d in %lld ms(%s | %lld) now %s - %lld Last %s\n", 
-                 DBG_SCH, theConf.activeProfile,countTimersEnd, remaining , time_str, endtime, time_str2, now,ctx_timers[ck_h]->isLast ? "YES" : "NO");
+      MESP_LOGI(TAG,"%sScheduling Profile %d Timer Ending %d in %ld ms(%s | %ld) now %s - %ld Last %s\n", 
+                 DBG_SCH, theConf.activeProfile,countTimersEnd, remaining , time_str, (long)endtime, time_str2, (long)now,ctx_timers[ck_h]->isLast ? "YES" : "NO");
     }  
     elapsed[ck_h] = time(NULL);     // consider now as start time since its started manually. countimersstart is 1 ahead so use countendtimers
     if(remaining<=0)
@@ -5041,7 +5201,7 @@ bool validate_timer_delay(time_t delay_ms)
  * @return true on success, false if validation failed
  */
 bool create_future_timers(time_t starttime, time_t endtime, time_t now,
-                               int ck_h, int num_horarios)
+                               int lck_h, int num_horarios)
 {
     char time_str[30],time_str2[30];
 
@@ -5064,30 +5224,30 @@ bool create_future_timers(time_t starttime, time_t endtime, time_t now,
         format_log_time(starttime,time_str,30);
         format_log_time(now,time_str2,30);
         MESP_LOGI(TAG, "%s Profile %d  Timer %d Start in %d ms [ %s | %llu ] now [ %s | %llu ] Mux %ld", 
-                 DBG_SCH, theConf.activeProfile,ctx_timers[ck_h]->timerNum, delay_int, time_str,starttime, time_str2,now,theConf.test_timer_div);
+                 DBG_SCH, theConf.activeProfile,ctx_timers[lck_h]->timerNum, delay_int, time_str,starttime, time_str2,now,theConf.test_timer_div);
                 //  DBG_SCH, countTimersStart, delay_int, time_str,starttime, time_str2,now,theConf.test_timer_div);
     }
     
     // set the correct timing here
-    xTimerChangePeriod(start_timers[ck_h], pdMS_TO_TICKS(delay_int), portMAX_DELAY);
-    if(xTimerStart(start_timers[ck_h], portMAX_DELAY) != pdPASS)
-        MESP_LOGE(MESH_TAG, "Failed to start start timer %d for past schedule",ck_h);
+    xTimerChangePeriod(start_timers[lck_h], pdMS_TO_TICKS(delay_int), portMAX_DELAY);
+    if(xTimerStart(start_timers[lck_h], portMAX_DELAY) != pdPASS)
+        MESP_LOGE(MESH_TAG, "Failed to start start timer %d for past schedule",lck_h);
     
     // Create end timer
     delay_int =end_delay;
 
     // ctx->isLast=(ck_h == num_horarios - 1)? true : false;
-    xTimerChangePeriod(end_timers[ck_h], pdMS_TO_TICKS(delay_int), portMAX_DELAY);
+    xTimerChangePeriod(end_timers[lck_h], pdMS_TO_TICKS(delay_int), portMAX_DELAY);
 
-    if(xTimerStart(end_timers[ck_h], portMAX_DELAY) != pdPASS)
-        MESP_LOGE(MESH_TAG, "Failed to start end timer %d for past schedule",ck_h);
+    if(xTimerStart(end_timers[lck_h], portMAX_DELAY) != pdPASS)
+        MESP_LOGE(MESH_TAG, "Failed to start end timer %d for past schedule",lck_h);
     
     if ((theConf.debug_flags >> dSCH) & 1U) {
 
         format_log_time(endtime,time_str,30);
         format_log_time(now,time_str2,30);
         MESP_LOGI(TAG, "%s Profile %d  Timer %d Ending in %d ms [%s | %llu ] now %s | [ %llu Mux %ld ] is Last %s", 
-                 DBG_SCH, theConf.activeProfile, ctx_timers[ck_h]->timerNum, delay_int, time_str, endtime, time_str2, now, theConf.test_timer_div, ctx_timers[ck_h]->isLast ? "YES" : "NO" );
+                 DBG_SCH, theConf.activeProfile, ctx_timers[lck_h]->timerNum, delay_int, time_str, endtime, time_str2, now, theConf.test_timer_div, ctx_timers[lck_h]->isLast ? "YES" : "NO" );
                 //  DBG_SCH, countTimersEnd, delay_int, time_str, endtime, time_str2, now,theConf.test_timer_div, ctx->isLast ? "YES" : "NO" );
     }                                           
 
@@ -5119,24 +5279,19 @@ bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, time_t now
 {
     char  time_str[30],now_str[30];
 
-    // while (pausef) {
-    //     delay(1000);
-    // }
-    // create a context structure for every pair of start-end timers
-    // start_timer_ctx_t* ctx = create_timer_context(ck, ck_d, ck_h, countTimersEnd);  //all tiemr are in pairs
-    // if (!ctx) {
-    //     return false;
-    // }
-    
     const auto& horario = theConf.profiles[theConf.activeProfile].cycle[ck].horarios[ck_h];
-    time_t starttime = time_t(midn + (uint64_t)(horario.hourStart )*3600 +(uint64_t)(horario.minutesStart)*60);
-    time_t endtime = time_t(starttime + (uint64_t)( horario.horarioLen));
+    time_t starttime = midn;
+    starttime += horario.hourStart *3600;
+    starttime += horario.minutesStart*60;
+
+    time_t endtime = starttime;
+    endtime +=  horario.horarioLen;
     int64_t son=endtime-starttime;
     int32_t son32=son;
      
     if ((theConf.debug_flags >> dSCH) & 1U) 
-        MESP_LOGI(TAG, "%sP-%d C-%d D-%d H-%d %d secs %d hours Start %lld End %lld Timer %d", DBG_SCH,  theConf.activeProfile,ck, ck_d, ck_h,
-             horario.horarioLen,horario.horarioLen /3600,starttime,endtime ,countTimersEnd);
+        MESP_LOGI(TAG, "%sP-%d C-%d D-%d H-%d %d secs %d hours Start %lld End %lld Timer %d mid  %lld now %lld", DBG_SCH,  theConf.activeProfile,ck, ck_d, ck_h,
+             horario.horarioLen,horario.horarioLen /3600,starttime,endtime ,countTimersEnd,midn, now);
     
     // Schedule already started
     if (starttime < now) { // past schedule
@@ -5241,8 +5396,11 @@ uint32_t handle_day_end(uint8_t workingday)
     struct tm *timeinfo = localtime(&current);
     uint8_t currentDay= timeinfo->tm_mday;
 
+
     if(countTimersEnd==0)       //no timers active
     {
+        format_log_time(current, time_str1, 30);
+        MESP_LOGI(TAG,"Handle Day End no counters %s Current Day %d\n",time_str1,currentDay);
         timeinfo->tm_hour = 0;
         timeinfo->tm_min = 0;
         timeinfo->tm_sec = 0;
@@ -5255,30 +5413,24 @@ uint32_t handle_day_end(uint8_t workingday)
       if (!xSemaphoreTake(scheduleSem, portMAX_DELAY)) { //wait for blower last timer given by blower end
         return 0;
         }
+// critical to take the time HERE because the start_schedule_timers has been parked here waiting for the 
+// day end handler to take the semaphore and it will only release it after it has done all the schedule updates and set the blower in parked status. So we take the time after we are sure all schedule updates are done and blower is parked, so we have a correct time reference for the next day start.
+    current = time(NULL);
+    timeinfo = localtime(&current);
+    currentDay= timeinfo->tm_mday;
+  
     
-    // cleanup_all_timers();
-
-    if ((theConf.debug_flags >> dSCH) & 1U) {
-        MESP_LOGI(TAG, "%sDay ended Working day %d Today %d", DBG_SCH,workingday,currentDay);
+    if ((theConf.debug_flags >> dSCH) & 1U) 
+    {
+        format_log_time(current, time_str1, 30);
+        MESP_LOGI(TAG,"Handle Day End %s Current Day %d WorkDay %d\n",time_str1,currentDay,workingday);    
     }
 
     if(currentDay>workingday)
         return 0; // we have passed midnight and we are already in the next day, so start immediately
-    // we are in the same day, but we have passed the scheduled end time, so we need to wait for midnight to start the next day cycle
-    // time_t current = time(NULL);
-    // struct tm *timeinfo = localtime(&current);
-    // uint8_t currentHour= timeinfo->tm_hour;
-
-    // if(nextHour>currentHour)
-    // {
-    //     if ((theConf.debug_flags >> dSCH) & 1U) {
-    //         MESP_LOGI(TAG, "%sAfter current hour NH %d CH %d", DBG_SCH,nextHour,currentHour);
-    //     }
-    //     return 0; // we have passed midnight and next hour is still ahead of current time.
-    // }
   
-    // need to wait for midnight and then start normal scheduling process
-   
+    // we are in the same day, but we have passed the scheduled end time, so we need to wait for midnight to start the next day cycle
+
     // Calculate midnight time
     timeinfo->tm_hour = 0;
     timeinfo->tm_min = 0;
@@ -5289,7 +5441,6 @@ uint32_t handle_day_end(uint8_t workingday)
     if(midnight<current)
     {
         MESP_LOGE(TAG, "%sMidnight calculation error now %ld midn %ld", DBG_SCH, (long)current, (long)midnight);
-        // cleanup_all_timers();
         return 0;   
     }
 
@@ -5441,14 +5592,14 @@ void start_schedule_timers(void * pArg)
             struct tm *first_timeinfo = localtime(&first_cycle_day);
 
         // Process all cycles
-        for (ck = cyclestart; ck < theConf.profiles[theConf.activeProfile].numCycles; ck++)
+        for (int ck = cyclestart; ck < theConf.profiles[theConf.activeProfile].numCycles; ck++)
         {
             int day_offset = (ck == cyclestart) ? daystart : 0;     // when starting cycle use daystart passed by cmd else 0 start
      
             // every start of cycle create the timers, start and end will all be the same every day for this cycle, so we create them once and then just start and stop them. if we have a power loss we will know where we are in the cycle and day and we can just start the timers from there
-            make_timer(ck,ck_d,theConf.profiles[theConf.activeProfile].cycle[ck].numHorarios);
+            make_timer(ck,theConf.profiles[theConf.activeProfile].cycle[ck].numHorarios);
             // Process days in cycle
-            for (ck_d = day_offset; ck_d < theConf.profiles[theConf.activeProfile].cycle[ck].duration; ck_d++)
+            for (int ck_d = day_offset; ck_d < theConf.profiles[theConf.activeProfile].cycle[ck].duration; ck_d++)
             { 
                 theBlower.setSchedule(theConf.activeProfile, ck,ck_d,0,0,0,0,BLOWERON); // set the schedule in blower to indicate we are in active schedule mode
 
@@ -5460,6 +5611,8 @@ void start_schedule_timers(void * pArg)
                 midn = get_today_midnight();
                 for (int ck_h = 0; ck_h < theConf.profiles[theConf.activeProfile].cycle[ck].numHorarios; ck_h++)
                 {
+                    ctx_timers[ck_h]->day=ck_d; // update the day in the timer context for this timer
+
                     if(ck_h==0)
                     {
                         send_start_day_host(ck_d, "Started Day Cycle", controlQueue);
@@ -5470,9 +5623,10 @@ void start_schedule_timers(void * pArg)
                         goto restart_schedule; // Timer validation failed, restart
                     }
                 }
-                // Day complete scheduled all timers, wait and cleanup
+                // ! Scheduled all timers, now wait for last timer. THIS WILL EXECUTE INMMEDIATLY 
                 uint8_t newhour=theConf.profiles[theConf.activeProfile].cycle[ck].horarios[0].hourStart; // first hour of next day same cycle
                 uint32_t wait_next_day= handle_day_end(hoytimeinfo->tm_mday);        // the first hour of next day. boundry of end fo cycles later
+                // ! it will wait in the Handle_day_end until we get the last timer (blower-end) or theree are 0 timers activated
                 uint32_t howmuch= (wait_next_day*1000/theConf.test_timer_div)+10000;
                 // wait_mid_night(10000); // in secs->ms and add 10 seconds to be sure we are in the next day
                 wait_mid_night(howmuch); // in secs->ms and add 10 seconds to be sure we are in the next day
