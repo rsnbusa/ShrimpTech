@@ -141,7 +141,9 @@ modbus_sensor_type_t * setModbusSensor(char * sensor_name,int numberDescriptors,
 
 void launch_sensors()
 {
-
+       
+    if(!theConf.modbuson)
+       return;
             // Battery Modbus Device
             modbus_sensor_type_t *battery=setModbusSensor((char*)"Battery",4,4,
                 (void*)&theConf.modbus_battery,DBG_BATTERY,(void*)&batteryData,sizeof(batteryData),&print_battery_data);
@@ -4623,10 +4625,11 @@ esp_err_t wifi_connect_external_ap(void)
     // Configure WiFi AP with SSID "SHRIMP" and password "csttpstt"
     wifi_config_t ap_config = {};
     memset(&ap_config, 0, sizeof(wifi_config_t));
-    
-    strncpy((char*)ap_config.ap.ssid, "shrimp", sizeof(ap_config.ap.ssid) - 1);
+    char thename[20];
+    sprintf(thename,"%s-p-%03d","shrimp",theConf.poolid);
+    strncpy((char*)ap_config.ap.ssid, thename,strlen(thename));
     strncpy((char*)ap_config.ap.password, "csttpstt", sizeof(ap_config.ap.password) - 1);
-    ap_config.ap.ssid_len = strlen("shrimp");
+    ap_config.ap.ssid_len = strlen(thename);
     ap_config.ap.channel = 0;
     ap_config.ap.authmode = WIFI_AUTH_WPA2_PSK;
     ap_config.ap.max_connection = 4;
@@ -5070,7 +5073,7 @@ start_timer_ctx_t* create_timer_context(uint8_t cycle,  int horario, int cuantos
     }
     
     ctx->cycle = cycle;
-    ctx->day = 0;
+    ctx->day = 0;       // will be updated in the start_schedule function based on the day count
     ctx->horario = horario;
     ctx->tostart = theConf.profiles[theConf.activeProfile].cycle[cycle].horarios[horario].hourStart;
     ctx->horaslen = theConf.profiles[theConf.activeProfile].cycle[cycle].horarios[horario].horarioLen;
@@ -5211,8 +5214,8 @@ bool create_future_timers(time_t starttime, time_t endtime, time_t now,
         return false;
     }
 
-    timer_t start_delay = ((starttime - now) / theConf.test_timer_div) * 1000 ;
-    timer_t end_delay = ((endtime - now) / theConf.test_timer_div) * 1000 ;
+    timer_t start_delay = ((starttime - now) *1000)/theConf.test_timer_div ;
+    timer_t end_delay = ((endtime - now) *1000)/theConf.test_timer_div ;
     
     if (!validate_timer_delay(start_delay) || !validate_timer_delay(end_delay)) {
         // free(ctx);
@@ -5229,17 +5232,26 @@ bool create_future_timers(time_t starttime, time_t endtime, time_t now,
     }
     
     // set the correct timing here
-    xTimerChangePeriod(start_timers[lck_h], pdMS_TO_TICKS(delay_int), portMAX_DELAY);
-    if(xTimerStart(start_timers[lck_h], portMAX_DELAY) != pdPASS)
+    ctx_timers[lck_h]->timerSetDate=time(NULL);
+    ctx_timers[lck_h]->timevalstart=delay_int;
+    // all for debugging
+
+    // one more second for overlapping end/start timers in case of very short schedules and timer dividers
+    xTimerChangePeriod(start_timers[lck_h], pdMS_TO_TICKS(delay_int+1000), portMAX_DELAY);
+    if(xTimerStart(start_timers[lck_h], 10) != pdPASS)
         MESP_LOGE(MESH_TAG, "Failed to start start timer %d for past schedule",lck_h);
     
     // Create end timer
     delay_int =end_delay;
 
+        // set the correct timing here
+    ctx_timers[lck_h]->timevalend=delay_int;
+    // all for debugging
+
     // ctx->isLast=(ck_h == num_horarios - 1)? true : false;
     xTimerChangePeriod(end_timers[lck_h], pdMS_TO_TICKS(delay_int), portMAX_DELAY);
 
-    if(xTimerStart(end_timers[lck_h], portMAX_DELAY) != pdPASS)
+    if(xTimerStart(end_timers[lck_h], 10) != pdPASS)
         MESP_LOGE(MESH_TAG, "Failed to start end timer %d for past schedule",lck_h);
     
     if ((theConf.debug_flags >> dSCH) & 1U) {
@@ -5628,15 +5640,15 @@ void start_schedule_timers(void * pArg)
                 uint32_t wait_next_day= handle_day_end(hoytimeinfo->tm_mday);        // the first hour of next day. boundry of end fo cycles later
                 // ! it will wait in the Handle_day_end until we get the last timer (blower-end) or theree are 0 timers activated
                 uint32_t howmuch= (wait_next_day*1000/theConf.test_timer_div)+10000;
-                // wait_mid_night(10000); // in secs->ms and add 10 seconds to be sure we are in the next day
-                wait_mid_night(howmuch); // in secs->ms and add 10 seconds to be sure we are in the next day
+                wait_mid_night(10000); // in secs->ms and add 10 seconds to be sure we are in the next day
+                // wait_mid_night(howmuch); // in secs->ms and add 10 seconds to be sure we are in the next day
                     // else
                     // delay(1000); // in secs->ms and add 10 seconds to be sure
    
                     // for simultions only erase in production
 
                 // delay(5000); // in secs->ms and add 10 seconds to be sure we are in the next day
-/*
+
                 time_t midnn = time(NULL);
                 struct tm *timeinfo = localtime(&midnn);
                 
@@ -5650,7 +5662,7 @@ void start_schedule_timers(void * pArg)
                         .tv_sec = midn,
                         .tv_usec = 0
                     };
-                settimeofday(&tv, NULL);*/
+                settimeofday(&tv, NULL);
 
                 time_t nuevo=time(NULL);
                 format_log_time(nuevo, time_str, 30);
@@ -5976,16 +5988,16 @@ void blower_start(TimerHandle_t xTimer)
     start_timer_ctx_t *start_timer_ctx = (start_timer_ctx_t *)pvTimerGetTimerID(xTimer);
 
     // motor power  * duration is thw kwh to be consumed in this schedule
-    uint16_t energy_amps= MOTORKW * (start_timer_ctx->horaslen)  / MOTORVOLTS;   // Expected energy consumption in AH
+    // uint16_t energy_amps= MOTORKW * (start_timer_ctx->horaslen)  / MOTORVOLTS;   // Expected energy consumption in AH
 
-    theBlower.getEnergy(&currentamps,&dummy,&dummy,&dummy,&dummyf,&dummyf,&dummyf,&dummyf,&dummyf,&dummyf); // get current amps form the blower
+    // theBlower.getEnergy(&currentamps,&dummy,&dummy,&dummy,&dummyf,&dummyf,&dummyf,&dummyf,&dummyf,&dummyf); // get current amps form the blower
 
-    if(energy_amps>currentamps)
-    {
-        if ((theConf.debug_flags >> dSCH) & 1U) 
-            MESP_LOGW(TAG, "Schedule Start Check Energy NOT OK amps Availble %d needed %d",currentamps,energy_amps); 
-            send_start_day_host(start_timer_ctx->day, "Schedule Start Check Energy NOT OK", alarmQueue);
-    }
+    // if(energy_amps>currentamps)
+    // {
+    //     if ((theConf.debug_flags >> dSCH) & 1U) 
+    //         MESP_LOGW(TAG, "%sSchedule Start Check Energy NOT OK amps Availble %d needed %d",DBG_SCH,currentamps,energy_amps); 
+    //         send_start_day_host(start_timer_ctx->day, "Schedule Start Check Energy NOT OK", alarmQueue);
+    // }
     
     turn_blower_onOff(true);
 
@@ -5995,45 +6007,48 @@ void blower_start(TimerHandle_t xTimer)
     if ((theConf.debug_flags >> dSCH) & 1U) {
         time_t now = time(NULL);
         format_log_time(now,time_str2,30);
-        MESP_LOGI(TAG, "Timer %d Started Cycle %d Day %d Hora %d Start %d Horas %d PW %d Time: %s",
-                 start_timer_ctx->timerNum, start_timer_ctx->cycle, start_timer_ctx->day, start_timer_ctx->horario,
-                 start_timer_ctx->tostart, start_timer_ctx->horaslen, start_timer_ctx->pwm, time_str2);
+        MESP_LOGI(TAG, "%sTimer %d Started CStart %d Horas %d Time: %s TStartSet %ld StartSecs %d EndSecs %d Now %ld", DBG_SCH,
+                 start_timer_ctx->timerNum,
+                 start_timer_ctx->tostart, start_timer_ctx->horaslen, time_str2, start_timer_ctx->timerSetDate, 
+                 start_timer_ctx->timevalstart, start_timer_ctx->timevalend, now);
     }
 
-    elapsed[start_timer_ctx->timerNum] = time(NULL);
+    elapsed[start_timer_ctx->timerNum] = time(NULL);        // take timestamp for elapsed time calculation in end timer
 
-    if (!theConf.wifi_mode) {
-        // free(start_timer_ctx);  //freed by endtimer
+    if (!theConf.wifi_mode) 
         return;
-    }
     
     
     if (esp_mesh_is_root()) {
         sync_schedule_with_mesh(start_timer_ctx);
     }
     
-    // free(start_timer_ctx); //freed by endtimer
 }
 
 void blower_end(TimerHandle_t xTimer)
 {
     char time_str2[30];
-    start_timer_ctx_t *ctx = (start_timer_ctx_t *)pvTimerGetTimerID(xTimer);
-    uint8_t ulCount = ctx->timerNum;
+    time_t now;
+    start_timer_ctx_t *start_timer_ctx = (start_timer_ctx_t *)pvTimerGetTimerID(xTimer);
+    uint8_t ulCount = start_timer_ctx->timerNum;
 
     if((theConf.debug_flags >> dSCH) & 1U)  
     {
-        time_t now= time(NULL);
+        time(&now);
         format_log_time(now,time_str2,30);
-        MESP_LOGI(TAG,"Timer Ended %d Elapsed %ld Time: %s",ulCount,(uint32_t)(now-elapsed[ulCount]),time_str2);
+        uint32_t elapsed_time = (uint32_t)(now - start_timer_ctx->timerSetDate);
+           MESP_LOGI(TAG, "%sTimer Ended %d Start %d Horas %d Time: %s TStarted %ld StartSecs %d EndSecs %d Fueron %ld. Now %lld", DBG_SCH,
+                 start_timer_ctx->timerNum, 
+                 start_timer_ctx->tostart, start_timer_ctx->horaslen, time_str2, start_timer_ctx->timerSetDate, 
+                 start_timer_ctx->timevalstart, start_timer_ctx->timevalend,elapsed_time, now);
     }
-    elapsed[ulCount]=0;
+    // elapsed[ulCount]=0;
     turn_blower_onOff(false);
 
-    if (ctx->isLast)
+    if (start_timer_ctx->isLast)
     {
         if((theConf.debug_flags >> dSCH) & 1U)  
-            MESP_LOGI(TAG,"Last end timer...set for Wait For Start\n");
+            MESP_LOGI(TAG,"%sLast end timer...set for Wait For Start\n",DBG_SCH);
         xSemaphoreGive(scheduleSem);
         theBlower.setScheduleStatus(BLOWEROFF);
     }
@@ -6066,8 +6081,7 @@ void app_main(void)
     //log boot
     if(theConf.test_timer_div<1)
         theConf.test_timer_div=1;
-    if(theConf.modbus_mux<1)
-        theConf.modbus_mux=1;
+ 
     char *msg=(char*)calloc(1,100);
     if(msg)
     {    
@@ -6122,9 +6136,15 @@ void app_main(void)
     
     // xTaskCreate(&start_schedule_timers,"sched",1024*10,NULL, 5, &scheduleHandle); 	       
 
-    xTaskCreate(&root_timer,"reptimer",1024*8,NULL, 5, NULL); 	        
-    xTaskCreate(&rs485_task_manager,"modbus",1024*10,NULL, 5, NULL); 	            // start the modbus task  
-    xTaskCreate(&ds18b20_task,"modbus",1024*3,NULL, 5, NULL); 	            // start the modbus task  
+    xTaskCreate(&root_timer,"reptimer",1024*8,NULL, 5, NULL); 	
+    if(theConf.modbuson)        
+        xTaskCreate(&rs485_task_manager,"modbus",1024*10,NULL, 5, NULL); 	            // start the modbus task  
+  
+    if(theConf.modbus_mux)
+   {
+        xTaskCreate(&ds18b20_task,"ds18b20",1024*3,NULL, 5, NULL); 	            // start the modbus task  
+        MESP_LOGI(TAG,"Temp task started");
+    }
     // printf("Active %d\n",theConf.doParms.docontrol); 
  
     // delay(2000);  //used when debugging modbus to test just modbus without starting mesh/wifi

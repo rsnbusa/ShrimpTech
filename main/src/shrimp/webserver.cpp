@@ -486,7 +486,8 @@ void my_get_sysset(struct sysset *data) 		// get data for general configuration 
 	strcpy(s_sysset.compile_val,mip->idf_ver);
 	s_sysset.boot_val=theConf.bootcount;
 	s_sysset.lreason_val=theConf.lastResetCode;
-	s_sysset.display_val=gdispf;
+	s_sysset.display_val=theConf.modbuson;
+	s_sysset.security_val=theConf.modbus_mux;
 	s_sysset.writes_val=theBlower.getFram_Writes();
 	s_sysset.reads_val=theBlower.getFram_Reads();
 	strcpy(s_sysset.nodetype_val,esp_mesh_is_root()?"ROOT":"NODE");		//not usefull since mesh is not active but...
@@ -515,6 +516,10 @@ void my_get_sysset(struct sysset *data) 		// get data for general configuration 
  */
 void my_set_sysset(struct sysset *data) // there is no setting in this menu option
 {
+	s_sysset = *data;
+	theConf.modbus_mux = s_sysset.security_val;	// just to avoid warnings but there is no setting in this menu option
+	theConf.modbuson = s_sysset.display_val;
+	write_to_flash();
 }
 
 /**

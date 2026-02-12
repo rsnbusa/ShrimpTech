@@ -198,6 +198,9 @@ typedef struct {
     uint8_t pwm;
     uint8_t timerNum;
     bool isLast;
+    timer_t timerSetDate;
+    uint32_t timevalstart;
+    uint32_t timevalend;
 } start_timer_ctx_t;
 
 
@@ -377,7 +380,7 @@ typedef struct config {
     uint8_t             minutes, masternode, unitid;
     uint32_t            downtime;      // Downtime accumulator
     uint32_t            mqttSlots;     // Slot number
-    uint16_t            loglevel;
+    uint8_t             loglevel,modbuson;
     uint8_t             meterconf, ptch;
     uint32_t            lastRebootTime, meterconfdate, baset, cid, subnode, poolid;
     char                mqttServer[100], mqttUser[50],mqttPass[50],thessid[40], thepass[20];
