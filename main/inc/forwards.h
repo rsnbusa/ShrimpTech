@@ -22,8 +22,8 @@ void turn_blower_onOff(bool onoff);
 // TIMER FUNCTIONS
 // ============================================================================
 
-void blower_end(TimerHandle_t xTimer);
-void blower_start(TimerHandle_t xTimer);
+void blower_end(void *pArg);
+void blower_start(void *pArg);
 void root_set_senddata_timer();
 void start_schedule_timers(void *pArg);
 

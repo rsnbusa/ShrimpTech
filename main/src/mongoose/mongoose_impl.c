@@ -407,6 +407,7 @@ struct attribute s_settings_attributes[] = {
   {NULL, NULL, NULL, 0, 0, false}
 };
 struct attribute s_system_attributes[] = {
+  {"simulate", "bool", NULL, offsetof(struct system, simulate), 0, false},
   {"mqttreco_val", "int", NULL, offsetof(struct system, mqttreco_val), 0, false},
   {"otf_val", "bool", NULL, offsetof(struct system, otf_val), 0, false},
   {"version_val", "string", NULL, offsetof(struct system, version_val), 20, false},

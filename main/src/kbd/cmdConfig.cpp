@@ -26,45 +26,45 @@ void show_timers()
     printf("  │%s%s                                   TIMERS   STATUS                                %s│\n",RESETC,BK_RED,RESETC);
     printf("  ├──────────────────────────────────────────────────────────────────────────────────┤\n");
     
-    printf("  │ Timer │ Cycle │  Day  │  Hour │ Start │ Seconds │ Last │ SRemaining │ ERemaining │\n");
-    printf("  ├───────┼───────┼───────┼───────┼───────┼─────────┼──────┼────────────┼────────────┤\n");
+    // printf("  │ Timer │ Cycle │  Day  │  Hour │ Start │ Seconds │ Last │ SRemaining │ ERemaining │\n");
+    // printf("  ├───────┼───────┼───────┼───────┼───────┼─────────┼──────┼────────────┼────────────┤\n");
     
-    for (int a=0;a<countTimersEnd;a++)
-    {
-        if (ctx_timers[a])
-        {
-            if(xTimerIsTimerActive(start_timers[ctx_timers[a]->timerNum])==pdTRUE)
-            {
-                remainingTicksStart = xTimerGetExpiryTime(start_timers[ctx_timers[a]->timerNum]) - xTaskGetTickCount();
-                startremaining=pdTICKS_TO_MS(remainingTicksStart);
-            }
+    // for (int a=0;a<countTimersEnd;a++)
+    // {
+    //     if (ctx_timers[a])
+    //     {
+    //         if(xTimerIsTimerActive(start_timers[ctx_timers[a]->timerNum])==pdTRUE)
+    //         {
+    //             remainingTicksStart = xTimerGetExpiryTime(start_timers[ctx_timers[a]->timerNum]) - xTaskGetTickCount();
+    //             startremaining=pdTICKS_TO_MS(remainingTicksStart);
+    //         }
 
-            if(xTimerIsTimerActive(end_timers[ctx_timers[a]->timerNum])==pdTRUE)
-            {
-                remainingTicksEnd = xTimerGetExpiryTime(end_timers[ctx_timers[a]->timerNum]) - xTaskGetTickCount();
-                endremaining=pdTICKS_TO_MS(remainingTicksEnd);
-            }
-            char time_str[20];
-            // format_time(ctx_timers[a]->time, time_str, sizeof(time_str));
-            printf("  │ %-2d-%-2d │ %-5d │ %-5d │ %-5d │ %-5d │ %-7ld │ %-4s │ %-10ld │ %-10ld │\n", a,
-                    ctx_timers[a]->timerNum,
-                    ctx_timers[a]->cycle,
-                    ctx_timers[a]->day,
-                    ctx_timers[a]->horario,
-                    ctx_timers[a]->tostart,
-                    ctx_timers[a]->horaslen,
-                    ctx_timers[a]->isLast ? "Yes" : "No",
-                    startremaining,
-                    endremaining);
+    //         if(xTimerIsTimerActive(end_timers[ctx_timers[a]->timerNum])==pdTRUE)
+    //         {
+    //             remainingTicksEnd = xTimerGetExpiryTime(end_timers[ctx_timers[a]->timerNum]) - xTaskGetTickCount();
+    //             endremaining=pdTICKS_TO_MS(remainingTicksEnd);
+    //         }
+    //         char time_str[20];
+    //         // format_time(ctx_timers[a]->time, time_str, sizeof(time_str));
+    //         printf("  │ %-2d-%-2d │ %-5d │ %-5d │ %-5d │ %-5d │ %-7ld │ %-4s │ %-10ld │ %-10ld │\n", a,
+    //                 ctx_timers[a]->timerNum,
+    //                 ctx_timers[a]->cycle,
+    //                 ctx_timers[a]->day,
+    //                 ctx_timers[a]->horario,
+    //                 ctx_timers[a]->tostart,
+    //                 ctx_timers[a]->horaslen,
+    //                 ctx_timers[a]->isLast ? "Yes" : "No",
+    //                 startremaining,
+    //                 endremaining);
 
-        }
-         else
-         {
-             MESP_LOGI(TAG, "Timer %d - Inactive", a);
-         }
-    }
-        printf("  └───────┴───────┴───────┴───────┴───────┴─────────┴──────┴────────────┴────────────┘\n");
-
+    //     }
+    //      else
+    //      {
+    //          MESP_LOGI(TAG, "Timer %d - Inactive", a);
+    //      }
+    // }
+        // printf("  └───────┴───────┴───────┴───────┴───────┴─────────┴──────┴────────────┴────────────┘\n");
+    esp_timer_dump(stdout);
 }
 /**
  * @brief Display complete Modbus configuration for all devices
@@ -250,37 +250,37 @@ void show_schedule_info()
 
         theBlower.getScheduleStruct(&wsched);
 
-        printf("┌──────────────────────────────────────────────────────────────┐\n");
-        printf("│%s%s                   SCHEDULE INFORMATION                       %s│\n",RESETC,BK_BLUE,RESETC);
-        printf("├──────────────────────────────────────────────────────────────┤\n");
-        if(schedulef)
-        {
-            hora=wsched.currentHorario;    // adjust for 0 index
-            currentTime=xTaskGetTickCount(  );       // right now in ticks
+        // printf("┌──────────────────────────────────────────────────────────────┐\n");
+        // printf("│%s%s                   SCHEDULE INFORMATION                       %s│\n",RESETC,BK_BLUE,RESETC);
+        // printf("├──────────────────────────────────────────────────────────────┤\n");
+        // if(schedulef)
+        // {
+        //     hora=wsched.currentHorario;    // adjust for 0 index
+        //     currentTime=xTaskGetTickCount(  );       // right now in ticks
 
-            if ((uint32_t)end_timers[hora]>0)
-                xEnd_pending= xTimerGetExpiryTime( end_timers[hora] )-currentTime;
-            if ((uint32_t)start_timers[hora]>0)
-                xStart_pending = xTimerGetExpiryTime( start_timers[hora] )-currentTime;
+        //     if ((uint32_t)end_timers[hora]>0)
+        //         xEnd_pending= xTimerGetExpiryTime( end_timers[hora] )-currentTime;
+        //     if ((uint32_t)start_timers[hora]>0)
+        //         xStart_pending = xTimerGetExpiryTime( start_timers[hora] )-currentTime;
 
-            printf("│ Current Profile :              %-28d  │\n", theConf.activeProfile);
-            printf("│ Current Cycle:                 %-28d  │\n", wsched.currentCycle);
-            printf("│ Current Day:                   %-28d  │\n", wsched.currentDay);
-            printf("│ Current Horario:               %-28d  │\n", wsched.currentHorario+1);     // seen first=1 not 0
-            printf("│ Number of Sessions:            %-28d  │\n", theConf.profiles[0].cycle[wsched.currentCycle].numHorarios);
-            printf("│ Current Start Hour:            %-28d  │\n", wsched.currentStartHour);
-            if(xStart_pending>currentTime && xStart_pending>0)
-                printf("│ Time to Start(min):            %-28d  │\n", (int)pdTICKS_TO_MS(xStart_pending)/60/1000);
-            else
-                printf("│%s Already Started %-45s%s│\n",LRED, " ",RESETC);
-            if(xEnd_pending>currentTime && xEnd_pending>0)
-                printf("│ Remaining End Session(min):    %-28d  │\n", (int)pdTICKS_TO_MS(xEnd_pending)/60/1000);
-                else
-                    printf("│%s Already Stopped %-45s%s│\n",LRED, " ",RESETC);
-            printf("│ Current PWM Duty:              %-28d  │\n", wsched.currentPwmDuty);
-            printf("│ Schedule Status:               %-28s  │\n", schStatus[wsched.status] );
-        }   
-        printf("└──────────────────────────────────────────────────────────────┘\n\n");
+        //     printf("│ Current Profile :              %-28d  │\n", theConf.activeProfile);
+        //     printf("│ Current Cycle:                 %-28d  │\n", wsched.currentCycle);
+        //     printf("│ Current Day:                   %-28d  │\n", wsched.currentDay);
+        //     printf("│ Current Horario:               %-28d  │\n", wsched.currentHorario+1);     // seen first=1 not 0
+        //     printf("│ Number of Sessions:            %-28d  │\n", theConf.profiles[0].cycle[wsched.currentCycle].numHorarios);
+        //     printf("│ Current Start Hour:            %-28d  │\n", wsched.currentStartHour);
+        //     if(xStart_pending>currentTime && xStart_pending>0)
+        //         printf("│ Time to Start(min):            %-28d  │\n", (int)pdTICKS_TO_MS(xStart_pending)/60/1000);
+        //     else
+        //         printf("│%s Already Started %-45s%s│\n",LRED, " ",RESETC);
+        //     if(xEnd_pending>currentTime && xEnd_pending>0)
+        //         printf("│ Remaining End Session(min):    %-28d  │\n", (int)pdTICKS_TO_MS(xEnd_pending)/60/1000);
+        //         else
+        //             printf("│%s Already Stopped %-45s%s│\n",LRED, " ",RESETC);
+        //     printf("│ Current PWM Duty:              %-28d  │\n", wsched.currentPwmDuty);
+        //     printf("│ Schedule Status:               %-28s  │\n", schStatus[wsched.status] );
+        // }   
+        // printf("└──────────────────────────────────────────────────────────────┘\n\n");
 }
 
 /**
@@ -295,7 +295,7 @@ void show_device_info(time_t bootdate, time_t guardDate)
     
 //     printf("%s", LYELLOW);
     printf("\n┌─────────────────────────────────────────────────────────────┐\n");
-    printf("│%s%s                   DEVICE INFORMATION                        %s│\n",RESETC,BK_YELLOW,RESETC);
+    printf("│%s%s               DEVICE INFORMATION POOL %-3d UNIT %-02d           %s│\n",RESETC,BK_YELLOW,theConf.poolid, theConf.unitid,RESETC);
     printf("├─────────────────────────────────────────────────────────────┤\n");
        //  printf("%s", RESETC);
     printf("│ %sBoot Count: %s                                                │\n",BK_GRAY,RESETC);

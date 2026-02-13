@@ -208,7 +208,7 @@ static int handle_production_stop(const ProductionCommandFields *fields, char *l
     writeLog(logBuffer);
     
     if((theConf.debug_flags >> dXCMDS) & 1U)  
-        MESP_LOGI(MESH_TAG, "%sCMd Prod Stop %s %d", DBG_XCMDS, fields->orderCommand,BLOWERPARK);
+        MESP_LOGI(MESH_TAG, "%sCMd Prod Stop %s %d", DBG_XCMDS, fields->orderCommand,POOLPARK);
 
     vTaskDelete(scheduleHandle);
     xTaskCreate(&start_schedule_timers, "sched", 1024*10, NULL, 5, &scheduleHandle);
@@ -222,7 +222,7 @@ static int handle_production_stop(const ProductionCommandFields *fields, char *l
     
     // stop the blower itself
     turn_blower_onOff(false);
-    theBlower.setSchedule(0,0, 0, 0,0,0,0,BLOWERPARK); //order is important turn blower on off will set BLOWEROFF-ON
+    theBlower.setSchedule(0,0, 0, 0,0,0,0,POOLPARK); //order is important turn blower on off 
 
     return ESP_OK;
 }
@@ -294,7 +294,7 @@ static int handle_production_crop(const ProductionCommandFields *fields, char *l
                          theConf.test_timer_div, (char*)fields->orderCommand);
     writeLog(logBuffer);
 
-    theBlower.setSchedule(0,0, 0, 0,0,0,0,BLOWERCROP);
+    theBlower.setSchedule(0,0, 0, 0,0,0,0,POOLCROP);
         //TODO should stop all timer
     return ESP_OK;
 }
@@ -320,7 +320,7 @@ static int handle_production_park(const ProductionCommandFields *fields, char *l
                          theConf.test_timer_div, (char*)fields->orderCommand);
     writeLog(logBuffer);
 
-    theBlower.setSchedule(0,0, 0, 0,0,0,0,BLOWERPARK);
+    theBlower.setSchedule(0,0, 0, 0,0,0,0,POOLPARK);
         //TODO should stop all timer
     return ESP_OK;
 }

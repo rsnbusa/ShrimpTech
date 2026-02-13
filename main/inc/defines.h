@@ -5,6 +5,8 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 #define MESP_LOGE(tag, format, ...) my_log(BK_RED,tag, format, ##__VA_ARGS__)
 #define MESP_LOGD(tag, format, ...) my_log(BLUE,tag, format, ##__VA_ARGS__)
 
+#define SIMULATE 
+#define TIMERUNITS                     (1000000) // 1 second in microseconds for esp_timer, adjust if using a different timer system
 #define ONEWIRE_BUS_GPIO                (45)
 #define ONEWIRE_MAX_DS18B20             (1)
 #ifdef  CONFIG_IDF_TARGET_ESP32
@@ -201,11 +203,13 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 #define FCHOLDING                       (0x03)
 #define FCINPUT                         (0x01)
 
-#define BLOWEROFF                       (0)   // stopped but active pool
-#define BLOWERON                        (1)   // actually blowing
-#define BLOWERNEXT                      (2)    // in cycle waitng next hour scheule
-#define BLOWERCROP                      (3)    // currently beign harvbested
-#define BLOWERPARK                      (4)    // not being used
+#define POOLREADY                       (0)   // stopped but active pool
+#define POOLBLOWERON                    (1)   // actually blowing
+#define POOLBLOWERNEXT                  (2)    // in cycle waitng next hour scheule
+#define POOLBLOWEROFF                   (3)    // currently beign harvbested
+#define POOLNEXT                        (4)    // currently beign harvbested
+#define POOLCROP                        (5)    // currently beign harvbested
+#define POOLPARK                        (6)    // not being used
 
 #define MINUTES                         (1)   
 // Modbus descriptor fields offsets

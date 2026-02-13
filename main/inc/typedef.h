@@ -199,8 +199,8 @@ typedef struct {
     uint8_t timerNum;
     bool isLast;
     timer_t timerSetDate;
-    uint32_t timevalstart;
-    uint32_t timevalend;
+    uint64_t timevalstart;
+    uint64_t timevalend;
 } start_timer_ctx_t;
 
 
@@ -393,7 +393,7 @@ typedef struct config {
     char                mqttcert[2100];
     uint8_t             mesh_wifi;
     char                lastVersion[20];
-    uint32_t            mqttDiscoRetry;
+    uint16_t            mqttDiscoRetry,simTime;
     profile_t           profiles[MAXPROFILES];
     uint8_t             activeProfile, dayCycle;
     time_t              dateProfile, dateDayCycle;

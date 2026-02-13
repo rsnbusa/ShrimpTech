@@ -100,8 +100,8 @@ EXTERN TimerHandle_t recconectTimer;
 EXTERN TimerHandle_t confirmTimer;
 EXTERN TimerHandle_t recoverTimer;
 EXTERN TimerHandle_t loginTimer;
-EXTERN TimerHandle_t start_timers[MAXHORARIOS];
-EXTERN TimerHandle_t end_timers[MAXHORARIOS];
+EXTERN esp_timer_handle_t start_timers[MAXHORARIOS];
+EXTERN esp_timer_handle_t end_timers[MAXHORARIOS];
 EXTERN TimerHandle_t scheduleTimer;
 
 // ============================================================================

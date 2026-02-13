@@ -396,7 +396,7 @@ void my_set_system(struct system *data) {
 	theConf.totalnodes = s_system.nodes_val;
 	theConf.conns = s_system.conns_val;
 	theConf.mqttDiscoRetry = s_system.mqttreco_val;
-	
+	theConf.simTime=s_system.simulate;
 	if (theConf.meterconf == CONF_STATE_CONFIRMED)
 	{
 		theConf.meterconf = CONF_STATE_PENDING;
@@ -422,6 +422,7 @@ void my_get_system(struct system *data)
 	// else
 	// 	s_system.disable_val = (theConf.meterconf > CONF_STATE_CONFIRMED) ? 1 : 0;
 	s_system.meshid_val = theConf.poolid;
+	s_system.simulate=theConf.simTime;
 	
 	const esp_app_desc_t *mip = esp_app_get_description();
 	if (mip && mip->version)

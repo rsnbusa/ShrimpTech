@@ -396,6 +396,7 @@ void glue_get_settings(struct settings *);
 void glue_set_settings(struct settings *);
 
 struct system {
+  bool simulate;
   int mqttreco_val;
   bool otf_val;
   char version_val[20];
