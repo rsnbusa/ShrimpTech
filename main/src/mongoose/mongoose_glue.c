@@ -118,7 +118,7 @@ void glue_set_settings(struct settings *data) {
   s_settings = *data; // Sync with your device
 }
 
-struct system s_system = {0, 1000, false, "5.0.1", false, 3, 5, 25, 0, 0, "", "", "csttpstt", "robert", "http://64.123.180.233:1883", "", 60000, "", "", 0, false, 400000, 10000};
+struct system s_system = {false, false, 0, 1000, false, "5.0.1", false, 3, 5, 25, 0, 0, "", "", "csttpstt", "robert", "http://64.123.180.233:1883", "", 60000, "", "", 0, false, 400000, 10000};
 void glue_get_system(struct system *data) {
   *data = s_system;  // Sync with your device
 }
@@ -126,7 +126,7 @@ void glue_set_system(struct system *data) {
   s_system = *data; // Sync with your device
 }
 
-struct sysset s_sysset = {"", "", 0, 0, false, false, 0, 0, "", "", "", 0, 0, 0, 0, 0, 0, ""};
+struct sysset s_sysset = {"", "", 0, 0, 0, 0, "", "", "", 0, 0, 0, 0, 0, 0, ""};
 void glue_get_sysset(struct sysset *data) {
   *data = s_sysset;  // Sync with your device
 }

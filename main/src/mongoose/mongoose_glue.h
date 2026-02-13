@@ -396,6 +396,8 @@ void glue_get_settings(struct settings *);
 void glue_set_settings(struct settings *);
 
 struct system {
+  bool modbussensor;
+  bool tempsensor;
   bool simulate;
   int mqttreco_val;
   bool otf_val;
@@ -428,8 +430,6 @@ struct sysset {
   char compile_val[100];
   int boot_val;
   int lreason_val;
-  bool security_val;
-  bool display_val;
   int writes_val;
   int reads_val;
   char nodetype_val[10];

@@ -407,6 +407,8 @@ struct attribute s_settings_attributes[] = {
   {NULL, NULL, NULL, 0, 0, false}
 };
 struct attribute s_system_attributes[] = {
+  {"modbussensor", "bool", NULL, offsetof(struct system, modbussensor), 0, false},
+  {"tempsensor", "bool", NULL, offsetof(struct system, tempsensor), 0, false},
   {"simulate", "bool", NULL, offsetof(struct system, simulate), 0, false},
   {"mqttreco_val", "int", NULL, offsetof(struct system, mqttreco_val), 0, false},
   {"otf_val", "bool", NULL, offsetof(struct system, otf_val), 0, false},
@@ -437,8 +439,6 @@ struct attribute s_sysset_attributes[] = {
   {"compile_val", "string", NULL, offsetof(struct sysset, compile_val), 100, false},
   {"boot_val", "int", NULL, offsetof(struct sysset, boot_val), 0, false},
   {"lreason_val", "int", NULL, offsetof(struct sysset, lreason_val), 0, false},
-  {"security_val", "bool", NULL, offsetof(struct sysset, security_val), 0, false},
-  {"display_val", "bool", NULL, offsetof(struct sysset, display_val), 0, false},
   {"writes_val", "int", NULL, offsetof(struct sysset, writes_val), 0, false},
   {"reads_val", "int", NULL, offsetof(struct sysset, reads_val), 0, false},
   {"nodetype_val", "string", NULL, offsetof(struct sysset, nodetype_val), 10, false},

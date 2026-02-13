@@ -2382,7 +2382,8 @@ void root_reconnectTask(void *pArg)
 
     while(true)
     {
-        delay(theConf.mqttDiscoRetry);
+        delay(MQTTRECONNECTTIME);
+        // delay(theConf.mqttDiscoRetry);
         xEventGroupClearBits(wifi_event_group, MQTT_BIT|ERROR_BIT|DISCO_BIT);
         
         if(!mqtt_reconnect_attempt(&retry))
@@ -3289,9 +3290,9 @@ void init_global_state_flags(void)
     lastKnowCount = 0;
     
     // Retry configuration
-    if (theConf.mqttDiscoRetry == 0) {
-        theConf.mqttDiscoRetry = MQTTRECONNECTTIME;
-    }
+    // if (theConf.mqttDiscoRetry == 0) {
+    //     theConf.mqttDiscoRetry = MQTTRECONNECTTIME;
+    // }
     
     // Timer counters
     countTimersStart = countTimersEnd = 0;
@@ -3456,21 +3457,21 @@ void init_system_queues(void)
  * 
  * @return Calculated permanent time in milliseconds, minimum 500ms
  */
-uint32_t calculate_permanent_delivery_time(void)
-{
-    uint32_t permanent_time = (theConf.totalnodes / theConf.conns) * EXPECTED_DELIVERY_TIME;
+// uint32_t calculate_permanent_delivery_time(void)
+// {
+//     uint32_t permanent_time = (theConf.totalnodes / theConf.conns) * EXPECTED_DELIVERY_TIME;
     
-    if (permanent_time == 0) {
-        MESP_LOGI(MESH_TAG, "Permanent time calculated as 0, using default 500ms");
-        permanent_time = 500;
-    }
+//     if (permanent_time == 0) {
+//         MESP_LOGI(MESH_TAG, "Permanent time calculated as 0, using default 500ms");
+//         permanent_time = 500;
+//     }
     
-    if (theConf.collectimer < 1) {
-        theConf.collectimer = 1;
-    }
+//     if (theConf.collectimer < 1) {
+//         theConf.collectimer = 1;
+//     }
     
-    return permanent_time;
-}
+//     return permanent_time;
+// }
 
 /**
  * @brief Initialize system timers for various periodic tasks
@@ -3614,7 +3615,7 @@ void init_process(void)
     init_gpio_pins();
     init_crypto_engine();
     init_system_queues();
-    calculate_permanent_delivery_time();
+    // calculate_permanent_delivery_time();
     init_system_timers();
     init_logging_system();
     init_event_groups();
@@ -3685,7 +3686,7 @@ void init_default_timing(void)
     theConf.baset = 10;
     theConf.collectimer = 25;                            // Change before production
     theConf.totalnodes = EXPECTED_NODES;
-    theConf.conns = EXPECTED_CONNS;
+    // theConf.conns = EXPECTED_CONNS;
     bzero(&start_timers,sizeof(start_timers));
     bzero(&end_timers,sizeof(end_timers));
 }
@@ -4163,15 +4164,15 @@ void root_set_senddata_timer()
         theConf.collectimer = 10;
     }
     
-    int cycles = theConf.totalnodes / theConf.conns;
-    if (cycles < 1) {
-        cycles = 1;
-    }
+    // int cycles = theConf.totalnodes / theConf.conns;
+    // if (cycles < 1) {
+    //     cycles = 1;
+    // }
     
-    MESP_LOGI(MESH_TAG, "Setting senddata timer: cycles=%d, baset=%d", cycles, theConf.collectimer);
+    MESP_LOGI(MESH_TAG, "Setting senddata timer:  baset=%d", theConf.collectimer);
     
     if (esp_mesh_is_root()) {
-        calculate_current_cycle(now, cycles);
+        calculate_current_cycle(now, 1000);
         
         if (!create_and_start_collection_timer()) {
             MESP_LOGE(MESH_TAG, "Failed to create collection timer");

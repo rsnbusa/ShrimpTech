@@ -74,7 +74,6 @@ extern struct energy s_energy;				// energy reading
 extern struct settings s_settings;			// main controller settings --> First Sidebar
 extern struct system s_system;				// system setting like mqtt server etc. --> Second sidebar
 extern struct profile s_profile;			// schedule profile cycles and working timers --> 5th sidebar
-extern struct limits s_limits;				// every know limit of 22 parameters from the inverter --> fourth sidebar
 extern struct sysset s_sysset;				// system parameters --> third sidebar
 extern struct DO s_DO;						// Dissolved Oxygen control parameters
 extern uint64_t s_action_timeout_reboot;  	// Reboot button
@@ -325,27 +324,27 @@ void my_get_settings(struct settings *data) {
  */
 void my_set_settings(struct settings *data) {
 	// Allocate memory for challenge string
-	char *challenge_str = (char*)calloc(1, CHALLENGE_KEY_SIZE);
-	if (challenge_str == NULL)
-	{
-		MESP_LOGE("SETTINGS", "Failed to allocate memory for challenge");
-		strcpy(s_settings.msg_val, MSG_RETRY);
-		return;
-	}
+	// char *challenge_str = (char*)calloc(1, CHALLENGE_KEY_SIZE);
+	// if (challenge_str == NULL)
+	// {
+	// 	MESP_LOGE("SETTINGS", "Failed to allocate memory for challenge");
+	// 	strcpy(s_settings.msg_val, MSG_RETRY);
+	// 	return;
+	// }
 	
 	// Copy and validate the challenge key
-	strcpy(challenge_str, data->challenge_val);
-	char *endptr;
-	uint32_t key_value = strtoul(challenge_str, &endptr, 16);
-	free(challenge_str);
+	// strcpy(challenge_str, data->challenge_val);
+	// char *endptr;
+	// uint32_t key_value = strtoul(challenge_str, &endptr, 16);
+	// free(challenge_str);
 	
-	if (!check_key(key_value) && theConf.cid != 0)	// there is a challenge so it must be met else we editing certain fields
-	{
-		MESP_LOGW("SETTINGS", "Invalid authentication key (expected CID: %d)", theConf.cid);
-		s_settings = *data;
-		strcpy(s_settings.msg_val, MSG_RETRY);
-		return;
-	}
+	// if (!check_key(key_value) && theConf.cid != 0)	// there is a challenge so it must be met else we editing certain fields
+	// {
+	// 	MESP_LOGW("SETTINGS", "Invalid authentication key (expected CID: %d)", theConf.cid);
+	// 	s_settings = *data;
+	// 	strcpy(s_settings.msg_val, MSG_RETRY);
+	// 	return;
+	// }
 	
 	// Challenge validated - apply settings
 	MESP_LOGI("SETTINGS", "Authentication successful, applying configuration");
@@ -393,10 +392,12 @@ void my_set_system(struct system *data) {
 	SAFE_STRCPY(theConf.thessid, s_system.ssid_val, sizeof(theConf.thessid));
 	
 	theConf.poolid = s_system.meshid_val;
-	theConf.totalnodes = s_system.nodes_val;
-	theConf.conns = s_system.conns_val;
-	theConf.mqttDiscoRetry = s_system.mqttreco_val;
+	// theConf.totalnodes = s_system.nodes_val;
+	// theConf.conns = s_system.conns_val;
+	// theConf.mqttDiscoRetry = s_system.mqttreco_val;
 	theConf.simTime=s_system.simulate;
+	theConf.modbuson=s_system.modbussensor;
+	theConf.modbus_mux=s_system.tempsensor;
 	if (theConf.meterconf == CONF_STATE_CONFIRMED)
 	{
 		theConf.meterconf = CONF_STATE_PENDING;
@@ -423,7 +424,9 @@ void my_get_system(struct system *data)
 	// 	s_system.disable_val = (theConf.meterconf > CONF_STATE_CONFIRMED) ? 1 : 0;
 	s_system.meshid_val = theConf.poolid;
 	s_system.simulate=theConf.simTime;
-	
+	s_system.tempsensor=theConf.modbus_mux; 
+	s_system.modbussensor=theConf.modbuson;
+
 	const esp_app_desc_t *mip = esp_app_get_description();
 	if (mip && mip->version)
 	{
@@ -441,10 +444,6 @@ void my_get_system(struct system *data)
 	SAFE_STRCPY(s_system.mqttcert_val, theConf.mqttcert, sizeof(s_system.mqttcert_val));
 	SAFE_STRCPY(s_system.ssidpass_val, theConf.thepass, sizeof(s_system.ssidpass_val));
 	SAFE_STRCPY(s_system.ssid_val, theConf.thessid, sizeof(s_system.ssid_val));
-	
-	s_system.nodes_val = theConf.totalnodes;
-	s_system.conns_val = theConf.conns;
-	s_system.mqttreco_val = theConf.mqttDiscoRetry;
 	
 	*data = s_system;
 }
@@ -487,8 +486,6 @@ void my_get_sysset(struct sysset *data) 		// get data for general configuration 
 	strcpy(s_sysset.compile_val,mip->idf_ver);
 	s_sysset.boot_val=theConf.bootcount;
 	s_sysset.lreason_val=theConf.lastResetCode;
-	s_sysset.display_val=theConf.modbuson;
-	s_sysset.security_val=theConf.modbus_mux;
 	s_sysset.writes_val=theBlower.getFram_Writes();
 	s_sysset.reads_val=theBlower.getFram_Reads();
 	strcpy(s_sysset.nodetype_val,esp_mesh_is_root()?"ROOT":"NODE");		//not usefull since mesh is not active but...
@@ -518,8 +515,6 @@ void my_get_sysset(struct sysset *data) 		// get data for general configuration 
 void my_set_sysset(struct sysset *data) // there is no setting in this menu option
 {
 	s_sysset = *data;
-	theConf.modbus_mux = s_sysset.security_val;	// just to avoid warnings but there is no setting in this menu option
-	theConf.modbuson = s_sysset.display_val;
 	write_to_flash();
 }
 
@@ -1111,27 +1106,6 @@ void my_set_modbPanels(struct modbPanels *data) // save limits from web to thebl
 }
 
 /**
- * @brief Set operational limits for the system
- * @param data Pointer to limits structure with new limit values
- */
-void my_set_limits(struct limits *data) // save limits from web to theblower
-{
-	theConf.milim=*data;
-	memcpy(&theConf.limits,&theConf.milim,sizeof(theConf.limits));		//array format
-	write_to_flash();
-}
-
-/**
- * @brief Get current operational limits
- * @param data Pointer to limits structure to populate
- */
-void my_get_limits(struct limits *data) // return limits saved in theblower
-{
-
-	*data=theConf.milim;
-}
-
-/**
  * @brief Initialize SPIFFS filesystem for profile storage
  * 
  * Initializes the SPIFFS partition for storing profile configurations.
@@ -1263,8 +1237,7 @@ void start_webserver(void *pArg)
   	mongoose_set_http_handlers("settings", my_get_settings, my_set_settings);		
   	mongoose_set_http_handlers("system", my_get_system ,my_set_system);				
   	mongoose_set_http_handlers("sysset", my_get_sysset ,my_set_sysset);				
-  	mongoose_set_http_handlers("profile", my_get_profile ,my_set_profile);				
-  	mongoose_set_http_handlers("limits", my_get_limits ,my_set_limits);				
+  	mongoose_set_http_handlers("profile", my_get_profile ,my_set_profile);							
   	mongoose_set_http_handlers("modbInverter", my_get_modbInverter ,my_set_modbInverter);				
   	mongoose_set_http_handlers("modbSensors", my_get_modbSensors ,my_set_modbSensors);				
   	mongoose_set_http_handlers("modbBattery", my_get_modbBattery ,my_set_modbBattery);				
