@@ -103,7 +103,7 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 
 // #define BIASHOUR                        (14)
 
-#define MQTTBIG                         (3000)  //big cause certiticate is at least 1700 bytes
+#define MQTTBIG                         (3500)  // big enough for 3500-byte MQTT payloads
 #define MESH_TAG                        "Shrimp"
 #define WIFI_CONNECTED_BIT              BIT0
 #define WIFI_FAIL_BIT                   BIT1

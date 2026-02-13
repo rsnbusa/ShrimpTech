@@ -3372,6 +3372,7 @@ void register_external_mqtt_commands(void)
     set_cmd("Battery", "BATT", cmdBattery);
     set_cmd("Sensors", "SENS", cmdSensors);
     set_cmd("Inverter", "INVR", cmdInverter);
+    set_cmd("profile", "PROF", cmdProfile);
 }
 /**
  * @brief Configure GPIO pins for relay, LED, and heartbeat
