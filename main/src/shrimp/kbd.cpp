@@ -122,7 +122,6 @@ void kbd(void *pArg)
   dbgArg.blow     = arg_str0(NULL, "blow",     "on | off", "Show Blower data");
   dbgArg.logic    = arg_str0(NULL, "logic",    "on | off", "Show logic stuff");
   dbgArg.modbus   = arg_str0(NULL, "modbus",   "on | off", "Show modbus stuff");
-  dbgArg.limits   = arg_str0(NULL, "limits",   "on | off", "Show modbus limits errors");
   dbgArg.rs485    = arg_str0(NULL, "rs485",    "on | off", "Show RS485 debugging");
   dbgArg.DO       = arg_str0(NULL, "do",       "on | off", "Show Dissolved Oxygen debugging");
   dbgArg.temp     = arg_str0(NULL, "temp",     "on | off", "Show Temperature debugging");
@@ -139,7 +138,6 @@ void kbd(void *pArg)
   configArgs.profile  = arg_lit0(NULL, "profile",   "Show Profile configuration");
   configArgs.blow     = arg_lit0(NULL, "blow",      "Show Blower ");
   configArgs.modbus   = arg_lit0(NULL, "modbus",    "Show modbus ");
-  configArgs.limits   = arg_lit0(NULL, "limits",    "Show limits ");
   configArgs.prod     = arg_lit0(NULL, "produc",    "Show Porduction ");
   configArgs.stats    = arg_lit0(NULL, "stats",     "Show stats");
   configArgs.system   = arg_lit0(NULL, "sys",       "Show system ");

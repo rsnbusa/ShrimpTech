@@ -94,14 +94,6 @@ void glue_start_reboot(struct mg_str params) {
   s_action_timeout_reboot = mg_now() + 1000; // Start reboot, finish after 1 second
 }
 
-struct limits s_limits = {90, 50, 32, 19, 31, 19, 70, 50, 70, 40, 42, 40, 42, 40, 42, 40, 42, 40, 42, 40, 42, 40, 820, 720, 850, 720, 820, 720, 820, 780, 50, 10, 5000, 0, 100, 20, 80, 20, 15, 14, 390, 340};
-void glue_get_limits(struct limits *data) {
-  *data = s_limits;  // Sync with your device
-}
-void glue_set_limits(struct limits *data) {
-  s_limits = *data; // Sync with your device
-}
-
 struct profile s_profile = {"", ""};
 void glue_get_profile(struct profile *data) {
   *data = s_profile;  // Sync with your device

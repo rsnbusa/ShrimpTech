@@ -323,6 +323,7 @@ void my_get_settings(struct settings *data) {
  * @param data Pointer to settings structure with new values
  */
 void my_set_settings(struct settings *data) {
+
 	// Allocate memory for challenge string
 	// char *challenge_str = (char*)calloc(1, CHALLENGE_KEY_SIZE);
 	// if (challenge_str == NULL)
@@ -1212,7 +1213,6 @@ void my_start_reboot(struct mg_str params) {		//Done button pressed,
  * - system: System-wide settings (WiFi, MQTT, security)
  * - sysset: Read-only system status and statistics
  * - profile: Schedule profile management
- * - limits: Operational limits configuration
  * - modbInverter: Modbus inverter settings
  * - modbSensors: Modbus sensors settings
  * - modbBattery: Modbus battery settings

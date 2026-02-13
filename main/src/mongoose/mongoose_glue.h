@@ -10,7 +10,6 @@ extern "C" {
 #endif
 
 #include "mongoose.h"
-
 #define WIZARD_ENABLE_HTTP 1
 #define WIZARD_ENABLE_HTTPS 0
 #define WIZARD_ENABLE_HTTP_UI 1
@@ -324,53 +323,6 @@ void glue_set_modbPanels(struct modbPanels *);
 
 void glue_start_reboot(struct mg_str);  // Start an action
 bool glue_check_reboot(void);  // Check if action is still in progress
-
-struct limits {
-  int hummax;
-  int hummin;
-  int atempmax;
-  int atempmin;
-  int wtempmax;
-  int wtempmin;
-  int phmax;
-  int phmin;
-  int domax;
-  int domin;
-  int kwchoymax;
-  int kwchoymin;
-  int kwbatdhoymax;
-  int kwbatdhoymin;
-  int kwbatchoymax;
-  int kwbatchoymin;
-  int kwloadhoymax;
-  int kwloadhoymin;
-  int kwctodaymax;
-  int kwctodaymin;
-  int kwgtodaymax;
-  int kwgtodaymin;
-  int bdATotmax;
-  int bdATotmin;
-  int bcATotmax;
-  int bcATotmin;
-  int bdAhoymax;
-  int bdAhoymin;
-  int bcAhoymax;
-  int bcAhoymin;
-  int btempmax;
-  int btempmin;
-  int bcyclemax;
-  int bcyclemin;
-  int bSOHmax;
-  int bSOHmin;
-  int bSOCmax;
-  int bSOCmin;
-  int amax;
-  int amin;
-  int vmax;
-  int vmin;
-};
-void glue_get_limits(struct limits *);
-void glue_set_limits(struct limits *);
 
 struct profile {
   char msg[30];

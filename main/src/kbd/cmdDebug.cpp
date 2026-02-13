@@ -104,9 +104,6 @@ int cmdDebug(int argc, char **argv)
     if (dbgArg.modbus->count)
         set_debug_flag(dbgArg.modbus->sval[0], dMODBUS);
 
-    if (dbgArg.limits->count)
-        set_debug_flag(dbgArg.limits->sval[0], dLIMITS);
-
     if (dbgArg.rs485->count)
         set_debug_flag(dbgArg.rs485->sval[0], dRS485);
 

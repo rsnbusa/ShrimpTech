@@ -807,7 +807,7 @@ esp_err_t root_send_data_to_node(mesh_addr_t thismac)
     delay(500);   // let time to node to process first message
 
     // now send the theConf modbus configurations binary data
-    int big = sizeof(theConf.limits) + sizeof(theConf.modbus_battery) +
+    int big = sizeof(theConf.modbus_battery) +
               sizeof(theConf.modbus_panels) +
               sizeof(theConf.modbus_inverter) +
               sizeof(theConf.modbus_sensors);
@@ -820,7 +820,7 @@ esp_err_t root_send_data_to_node(mesh_addr_t thismac)
     }
 
     void *p = (void*)intMessage + 4;
-    memcpy(p, &theConf.milim, big);        // copy the message itself, offset 4 for cmd uint32 start offset is milim
+    memcpy(p, &theConf.modbus_battery, big);        // copy the message itself, offset 4 for cmd uint32
     intMessage->cmd = MESH_INT_DATA_MODBUS;
 
     data.proto = MESH_PROTO_BIN;
@@ -3308,7 +3308,6 @@ void init_mqtt_queue_names(void)
     snprintf(cmdQueue, sizeof(cmdQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTCMD);
     snprintf(infoQueue, sizeof(infoQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTINFO);
     snprintf(alarmQueue, sizeof(alarmQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTALARM);
-    snprintf(limitsQueue, sizeof(limitsQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTLIMITS);
     snprintf(controlQueue, sizeof(controlQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTCONTROL);
 }
 /**
@@ -3373,8 +3372,6 @@ void register_external_mqtt_commands(void)
     set_cmd("Battery", "BATT", cmdBattery);
     set_cmd("Sensors", "SENS", cmdSensors);
     set_cmd("Inverter", "INVR", cmdInverter);
-    set_cmd("limits", "LMTS", cmdLimits);
-    set_cmd("rlimits", "RLIM", cmdReadLimits);
 }
 /**
  * @brief Configure GPIO pins for relay, LED, and heartbeat
@@ -3665,26 +3662,13 @@ void init_default_network_config(void)
 }
 
 /**
- * @brief Initialize default limits configuration
- */
-void init_default_limits(void)
-{
-    struct limits start_limits = {
-        90, 50, 32, 19, 31, 19, 70, 50, 70, 40, 42, 40, 42, 40, 42, 40,
-        42, 40, 42, 40, 42, 40, 820, 720, 850, 720, 820, 720, 820, 780,
-        50, 10, 5000, 0, 100, 20, 80, 20, 15, 14, 390, 340
-    };
-    theConf.milim = start_limits;
-}
-
-/**
  * @brief Initialize default timing configuration
  */
 void init_default_timing(void)
 {
     theConf.loglevel = 3;
     theConf.baset = 10;
-    theConf.collectimer = 25;                            // Change before production
+    theConf.collectimer = 1;                            // Change before production
     theConf.totalnodes = EXPECTED_NODES;
     // theConf.conns = EXPECTED_CONNS;
     bzero(&start_timers,sizeof(start_timers));
@@ -3721,7 +3705,6 @@ void erase_config(void)
     // Initialize all default configurations
     init_default_network_config();
     init_default_modbus_config();
-    init_default_limits();
     init_default_timing();
     init_DO_Defaults();
     
@@ -4675,18 +4658,18 @@ esp_err_t wifi_connect_external_ap(void)
  * 
  * Creates random CID and displays SSID with CID for user information.
  */
-void generate_meter_cid(void)
-{
-    int cid = esp_random() % 99999999;
-    char tmp[50];
+// void generate_meter_cid(void)
+// {
+//     int cid = esp_random() % 99999999;
+//     char tmp[50];
     
-    sprintf(tmp, "%s %d", apssid, cid);
-    MESP_LOGI(TAG, "Generated CID: %s", tmp);
-    showLVGL(tmp, 600000, 1);
+//     sprintf(tmp, "%s %d", apssid, cid);
+//     MESP_LOGI(TAG, "Generated CID: %s", tmp);
+//     showLVGL(tmp, 600000, 1);
     
-    theConf.cid = cid;
-    write_to_flash();
-}
+//     theConf.cid = cid;
+//     write_to_flash();
+// }
 
 /**
  * @brief Display configuration status on LVGL display
@@ -4721,7 +4704,7 @@ void meter_configure(void)
     
     if (theConf.meterconf == 0) {
         // New meter: generate CID
-        generate_meter_cid();
+        // generate_meter_cid();
     } else {
         // Already configured: show status
         display_config_status();
@@ -5614,7 +5597,7 @@ void start_schedule_timers(void * pArg)
                 uint32_t wait_next_day= handle_day_end(hoytimeinfo->tm_mday);        // the first hour of next day. boundry of end fo cycles later
                 uint32_t howmuch= (wait_next_day*1000/theConf.test_timer_div)+10000;    // in ms + margin
                 if ((theConf.debug_flags >> dSCH) & 1U)
-                    MESP_LOGI(TAG,"Should Wait %ld ms",howmuch);
+                    MESP_LOGI(TAG,"Will Wait %ld ms for next day midnight",howmuch);
 
                 countTimersStart = countTimersEnd = 0;      //reset counters
 

@@ -32,8 +32,7 @@ set(CMD_SOURCES
     src/cmdMqtt/cmdBattery.cpp
     src/cmdMqtt/cmdSensors.cpp
     src/cmdMqtt/cmdInverter.cpp
-    src/cmdMqtt/cmdLimits.cpp
-    src/cmdMqtt/cmdReadLimits.cpp
+    src/cmdMqtt/cmdProfile.cpp
 )
 
 # Keyboard/Console interface commands

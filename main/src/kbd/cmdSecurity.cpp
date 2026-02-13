@@ -130,9 +130,9 @@ void configureAutoLogin(bool enable)
 {
     theConf.subnode = enable ? 1 : 0;
     if (enable) {
-        ESP_LOGI(MESH_TAG, "Autologin");
+        MESP_LOGI(MESH_TAG, "Autologin");
     } else {
-        ESP_LOGI(MESH_TAG, "Password required");
+        MESP_LOGI(MESH_TAG, "Password required");
     }
     write_to_flash();
 }

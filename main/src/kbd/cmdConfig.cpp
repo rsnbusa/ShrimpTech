@@ -187,51 +187,6 @@ void show_modbus()
 }
 
 /**
- * @brief Display configured min/max limits for all monitored parameters
- * 
- * Shows operational limits for environmental sensors, battery metrics,
- * energy consumption, and solar generation. Used for alarming and
- * validation of sensor readings.
- * 
- * Parameters include: humidity, temperatures, pH, DO, battery SOC/SOH,
- * energy generation/consumption, PV voltages/currents, etc.
- */
-void show_limits()
-{
-
-//     printf("%s\n",BLUE);
-    printf("┌────────────────────────────────────────────────────┐\n");
-    printf("│%s%s                 OPERATIONAL LIMITS                 %s│\n",RESETC,BK_GREEN,RESETC);
-    printf("├──────────────────────┬──────────┬──────────────────┤\n");
-// printf("%s", RESETC);
-    printf("│ %-20s │   Min    │       Max        │\n", "Parameter");
-    printf("├──────────────────────┼──────────┼──────────────────┤\n");
-    printf("│%s %-20s%s │ %8d │ %16d │\n",BK_GRAY, lims[0], RESETC, theConf.milim.hummin, theConf.milim.hummax);
-    printf("│ %-20s │ %8d │ %16d │\n", lims[1], theConf.milim.atempmin, theConf.milim.atempmax);
-    printf("│%s %-20s %s│ %8d │ %16d │\n", BK_GRAY, lims[2], RESETC, theConf.milim.wtempmin, theConf.milim.wtempmax);
-    printf("│ %-20s │ %8d │ %16d │\n", lims[3], theConf.milim.phmin, theConf.milim.phmax);
-    printf("│%s %-20s %s│ %8d │ %16d │\n", BK_GRAY, lims[4], RESETC, theConf.milim.domin, theConf.milim.domax);
-    printf("│ %-20s │ %8d │ %16d │\n", lims[5], theConf.milim.kwchoymin, theConf.milim.kwchoymax);
-    printf("│ %s%-20s%s │ %8d │ %16d │\n", BK_GRAY, lims[6], RESETC, theConf.milim.kwbatdhoymin, theConf.milim.kwbatdhoymax);
-    printf("│ %-20s │ %8d │ %16d │\n", lims[7], theConf.milim.kwbatchoymin, theConf.milim.kwbatchoymax);
-    printf("│ %s%-20s%s │ %8d │ %16d │\n", BK_GRAY, lims[8], RESETC, theConf.milim.kwloadhoymin, theConf.milim.kwloadhoymax);
-    printf("│ %-20s │ %8d │ %16d │\n", lims[9], theConf.milim.kwctodaymin, theConf.milim.kwctodaymax);
-    printf("│ %s%-20s %s│ %8d │ %16d │\n", BK_GRAY, lims[10], RESETC, theConf.milim.kwgtodaymin, theConf.milim.kwgtodaymax);
-    printf("│ %-20s │ %8d │ %16d │\n", lims[11], theConf.milim.bdATotmin, theConf.milim.bdATotmax);
-    printf("│ %s%-20s %s│ %8d │ %16d │\n", BK_GRAY, lims[12], RESETC, theConf.milim.bcATotmin, theConf.milim.bcATotmax);
-    printf("│ %-20s │ %8d │ %16d │\n", lims[13], theConf.milim.bdAhoymin, theConf.milim.bcAhoymax);
-    printf("│ %s%-20s%s │ %8d │ %16d │\n", BK_GRAY, lims[14], RESETC, theConf.milim.btempmin, theConf.milim.btempmax);
-    printf("│ %-20s │ %8d │ %16d │\n", lims[15], theConf.milim.bcyclemin, theConf.milim.bcyclemax);
-    printf("│ %s%-20s%s │ %8d │ %16d │\n", BK_GRAY, lims[16], RESETC, theConf.milim.bSOHmin, theConf.milim.bSOHmax);
-    printf("│ %-20s │ %8d │ %16d │\n", lims[17], theConf.milim.bSOCmin, theConf.milim.bSOCmax);
-    printf("│ %s%-20s%s │ %8d │ %16d │\n", BK_GRAY, lims[18], RESETC, theConf.milim.amin, theConf.milim.amax);
-    printf("│ %-20s │ %8d │ %16d │\n", lims[19], theConf.milim.vmin, theConf.milim.vmax);
-    printf("│ %s%-20s%s │ %8d │ %16d │\n", BK_GRAY, lims[20], RESETC, theConf.milim.amin, theConf.milim.amax);
-    printf("│ %-20s │ %8d │ %16d │\n", lims[21], theConf.milim.vmin, theConf.milim.vmax);
-    printf("└──────────────────────┴──────────┴──────────────────┘\n\n");
-}
-
-/**
  * @brief Display schedule information including active profile and day cycle
  * 
  * Shows current scheduling status:
@@ -365,7 +320,6 @@ void show_production_config()
     if((theConf.debug_flags >> dBLOW) & 1U)  printf("Blower ");
     if((theConf.debug_flags >> dLOGIC) & 1U) printf("Logic ");
     if((theConf.debug_flags >> dMODBUS) & 1U) printf("Modbus ");
-    if((theConf.debug_flags >> dLIMITS) & 1U) printf("Limits ");
     if((theConf.debug_flags >> dRS485) & 1U) printf("RS485 ");
     if((theConf.debug_flags >> dDO) & 1U) printf("DO ");
     printf("│\n");
@@ -620,7 +574,6 @@ void show_first_profile()
  * - Statistics (bytes in/out, message counts, connection stats)
  * - Location settings
  * - Current blower/solar system data
- * - Operational limits (via show_limits)
  * - Modbus configuration (via show_mimodbus)
  * 
  * @param pArg Unused task parameter (required by FreeRTOS task signature)
@@ -728,8 +681,6 @@ int cmdConfig(int argc, char **argv)
        show_schedule_info();
     if (configArgs.all->count || configArgs.profile->count)         
            show_first_profile();
-    if (configArgs.all->count || configArgs.limits->count)         
-           show_limits();
     if (configArgs.all->count || configArgs.modbus->count)         
            show_modbus();
     if (configArgs.all->count || configArgs.DO->count)         

@@ -132,35 +132,10 @@ enum {
     dBLOW,
     dLOGIC,
     dMODBUS,
-    dLIMITS,
     dRS485,
     dDO,
     dTEMP
 } debug_flags_t;
-
-typedef enum {
-AHUM=0,
-ATEMP,
-WTEMP,
-LIMITPH,
-LIMITDO,
-GENLCT,
-BMDDKW,
-BMCHKW,
-LCONLI,
-USEDEN,
-GENEER,
-BMDDKT,
-BMCHKT,
-BMDDAH,
-BMCHAH,
-BMTEMP,
-BMCC,
-BMSOH,
-BMSOC,
-PV1A,
-PV1V
-} limits_enum;
 
 // ============================================================================
 // PROFILE & SCHEDULE TYPES
@@ -229,7 +204,6 @@ typedef struct dbg {
     struct arg_str *blow;      // Blower data
     struct arg_str *logic;     // Logic data
     struct arg_str *modbus;    // modbus data
-    struct arg_str *limits;    // limits tracking
     struct arg_str *rs485;     // RS485 debugging
     struct arg_str *DO;        // Dissolved Oxygen debugging
     struct arg_str *temp;      // Temperature debugging
@@ -244,7 +218,6 @@ typedef struct cfg {
     struct arg_lit *profile;    // Profile data x
     struct arg_lit *blow;       // Blower data x
     struct arg_lit *modbus;     // modbus data x
-    struct arg_lit *limits;     // BLE related x
     struct arg_lit *prod  ;     // production data x
     struct arg_lit *stats  ;    // statistics data x
     struct arg_lit *system  ;   // system data x
@@ -401,10 +374,8 @@ typedef struct config {
     uint32_t            debug_flags, test_timer_div;
     uint8_t             work_cycle, work_day, modbus_mux, delay_mesh;
     uint32_t            loginwait;
-    int                 limits[21][2];             // For 21 variables: [0]=min, [1]=max
     uint16_t            baud;
     uart_port_t         port;
-    struct limits       milim;
     struct modbInverter modbus_inverter;
     struct modbSensors  modbus_sensors;
     struct modbBattery  modbus_battery;
