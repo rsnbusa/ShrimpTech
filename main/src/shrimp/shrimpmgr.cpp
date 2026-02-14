@@ -5577,8 +5577,6 @@ void start_schedule_timers(void * pArg)
                 // setup all timers for all schedulkes hours/sessions
                 for (int ck_h = 0; ck_h < theConf.profiles[theConf.activeProfile].cycle[ck].numHorarios; ck_h++)
                 {
-                    theBlower.setSchedule(theConf.activeProfile, ck,ck_d,ck_h,0,0,0,POOLREADY); // set the schedule in blower to indicate we are in active schedule mode
-
                     ctx_timers[ck_h]->day=ck_d; // update the day in the timer context for this timer pair
 
                     if(ck_h==0)
@@ -5591,6 +5589,8 @@ void start_schedule_timers(void * pArg)
                         goto restart_schedule; // Timer validation failed, restart
                     }
                 }
+                theBlower.setSchedule(theConf.activeProfile, ck,ck_d,0,0,0,0,POOLREADY); // set the schedule in blower to indicate we are in active schedule mode and first hours. Blower_satar will change the hour
+
                 // ! Scheduled all timers, now wait for last timer. 
                 // ! THIS WILL EXECUTE INMMEDIATLY 
                 // ! so we will wait for the last timer to set the semaphore unless there are no timers and it will go to next day immediately
@@ -5987,8 +5987,9 @@ void blower_start(void * pArg)
     
     turn_blower_onOff(true);
     // the schedule should change its status here to active, it also marks the profile,cycle and dazy for recovery in PF
-    theBlower.setScheduleStatus(POOLBLOWERON); // this is the status that will be set when the timer starts, 
+    // theBlower.setScheduleStatus(POOLBLOWERON); // this is the status that will be set when the timer starts, 
     // it will be used to know that we are in active schedule mode and to recover the schedule status in case of power loss, it will be set to next or off in the end timer according to if we have more timers or not
+    theBlower.setSchedule(theConf.activeProfile, start_timer_ctx->cycle,start_timer_ctx->day,start_timer_ctx->timerNum,start_timer_ctx->tostart,0,100,POOLBLOWERON); // set the schedule in blower to indicate we are in active schedule mode
 
     if ((theConf.debug_flags >> dSCH) & 1U) {
         time_t now = time(NULL);
