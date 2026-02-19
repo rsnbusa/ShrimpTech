@@ -174,7 +174,7 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 
 // mqtt topic names
 #define MQTTCMD                         "cmd"
-#define MQTTINFO                        "info"
+#define MQTTINFO                        "metrics"
 #define MQTTALARM                       "alarm"
 #define MQTTCONTROL                     "control"
 #define MQTTEMER                        "911"

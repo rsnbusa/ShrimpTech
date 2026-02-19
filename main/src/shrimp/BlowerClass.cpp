@@ -268,7 +268,6 @@ void BlowerClass::setStatsLastCountTS(time_t now)
     framConfig.theStats.lastCountTS = now;
 }
 
-// Increment statistics counters (non-persistent until saveBlower() is called)
 void BlowerClass::setStatsStaConns()
 {
     framConfig.theStats.staCons++;
@@ -310,7 +309,6 @@ void BlowerClass::setPVPanel(uint8_t chargeCurr, float pv1Volts, float pv2Volts,
     framConfig.solarSystem.pvPanel.pv2Volts = pv2Volts;
     framConfig.solarSystem.pvPanel.pv1Amp = pv1Amp;
     framConfig.solarSystem.pvPanel.pv2Amp = pv2Amp;
-    framConfig.lastUpdatePV = time(NULL);
     saveBlower();
 }
 
@@ -337,7 +335,6 @@ void BlowerClass::setBattery(uint8_t batSoc, uint8_t batSOH, uint16_t batteryCyc
     framConfig.solarSystem.battery.batSOH = batSOH;
     framConfig.solarSystem.battery.batteryCycleCount = batteryCycleCount;
     framConfig.solarSystem.battery.batBmsTemp = batBmsTemp;
-    framConfig.lastUpdateBat = time(NULL);
     saveBlower();
 }
 
@@ -372,7 +369,6 @@ void BlowerClass::setEnergy(uint16_t batChgAHToday, uint16_t batDischgAHToday, u
     framConfig.solarSystem.energy.batChgkWhToday = batChgkWhToday;
     framConfig.solarSystem.energy.batDischgkWhToday = batDischgkWhToday;
     framConfig.solarSystem.energy.genLoadConsumToday = genLoadConsumToday;
-    framConfig.lastUpdateEnergy = time(NULL);
     saveBlower();
 }
 
@@ -423,7 +419,6 @@ void BlowerClass::setSensors(float DO, float PH, float WTemp, float ATemp, float
     framConfig.solarSystem.sensors.WTemp = WTemp;
     framConfig.solarSystem.sensors.ATemp = ATemp;
     framConfig.solarSystem.sensors.AHum = AHum;
-    framConfig.lastUpdateSensors = time(NULL);
     saveBlower();
 }
 
@@ -442,7 +437,6 @@ void BlowerClass::setSchedule(uint16_t currentProfile,uint16_t currentCycle, uin
     framConfig.solarSystem.wschedule.currentEndHour = currentEndHour;
     framConfig.solarSystem.wschedule.currentPwmDuty = currentPwmDuty;
     framConfig.solarSystem.wschedule.status = status;
-    framConfig.lastUpdate = time(NULL);
     saveBlower();
 }
 
@@ -472,7 +466,6 @@ void BlowerClass::getSchedule(uint16_t *currentCycle, uint16_t *currentDay, uint
 void BlowerClass::setScheduleStruct(const wschedule_t &sched)
 {
     memcpy(&framConfig.solarSystem.wschedule, &sched, sizeof(wschedule_t));
-    framConfig.lastUpdate = time(NULL);
     saveBlower();
 }
 
@@ -488,7 +481,6 @@ void BlowerClass::getScheduleStruct(wschedule_t *sched)
 void BlowerClass::setScheduleStatus(uint16_t status)
 {
     framConfig.solarSystem.wschedule.status = status;
-    framConfig.lastUpdate = time(NULL);
     saveBlower();
 }
 

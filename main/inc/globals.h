@@ -233,7 +233,7 @@ EXTERN char alarmQueue[60];
 EXTERN char gwStr[20];
 EXTERN char *tempb;
 EXTERN char cmdQueue[60];
-EXTERN char infoQueue[60];
+EXTERN char metricQueue[60];
 EXTERN char controlQueue[60];
 EXTERN char internal_cmds[MAXINTCMDS][20];
 EXTERN char emergencyQueue[60];

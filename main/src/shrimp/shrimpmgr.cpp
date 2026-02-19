@@ -1062,7 +1062,7 @@ esp_err_t root_send_collected_nodes(uint32_t cuantos)        //root only
         return ESP_FAIL;
     }
 
-    mqttMsg.queue = infoQueue;
+    mqttMsg.queue = metricQueue;
     mqttMsg.msg   = (char*)shmsg;  // freed by mqtt sender
     mqttMsg.lenMsg = sizeof(shrimpMsg_t);
     mqttMsg.code  = NULL;
@@ -1225,7 +1225,7 @@ esp_err_t root_send_collected_nodes(uint32_t cuantos)        //root only
 
     // Queue message for MQTT transmission
     mqttSender_t mqttMsg = {0};
-    mqttMsg.queue  = infoQueue;
+    mqttMsg.queue  = metricQueue;
     mqttMsg.msg    = (char*)shmsg;  // freed by mqtt sender
     mqttMsg.lenMsg = sizeof(shrimpMsg_t);
     mqttMsg.code   = NULL;
@@ -1447,11 +1447,11 @@ void wifi_send_meter_data(TimerHandle_t algo)
     print_blower("Root Average Solar Data", &shmsg->poolAvgMetrics, false);
     shmsg->msgTime   = time(NULL);
     shmsg->poolid    = theConf.poolid;
-    shmsg->countnodes= 1;                //only 1 node in wifi mode
+    shmsg->countnodes= theConf.unitid;                //only 1 node in wifi mode
     shmsg->centinel  = 0x12345678;       // our sentinel
     shmsg->lim_errs  = globalErrors;     // whatever errors the Blower has recorded
 
-    int msgid = esp_mqtt_client_publish(clientCloud, (char*)infoQueue, (char*)shmsg,
+    int msgid = esp_mqtt_client_publish(clientCloud, (char*)metricQueue, (char*)shmsg,
                                         sizeof(shrimpMsg_t), QOS1, NORETAIN);
     if (msgid < 0) {
         MESP_LOGE(MESH_TAG, "Error publishing meter data to MQTT HQ");
@@ -2772,7 +2772,7 @@ void setup_mqtt_config(void)
     memset(who, 0, sizeof(who));
     memset(&mqtt_cfg, 0, sizeof(mqtt_cfg));
     
-    snprintf(who, sizeof(who), "Meterserver%d", theConf.poolid);
+    snprintf(who, sizeof(who), "Meterserver%d-%d", theConf.poolid,theConf.unitid);
     
     mqtt_cfg.broker.address.uri = theConf.mqttServer;
     mqtt_cfg.credentials.client_id = who;
@@ -3306,7 +3306,7 @@ void init_global_state_flags(void)
 void init_mqtt_queue_names(void)
 {
     snprintf(cmdQueue, sizeof(cmdQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTCMD);
-    snprintf(infoQueue, sizeof(infoQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTINFO);
+    snprintf(metricQueue, sizeof(metricQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTINFO);
     snprintf(alarmQueue, sizeof(alarmQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTALARM);
     snprintf(controlQueue, sizeof(controlQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTCONTROL);
 }
@@ -3483,7 +3483,7 @@ void init_system_timers(void)
         theConf.loginwait = LOGINTIME;
     }
     
-    // Schedule timer for internal scheduling
+    // Schedule timer for internal scheduling via Mesh only 
     scheduleTimer = xTimerCreate("scht", pdMS_TO_TICKS(500), pdFALSE, 
                                   (void*)0, schedule_timeout);
     
@@ -3494,21 +3494,20 @@ void init_system_timers(void)
         }
     );
     
-    // Meter collection timer (based on WiFi mode)
-    uint32_t collection_period = theConf.collectimer * 60000;        // in minutes to ms
+    // Meter collection timer (based on WiFi mode)-> send Mqtt Broker  data/cmd 
+    uint32_t collection_period = theConf.collectimer * 60000;        //  minutes to ms
     TimerCallbackFunction_t collection_callback = 
         (theConf.wifi_mode > 0) ? root_collect_meter_data : wifi_send_meter_data;
     BaseType_t collection_autoreload = 
         (theConf.wifi_mode > 0) ? pdFALSE : pdTRUE;
-    printf("coolect %d\n", collection_period);
     collectTimer = xTimerCreate("Timer", pdMS_TO_TICKS(collection_period),
                                collection_autoreload, (void*)0, collection_callback);
     
-    // Login timeout timer
+    // Login timeout timer for Mesh Nodes
     loginTimer = xTimerCreate("Ltim", pdMS_TO_TICKS(theConf.loginwait), pdFALSE,
                              (void*)0, login_timeout);
     
-    // Confirmation timer (only in WiFi mode) with lambda callback
+    // Confirmation timer (only in MESH mode) with lambda callback
     if (theConf.wifi_mode) {
         confirmTimer = xTimerCreate("Confirm", pdMS_TO_TICKS(CONFIRMTIMER), pdFALSE,
             (void*)0,
@@ -4164,11 +4163,6 @@ void root_set_senddata_timer()
     }
 }
 
-void post_root()
-{
-    xTaskCreate(&root_sntpget,"sntp",4096,NULL, 10, NULL); 	        // get real time
-}
-
 /**
  * @brief Initialize root node after IP acquisition
  * 
@@ -4179,7 +4173,7 @@ void init_root_node(void)
     loadedf = true;
     meshf = true;
     root_mqtt_app_start();
-    post_root();
+    xTaskCreate(&root_sntpget,"sntp",1024*4,NULL, 10, NULL); 	        // get real time
     xTaskCreate(&root_emergencyTask, "e911", 2048, NULL, 5, NULL);
     xTaskCreate(&blinkRoot, "root", 1024, (void*)400, 5, &blinkHandle);
     
@@ -4463,18 +4457,18 @@ void wifi_sta_event_handler(void* arg, esp_event_base_t event_base,
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
-        if (s_wifi_sta_retry_num < WIFI_STA_MAXIMUM_RETRY)
-        {
+        // if (s_wifi_sta_retry_num < WIFI_STA_MAXIMUM_RETRY) //should be forever
+        // {
             esp_wifi_connect();
             s_wifi_sta_retry_num++;
             MESP_LOGW(MESH_TAG, "Retry connecting to external AP (attempt %d/%d)", 
                      s_wifi_sta_retry_num, WIFI_STA_MAXIMUM_RETRY);
-        }
-        else
-        {
-            MESP_LOGE(MESH_TAG, "Failed to connect to external AP after %d attempts", 
-                     WIFI_STA_MAXIMUM_RETRY);
-        }
+        // }
+        // else
+        // {
+        //     MESP_LOGE(MESH_TAG, "Failed to connect to external AP after %d attempts", 
+        //              WIFI_STA_MAXIMUM_RETRY);
+        // }
         s_wifi_sta_connected = false;
     }
 }
@@ -4488,6 +4482,7 @@ void wifi_sta_event_handler(void* arg, esp_event_base_t event_base,
  * 
  * Handles IP events:
  * - IP_EVENT_STA_GOT_IP: Successfully obtained IP address from external AP
+ * - Launches several important tasks that rely on active IP read below
  */
 void ip_sta_got_ip_handler(void* arg, esp_event_base_t event_base,
                                    int32_t event_id, void* event_data)
@@ -4500,9 +4495,17 @@ void ip_sta_got_ip_handler(void* arg, esp_event_base_t event_base,
         MESP_LOGI(MESH_TAG, "Netmask: " IPSTR, IP2STR(&event->ip_info.netmask));
         s_wifi_sta_retry_num = 0;
         s_wifi_sta_connected = true;
-        post_root();
-        xTaskCreate(&root_emergencyTask,"e911",2048,NULL, 5, NULL);
-        xTaskCreate(&blinkRoot,"root",1024,(void*)400, 5, &blinkHandle);
+        // create main tasks AFTER we get IP, to avoid timeouts and other issues
+        // Launch the SNTP task to get current time GMT-5
+        // Emergency Task when a critical component dies
+        // BlinkRoot to indcate if NOT CONFIGURED
+        // launch the Sensor rotuine that will launch all available sensors task if Configured to do so
+        // root_mqttMgr to manage mqtt connection and messages
+        // setup mqtt connection and start it
+        // THE MOST IMPORTATN TIMER, the collect timer is started iused to send the HeartBeat to the Main Broker Controller App
+        xTaskCreate(&root_sntpget,"sntp",1024*4,NULL, 10, NULL); 	        // get real time
+        xTaskCreate(&root_emergencyTask,"e911",1024*2,NULL, 5, NULL);
+        xTaskCreate(&blinkRoot,"root",1024*1,(void*)400, 5, &blinkHandle);
         launch_sensors();
         if( xTaskCreate(&root_mqttMgr,"mqtt",1024*10,NULL, 10, &mqttMgrHandle)!=pdPASS)      //receiving commands
             MESP_LOGE(MESH_TAG,"Fail to launch Mgr Wifi");
@@ -4606,7 +4609,7 @@ esp_err_t wifi_connect_external_ap(void)
     sta_config.sta.pmf_cfg.capable = true;
     sta_config.sta.pmf_cfg.required = false;
     
-    // Configure WiFi AP with SSID "SHRIMP" and password "csttpstt"
+    // Configure WiFi AP with SSID "shrimp"-PoolId-UnitId and password "csttpstt"
     wifi_config_t ap_config = {};
     memset(&ap_config, 0, sizeof(wifi_config_t));
     char thename[20];
@@ -4650,7 +4653,7 @@ esp_err_t wifi_connect_external_ap(void)
         return ESP_FAIL;
     }
     
-    MESP_LOGI(MESH_TAG, "WiFi APSTA initialization complete. AP SSID: SHRIMP, STA connecting to: %s", theConf.thessid);
+    MESP_LOGI(MESH_TAG, "WiFi APSTA initialization complete. AP SSID: %s, STA connecting to: %s", thename, theConf.thessid);
     return ESP_OK;
 }
 
@@ -6085,7 +6088,7 @@ void app_main(void)
         free(msg);
     }
 
-    theBlower.initBlower();        //load the blower driver 
+    theBlower.initBlower();        //load the blower driver object and initialize it, this will load the schedule from flash and set the blower status according to the schedule status, if we are in active schedule mode it will set the blower on or next according to the schedule status, if we are not in active schedule mode it will set the blower off, this is important for power loss recovery as we will know where we are in the schedule and we can just start the timers from there without needing to wait for the first timer to start and set the schedule status in blower
 
 //keyboard commands
 
@@ -6096,6 +6099,7 @@ void app_main(void)
 // sizeof(energy_t),sizeof(solarSystem_t),sizeof(solarDef_t),sizeof(meshunion_t),sizeof(shrimpMsg_t),sizeof(time_t),sizeof(float),
 // sizeof(theConf), sizeof(TickType_t)); 
 
+// check here for System configuration 0->new or 1->configured but we want to reconfigure or 2->configured and we want to reconfigure but keep meter data, this is set by the cmdConf MQTT command with the conf parameter
     if(theConf.meterconf==0  )  // is this meter NOT configured
     {
         //no, start the configuration phase
@@ -6128,13 +6132,15 @@ void app_main(void)
         //         vTaskDelay(100);    
         // }
     
-    // xTaskCreate(&start_schedule_timers,"sched",1024*10,NULL, 5, &scheduleHandle); 	       
+// Most importatn task are now launched
 
-    xTaskCreate(&root_timer,"reptimer",1024*8,NULL, 5, NULL); 	
+    if(theConf.wifi_mode) 
+        xTaskCreate(&root_timer,"reptimer",1024*8,NULL, 5, NULL); 	    // mesh only 
+
     if(theConf.modbuson)        
         xTaskCreate(&rs485_task_manager,"modbus",1024*10,NULL, 5, NULL); 	            // start the modbus task  
   
-    if(theConf.modbus_mux)
+    if(theConf.modbus_mux)      // temperature settings
    {
         xTaskCreate(&ds18b20_task,"ds18b20",1024*3,NULL, 5, NULL); 	            // start the modbus task  
         MESP_LOGI(TAG,"Temp task started");
@@ -6145,7 +6151,7 @@ void app_main(void)
     // launch_sensors();
             // start the modbus task   
 // the internal mesh is now going to start and begin all the main flow from its gotIp event manager
-    showLVGL((char*)"MESH",10000,3);   
+    // showLVGL((char*)"MESH",10000,3);   
 
     if(!theConf.masternode && theConf.wifi_mode)     // allow master to boot
     {
@@ -6154,7 +6160,7 @@ void app_main(void)
     }
     MESP_LOGI(TAG,"Network mode is %s",theConf.wifi_mode?"Mesh":"WiFi");
 
-    if(theConf.wifi_mode==WIFI_MESH)
+    if(!theConf.wifi_mode)
     {
         printf("Start wifi mode\n");
         wifi_connect_external_ap(); //start wifi which will start many ither tasks from got ip event wiht SNTP starting the scheduler

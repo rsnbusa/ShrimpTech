@@ -15,19 +15,20 @@ char modb_names[][30]={
 "BatChToday","BatDscToday","BatChgTotal","BatDscTotal","GenToday","UsedToday","LoadUsedTotal","BatChdToday","BatDscToday","LoadUsedToday","BatTemp"
 };
 
-char schStatus[][11]={"INACTIVE  ","BLOWERON  ","NEXTHOUR  ","HARVESTING","PARKED    "};
+char schStatus[][11]={"READY","BLOWERON","NEXTHOUR","BLOWEROFF","CROP","PARK"};
+
 void show_timers()
 {
      uint_least64_t remainingTicksStart, remainingTicksEnd ;
     uint32_t startremaining, endremaining;;
 
     printf("%s\n",RESETC);
-    printf("  ┌──────────────────────────────────────────────────────────────────────────────────┐\n");
-    printf("  │%s%s                                   TIMERS   STATUS                                %s│\n",RESETC,BK_RED,RESETC);
-    printf("  ├──────────────────────────────────────────────────────────────────────────────────┤\n");
+    printf("  ┌───────────────────────────────────────────────────────────────────────────────────┐\n");
+    printf("  │%s%s                                   TIMERS   STATUS                                 %s│\n",RESETC,BK_RED,RESETC);
+    printf("  ├───────────────────────────────────────────────────────────────────────────────────┤\n");
     
-    printf("  │ Timer │ Cycle │  Day  │  Hour │ Start │ Seconds │ Last │ SRemaining │ ERemaining │\n");
-    printf("  ├───────┼───────┼───────┼───────┼───────┼─────────┼──────┼────────────┼────────────┤\n");
+    printf("  │ Phase │ Cycle │  Day  │  Hour │ HStart │ SecLong │ Last │ SecsStart  │  SecsEnd   │\n");
+    printf("  ├───────┼───────┼───────┼───────┼────────┼─────────┼──────┼────────────┼────────────┤\n");
     
     for (int a=0;a<countTimersEnd;a++)
     {
@@ -36,17 +37,13 @@ void show_timers()
             int64_t now = esp_timer_get_time();
 
             if(esp_timer_is_active(start_timers[ctx_timers[a]->timerNum]))
-            {
                 esp_timer_get_expiry_time(start_timers[ctx_timers[a]->timerNum], &remainingTicksStart);
-            }
 
             if(esp_timer_is_active(end_timers[ctx_timers[a]->timerNum]))
-            {
                 esp_timer_get_expiry_time(end_timers[ctx_timers[a]->timerNum], &remainingTicksEnd);
-            }
+            
             char time_str[20];
-            // format_time(ctx_timers[a]->time, time_str, sizeof(time_str));
-            printf("  │   %-2d  │ %-5d │ %-5d │ %-5d │ %-5d │ %-7ld │ %-4s │ %-10lld │ %-10lld │\n", 
+            printf("  │   %-2d  │ %-5d │ %-5d │ %-5d │ %-6d │ %-7ld │ %-4s │ %-10lld │ %-10lld │\n", 
                     ctx_timers[a]->timerNum,
                     ctx_timers[a]->cycle,
                     ctx_timers[a]->day,
@@ -54,8 +51,8 @@ void show_timers()
                     ctx_timers[a]->tostart,
                     ctx_timers[a]->horaslen,
                     ctx_timers[a]->isLast ? "Yes" : "No",
-                    (remainingTicksStart-now)/1000000,
-                    (remainingTicksEnd-now)/1000000);
+                    (remainingTicksStart-now)/TIMERUNITS,
+                    (remainingTicksEnd-now)/TIMERUNITS);
 
         }
          else
@@ -63,7 +60,7 @@ void show_timers()
              MESP_LOGI(TAG, "Timer %d - Inactive", a);
          }
     }
-        printf("  └───────┴───────┴───────┴───────┴───────┴─────────┴──────┴────────────┴────────────┘\n");
+        printf("  └───────┴───────┴───────┴───────┴────────┴─────────┴──────┴────────────┴────────────┘\n");
     // esp_timer_dump(stdout);
 }
 /**
@@ -86,7 +83,7 @@ void show_modbus()
     printf("└─────────────────────────────────────────────────────────────────┘\n\n");
 
     // ===== PV PANELS =====
-    printf("  ┌─ %sPV Panels (Addr: %3d | Refresh: %3dms) %s──────────────────┐\n",BK_BLUE, 
+    printf("  ┌─ %sPV Panels (Addr: %3d | Refresh: %3dm ) %s──────────────────┐\n",BK_BLUE, 
            theConf.modbus_panels.PVAddress, theConf.modbus_panels.refresh_rate,RESETC);
     printf("  │ %-14s │ Offset │ Start  │ Points  │ Type │  Mux  │\n", "Name");
     printf("  ├────────────────┼───────┼─────────┼─────────┼──────┼───────┤\n");
@@ -108,7 +105,7 @@ void show_modbus()
     printf("  └────────────────┴───────┴─────────┴─────────┴──────┴───────┘\n\n");
 
     // ===== BATTERY =====
-    printf("  ┌─ %sBattery (Addr: %3d | Refresh: %3dms) %s ────────────────────┐\n", BK_GREEN,
+    printf("  ┌─ %sBattery (Addr: %3d | Refresh: %3dm ) %s ────────────────────┐\n", BK_GREEN,
            theConf.modbus_battery.batAddress, theConf.modbus_battery.refresh_rate, RESETC);
     printf("  │ %-15s │ Offset │ Start  │ Points │ Type │  Mux   │\n", "Name");
     printf("  ├─────────────────┼────────┼────────┼────────┼──────┼────────┤\n");
@@ -127,7 +124,7 @@ void show_modbus()
     printf("  └─────────────────┴────────┴────────┴────────┴──────┴────────┘\n\n");
 
     // ===== SENSORS =====
-    printf("  ┌─ %sSensors (Refresh: %2dms) %s────────────────────────────────────────┐\n", BK_YELLOW,
+    printf("  ┌─ %sSensors (Refresh: %2dm ) %s────────────────────────────────────────┐\n", BK_YELLOW,
            theConf.modbus_sensors.refresh_rate, RESETC);
     printf("  │ %-15s │ Addr │ Offset │ Start  │ Points │ Type │  Mux  │\n", "Name");
     printf("  ├─────────────────┼──────┼────────┼────────┼────────┼──────┼───────┤\n");
@@ -149,7 +146,7 @@ void show_modbus()
     printf("  └─────────────────┴──────┴────────┴────────┴────────┴──────┴───────┘\n\n");
 
     // ===== INVERTER =====
-    printf("  ┌─ %sInverter (Addr: %3d | Refresh: %3dms) %s ───────────────────┐\n", BK_MAGENTA,
+    printf("  ┌─ %sInverter (Addr: %3d | Refresh: %3dm ) %s ───────────────────┐\n", BK_MAGENTA,
            theConf.modbus_inverter.InverterAddress, theConf.modbus_inverter.refresh_rate, RESETC);
     printf("  │ %-15s │ Offset │ Start  │ Points │ Type │  Mux   │\n", "Name");
     printf("  ├─────────────────┼────────┼────────┼────────┼──────┼────────┤\n");
@@ -211,15 +208,15 @@ void show_schedule_info()
         if(schedulef)
         {
             hora=wsched.currentHorario;    
-            currentTime=esp_timer_get_time()/1000000;       
+            currentTime=esp_timer_get_time()/TIMERUNITS;       
 
             if (end_timers[hora]!=NULL)
                     esp_timer_get_expiry_time(end_timers[ctx_timers[hora]->timerNum], &xEnd_pending);
             if (start_timers[hora]!=NULL)
                     esp_timer_get_expiry_time(start_timers[ctx_timers[hora]->timerNum], &xStart_pending);
             
-            xEnd_pending = xEnd_pending/1000000;
-            xStart_pending = xStart_pending/1000000;
+            xEnd_pending = xEnd_pending/TIMERUNITS;
+            xStart_pending = xStart_pending/TIMERUNITS;
 
             printf("│ Current Profile :              %-28d  │\n", theConf.activeProfile);
             printf("│ Current Cycle:                 %-28d  │\n", wsched.currentCycle);
@@ -346,7 +343,7 @@ void show_mqtt_config()
     printf("├─────────────────────────────────────────────────────────────────────────────────┤\n");
        //  printf("%s", RESETC);
     printf("│ Command Topic: %-65s│\n", cmdQueue);
-    printf("│ Info Topic:    %-65s│\n", infoQueue);
+    printf("│ Metrics Topic: %-65s│\n", metricQueue);
     printf("│ Alarm Topic:   %-65s│\n", alarmQueue);
     printf("│ Control Topic: %-65s│\n", controlQueue);
     printf("│ Server: [%-30s] | User: [%-10s] | Pass: [%-8s]│\n", theConf.mqttServer, theConf.mqttUser, theConf.mqttPass);
