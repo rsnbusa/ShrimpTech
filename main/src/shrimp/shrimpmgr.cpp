@@ -60,6 +60,34 @@ char* format_log_time(time_t now,char *time_buf, size_t buf_size)
     return NULL;
 }
 
+// task will carew that the "best" available time is set as system time
+// LFO (last fucking option) is ts the first one and read from Fram which is saved on every saveblower call
+// Next is GPS time, set with the gpsFlag true and managed by the gps_task
+// finally this task is KILLED when a network time is obtained, and the system time is set with SNTP
+
+void time_keeper_task(void *pArg)
+{
+        char time_str[30];
+
+        setenv("TZ", LOCALTIME, 1);
+        tzset();
+        time_t lfo = theBlower.getReservedDate();   
+        struct tm *timeinfo = localtime(&lfo);
+        struct timeval tv = {
+        .tv_sec = lfo,
+        .tv_usec = 0
+        };
+        settimeofday(&tv, NULL);
+        format_log_time(lfo, time_str, 30);
+
+        MESP_LOGE(TAG, "LFO Set up time from FRAM to %s", time_str);
+        // now loop for GPS flag or be killed
+        while(true)
+        {
+            delay(1000);   // every 10 seconds check if GPS time is available
+        }
+
+}
 void ds18b20_task(void *pArg)
 {
     // install 1-wire bus
@@ -1437,6 +1465,7 @@ void wifi_send_meter_data(TimerHandle_t algo)
         return;
     }
 
+     theBlower.setReservedDate(time(NULL));
     // copy theBlower solar data into shrimp message to send to MAIN HOST via MQTT HQ
     memcpy(&shmsg->poolAvgMetrics, theBlower.getSolarSystem(), sizeof(solarSystem_t));
     // update the current schedule data that is lost during averaging
@@ -2266,6 +2295,7 @@ void root_sntpget(void *pArg)
             xTaskCreate(&PIDController,"PID",1024*10,NULL, 5, NULL); 	            // start the {PID} task  
 
         start_blower_if_ready();
+        vTaskDelete(timeKeeperHandle);
     }
     vTaskDelete(NULL);
 }
@@ -2484,11 +2514,14 @@ void handle_mqtt_data_event(esp_mqtt_event_handle_t event)
         return;
     }
     
+    if(theConf.retain)
+    {
     // Delete retained messages
-    if(strcmp(eltopic, cmdQueue) == 0)
-        esp_mqtt_client_publish(clientCloud, cmdQueue, "", 0, 0, 1);
-    else if(strcmp(eltopic, cmdBroadcast) == 0)
-        esp_mqtt_client_publish(clientCloud, cmdBroadcast, "", 0, 0, 1);
+        if(strcmp(eltopic, cmdQueue) == 0)
+            esp_mqtt_client_publish(clientCloud, cmdQueue, "", 0, 0, 1);
+        else if(strcmp(eltopic, cmdBroadcast) == 0)
+            esp_mqtt_client_publish(clientCloud, cmdBroadcast, "", 0, 0, 1);
+    }
 }
 
 /**
@@ -2609,7 +2642,17 @@ void process_mqtt_command_item(cJSON *cmditem)
 		return;
 	}
 
-	MESP_LOGI(MESH_TAG, "%sExternal cmd [%s]", DBG_XCMDS, order->valuestring);
+	cJSON *broadcast = cJSON_GetObjectItem(cmditem, "unitid");
+	if (!broadcast)
+	{
+		MESP_LOGE(MESH_TAG, "No unitid received in command item");
+		return;
+	}
+
+        if(broadcast->valueint !=255 and broadcast->valueint != theConf.unitid)
+         return;  // Not for me
+   
+	MESP_LOGI(MESH_TAG, "%sExternal cmd [%s][%d]", DBG_XCMDS, order->valuestring, broadcast->valueint);
 	int cual = findCommand(order->valuestring);
 	
 	if (cual >= 0)
@@ -3270,7 +3313,8 @@ void init_global_state_flags(void)
     meshf = false;
     mqttErrors = 0;
     BASETIMER = theConf.collectimer;
-    
+    webserverf=false;
+
     // Mesh configuration
     mesh_layer = -1;
     mesh_started = false;
@@ -6064,8 +6108,9 @@ void app_main(void)
 {
     esp_err_t ret;
 
+    // inititalize a lot of stuff
     init_process();  
-    webserverf=false;
+
 
     app_spiffs_log();
     // gdispf=false;
@@ -6079,6 +6124,10 @@ void app_main(void)
     // #endif
     //log boot
  
+    theBlower.initBlower();        //load the blower driver object and initialize it, this will load the schedule from flash and set the blower status according to the schedule status, if we are in active schedule mode it will set the blower on or next according to the schedule status, if we are not in active schedule mode it will set the blower off, this is important for power loss recovery as we will know where we are in the schedule and we can just start the timers from there without needing to wait for the first timer to start and set the schedule status in blower
+    // start the time keeper to get a relavite valid date to set the system time  for our the schedule process, this is important to be the first thing that starts after the blower init as we need a valid time to start the schedule process and to set the schedule timers, if we have a power loss we will know where we are in the schedule and we can just start the timers from there without needing to wait for the first timer to start and set the schedule status in blower
+    xTaskCreate(&time_keeper_task,"tkeeep",1024*4,NULL, 5, &timeKeeperHandle); 	            // start the modbus task  
+
     char *msg=(char*)calloc(1,100);
     if(msg)
     {    
@@ -6088,7 +6137,6 @@ void app_main(void)
         free(msg);
     }
 
-    theBlower.initBlower();        //load the blower driver object and initialize it, this will load the schedule from flash and set the blower status according to the schedule status, if we are in active schedule mode it will set the blower on or next according to the schedule status, if we are not in active schedule mode it will set the blower off, this is important for power loss recovery as we will know where we are in the schedule and we can just start the timers from there without needing to wait for the first timer to start and set the schedule status in blower
 
 //keyboard commands
 

@@ -399,6 +399,7 @@ void my_set_system(struct system *data) {
 	theConf.simTime=s_system.simulate;
 	theConf.modbuson=s_system.modbussensor;
 	theConf.modbus_mux=s_system.tempsensor;
+	theConf.retain=s_system.retain;
 	if (theConf.meterconf == CONF_STATE_CONFIRMED)
 	{
 		theConf.meterconf = CONF_STATE_PENDING;
@@ -427,6 +428,7 @@ void my_get_system(struct system *data)
 	s_system.simulate=theConf.simTime;
 	s_system.tempsensor=theConf.modbus_mux; 
 	s_system.modbussensor=theConf.modbuson;
+	s_system.retain=theConf.retain;
 
 	const esp_app_desc_t *mip = esp_app_get_description();
 	if (mip && mip->version)
@@ -849,7 +851,7 @@ err_t make_profile(char * prof)
 		cJSON *ciclos = cJSON_GetObjectItem(pitem, "ciclos");
 		if (parse_profile_cycles(ciclos, a) != ESP_OK)
 		{
-			cJSON_Delete(root);
+			cJSON_Delete(root);     
 			return ESP_FAIL;
 		}
 	}

@@ -10,6 +10,7 @@ extern "C" {
 #endif
 
 #include "mongoose.h"
+
 #define WIZARD_ENABLE_HTTP 1
 #define WIZARD_ENABLE_HTTPS 0
 #define WIZARD_ENABLE_HTTP_UI 1
@@ -348,6 +349,7 @@ void glue_get_settings(struct settings *);
 void glue_set_settings(struct settings *);
 
 struct system {
+  bool retain;
   bool modbussensor;
   bool tempsensor;
   bool simulate;

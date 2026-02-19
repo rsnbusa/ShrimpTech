@@ -60,6 +60,7 @@ EXTERN TaskHandle_t oledDisp;
 EXTERN TaskHandle_t adc_task_handle;
 EXTERN TaskHandle_t blinkHandle;
 EXTERN TaskHandle_t ssidHandle;
+EXTERN TaskHandle_t timeKeeperHandle;
 
 // ============================================================================
 // SYNCHRONIZATION PRIMITIVES
@@ -339,4 +340,11 @@ EXTERN sensor_t sensorData;
 EXTERN double doValue, setPoint, outputVal,KP,KI,KD;
 EXTERN float temperature;
 EXTERN start_timer_ctx_t * ctx_timers[MAXHORARIOS];
+
+// ============================================================================
+// GPS Globals
+// ============================================================================
+EXTERN bool gpsFlag;
+EXTERN timer_t gpsTime;
+EXTERN float gpsLocation;
 #endif // MAIN_GLOBALS_H

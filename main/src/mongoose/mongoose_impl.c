@@ -362,6 +362,7 @@ struct attribute s_settings_attributes[] = {
   {NULL, NULL, NULL, 0, 0, false}
 };
 struct attribute s_system_attributes[] = {
+  {"retain", "bool", NULL, offsetof(struct system, retain), 0, false},
   {"modbussensor", "bool", NULL, offsetof(struct system, modbussensor), 0, false},
   {"tempsensor", "bool", NULL, offsetof(struct system, tempsensor), 0, false},
   {"simulate", "bool", NULL, offsetof(struct system, simulate), 0, false},

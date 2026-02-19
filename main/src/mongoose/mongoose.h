@@ -26,7 +26,6 @@
 extern "C" {
 #endif
 
-#define MG_ENABLE_LOG 0
 
 #define MG_ARCH_CUSTOM 0        // User creates its own mongoose_config.h
 #define MG_ARCH_UNIX 1          // Linux, BSD, Mac, ...
