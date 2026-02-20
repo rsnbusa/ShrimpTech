@@ -219,8 +219,8 @@ void show_schedule_info()
             xStart_pending = xStart_pending/TIMERUNITS;
 
             printf("│ Current Profile :              %-28d  │\n", theConf.activeProfile);
-            printf("│ Current Cycle:                 %-28d  │\n", wsched.currentCycle);
-            printf("│ Current Day:                   %-28d  │\n", wsched.currentDay);
+            printf("│ Current Cycle:                 %-28d  │\n", wsched.currentCycle+1);
+            printf("│ Current Day:                   %-28d  │\n", wsched.currentDay+1);
             printf("│ Current Horario:               %-28d  │\n", wsched.currentHorario+1);     // seen first=1 not 0
             printf("│ Number of Sessions:            %-28d  │\n", theConf.profiles[theConf.activeProfile].cycle[wsched.currentCycle].numHorarios);
             printf("│ Current Start Hour:            %-28d  │\n", wsched.currentStartHour);

@@ -42,8 +42,9 @@ void generic_modbus_task(void *pArg)
     
     // Extract sensor configuration from task parameter
     modbus_sensor_type_t *modbus_sensor = (modbus_sensor_type_t*)pArg;
-    
-    MESP_LOGI(TAG, "%s%s monitoring task started", modbus_sensor->color, modbus_sensor->modbus_sensor_name);
+
+    if ((theConf.debug_flags >> dMODBUS) & 1U)
+         MESP_LOGI(TAG, "%s%s monitoring task started", modbus_sensor->color, modbus_sensor->modbus_sensor_name);
     
     // Get sensor configuration and refresh rate
     void *sensor_specs = modbus_sensor->modbus_sensor_specs;
@@ -63,8 +64,8 @@ void generic_modbus_task(void *pArg)
         MESP_LOGW(TAG, "%s task: No valid sensors configured, task exiting", modbus_sensor->modbus_sensor_name);
         vTaskDelete(NULL);
     }
-
-    MESP_LOGI(TAG, "%s task: Initialized %d descriptors, refresh rate: %d min", 
+    if ((theConf.debug_flags >> dMODBUS) & 1U)
+        MESP_LOGI(TAG, "%s task: Initialized %d descriptors, refresh rate: %d min", 
              modbus_sensor->modbus_sensor_name, sensor_count, refresh_rate);
     
     // Prepare message structure for RS485 communication
@@ -99,6 +100,6 @@ void generic_modbus_task(void *pArg)
         }
         
         // Wait before next reading cycle refresh per configuration * 1000 ms * modbus_mux which should be 60 for minutes
-        vTaskDelay(pdMS_TO_TICKS(refresh_rate * 1000 * theConf.modbus_mux));
+        vTaskDelay(pdMS_TO_TICKS(refresh_rate * 1000 * 1));
     }
 }

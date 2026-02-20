@@ -6,6 +6,8 @@
 #include "time_utils.h"
 #include "led_utils.h"
 #include "display_utils.h"
+
+
 /**
  * ? que sera
  * ! warning
@@ -3656,7 +3658,6 @@ void init_process(void)
     init_gpio_pins();
     init_crypto_engine();
     init_system_queues();
-    // calculate_permanent_delivery_time();
     init_system_timers();
     init_logging_system();
     init_event_groups();
@@ -4560,6 +4561,7 @@ void ip_sta_got_ip_handler(void* arg, esp_event_base_t event_base,
             MESP_LOGE(TAG,"Could not start MQTT client" );
         if( xTimerStart(collectTimer, 0 ) != pdPASS )         // data collection timer
             MESP_LOGE(MESH_TAG,"WIFI Collect Timer failed");
+            
     }
 }
 
@@ -6036,7 +6038,8 @@ void blower_start(void * pArg)
     // the schedule should change its status here to active, it also marks the profile,cycle and dazy for recovery in PF
     // theBlower.setScheduleStatus(POOLBLOWERON); // this is the status that will be set when the timer starts, 
     // it will be used to know that we are in active schedule mode and to recover the schedule status in case of power loss, it will be set to next or off in the end timer according to if we have more timers or not
-    theBlower.setSchedule(theConf.activeProfile, start_timer_ctx->cycle,start_timer_ctx->day,start_timer_ctx->timerNum,start_timer_ctx->tostart,0,100,POOLBLOWERON); // set the schedule in blower to indicate we are in active schedule mode
+    theBlower.setSchedule(theConf.activeProfile, start_timer_ctx->cycle,start_timer_ctx->day,start_timer_ctx->timerNum,
+        start_timer_ctx->tostart,0,100,POOLBLOWERON); // set the schedule in blower to indicate we are in active schedule mode
 
     if ((theConf.debug_flags >> dSCH) & 1U) {
         time_t now = time(NULL);
@@ -6109,10 +6112,10 @@ void app_main(void)
     esp_err_t ret;
 
     // inititalize a lot of stuff
-    init_process();  
-
-
+    init_process(); 
+    printf("past init\n");
     app_spiffs_log();
+    printf("Past spiffs\n");
     // gdispf=false;
     // #ifdef DISPLAY
     //     ret=init_lcd();
@@ -6123,26 +6126,42 @@ void app_main(void)
     //     } 
     // #endif
     //log boot
+
+    //load the blower driver object and initialize it, this will load the schedule from flash and set the blower status according to 
+    // the schedule status, if we are in active schedule mode it will set the blower on or next according to the schedule status, 
+    // if we are not in active schedule mode it will set the blower off, this is important for power loss recovery as we will 
+    // know where we are in the schedule and we can just start the timers from there without needing to wait for the first timer 
+    // to start and set the schedule status in blower
+   
  
-    theBlower.initBlower();        //load the blower driver object and initialize it, this will load the schedule from flash and set the blower status according to the schedule status, if we are in active schedule mode it will set the blower on or next according to the schedule status, if we are not in active schedule mode it will set the blower off, this is important for power loss recovery as we will know where we are in the schedule and we can just start the timers from there without needing to wait for the first timer to start and set the schedule status in blower
-    // start the time keeper to get a relavite valid date to set the system time  for our the schedule process, this is important to be the first thing that starts after the blower init as we need a valid time to start the schedule process and to set the schedule timers, if we have a power loss we will know where we are in the schedule and we can just start the timers from there without needing to wait for the first timer to start and set the schedule status in blower
-    xTaskCreate(&time_keeper_task,"tkeeep",1024*4,NULL, 5, &timeKeeperHandle); 	            // start the modbus task  
+    theBlower.initBlower();        
+   printf("Past blower\n");
+    // start the time keeper to get a "relative valid" date to set the system time  for our the schedule process, 
+    // this is important to be the first thing that starts after the blower init as we need a valid time to start the schedule process 
+    // and to set the schedule timers
+    //  if we have a power loss we will know where we are in the schedule and we can just start the timers from 
+    // this task will get a Time_t from our Fram, the GPS if installed and finally from SNTP when network gets connected
+    // we use the first option as the Last Fucing Option of Time, better than nothing. It shouldnt be too far away from reality
+
+    if(!theConf.wifi_mode) // if wifi mode start the timekeeper
+        xTaskCreate(&time_keeper_task,"tkeeep",1024*4,NULL, 5, &timeKeeperHandle); 	           
 
     char *msg=(char*)calloc(1,100);
     if(msg)
-    {    
+    {   
         const esp_app_desc_t *mip=esp_app_get_description();
         sprintf(msg,"Booting Node %d Count %d Version %s Reason %d",theConf.poolid,theConf.bootcount,mip->version,theConf.lastResetCode);
+        MESP_LOGW(TAG, "%s", msg);
         writeLog(msg);
         free(msg);
     }
-
 
 //keyboard commands
 
 #ifdef DEBB
     xTaskCreate(&kbd,"kbd",1024*10,NULL, 5, NULL); 	        // keyboard commands
 #endif
+
 // printf("PV PAnel %d Battery %d Energy %d Solar System %d SolarPad %d Union %d SmpMsg %d timet %d float %d Config %d tickType %d\n",sizeof(pvPanel_t),sizeof(battery_t),
 // sizeof(energy_t),sizeof(solarSystem_t),sizeof(solarDef_t),sizeof(meshunion_t),sizeof(shrimpMsg_t),sizeof(time_t),sizeof(float),
 // sizeof(theConf), sizeof(TickType_t)); 
@@ -6173,52 +6192,48 @@ void app_main(void)
         meter_configure();
     }
 // reset reason code at https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/misc_system_api.html
-        // if(theConf.bleboot==BLE_MODE && theConf.masternode)
+ 
+// BLE option not used but kept for code savinggs sake
+// if(theConf.bleboot==BLE_MODE && theConf.masternode)
         // {
         //     xTaskCreate(nimble_test,"nimble",1024*20,NULL, 14,NULL);      
         //     while(true)
         //         vTaskDelay(100);    
         // }
-    
-// Most importatn task are now launched
 
-    if(theConf.wifi_mode) 
+    
+// Most important task are now launched that are NOT dependent on Network
+
+    if(theConf.wifi_mode) // if mesh start the timer for comms with child nodes
         xTaskCreate(&root_timer,"reptimer",1024*8,NULL, 5, NULL); 	    // mesh only 
 
-    if(theConf.modbuson)        
+    if(theConf.modbuson)        // start the sensors, inverter etc 
         xTaskCreate(&rs485_task_manager,"modbus",1024*10,NULL, 5, NULL); 	            // start the modbus task  
   
-    if(theConf.modbus_mux)      // temperature settings
+    if(theConf.temp_sensor)      // temperature settings
    {
         xTaskCreate(&ds18b20_task,"ds18b20",1024*3,NULL, 5, NULL); 	            // start the modbus task  
         MESP_LOGI(TAG,"Temp task started");
     }
-    // printf("Active %d\n",theConf.doParms.docontrol); 
  
-    // delay(2000);  //used when debugging modbus to test just modbus without starting mesh/wifi
-    // launch_sensors();
-            // start the modbus task   
-// the internal mesh is now going to start and begin all the main flow from its gotIp event manager
-    // showLVGL((char*)"MESH",10000,3);   
+    MESP_LOGI(TAG,"Network mode is %s",theConf.wifi_mode?"Mesh":"WiFi");
 
-    if(!theConf.masternode && theConf.wifi_mode)     // allow master to boot
+    if(!theConf.masternode && theConf.wifi_mode)     // in Mesh mode if not root allow master to boot
     {
         MESP_LOGW(TAG,"Leaf -> Waiting for Root to start");
         delay(30000);
     }
-    MESP_LOGI(TAG,"Network mode is %s",theConf.wifi_mode?"Mesh":"WiFi");
 
-    if(!theConf.wifi_mode)
+    // In wifi mode we can have an AP for configuring simulteaneously with MQTT broker connection
+    if(!theConf.wifi_mode)  // wifi mode
     {
-        printf("Start wifi mode\n");
         wifi_connect_external_ap(); //start wifi which will start many ither tasks from got ip event wiht SNTP starting the scheduler
         webserverf=true;
         xTaskCreate(&start_webserver, "webs", 1024 * 10, NULL, 5, NULL);
-
     }
     else  
     {
-        // printf("Start mesh\n");
+        // start the mesh which will start many ither tasks from got ip event with SNTP starting the scheduler
         start_mesh();
         theConf.loginwait=20000;
     }

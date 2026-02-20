@@ -372,7 +372,7 @@ typedef struct config {
     time_t              dateProfile, dateDayCycle;
     uint8_t             wifi_mode;           // 0=off, 1=activated for power loss cases
     uint32_t            debug_flags, test_timer_div;
-    uint8_t             retain, work_day, modbus_mux, delay_mesh;
+    uint8_t             retain, work_day, temp_sensor, delay_mesh;
     uint32_t            loginwait;
     uint16_t            baud;
     uart_port_t         port;

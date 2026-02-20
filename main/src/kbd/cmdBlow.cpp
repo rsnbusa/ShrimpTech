@@ -85,9 +85,9 @@ int cmdBlow(int argc, char **argv)
     // Set modbus for simulation
     if (blowArgs.modbus->count) {
         int modbuss = blowArgs.modbus->ival[0];
-        MESP_LOGI(TAG,"Setting Modbus to %d from %d", modbuss, theConf.modbus_mux);
+        MESP_LOGI(TAG,"Setting Modbus to %d from %d", modbuss, theConf.temp_sensor);
         if(modbuss<0) modbuss=1;
-        theConf.modbus_mux = modbuss;
+        theConf.temp_sensor = modbuss;
         write_to_flash();
         return 0;
     }

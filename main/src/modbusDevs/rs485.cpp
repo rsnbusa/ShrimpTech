@@ -56,7 +56,9 @@ static esp_err_t master_init(void)
     MB_RETURN_ON_FALSE((err == ESP_OK), ESP_ERR_INVALID_STATE, TAG,
             "mb serial set mode failure, uart_set_mode() returned (0x%x).", (int)err);
 
-    MESP_LOGI(TAG, "Modbus master stack initialized...");
+    if ((theConf.debug_flags >> dMODBUS) & 1U) {
+        MESP_LOGI(TAG, "Modbus master stack initialized...");
+    }
     vTaskDelay(pdMS_TO_TICKS(5));
     return err;
 }
@@ -71,7 +73,9 @@ void rs485_task_manager(void *arg)
 
     ESP_ERROR_CHECK(master_init()); // once only
 
-    MESP_LOGI(TAG, "Start modbus manager..."); 
+    if ((theConf.debug_flags >> dMODBUS) & 1U) {
+        MESP_LOGI(TAG, "Start modbus manager..."); 
+    }
 
     while (true) // task loop read queue
     { 
