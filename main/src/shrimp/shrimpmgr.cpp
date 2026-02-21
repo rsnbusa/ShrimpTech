@@ -104,7 +104,9 @@ void ds18b20_task(void *pArg)
         .max_rx_bytes = 10, // 1byte ROM command + 8byte ROM number + 1byte device command
     };
     ESP_ERROR_CHECK(onewire_new_bus_rmt(&bus_config, &rmt_config, &bus));
-    MESP_LOGI(TAG, "1-Wire bus installed on GPIO%d", ONEWIRE_BUS_GPIO);
+    if ((theConf.debug_flags >> dTEMP) & 1U) {
+            MESP_LOGI(TAG, "1-Wire bus installed on GPIO%d", ONEWIRE_BUS_GPIO);
+        }
 
     int ds18b20_device_num = 0;
     ds18b20_device_handle_t ds18b20s[ONEWIRE_MAX_DS18B20];
@@ -114,7 +116,6 @@ void ds18b20_task(void *pArg)
 
     // create 1-wire device iterator, which is used for device search
     ESP_ERROR_CHECK(onewire_new_device_iter(bus, &iter));
-    MESP_LOGI(TAG, "Device iterator created, start searching...");
     do {
         search_result = onewire_device_iter_get_next(iter, &next_onewire_device);
         if (search_result == ESP_OK) { // found a new device, let's check if we can upgrade it to a DS18B20
@@ -123,20 +124,24 @@ void ds18b20_task(void *pArg)
             // check if the device is a DS18B20, if so, return the ds18b20 handle
             if (ds18b20_new_device_from_enumeration(&next_onewire_device, &ds_cfg, &ds18b20s[ds18b20_device_num]) == ESP_OK) {
                 ds18b20_get_device_address(ds18b20s[ds18b20_device_num], &address);
-                MESP_LOGI(TAG, "Found a DS18B20[%d], address: %016llX", ds18b20_device_num, address);
+                if ((theConf.debug_flags >> dTEMP) & 1U) 
+                    MESP_LOGI(TAG, "Found a DS18B20[%d], address: %016llX", ds18b20_device_num, address);
                 ds18b20_device_num++;
                 if (ds18b20_device_num >= ONEWIRE_MAX_DS18B20) {
                     MESP_LOGI(TAG, "Max DS18B20 number reached, stop searching...");
                     break;
                 }
             } else {
-                MESP_LOGI(TAG, "Found an unknown device, address: %016llX", next_onewire_device.address);
+                if ((theConf.debug_flags >> dTEMP) & 1U) {
+                    MESP_LOGI(TAG, "Found an unknown device, address: %016llX", next_onewire_device.address);
+                }
             }
         }
     } while (search_result != ESP_ERR_NOT_FOUND);
     ESP_ERROR_CHECK(onewire_del_device_iter(iter));
-    MESP_LOGI(TAG, "Searching done, %d DS18B20 device(s) found", ds18b20_device_num);
-
+    if ((theConf.debug_flags >> dTEMP) & 1U) {
+        MESP_LOGI(TAG, "Searching done, %d DS18B20 device(s) found", ds18b20_device_num);
+    }
 
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(60000));
@@ -2467,6 +2472,14 @@ void handle_mqtt_tcp_error(void)
         delay(5000);
 }
 
+void clear_retained(char *eltopic) 
+{
+    if(strcmp(eltopic, cmdQueue) == 0)
+        esp_mqtt_client_publish(clientCloud, cmdQueue, "", 0, 0, 1);
+    else if(strcmp(eltopic, cmdBroadcast) == 0)
+        esp_mqtt_client_publish(clientCloud, cmdBroadcast, "", 0, 0, 1);
+}
+
 /**
  * @brief Handle MQTT data reception
  * 
@@ -2516,13 +2529,15 @@ void handle_mqtt_data_event(esp_mqtt_event_handle_t event)
         return;
     }
     
-    if(theConf.retain)
+    if(theConf.wifi_mode ==0)       //wifi
     {
-    // Delete retained messages
-        if(strcmp(eltopic, cmdQueue) == 0)
-            esp_mqtt_client_publish(clientCloud, cmdQueue, "", 0, 0, 1);
-        else if(strcmp(eltopic, cmdBroadcast) == 0)
-            esp_mqtt_client_publish(clientCloud, cmdBroadcast, "", 0, 0, 1);
+    
+        if(theConf.unitid==1 && theConf.retain)    //in wifi mode only Unitid 1 clears message
+            clear_retained(eltopic); //else not needed
+    }
+    else    // mesh
+    {
+            clear_retained(eltopic);
     }
 }
 
@@ -4187,7 +4202,7 @@ void root_set_senddata_timer()
     time(&now);
     localtime_r(&now, &timeinfo);
     
-    // Ensure baset has a minimum value
+    // Ensure collector timer has a minimum value
     if (theConf.collectimer < 1) {
         theConf.collectimer = 10;
     }
@@ -4197,7 +4212,7 @@ void root_set_senddata_timer()
     //     cycles = 1;
     // }
     
-    MESP_LOGI(MESH_TAG, "Setting senddata timer:  baset=%d", theConf.collectimer);
+    MESP_LOGI(MESH_TAG, "Setting senddata timer:  collectimer=%d", theConf.collectimer);
     
     if (esp_mesh_is_root()) {
         calculate_current_cycle(now, 1000);
@@ -5425,7 +5440,7 @@ uint32_t handle_day_end(uint8_t workingday)
         time_t midnight = mktime(timeinfo);
         stop_all_timers(); // just in case, should be already stopped by day end handler
         wait_time= uint32_t(midnight-current);
-        MESP_LOGI(TAG,"Handle Day End no counters %s Current Day %d Wait Time %ld\n",time_str1,currentDay,wait_time);
+        MESP_LOGI(TAG,"%sHandle Day End no counters %s Current Day %d Wait Time %ld\n", DBG_SCH, time_str1, currentDay, wait_time);
         return wait_time;
     }
 
@@ -5441,12 +5456,12 @@ uint32_t handle_day_end(uint8_t workingday)
     if ((theConf.debug_flags >> dSCH) & 1U) 
     {
         format_log_time(current, time_str1, 30);
-        MESP_LOGI(TAG,"Handle Day End %s Current Day %d WorkDay %d\n",time_str1,currentDay,workingday);    
+        MESP_LOGI(TAG,"%sHandle Day End %s Current Day %d WorkDay %d\n",DBG_SCH,time_str1,currentDay,workingday);    
     }
 
     if(currentDay>workingday)
     {
-        MESP_LOGI(TAG,"No Wait");
+        // MESP_LOGI(TAG,"No Wait");
         return 0; // we have passed midnight and we are already in the next day, so start immediately
     }
   
@@ -5619,7 +5634,7 @@ void start_schedule_timers(void * pArg)
                 if ((theConf.debug_flags >> dSCH) & 1U)
                 {
                     format_log_time(nows, time_str, 30);
-                    MESP_LOGI(TAG, "Day %d Time %s",ck_d,time_str);
+                    MESP_LOGI(TAG, "%sDay %d Time %s",DBG_SCH,ck_d,time_str);
                 }
 
                 midn = get_today_midnight();
@@ -5640,14 +5655,14 @@ void start_schedule_timers(void * pArg)
                 }
                 theBlower.setSchedule(theConf.activeProfile, ck,ck_d,0,0,0,0,POOLREADY); // set the schedule in blower to indicate we are in active schedule mode and first hours. Blower_satar will change the hour
 
-                // ! Scheduled all timers, now wait for last timer. 
+                // ! all timers Scheduled, now wait for last timer. 
                 // ! THIS WILL EXECUTE INMMEDIATLY 
                 // ! so we will wait for the last timer to set the semaphore unless there are no timers and it will go to next day immediately
                 
                 uint32_t wait_next_day= handle_day_end(hoytimeinfo->tm_mday);        // the first hour of next day. boundry of end fo cycles later
                 uint32_t howmuch= (wait_next_day*1000/theConf.test_timer_div)+10000;    // in ms + margin
                 if ((theConf.debug_flags >> dSCH) & 1U)
-                    MESP_LOGI(TAG,"Will Wait %ld ms for next day midnight",howmuch);
+                    MESP_LOGI(TAG,"%sWill Wait %ld ms for next day midnight",DBG_SCH,howmuch);
 
                 countTimersStart = countTimersEnd = 0;      //reset counters
 
@@ -6113,9 +6128,7 @@ void app_main(void)
 
     // inititalize a lot of stuff
     init_process(); 
-    printf("past init\n");
     app_spiffs_log();
-    printf("Past spiffs\n");
     // gdispf=false;
     // #ifdef DISPLAY
     //     ret=init_lcd();
@@ -6135,7 +6148,6 @@ void app_main(void)
    
  
     theBlower.initBlower();        
-   printf("Past blower\n");
     // start the time keeper to get a "relative valid" date to set the system time  for our the schedule process, 
     // this is important to be the first thing that starts after the blower init as we need a valid time to start the schedule process 
     // and to set the schedule timers
@@ -6213,7 +6225,6 @@ void app_main(void)
     if(theConf.temp_sensor)      // temperature settings
    {
         xTaskCreate(&ds18b20_task,"ds18b20",1024*3,NULL, 5, NULL); 	            // start the modbus task  
-        MESP_LOGI(TAG,"Temp task started");
     }
  
     MESP_LOGI(TAG,"Network mode is %s",theConf.wifi_mode?"Mesh":"WiFi");
