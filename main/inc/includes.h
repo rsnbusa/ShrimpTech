@@ -39,7 +39,7 @@
 #include "services/gatt/ble_svc_gatt.h"
 
 extern "C" {
-
+#include "nmea_parser.h"
 // ============================================================================
 // FREERTOS (ALWAYS include FreeRTOS.h first)
 // ============================================================================

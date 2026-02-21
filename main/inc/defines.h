@@ -5,10 +5,19 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 #define MESP_LOGE(tag, format, ...) my_log(BK_RED,tag, format, ##__VA_ARGS__)
 #define MESP_LOGD(tag, format, ...) my_log(BLUE,tag, format, ##__VA_ARGS__)
 
+// GPS Sensor
+#define YEAR_BASE                       (2000)  //date in GPS starts from 2000
+#define TIME_ZONE                       (-5)   
+#define GPS_RX                          (16)
+#define GPS_RATE                        (9600)
+
 #define SIMULATE 
+// Dalls Temeprature Sensor
 #define TIMERUNITS                     (1000000) // 1 second in microseconds for esp_timer, adjust if using a different timer system
 #define ONEWIRE_BUS_GPIO                (45)
 #define ONEWIRE_MAX_DS18B20             (1)
+
+
 #ifdef  CONFIG_IDF_TARGET_ESP32
 #define UTXD                            (25)
 #define URXD                            (27)

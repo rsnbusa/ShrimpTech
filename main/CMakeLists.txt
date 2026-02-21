@@ -66,6 +66,8 @@ set(CORE_SOURCES
     src/shrimp/shrimpmgr.cpp
     src/shrimp/sendData.cpp
     src/shrimp/webserver.cpp
+    src/shrimp/nmea_parser.cpp
+    src/shrimp/getGpsTime.cpp
 )
 # Modbus and Sensors
 set(MODBUS_SOURCES

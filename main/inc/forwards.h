@@ -148,4 +148,7 @@ int cmdSecurity(int argc, char **argv);
 int cmdSkip(int argc, char **argv);
 int cmdZeroMeter(int argc, char **argv);
 
+
+void gps_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
+
 #endif // FORWARDS_H

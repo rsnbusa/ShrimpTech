@@ -6249,7 +6249,12 @@ void app_main(void)
         theConf.loginwait=20000;
     }
 // schedule timer will be started or not by sntp if root or when child connected by mesh if it was active and crash/power down
-    
+
+//GPS process
+    nmea_parser_config_t config = NMEA_PARSER_CONFIG_DEFAULT();
+    nmea_parser_handle_t nmea_hdl = nmea_parser_init(&config);
+    int err=nmea_parser_add_handler(nmea_hdl, gps_event_handler, NULL);
+
 MESP_LOGI(MESH_TAG,"APP Free Heap %d",esp_get_free_heap_size());
 // if system has resetted and restarting, the sntpget routine will be in charge of starting the schedule timer again
 //  In mesh mode,the mesh connecting child will be order to start also if theConf.blower_mode=1;(???) This is set to 0 when Cycle done see start shcedule timer

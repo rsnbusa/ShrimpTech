@@ -61,6 +61,8 @@ EXTERN TaskHandle_t adc_task_handle;
 EXTERN TaskHandle_t blinkHandle;
 EXTERN TaskHandle_t ssidHandle;
 EXTERN TaskHandle_t timeKeeperHandle;
+EXTERN TaskHandle_t gpsH;
+EXTERN gps_t                        *gps;
 
 // ============================================================================
 // SYNCHRONIZATION PRIMITIVES

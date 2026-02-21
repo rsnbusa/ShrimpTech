@@ -134,7 +134,8 @@ enum {
     dMODBUS,
     dRS485,
     dDO,
-    dTEMP
+    dTEMP,
+    dGPS
 } debug_flags_t;
 
 // ============================================================================
@@ -207,6 +208,7 @@ typedef struct dbg {
     struct arg_str *rs485;     // RS485 debugging
     struct arg_str *DO;        // Dissolved Oxygen debugging
     struct arg_str *temp;      // Temperature debugging
+    struct arg_str *gps;       // GPS debugging
     struct arg_str *all;       // All commands on/off
     struct arg_end *end;
 } dbg_t;
@@ -349,7 +351,7 @@ typedef struct medbkcup {
  */
 typedef struct config {
     time_t              bornDate;
-    uint32_t            bootcount, lastResetCode, centinel;
+    uint32_t            bootcount, lastResetCode;
     uint8_t             minutes, masternode, unitid;
     uint32_t            downtime;      // Downtime accumulator
     uint32_t            mqttSlots;     // Slot number
@@ -376,11 +378,14 @@ typedef struct config {
     uint32_t            loginwait;
     uint16_t            baud;
     uart_port_t         port;
+    float               lat,longi;
+    time_t              gpsDateTime;
     struct modbInverter modbus_inverter;
     struct modbSensors  modbus_sensors;
     struct modbBattery  modbus_battery;
     struct modbPanels   modbus_panels;
     struct DO           doParms;
+    uint32_t            centinel;           // at the end to protect the whole structure in case any changes in between
 
 } config_flash;
 

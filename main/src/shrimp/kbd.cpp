@@ -125,6 +125,7 @@ void kbd(void *pArg)
   dbgArg.rs485    = arg_str0(NULL, "rs485",    "on | off", "Show RS485 debugging");
   dbgArg.DO       = arg_str0(NULL, "do",       "on | off", "Show Dissolved Oxygen debugging");
   dbgArg.temp     = arg_str0(NULL, "temp",     "on | off", "Show Temperature debugging");
+  dbgArg.gps      = arg_str0(NULL, "gps",      "on | off", "GPS debugging");
   dbgArg.all      = arg_str0(NULL, "all",      "on | off", "Set/Reset all cmds");
   dbgArg.end      = arg_end(DEBUG_MAX_ARGUMENTS);
 

@@ -112,6 +112,9 @@ int cmdDebug(int argc, char **argv)
 
     if (dbgArg.temp->count)
         set_debug_flag(dbgArg.temp->sval[0], dTEMP);
+        
+    if (dbgArg.gps->count)
+        set_debug_flag(dbgArg.gps->sval[0], dGPS);
 
     if (dbgArg.all->count) 
     {
