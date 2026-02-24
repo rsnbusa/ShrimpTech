@@ -63,7 +63,10 @@ static esp_err_t master_init(void)
     return err;
 }
 
-/* WRITING to slave ... use mux to define if its. write(0) or read (>0))
+/* WRITING to slave ...
+use mux to define if its a write(0) or read (>0))
+will be set in the options parameter of the descriptor 
+
 uint8_t type = 0; // Type of parameter
 uint8_t temp_data[4] = {0}; // temporary buffer
 
