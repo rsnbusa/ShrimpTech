@@ -21,35 +21,35 @@
 extern TaskHandle_t gpsH;
 
 
-enum debugflags{BOOTD,WIFID,GGAD,GSAD,RMCD,GSVD,WEBD,GLLD,VTGD,MQTTD,INTD,CMDD,MSGD,TIMED,SUBMGRD,HOSTD};
+// enum debugflags{BOOTD,WIFID,GGAD,GSAD,RMCD,GSVD,WEBD,GLLD,VTGD,MQTTD,INTD,CMDD,MSGD,TIMED,SUBMGRD,HOSTD};
 
-// typedef struct config {
-//     char 		meterConnName[MAXCHARS];
-//     uint32_t    centinel,traceflag,bootcount;
-//     uint8_t 	configured;
-//     time_t		lastReboot;
-// 	int			incub_hatcher;				// 0 = Incubator 1= Hatcher
-//     char		channs[4][32];			//0 for Incubator 1 forHatcher
-//     char		writeAPI[4][32];		//0 for Incubator 1 forHatcher
-// 	uint16_t	lastResetCode;
-// 	char		ssid[20],clave[10];
-// 	float      	temp;
-// 	int			humidity,theDelay,turnegg,toffset;
-// 	float 		mainFan,ventFan;
-// 	time_t		lastTurn;
-// 	uint32_t 	lastAngle;
-// 	uint32_t	ventFDuty,ventFTime;
-// 	int			angleRight,angleLeft,hoffset,coolhour;
-// 	uint16_t	lastVent;
-// 	time_t 		startDate;
-// 	int			thingsTime;
-// 	char		thingsWrite[20];
-// 	int 		days,dayst,dayend,coolrest;
-// 	float		hcal;
-// 	uint32_t	free1;
-// 	uint32_t 	free2;
-// 	int			ventControl,turns;
-// } config_flash;
+// // typedef struct config {
+// //     char 		meterConnName[MAXCHARS];
+// //     uint32_t    centinel,traceflag,bootcount;
+// //     uint8_t 	configured;
+// //     time_t		lastReboot;
+// // 	int			incub_hatcher;				// 0 = Incubator 1= Hatcher
+// //     char		channs[4][32];			//0 for Incubator 1 forHatcher
+// //     char		writeAPI[4][32];		//0 for Incubator 1 forHatcher
+// // 	uint16_t	lastResetCode;
+// // 	char		ssid[20],clave[10];
+// // 	float      	temp;
+// // 	int			humidity,theDelay,turnegg,toffset;
+// // 	float 		mainFan,ventFan;
+// // 	time_t		lastTurn;
+// // 	uint32_t 	lastAngle;
+// // 	uint32_t	ventFDuty,ventFTime;
+// // 	int			angleRight,angleLeft,hoffset,coolhour;
+// // 	uint16_t	lastVent;
+// // 	time_t 		startDate;
+// // 	int			thingsTime;
+// // 	char		thingsWrite[20];
+// // 	int 		days,dayst,dayend,coolrest;
+// // 	float		hcal;
+// // 	uint32_t	free1;
+// // 	uint32_t 	free2;
+// // 	int			ventControl,turns;
+// // } config_flash;
 
 extern config_flash theConf;
 
@@ -409,36 +409,36 @@ static esp_err_t parse_item(esp_gps_t *esp_gps)
     if (esp_gps->item_num == 0 && esp_gps->item_str[0] == '$') {
         if (0) {
         }
-#ifdef CONFIG_NMEA_STATEMENT_GGA
+// #ifdef CONFIG_NMEA_STATEMENT_GGA
         else if (strstr(esp_gps->item_str, "GGA")) {
             esp_gps->cur_statement = STATEMENT_GGA;
         }
-#endif
-#ifdef CONFIG_NMEA_STATEMENT_GSA
+// #endif
+// #ifdef CONFIG_NMEA_STATEMENT_GSA
         else if (strstr(esp_gps->item_str, "GSA")) {
             esp_gps->cur_statement = STATEMENT_GSA;
         }
-#endif
-#ifdef CONFIG_NMEA_STATEMENT_RMC
+// #endif
+// #ifdef CONFIG_NMEA_STATEMENT_RMC
         else if (strstr(esp_gps->item_str, "RMC")) {
             esp_gps->cur_statement = STATEMENT_RMC;
         }
-#endif
-#ifdef CONFIG_NMEA_STATEMENT_GSV
+// #endif
+// #ifdef CONFIG_NMEA_STATEMENT_GSV
         else if (strstr(esp_gps->item_str, "GSV")) {
             esp_gps->cur_statement = STATEMENT_GSV;
         }
-#endif
-#ifdef CONFIG_NMEA_STATEMENT_GLL
+// #endif
+// #ifdef CONFIG_NMEA_STATEMENT_GLL
         else if (strstr(esp_gps->item_str, "GLL")) {
             esp_gps->cur_statement = STATEMENT_GLL;
         }
-#endif
-#ifdef CONFIG_NMEA_STATEMENT_VTG
+// #endif
+// #ifdef CONFIG_NMEA_STATEMENT_VTG
         else if (strstr(esp_gps->item_str, "VTG")) {
             esp_gps->cur_statement = STATEMENT_VTG;
         }
-#endif
+// #endif
         else {
             esp_gps->cur_statement = STATEMENT_UNKNOWN;
         }
@@ -448,36 +448,36 @@ static esp_err_t parse_item(esp_gps_t *esp_gps)
     if (esp_gps->cur_statement == STATEMENT_UNKNOWN) {
         goto out;
     }
-#ifdef CONFIG_NMEA_STATEMENT_GGA
+// #ifdef CONFIG_NMEA_STATEMENT_GGA
     else if (esp_gps->cur_statement == STATEMENT_GGA) {
         parse_gga(esp_gps);
     }
-#endif
-#ifdef CONFIG_NMEA_STATEMENT_GSA
+// #endif
+// #ifdef CONFIG_NMEA_STATEMENT_GSA
     else if (esp_gps->cur_statement == STATEMENT_GSA) {
         parse_gsa(esp_gps);
     }
-#endif
-#ifdef CONFIG_NMEA_STATEMENT_GSV
+// #endif
+// #ifdef CONFIG_NMEA_STATEMENT_GSV
     else if (esp_gps->cur_statement == STATEMENT_GSV) {
         parse_gsv(esp_gps);
     }
-#endif
-#ifdef CONFIG_NMEA_STATEMENT_RMC
+// #endif
+// #ifdef CONFIG_NMEA_STATEMENT_RMC
     else if (esp_gps->cur_statement == STATEMENT_RMC) {
         parse_rmc(esp_gps);
     }
-#endif
-#ifdef CONFIG_NMEA_STATEMENT_GLL
+// #endif
+// #ifdef CONFIG_NMEA_STATEMENT_GLL
     else if (esp_gps->cur_statement == STATEMENT_GLL) {
         parse_gll(esp_gps);
     }
-#endif
-#ifdef CONFIG_NMEA_STATEMENT_VTG
+// #endif
+// #ifdef CONFIG_NMEA_STATEMENT_VTG
     else if (esp_gps->cur_statement == STATEMENT_VTG) {
         parse_vtg(esp_gps);
     }
-#endif
+// #endif
     else {
         err =  ESP_FAIL;
     }
@@ -540,50 +540,50 @@ static esp_err_t gps_decode(esp_gps_t *esp_gps, size_t len)
             /* CRC passed */
             if (esp_gps->crc == crc) { //valid crc
                 switch (esp_gps->cur_statement) {
-#ifdef CONFIG_NMEA_STATEMENT_GGA
+// #ifdef CONFIG_NMEA_STATEMENT_GGA
                 case STATEMENT_GGA:
-                if ((theConf.debug_flags >> dSCH) & 1U)
+                if ((theConf.debug_flags >> dGPS) & 1U)
                         printf("[GGA] %s",esp_gps->buffer);
                     esp_gps->parsed_statement |= 1 << STATEMENT_GGA;
                     break;
-#endif
-#ifdef CONFIG_NMEA_STATEMENT_GSA
+// #endif
+// #ifdef CONFIG_NMEA_STATEMENT_GSA
                 case STATEMENT_GSA:
-                if ((theConf.debug_flags >> dSCH) & 1U)
+                if ((theConf.debug_flags >> dGPS) & 1U)
                     printf("[GSA] %s",esp_gps->buffer);
                     esp_gps->parsed_statement |= 1 << STATEMENT_GSA;
                     break;
-#endif
-#ifdef CONFIG_NMEA_STATEMENT_RMC
+// #endif
+// #ifdef CONFIG_NMEA_STATEMENT_RMC
                 case STATEMENT_RMC:
-                    if ((theConf.debug_flags >> dSCH) & 1U)
+                    if ((theConf.debug_flags >> dGPS) & 1U)
                         printf("[RMC] %s",esp_gps->buffer);
                     esp_gps->parsed_statement |= 1 << STATEMENT_RMC;
                     break;
-#endif
-#ifdef CONFIG_NMEA_STATEMENT_GSV
+// #endif
+// #ifdef CONFIG_NMEA_STATEMENT_GSV
                 case STATEMENT_GSV:
-                    if ((theConf.debug_flags >> dSCH) & 1U)
+                    if ((theConf.debug_flags >> dGPS) & 1U)
                         printf("[GSV] %s",esp_gps->buffer);
                     if (esp_gps->sat_num == esp_gps->sat_count) {
                         esp_gps->parsed_statement |= 1 << STATEMENT_GSV;
                     }
                     break;
-#endif
-#ifdef CONFIG_NMEA_STATEMENT_GLL
+// #endif
+// #ifdef CONFIG_NMEA_STATEMENT_GLL
                 case STATEMENT_GLL:
-                    if ((theConf.debug_flags >> dSCH) & 1U)
+                    if ((theConf.debug_flags >> dGPS) & 1U)
                         printf("[GLL] %s",esp_gps->buffer);
                     esp_gps->parsed_statement |= 1 << STATEMENT_GLL;
                     break;
-#endif
-#ifdef CONFIG_NMEA_STATEMENT_VTG
+// #endif
+// #ifdef CONFIG_NMEA_STATEMENT_VTG
                 case STATEMENT_VTG:
-                    if ((theConf.debug_flags >> dSCH) & 1U)
+                    if ((theConf.debug_flags >> dGPS) & 1U)
                         printf("[VTG] %s",esp_gps->buffer);
                     esp_gps->parsed_statement |= 1 << STATEMENT_VTG;
                     break;
-#endif
+// #endif
                 default:
                     break;
                 }
@@ -658,34 +658,34 @@ static void nmea_parser_task_entry(void *arg)
             case UART_DATA:
                 break;
             case UART_FIFO_OVF:
-                ESP_LOGW(GPS_TAG, "HW FIFO Overflow");
+                MESP_LOGW(GPS_TAG, "HW FIFO Overflow");
                 uart_flush(esp_gps->uart_port);
                 xQueueReset(esp_gps->event_queue);
                 break;
             case UART_BUFFER_FULL:
-                ESP_LOGW(GPS_TAG, "Ring Buffer Full");
+                MESP_LOGW(GPS_TAG, "Ring Buffer Full");
                 uart_flush(esp_gps->uart_port);
                 xQueueReset(esp_gps->event_queue);
                 break;
             case UART_BREAK:
-                ESP_LOGW(GPS_TAG, "Rx Break");
+                MESP_LOGW(GPS_TAG, "Rx Break");
                 break;
             case UART_PARITY_ERR:
-                ESP_LOGE(GPS_TAG, "Parity Error");
+                MESP_LOGE(GPS_TAG, "Parity Error");
                 break;
             case UART_FRAME_ERR:
-                ESP_LOGE(GPS_TAG, "Frame Error");
+                MESP_LOGE(GPS_TAG, "Frame Error");
                 break;
             case UART_PATTERN_DET:
                 esp_handle_uart_pattern(esp_gps);
                 break;
             default:
-                ESP_LOGW(GPS_TAG, "unknown uart event type: %d", event.type);
+                MESP_LOGW(GPS_TAG, "unknown uart event type: %d", event.type);
                 break;
             }
         }
         /* Drive the event loop */
-        esp_event_loop_run(esp_gps->event_loop_hdl, pdMS_TO_TICKS(100));
+        esp_event_loop_run(esp_gps->event_loop_hdl, pdMS_TO_TICKS(1000));
     }
     vTaskDelete(NULL);
 }
@@ -700,33 +700,33 @@ nmea_parser_handle_t nmea_parser_init(const nmea_parser_config_t *config)
 {
     esp_gps_t *esp_gps = (esp_gps_t*)calloc(1, sizeof(esp_gps_t));
     if (!esp_gps) {
-        ESP_LOGE(GPS_TAG, "calloc memory for esp_fps failed");
+        MESP_LOGE(GPS_TAG, "calloc memory for esp_fps failed");
         return NULL;
     }
     esp_gps->buffer =(uint8_t*) calloc(1, NMEA_PARSER_RUNTIME_BUFFER_SIZE);
     if (!esp_gps->buffer) {
-        ESP_LOGE(GPS_TAG, "calloc memory for runtime buffer failed");
+        MESP_LOGE(GPS_TAG, "calloc memory for runtime buffer failed");
         free(esp_gps);
         return NULL;
     }
-#ifdef CONFIG_NMEA_STATEMENT_GSA
+// #ifdef CONFIG_NMEA_STATEMENT_GSA
     esp_gps->all_statements |= (1 << STATEMENT_GSA);
-#endif
-#ifdef CONFIG_NMEA_STATEMENT_GSV
+// #endif
+// #ifdef CONFIG_NMEA_STATEMENT_GSV
     esp_gps->all_statements |= (1 << STATEMENT_GSV);
-#endif
-#ifdef CONFIG_NMEA_STATEMENT_GGA
+// #endif
+// #ifdef CONFIG_NMEA_STATEMENT_GGA
     esp_gps->all_statements |= (1 << STATEMENT_GGA);
-#endif
-#ifdef CONFIG_NMEA_STATEMENT_RMC
+// #endif
+// #ifdef CONFIG_NMEA_STATEMENT_RMC
     esp_gps->all_statements |= (1 << STATEMENT_RMC);
-#endif
-#ifdef CONFIG_NMEA_STATEMENT_GLL
+// #endif
+// #ifdef CONFIG_NMEA_STATEMENT_GLL
     esp_gps->all_statements |= (1 << STATEMENT_GLL);
-#endif
-#ifdef CONFIG_NMEA_STATEMENT_VTG
+// #endif
+// #ifdef CONFIG_NMEA_STATEMENT_VTG
     esp_gps->all_statements |= (1 << STATEMENT_VTG);
-#endif
+// #endif
     /* Set attributes */
     esp_gps->uart_port = config->uart.uart_port;
     esp_gps->all_statements &= 0xFE;
@@ -741,7 +741,7 @@ nmea_parser_handle_t nmea_parser_init(const nmea_parser_config_t *config)
     };
     if (uart_driver_install(esp_gps->uart_port, CONFIG_NMEA_PARSER_RING_BUFFER_SIZE, 0,
                             config->uart.event_queue_size, &esp_gps->event_queue, 0) != ESP_OK) {
-        ESP_LOGE(GPS_TAG, "install uart driver failed");
+        MESP_LOGE(GPS_TAG, "install uart driver failed");
         free(esp_gps->buffer);
         free(esp_gps);
         return NULL;
@@ -749,7 +749,7 @@ nmea_parser_handle_t nmea_parser_init(const nmea_parser_config_t *config)
     // else
     //     printf("GPS uart installed\n");
     if (uart_param_config(esp_gps->uart_port, &uart_config) != ESP_OK) {
-        ESP_LOGE(GPS_TAG, "config uart parameter failed");
+        MESP_LOGE(GPS_TAG, "config uart parameter failed");
         free(esp_gps->buffer);
         free(esp_gps);
         return NULL;
@@ -758,7 +758,7 @@ nmea_parser_handle_t nmea_parser_init(const nmea_parser_config_t *config)
         // printf("GPS Uart configed\n");
     if (uart_set_pin(esp_gps->uart_port, UART_PIN_NO_CHANGE, config->uart.rx_pin,
                      UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE) != ESP_OK) {
-        ESP_LOGE(GPS_TAG, "config uart gpio failed");
+        MESP_LOGE(GPS_TAG, "config uart gpio failed");
         free(esp_gps->buffer);
         free(esp_gps);
         return NULL;
@@ -777,7 +777,7 @@ nmea_parser_handle_t nmea_parser_init(const nmea_parser_config_t *config)
         .task_name = NULL
     };
     if (esp_event_loop_create(&loop_args, &esp_gps->event_loop_hdl) != ESP_OK) {
-        ESP_LOGE(GPS_TAG, "create event loop faild");
+        MESP_LOGE(GPS_TAG, "create event loop faild");
         uart_driver_delete(esp_gps->uart_port);
         free(esp_gps->buffer);
         free(esp_gps);
@@ -799,7 +799,7 @@ nmea_parser_handle_t nmea_parser_init(const nmea_parser_config_t *config)
         free(esp_gps);
         return NULL;
     }
-    ESP_LOGI(GPS_TAG, "NMEA Parser init OK");
+    MESP_LOGI(GPS_TAG, "NMEA Parser init OK");
     return esp_gps;
     /*Error Handling*/
 

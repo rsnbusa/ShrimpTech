@@ -365,7 +365,7 @@ struct attribute s_system_attributes[] = {
   {"retain", "bool", NULL, offsetof(struct system, retain), 0, false},
   {"modbussensor", "bool", NULL, offsetof(struct system, modbussensor), 0, false},
   {"tempsensor", "bool", NULL, offsetof(struct system, tempsensor), 0, false},
-  {"simulate", "bool", NULL, offsetof(struct system, simulate), 0, false},
+  {"gps", "bool", NULL, offsetof(struct system, gps), 0, false},
   {"mqttreco_val", "int", NULL, offsetof(struct system, mqttreco_val), 0, false},
   {"otf_val", "bool", NULL, offsetof(struct system, otf_val), 0, false},
   {"version_val", "string", NULL, offsetof(struct system, version_val), 20, false},

@@ -63,6 +63,17 @@ static esp_err_t master_init(void)
     return err;
 }
 
+/* WRITING to slave ... use mux to define if its. write(0) or read (>0))
+uint8_t type = 0; // Type of parameter
+uint8_t temp_data[4] = {0}; // temporary buffer
+
+esp_err_t err = mbc_master_set_parameter(CID_TEMP_DATA_2, "Temperature_2", (uint8_t*)temp_data, &type);
+if (err == ESP_OK) {
+    ESP_LOGI(TAG, "Set parameter data successfully.");
+} else {
+    ESP_LOGE(TAG, "Set data fail, err = 0x%x (%s).", (int)err, (char*)esp_err_to_name(err));
+}
+*/
 
 // User operation function to read slave values and check alarm
 void rs485_task_manager(void *arg)
@@ -122,7 +133,7 @@ void rs485_task_manager(void *arg)
                             // param_descriptor->param_offset,
                             // mensaje.dataReceiver);
         
-                        // this is the actual request from matser to slave stupid name for routine
+                        // this is the actual request from master to slave (stupid name for routine)
                         err = mbc_master_get_parameter(cid, (char*)param_descriptor->param_key,
                                                             (uint8_t*)temp_data_ptr, &type);
                         if (err == ESP_OK) 

@@ -20,8 +20,8 @@
 #ifndef MONGOOSE_H
 #define MONGOOSE_H
 
-#define MG_ENABLE_LOG 0
 #define MG_VERSION "7.20"
+#define MG_ENABLE_LOG 0
 #ifdef __cplusplus
 extern "C" {
 #endif

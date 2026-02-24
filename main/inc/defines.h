@@ -8,7 +8,7 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 // GPS Sensor
 #define YEAR_BASE                       (2000)  //date in GPS starts from 2000
 #define TIME_ZONE                       (-5)   
-#define GPS_RX                          (16)
+#define GPS_RX                          (3)
 #define GPS_RATE                        (9600)
 
 #define SIMULATE 

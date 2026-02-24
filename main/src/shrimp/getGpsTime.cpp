@@ -10,11 +10,8 @@ void gps_event_handler(void *event_handler_arg, esp_event_base_t event_base, int
     gps = NULL;
     switch (event_id) {
     case GPS_UPDATE:
-	//	printf("time %d\n",millis()-lastmillis);
-		// lastmillis=millis();
         gps = (gps_t *)event_data;
         /* print information parsed from GPS statements */
-		if(true)
     if ((theConf.debug_flags >> dGPS) & 1U) 
 		{
 			printf("%04d/%02d/%02d %02d:%02d:%02d => \n"
@@ -32,7 +29,7 @@ void gps_event_handler(void *event_handler_arg, esp_event_base_t event_base, int
 			return; 
 			if(abs(gps->latitude)>0.01)
 			{
-				printf("GPS to Flash and death\n");
+				// printf("GPS to Flash and die\n");
 				theConf.lat=gps->latitude;
 				theConf.longi=gps->longitude;
 				timeinfo.tm_hour=gps->tim.hour+TIME_ZONE;
@@ -42,7 +39,11 @@ void gps_event_handler(void *event_handler_arg, esp_event_base_t event_base, int
 				timeinfo.tm_mon=gps->date.month-1;
 				timeinfo.tm_mday=gps->date.day;
 				theConf.gpsDateTime=mktime(&timeinfo);
-				write_to_flash();
+				if(!gpsFlag)
+				{
+					write_to_flash();
+					gpsFlag=true;
+				}
 				vTaskDelete(gpsH);
 			}
         break;

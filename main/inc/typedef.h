@@ -368,7 +368,7 @@ typedef struct config {
     char                mqttcert[2100];
     uint8_t             mesh_wifi;
     char                lastVersion[20];
-    uint16_t            mqttDiscoRetry,simTime;
+    uint16_t            mqttDiscoRetry,gpsSensor;
     profile_t           profiles[MAXPROFILES];
     uint8_t             activeProfile, dayCycle;
     time_t              dateProfile, dateDayCycle;
@@ -502,9 +502,10 @@ typedef struct shrimpMsg_st {
     uint16_t poolid;                     // offset 4    
     uint16_t countnodes;                 // offset 6
     time_t msgTime;                      // offset 8
-    solarSystem_t poolAvgMetrics;        // offset 16 size 100
-    uint16_t lim_errs;          // offset 116
-} shrimpMsg_t;                  // totla size 118
+    float longi,lat;                    // offset 16
+    solarSystem_t poolAvgMetrics;        // offset 24 size 100
+    uint16_t lim_errs;          // offset 124
+} shrimpMsg_t;                  // total size 126
 #pragma pack(pop)
 
 #endif // TYPEDEF_H

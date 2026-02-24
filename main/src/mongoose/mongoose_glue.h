@@ -352,7 +352,7 @@ struct system {
   bool retain;
   bool modbussensor;
   bool tempsensor;
-  bool simulate;
+  bool gps;
   int mqttreco_val;
   bool otf_val;
   char version_val[20];

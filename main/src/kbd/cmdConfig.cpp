@@ -294,6 +294,19 @@ void show_device_info(time_t bootdate, time_t guardDate)
            "M ", theConf.mesh_wifi?'Y':'N', theConf.collectimer, theConf.test_timer_div);
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
 
+    // ===== GPS INFORMATION =====
+    if(theConf.gpsSensor)
+    {
+        printf("┌─────────────────────────────────────────────────────────────┐\n");
+        printf("│%s%s                 GPS INFORMATION                             %s│\n",RESETC,BK_GREEN,RESETC);
+        printf("├─────────────────────────────────────────────────────────────┤\n");
+        //  printf("%s", RESETC);
+        if(theConf.wifi_mode==0)
+        printf("│Latitude: %-19.6f Longitude: %-19.6f │\n", 
+                theConf.lat,theConf.longi);
+        printf("└─────────────────────────────────────────────────────────────┘\n\n");
+    }
+
 }
 
 /**

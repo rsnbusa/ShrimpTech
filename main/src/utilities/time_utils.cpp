@@ -7,7 +7,7 @@ extern "C" {
 
 void delay(uint32_t cuanto)
 {
-    vTaskDelay(pdMS_TO_TICKS(cuanto));
+    vTaskDelay(cuanto/portTICK_PERIOD_MS);
 }
 
 uint32_t xmillis(void)

@@ -1486,6 +1486,11 @@ void wifi_send_meter_data(TimerHandle_t algo)
     shmsg->countnodes= theConf.unitid;                //only 1 node in wifi mode
     shmsg->centinel  = 0x12345678;       // our sentinel
     shmsg->lim_errs  = globalErrors;     // whatever errors the Blower has recorded
+    if(theConf.gpsSensor)
+    {
+        shmsg->lat=theConf.lat;
+        shmsg->longi=theConf.longi;
+    }
 
     int msgid = esp_mqtt_client_publish(clientCloud, (char*)metricQueue, (char*)shmsg,
                                         sizeof(shrimpMsg_t), QOS1, NORETAIN);
@@ -2537,6 +2542,7 @@ void handle_mqtt_data_event(esp_mqtt_event_handle_t event)
     }
     else    // mesh
     {
+        // todo Verify if MEs is using wifi in Root node and DO NOT RETAIN in that case
             clear_retained(eltopic);
     }
 }
@@ -5207,8 +5213,8 @@ void handle_past_schedule_in_progress(time_t endtime, time_t now, int ck
         format_log_time(endtime, time_str, 30);
         format_log_time(now, time_str2, 30);
 
-        MESP_LOGI(TAG,"%sScheduling Profile %d Timer %d Ending in %lld us(%s | %ld) now %s - %ld Last %s\n", 
-                    DBG_SCH, theConf.activeProfile,countTimersEnd, remaining , time_str, (long)endtime, time_str2, (long)now,ctx_timers[ck_h]->isLast ? "YES" : "NO");
+        MESP_LOGI(TAG,"%sScheduling Profile %d Timer %d Ending in %lld us(%s%s%s | %ld) now [%s%s%s | %ld] %s\n", 
+                    DBG_SCH, theConf.activeProfile,countTimersEnd, remaining , GREEN, time_str,RESETC, (long)endtime, CYAN, time_str2,RESETC, (long)now,ctx_timers[ck_h]->isLast ? "LAST" : "");
     }  
 
     elapsed[ck_h] = time(NULL);     // consider now as start time since its started manually. countimersstart is 1 ahead so use countendtimers
@@ -5274,8 +5280,8 @@ bool create_future_timers(time_t starttime, time_t endtime, time_t now,
     if ((theConf.debug_flags >> dSCH) & 1U) {
         format_log_time(starttime,time_str,30);
         format_log_time(now,time_str2,30);
-        MESP_LOGI(TAG, "%s PoolId %d Unit %d Profile %d  Timer %d Start in %lld us [ %s | %llu ] now [ %s | %llu ] Mux %ld", 
-                 DBG_SCH, theConf.poolid, theConf.unitid, theConf.activeProfile,ctx_timers[lck_h]->timerNum, start_delay, time_str,starttime, time_str2,now,theConf.test_timer_div);
+        MESP_LOGI(TAG, "%s PoolId %d Unit %d Profile %d  Timer %d Start in %lld us [%s%s%s | %llu ] now [ %s%s%s | %llu ] Mux %ld", 
+                 DBG_SCH, theConf.poolid, theConf.unitid, theConf.activeProfile,ctx_timers[lck_h]->timerNum, start_delay,GREEN, time_str,RESETC,starttime, CYAN,time_str2,RESETC,now,theConf.test_timer_div);
     }
     
     // set the correct timing here
@@ -5296,8 +5302,8 @@ bool create_future_timers(time_t starttime, time_t endtime, time_t now,
 
         format_log_time(endtime,time_str,30);
         format_log_time(now,time_str2,30);
-        MESP_LOGI(TAG, "%s PoolId %d Unit %d Profile %d  Timer %d Ending in %lld us [%s | %llu ] now %s | [ %llu Mux %ld ] is Last %s", 
-                 DBG_SCH, theConf.poolid, theConf.unitid, theConf.activeProfile, ctx_timers[lck_h]->timerNum, end_delay, time_str, endtime, time_str2, now, theConf.test_timer_div, ctx_timers[lck_h]->isLast ? "YES" : "NO" );
+        MESP_LOGI(TAG, "%s PoolId %d Unit %d Profile %d  Timer %d Ending in %lld us [%s%s%s | %llu ] now [%s%s%s | %llu ] Mux %ld  %s", 
+                 DBG_SCH, theConf.poolid, theConf.unitid, theConf.activeProfile, ctx_timers[lck_h]->timerNum, end_delay, RED, time_str,RESETC,endtime, CYAN,time_str2,RESETC,now, theConf.test_timer_div, ctx_timers[lck_h]->isLast ? "Last" : "" );
                 //  DBG_SCH, countTimersEnd, delay_int, time_str, endtime, time_str2, now,theConf.test_timer_div, ctx->isLast ? "YES" : "NO" );
     }                                           
 
@@ -5344,7 +5350,7 @@ bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, time_t now
         {
             format_log_time(starttime, time_str, 30);
             format_log_time(now, now_str, 30);
-            MESP_LOGW(TAG, "%sP-%d Start already happened %lld (%s) %lld (%s) Mux %d", DBG_SCH, theConf.activeProfile, starttime, time_str,now, now_str,
+            MESP_LOGW(TAG, "%sP-%d Start already happened %lld (%s%s%s) %lld (%s%s%s) Mux %d", DBG_SCH, theConf.activeProfile, starttime, GREEN,time_str,RESETC,now, RED,now_str,RESETC,
                 theConf.test_timer_div);
         }
 
@@ -5354,8 +5360,8 @@ bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, time_t now
             {
                 format_log_time(endtime, time_str, 30);
                 format_log_time(now, now_str, 30);
-                    MESP_LOGW(TAG, "%sPool %d Unit %d P-%d End already happened. Skip this schedule %lld (%s) %lld (%s) Mux %d", 
-                            DBG_SCH, theConf.poolid, theConf.unitid, theConf.activeProfile, endtime, time_str, now, now_str, theConf.test_timer_div);
+                    MESP_LOGW(TAG, "%sPool %d Unit %d P-%d End already happened. Skip this schedule %lld (%s%s%s) %lld (%s%s%s) Mux %d", 
+                            DBG_SCH, theConf.poolid, theConf.unitid, theConf.activeProfile, endtime, RED,time_str,RESETC, now, CYAN, now_str,RESETC, theConf.test_timer_div);
             }
         } else  // we have the end timer active so process it
             handle_past_schedule_in_progress(endtime, now, ck,ck_d,ck_h, 
@@ -5666,10 +5672,8 @@ void start_schedule_timers(void * pArg)
 
                 countTimersStart = countTimersEnd = 0;      //reset counters
 
-#ifdef SIMULATE
-                if(!theConf.simTime)
-                 delay(howmuch); 
-                else
+
+                if(false)
                 {
                     // for simultions only erase in production
                     // set a new day with a start hours to move more fastly 
@@ -5690,11 +5694,11 @@ void start_schedule_timers(void * pArg)
                             .tv_usec = 0
                         };
                     settimeofday(&tv, NULL);
-                    // end of simulation code 
                 }
-#else
-                    delay(howmuch);
-#endif
+                    // end of simulation code 
+                else
+                    vTaskDelay(howmuch/portTICK_PERIOD_MS);
+
                 if ((theConf.debug_flags >> dSCH) & 1U)
                 {
                     time_t nuevo=time(NULL);
@@ -6251,9 +6255,12 @@ void app_main(void)
 // schedule timer will be started or not by sntp if root or when child connected by mesh if it was active and crash/power down
 
 //GPS process
+if(theConf.gpsSensor)
+{
     nmea_parser_config_t config = NMEA_PARSER_CONFIG_DEFAULT();
     nmea_parser_handle_t nmea_hdl = nmea_parser_init(&config);
     int err=nmea_parser_add_handler(nmea_hdl, gps_event_handler, NULL);
+}
 
 MESP_LOGI(MESH_TAG,"APP Free Heap %d",esp_get_free_heap_size());
 // if system has resetted and restarting, the sntpget routine will be in charge of starting the schedule timer again

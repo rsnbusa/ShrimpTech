@@ -139,7 +139,7 @@ descriptor_array_t* initialize_sensor_descriptors(
         
         // Configure Modbus parameters
         descriptors->devices[sensor_count].mb_slave_addr = address;
-        descriptors->devices[sensor_count].mb_param_type = MB_PARAM_HOLDING;
+        descriptors->devices[sensor_count].mb_param_type = MB_PARAM_HOLDING;        // fixed Function Code
         descriptors->devices[sensor_count].mb_reg_start = start;
         descriptors->devices[sensor_count].mb_size = points;
         descriptors->devices[sensor_count].param_offset = offset + 1;

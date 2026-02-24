@@ -347,6 +347,5 @@ EXTERN start_timer_ctx_t * ctx_timers[MAXHORARIOS];
 // GPS Globals
 // ============================================================================
 EXTERN bool gpsFlag;
-EXTERN timer_t gpsTime;
-EXTERN float gpsLocation;
+
 #endif // MAIN_GLOBALS_H
