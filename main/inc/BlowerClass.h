@@ -19,6 +19,36 @@
 #include "includes.h"
 
 // ============================================================================
+// VFD Monitor Data Structures
+// ============================================================================
+
+/**
+ * @brief VFD monitoring data
+ * 
+ * Contains frequency and cmds as actions and monitoring data.
+ * Used for starting the blower via the VFD and get dta from the vfd perfomances and motor status */
+typedef struct {        
+    float mcurrent;             // offset 0              
+    uint16_t mvolts;            // offset 4             
+    float mpower;               // offset 6            
+    uint16_t mrpm;              // offset 10             
+} vfd_t;
+
+// ============================================================================
+// VFD Data Structures
+// ============================================================================
+
+/**
+ * @brief VFD monitoring data
+ * 
+ * Contains frequency and cmds as actions and monitoring data.
+ * Used for starting the blower via the VFD and get dta from the vfd perfomances and motor status */
+typedef struct {
+    uint16_t frequency;         // offset 0
+    uint16_t cmd;               // offset 2                        
+} vfdcmd_t;
+
+// ============================================================================
 // PV Panel Data Structures
 // ============================================================================
 

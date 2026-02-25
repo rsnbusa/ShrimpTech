@@ -1051,6 +1051,46 @@ void my_get_modbInverter(struct modbInverter *data) // return limits saved in th
 }
 
 /**
+ * @brief Set Modbus VFD configuration
+ * @param data Pointer to modbus_vfd structure with new settings
+ */
+void my_set_VFD(struct VFD *data) // save limits from web to theblower
+{
+	theConf.modbus_vfd=*data;
+	write_to_flash();
+}
+
+/**
+ * @brief Get current Modbus VFD configuration
+ * @param data Pointer to VFD structure to populate
+ */
+void my_get_VFD(struct VFD *data) // return limits saved in theblower
+{
+
+	*data=theConf.modbus_vfd;
+}
+
+/**
+ * @brief Set Modbus VFDCmd configuration
+ * @param data Pointer to modbus_vfd structure with new settings
+ */
+void my_set_VFDCmd(struct VFDCmd *data) // save limits from web to theblower
+{
+	theConf.modbus_vfdcmd=*data;
+	write_to_flash();
+}
+
+/**
+ * @brief Get current Modbus VFDCmd configuration
+ * @param data Pointer to VFDCmd structure to populate
+ */
+void my_get_VFDCmd(struct VFDCmd *data) // return limits saved in theblower
+{
+
+	*data=theConf.modbus_vfdcmd;
+}
+
+/**
  * @brief Set Modbus sensors configuration
  * @param data Pointer to modbSensors structure with new settings
  */
@@ -1244,6 +1284,8 @@ void start_webserver(void *pArg)
   	mongoose_set_http_handlers("modbSensors", my_get_modbSensors ,my_set_modbSensors);				
   	mongoose_set_http_handlers("modbBattery", my_get_modbBattery ,my_set_modbBattery);				
   	mongoose_set_http_handlers("modbPanels", my_get_modbPanels ,my_set_modbPanels);				
+  	mongoose_set_http_handlers("VFD", my_get_VFD ,my_set_VFD);				
+  	mongoose_set_http_handlers("VFDCmd", my_get_VFDCmd ,my_set_VFDCmd);				
   	mongoose_set_http_handlers("DO", my_get_DO ,my_set_DO);				
   	mongoose_set_http_handlers("reboot", my_check_reboot ,my_start_reboot);		
 

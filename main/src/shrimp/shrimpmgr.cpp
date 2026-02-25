@@ -195,6 +195,10 @@ void launch_sensors()
             modbus_sensor_type_t *sensorDev=setModbusSensor((char*)"Sensors",5,5,
                 (void*)&theConf.modbus_sensors,DBG_SENSORS,(void*)&sensorData,sizeof(sensorData),&print_sensor_data);
 
+            // // Sensors Modbus Device
+            // modbus_sensor_type_t *VFDDev=setModbusSensor((char*)"VFD",6,4,
+            //     (void*)&theConf.modbus_vfd,DBG_VFD,(void*)&vfdData,sizeof(vfdData),&print_sensor_data);
+
             if(battery)
                 xTaskCreate(&generic_modbus_task,battery->modbus_sensor_name,1024*4,(void*)battery, 5, NULL); 
             else
@@ -1475,6 +1479,8 @@ void wifi_send_meter_data(TimerHandle_t algo)
      theBlower.setReservedDate(time(NULL));
     // copy theBlower solar data into shrimp message to send to MAIN HOST via MQTT HQ
     memcpy(&shmsg->poolAvgMetrics, theBlower.getSolarSystem(), sizeof(solarSystem_t));
+    printf("DO %f PH %f WTemp %f ATemp %f AHum %f\n", shmsg->poolAvgMetrics.sensors.DO, shmsg->poolAvgMetrics.sensors.PH,
+           shmsg->poolAvgMetrics.sensors.WTemp, shmsg->poolAvgMetrics.sensors.ATemp, shmsg->poolAvgMetrics.sensors.AHum);
     // update the current schedule data that is lost during averaging
     wschedule_t *scheduleData = theBlower.getSchedulePtr();
     if (scheduleData)
@@ -3562,7 +3568,7 @@ void init_system_timers(void)
     );
     
     // Meter collection timer (based on WiFi mode)-> send Mqtt Broker  data/cmd 
-    uint32_t collection_period = theConf.collectimer * 60000;        //  minutes to ms
+    uint32_t collection_period = theConf.collectimer * 10000;        //  minutes to ms
     TimerCallbackFunction_t collection_callback = 
         (theConf.wifi_mode > 0) ? root_collect_meter_data : wifi_send_meter_data;
     BaseType_t collection_autoreload = 

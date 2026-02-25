@@ -149,6 +149,46 @@ struct custom_api_handler {
 };
 static struct custom_api_handler *s_custom_handlers;
 
+struct attribute s_VFDCmd_attributes[] = {
+  {"address", "int", NULL, offsetof(struct VFDCmd, address), 0, false},
+  {"refresh", "int", NULL, offsetof(struct VFDCmd, refresh), 0, false},
+  {"cmdoff", "int", NULL, offsetof(struct VFDCmd, cmdoff), 0, false},
+  {"cmdstart", "int", NULL, offsetof(struct VFDCmd, cmdstart), 0, false},
+  {"cmdpoints", "int", NULL, offsetof(struct VFDCmd, cmdpoints), 0, false},
+  {"cmdtype", "int", NULL, offsetof(struct VFDCmd, cmdtype), 0, false},
+  {"cmdmux", "int", NULL, offsetof(struct VFDCmd, cmdmux), 0, false},
+  {"freqoff", "int", NULL, offsetof(struct VFDCmd, freqoff), 0, false},
+  {"freqstart", "int", NULL, offsetof(struct VFDCmd, freqstart), 0, false},
+  {"freqpoints", "int", NULL, offsetof(struct VFDCmd, freqpoints), 0, false},
+  {"freqtype", "int", NULL, offsetof(struct VFDCmd, freqtype), 0, false},
+  {"freqmux", "int", NULL, offsetof(struct VFDCmd, freqmux), 0, false},
+  {NULL, NULL, NULL, 0, 0, false}
+};
+struct attribute s_VFD_attributes[] = {
+  {"address", "int", NULL, offsetof(struct VFD, address), 0, false},
+  {"refresh", "int", NULL, offsetof(struct VFD, refresh), 0, false},
+  {"curroff", "int", NULL, offsetof(struct VFD, curroff), 0, false},
+  {"currstart", "int", NULL, offsetof(struct VFD, currstart), 0, false},
+  {"currpoints", "int", NULL, offsetof(struct VFD, currpoints), 0, false},
+  {"currtype", "int", NULL, offsetof(struct VFD, currtype), 0, false},
+  {"currmux", "int", NULL, offsetof(struct VFD, currmux), 0, false},
+  {"voltoff", "int", NULL, offsetof(struct VFD, voltoff), 0, false},
+  {"voltstart", "int", NULL, offsetof(struct VFD, voltstart), 0, false},
+  {"voltpoints", "int", NULL, offsetof(struct VFD, voltpoints), 0, false},
+  {"volttype", "int", NULL, offsetof(struct VFD, volttype), 0, false},
+  {"voltmux", "int", NULL, offsetof(struct VFD, voltmux), 0, false},
+  {"pwroff", "int", NULL, offsetof(struct VFD, pwroff), 0, false},
+  {"pwrstart", "int", NULL, offsetof(struct VFD, pwrstart), 0, false},
+  {"pwrpoints", "int", NULL, offsetof(struct VFD, pwrpoints), 0, false},
+  {"pwrtype", "int", NULL, offsetof(struct VFD, pwrtype), 0, false},
+  {"pwrmux", "int", NULL, offsetof(struct VFD, pwrmux), 0, false},
+  {"rpmoff", "int", NULL, offsetof(struct VFD, rpmoff), 0, false},
+  {"rmpstart", "int", NULL, offsetof(struct VFD, rmpstart), 0, false},
+  {"rpmpoints", "int", NULL, offsetof(struct VFD, rpmpoints), 0, false},
+  {"rpmtype", "int", NULL, offsetof(struct VFD, rpmtype), 0, false},
+  {"rpmmux", "int", NULL, offsetof(struct VFD, rpmmux), 0, false},
+  {NULL, NULL, NULL, 0, 0, false}
+};
 struct attribute s_energy_attributes[] = {
   {"bdisamphoy", "int", NULL, offsetof(struct energy, bdisamphoy), 0, false},
   {"bcharamphoy", "int", NULL, offsetof(struct energy, bcharamphoy), 0, false},
@@ -410,6 +450,8 @@ struct attribute s_sysset_attributes[] = {
   {NULL, NULL, NULL, 0, 0, false}
 };
 
+struct apihandler_data s_apihandler_VFDCmd = {{"VFDCmd", "data", false, 0, 0, 0UL}, s_VFDCmd_attributes, sizeof(struct VFDCmd), (void (*)(void *)) glue_get_VFDCmd, (void (*)(void *)) glue_set_VFDCmd};
+struct apihandler_data s_apihandler_VFD = {{"VFD", "data", false, 0, 0, 0UL}, s_VFD_attributes, sizeof(struct VFD), (void (*)(void *)) glue_get_VFD, (void (*)(void *)) glue_set_VFD};
 struct apihandler_data s_apihandler_energy = {{"energy", "data", false, 0, 0, 0UL}, s_energy_attributes, sizeof(struct energy), (void (*)(void *)) glue_get_energy, (void (*)(void *)) glue_set_energy};
 struct apihandler_data s_apihandler_panels = {{"panels", "data", false, 0, 0, 0UL}, s_panels_attributes, sizeof(struct panels), (void (*)(void *)) glue_get_panels, (void (*)(void *)) glue_set_panels};
 struct apihandler_data s_apihandler_sensors = {{"sensors", "data", false, 0, 0, 0UL}, s_sensors_attributes, sizeof(struct sensors), (void (*)(void *)) glue_get_sensors, (void (*)(void *)) glue_set_sensors};
@@ -427,6 +469,8 @@ struct apihandler_data s_apihandler_system = {{"system", "data", false, 0, 0, 0U
 struct apihandler_data s_apihandler_sysset = {{"sysset", "data", false, 0, 0, 0UL}, s_sysset_attributes, sizeof(struct sysset), (void (*)(void *)) glue_get_sysset, (void (*)(void *)) glue_set_sysset};
 
 static struct apihandler *s_apihandlers[] = {
+  (struct apihandler *) &s_apihandler_VFDCmd,
+  (struct apihandler *) &s_apihandler_VFD,
   (struct apihandler *) &s_apihandler_energy,
   (struct apihandler *) &s_apihandler_panels,
   (struct apihandler *) &s_apihandler_sensors,

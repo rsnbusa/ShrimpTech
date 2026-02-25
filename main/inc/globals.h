@@ -337,6 +337,8 @@ EXTERN energy_t energyData;
 EXTERN battery_t batteryData;
 EXTERN pvPanel_t pvPanelData;
 EXTERN sensor_t sensorData;
+EXTERN vfd_t vfdData;
+EXTERN vfdcmd_t vfdCmdData;
 // EXTERN wschedule_t scheduleData;
 
 EXTERN double doValue, setPoint, outputVal,KP,KI,KD;

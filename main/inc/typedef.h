@@ -384,6 +384,8 @@ typedef struct config {
     struct modbSensors  modbus_sensors;
     struct modbBattery  modbus_battery;
     struct modbPanels   modbus_panels;
+    struct VFD          modbus_vfd;
+    struct VFDCmd       modbus_vfdcmd;
     struct DO           doParms;
     uint32_t            centinel;           // at the end to protect the whole structure in case any changes in between
 
@@ -502,7 +504,8 @@ typedef struct shrimpMsg_st {
     uint16_t poolid;                     // offset 4    
     uint16_t countnodes;                 // offset 6
     time_t msgTime;                      // offset 8
-    float longi,lat;                    // offset 16
+    float longi;                        // offset 16
+    float lat;                         // offset 20
     solarSystem_t poolAvgMetrics;        // offset 24 size 100
     uint16_t lim_errs;          // offset 124
 } shrimpMsg_t;                  // total size 126

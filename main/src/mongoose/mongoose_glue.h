@@ -109,6 +109,50 @@ void glue_update_state(void);
 
 // Firmware Glue
 
+struct VFDCmd {
+  int address;
+  int refresh;
+  int cmdoff;
+  int cmdstart;
+  int cmdpoints;
+  int cmdtype;
+  int cmdmux;
+  int freqoff;
+  int freqstart;
+  int freqpoints;
+  int freqtype;
+  int freqmux;
+};
+void glue_get_VFDCmd(struct VFDCmd *);
+void glue_set_VFDCmd(struct VFDCmd *);
+
+struct VFD {
+  int address;
+  int refresh;
+  int curroff;
+  int currstart;
+  int currpoints;
+  int currtype;
+  int currmux;
+  int voltoff;
+  int voltstart;
+  int voltpoints;
+  int volttype;
+  int voltmux;
+  int pwroff;
+  int pwrstart;
+  int pwrpoints;
+  int pwrtype;
+  int pwrmux;
+  int rpmoff;
+  int rmpstart;
+  int rpmpoints;
+  int rpmtype;
+  int rpmmux;
+};
+void glue_get_VFD(struct VFD *);
+void glue_set_VFD(struct VFD *);
+
 struct energy {
   int bdisamphoy;
   int bcharamphoy;
