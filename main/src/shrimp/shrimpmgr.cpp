@@ -157,7 +157,7 @@ void ds18b20_task(void *pArg)
 }
 
 modbus_sensor_type_t * setModbusSensor(char * sensor_name,int numberDescriptors, int numColumns
-            ,void *descriptors,char * colores,void * theData,int dataSize,printcb printer)
+            ,void *descriptors,char * colores,void * theData,int dataSize,printcb printer,bool rw)
 {
             modbus_sensor_type_t *theSensor=(modbus_sensor_type_t *)calloc(1,sizeof(modbus_sensor_type_t));
             if (theSensor)
@@ -170,6 +170,7 @@ modbus_sensor_type_t * setModbusSensor(char * sensor_name,int numberDescriptors,
                 theSensor->color=(char*)colores;
                 theSensor->modbus_print_function=printer;
                 theSensor->modbus_sensor_data_size=dataSize;
+                theSensor->rw=rw;
             }
             return theSensor;       //null or filled
 }
@@ -184,7 +185,7 @@ void start_vfd(uint8_t que)
     vfdCmdData.cmd=que;
 
     vfdcmdDesc=setModbusSensor((char*)"VFDCmd",2,4,
-    (void*)&theConf.modbus_vfdcmd,DBG_VFD,(void*)&vfdCmdData,sizeof(vfdCmdData),&send_cmd);
+    (void*)&theConf.modbus_vfdcmd,DBG_VFD,(void*)&vfdCmdData,sizeof(vfdCmdData),&cb_vfd_cmd,false);     //write call in modbus
     if(vfdcmdDesc)
         xTaskCreate(&generic_modbus_task,vfdcmdDesc->modbus_sensor_name,1024*4,(void*)vfdcmdDesc, 5, &vfdcmdHandle); 
     else
@@ -197,23 +198,23 @@ void launch_sensors()
        return;
             // Battery Modbus Device
             modbus_sensor_type_t *battery=setModbusSensor((char*)"Battery",4,4,
-                (void*)&theConf.modbus_battery,DBG_BATTERY,(void*)&batteryData,sizeof(batteryData),&print_battery_data);
+                (void*)&theConf.modbus_battery,DBG_BATTERY,(void*)&batteryData,sizeof(batteryData),&cb_battery_data,true);
 
             // Panels Modbus Device
             modbus_sensor_type_t *panels=setModbusSensor((char*)"Panels",5,4,
-                (void*)&theConf.modbus_panels,DBG_PANELS,(void*)&pvPanelData,sizeof(pvPanelData),&print_panel_data);
+                (void*)&theConf.modbus_panels,DBG_PANELS,(void*)&pvPanelData,sizeof(pvPanelData),&cb_panel_data,true);
 
             // Energy Modbus Device
             modbus_sensor_type_t *energy=setModbusSensor((char*)"Energy",10,4,
-                (void*)&theConf.modbus_inverter,DBG_ENERGY,(void*)&energyData,sizeof(energyData),&print_energy_data);
+                (void*)&theConf.modbus_inverter,DBG_ENERGY,(void*)&energyData,sizeof(energyData),&cb_energy_data,true);
 
             // Sensors Modbus Device
             modbus_sensor_type_t *sensorDev=setModbusSensor((char*)"Sensors",5,5,
-                (void*)&theConf.modbus_sensors,DBG_SENSORS,(void*)&sensorData,sizeof(sensorData),&print_sensor_data);
+                (void*)&theConf.modbus_sensors,DBG_SENSORS,(void*)&sensorData,sizeof(sensorData),&cb_sensor_data,true);
 
             // VFD Monitor Modbus Device
             modbus_sensor_type_t *VFDDev=setModbusSensor((char*)"VFD",4,4,
-                (void*)&theConf.modbus_vfd,DBG_VFD,(void*)&vfdData,sizeof(vfdData),&print_vfd_data);
+                (void*)&theConf.modbus_vfd,DBG_VFD,(void*)&vfdData,sizeof(vfdData),&cb_vfd_data,true);
 
             // if(battery)
             //     xTaskCreate(&generic_modbus_task,battery->modbus_sensor_name,1024*4,(void*)battery, 5, NULL); 

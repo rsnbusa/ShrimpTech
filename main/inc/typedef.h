@@ -109,6 +109,7 @@ typedef struct {
     uint16_t    modbus_sensor_data_size;
     printcb     modbus_print_function;
     char *      color;
+    bool        rw;                 // read true write false
 } modbus_sensor_type_t;
 
 // ============================================================================

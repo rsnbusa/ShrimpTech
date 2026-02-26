@@ -19,11 +19,11 @@
 // Environmental Sensors
 // ============================================================================
 
-void send_cmd(void *vfdd, int *errors,char *color,int numerrs)
+void cb_vfd_cmd(void *vfdd, int *errors,char *color,int numerrs)
 {
     bool hasErrors=false;
  
-    printf("Cmd callback call\n");
+    printf("VFD Cmd callback\n");
     if(vfdcmdDesc)
         free(vfdcmdDesc);
     vTaskDelete(vfdcmdHandle);
@@ -43,7 +43,7 @@ void send_cmd(void *vfdd, int *errors,char *color,int numerrs)
  * @note Only prints if MODBUS debug flag is enabled and no errors occurred
  *  Limits WTEMP,LIMITDO,LIMITPH,ATEMP,AHUM
  */
-void print_vfd_data(void *vfdd, int *errors,char *color,int numerrs)
+void cb_vfd_data(void *vfdd, int *errors,char *color,int numerrs)
 {
     bool hasErrors=false;
  
@@ -99,7 +99,7 @@ void print_vfd_data(void *vfdd, int *errors,char *color,int numerrs)
  * @note Only prints if MODBUS debug flag is enabled and no errors occurred
  *  Limits WTEMP,LIMITDO,LIMITPH,ATEMP,AHUM
  */
-void print_sensor_data(void *sensors, int *errors,char *color,int numerrs)
+void cb_sensor_data(void *sensors, int *errors,char *color,int numerrs)
 {
     bool hasErrors=false;
  
@@ -157,7 +157,7 @@ void print_sensor_data(void *sensors, int *errors,char *color,int numerrs)
  * @note Only prints if MODBUS debug flag is enabled and no errors occurred
  * * limits BMCHAH,BMDDAH,BMCHKT,BMDDKT,GENEER,USEDEN,LCONLI,BMCHKW,BMDDKW,GENLCT
  */
-void print_energy_data(void *energy, int *errors,char * color,int numerrs)
+void cb_energy_data(void *energy, int *errors,char * color,int numerrs)
 {
     bool hasErrors=false;
     // check errors before printing
@@ -235,7 +235,7 @@ void print_energy_data(void *energy, int *errors,char * color,int numerrs)
  * @note Only prints if MODBUS debug flag is enabled and no errors occurred
  * * limits BMSOC,BMSOH,BMCC,BMTEMP
  */
-void print_battery_data(void *batteryData, int *errors,char *color,int numerrs)
+void cb_battery_data(void *batteryData, int *errors,char *color,int numerrs)
 {
     bool hasErrors=false;
     // check errors before printing
@@ -294,7 +294,7 @@ void print_battery_data(void *batteryData, int *errors,char *color,int numerrs)
  * @note Only prints if MODBUS debug flag is enabled and no errors occurred
  * * limits PV1V,PV1A,PV2V,PV2A
  */
-void print_panel_data(void *pvPanel, int *errors,char * color,int numerrs)
+void cb_panel_data(void *pvPanel, int *errors,char * color,int numerrs)
 {
     bool hasErrors=false;
     // check errors before printing
