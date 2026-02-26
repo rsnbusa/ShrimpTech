@@ -174,9 +174,25 @@ modbus_sensor_type_t * setModbusSensor(char * sensor_name,int numberDescriptors,
             return theSensor;       //null or filled
 }
 
+void start_vfd(uint8_t que)
+{
+    // set data
+    if(que)
+        vfdCmdData.frequency=45;
+    else
+        vfdCmdData.frequency=0;
+    vfdCmdData.cmd=que;
+
+    vfdcmdDesc=setModbusSensor((char*)"VFDCmd",2,4,
+    (void*)&theConf.modbus_vfdcmd,DBG_VFD,(void*)&vfdCmdData,sizeof(vfdCmdData),&send_cmd);
+    if(vfdcmdDesc)
+        xTaskCreate(&generic_modbus_task,vfdcmdDesc->modbus_sensor_name,1024*4,(void*)vfdcmdDesc, 5, &vfdcmdHandle); 
+    else
+        MESP_LOGE(TAG, "Failed to create vfdcmd modbus task due to memory allocation failure"); 
+}
+
 void launch_sensors()
 {
-       
     if(!theConf.modbuson)
        return;
             // Battery Modbus Device
@@ -195,29 +211,38 @@ void launch_sensors()
             modbus_sensor_type_t *sensorDev=setModbusSensor((char*)"Sensors",5,5,
                 (void*)&theConf.modbus_sensors,DBG_SENSORS,(void*)&sensorData,sizeof(sensorData),&print_sensor_data);
 
-            // // Sensors Modbus Device
-            // modbus_sensor_type_t *VFDDev=setModbusSensor((char*)"VFD",6,4,
-            //     (void*)&theConf.modbus_vfd,DBG_VFD,(void*)&vfdData,sizeof(vfdData),&print_sensor_data);
+            // VFD Monitor Modbus Device
+            modbus_sensor_type_t *VFDDev=setModbusSensor((char*)"VFD",4,4,
+                (void*)&theConf.modbus_vfd,DBG_VFD,(void*)&vfdData,sizeof(vfdData),&print_vfd_data);
 
-            if(battery)
-                xTaskCreate(&generic_modbus_task,battery->modbus_sensor_name,1024*4,(void*)battery, 5, NULL); 
-            else
-                MESP_LOGE(TAG, "Failed to create Battery modbus task due to memory allocation failure"); 
+            // if(battery)
+            //     xTaskCreate(&generic_modbus_task,battery->modbus_sensor_name,1024*4,(void*)battery, 5, NULL); 
+            // else
+            //     MESP_LOGE(TAG, "Failed to create Battery modbus task due to memory allocation failure"); 
 
-            if(panels)  
-                xTaskCreate(&generic_modbus_task,panels->modbus_sensor_name,1024*4,(void*)panels, 5, NULL); 
-            else
-                MESP_LOGE(TAG, "Failed to create Panels modbus task due to memory allocation failure"); 
+            // if(panels)  
+            //     xTaskCreate(&generic_modbus_task,panels->modbus_sensor_name,1024*4,(void*)panels, 5, NULL); 
+            // else
+            //     MESP_LOGE(TAG, "Failed to create Panels modbus task due to memory allocation failure"); 
 
-            if(energy)
-                xTaskCreate(&generic_modbus_task,energy->modbus_sensor_name,1024*4,(void*)energy, 5, NULL); 
-            else
-                MESP_LOGE(TAG, "Failed to create Energy modbus task due to memory allocation failure"); 
+            // if(energy)
+            //     xTaskCreate(&generic_modbus_task,energy->modbus_sensor_name,1024*4,(void*)energy, 5, NULL); 
+            // else
+            //     MESP_LOGE(TAG, "Failed to create Energy modbus task due to memory allocation failure"); 
 
-            if(sensorDev)
-                xTaskCreate(&generic_modbus_task,sensorDev->modbus_sensor_name,1024*4,(void*)sensorDev, 5, NULL); 
-            else
-                MESP_LOGE(TAG, "Failed to create Sensors modbus task due to memory allocation failure"); 
+            // if(sensorDev)
+            //     xTaskCreate(&generic_modbus_task,sensorDev->modbus_sensor_name,1024*4,(void*)sensorDev, 5, NULL); 
+            // else
+            //     MESP_LOGE(TAG, "Failed to create Sensors modbus task due to memory allocation failure"); 
+
+            // if(VFDDev)
+            // {
+            //     xTaskCreate(&generic_modbus_task,VFDDev->modbus_sensor_name,1024*4,(void*)VFDDev, 5, &vfdHandle);       // task handle will be use to start kill it
+            //     delay(400);  // give it some time to start and be ready to be suspended, otherwise we can have
+            //     vTaskSuspend(vfdHandle);   // start suspended, will be resumed by the blower task when the blower is started, and killed when the blower is stopped
+            // }
+            // else
+            //     MESP_LOGE(TAG, "Failed to create VFD modbus task due to memory allocation failure"); 
 }
 
 void print_blower(char * title,solarSystem_t *msolar,bool dumphex)
@@ -1479,8 +1504,6 @@ void wifi_send_meter_data(TimerHandle_t algo)
      theBlower.setReservedDate(time(NULL));
     // copy theBlower solar data into shrimp message to send to MAIN HOST via MQTT HQ
     memcpy(&shmsg->poolAvgMetrics, theBlower.getSolarSystem(), sizeof(solarSystem_t));
-    printf("DO %f PH %f WTemp %f ATemp %f AHum %f\n", shmsg->poolAvgMetrics.sensors.DO, shmsg->poolAvgMetrics.sensors.PH,
-           shmsg->poolAvgMetrics.sensors.WTemp, shmsg->poolAvgMetrics.sensors.ATemp, shmsg->poolAvgMetrics.sensors.AHum);
     // update the current schedule data that is lost during averaging
     wschedule_t *scheduleData = theBlower.getSchedulePtr();
     if (scheduleData)

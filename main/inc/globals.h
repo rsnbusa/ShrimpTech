@@ -62,7 +62,12 @@ EXTERN TaskHandle_t blinkHandle;
 EXTERN TaskHandle_t ssidHandle;
 EXTERN TaskHandle_t timeKeeperHandle;
 EXTERN TaskHandle_t gpsH;
-EXTERN gps_t                        *gps;
+EXTERN TaskHandle_t vfdHandle;
+EXTERN TaskHandle_t vfdcmdHandle;
+
+// gps
+
+EXTERN gps_t       *gps;
 
 // ============================================================================
 // SYNCHRONIZATION PRIMITIVES
@@ -328,6 +333,7 @@ EXTERN modbus_rec_t modbusRecord;
 EXTERN answer_t reply;
 EXTERN modbus_array_t modbusArray[MAXMODBUS];
 EXTERN uint16_t globalErrors;           // 8 bits, upper 4 are limits and lower 4 are errors; 16 bits variable for alignment
+
 // ============================================================================
 // SOLAR SYSTEM DATA
 // ============================================================================
@@ -339,8 +345,6 @@ EXTERN pvPanel_t pvPanelData;
 EXTERN sensor_t sensorData;
 EXTERN vfd_t vfdData;
 EXTERN vfdcmd_t vfdCmdData;
-// EXTERN wschedule_t scheduleData;
-
 EXTERN double doValue, setPoint, outputVal,KP,KI,KD;
 EXTERN float temperature;
 EXTERN start_timer_ctx_t * ctx_timers[MAXHORARIOS];
@@ -349,5 +353,5 @@ EXTERN start_timer_ctx_t * ctx_timers[MAXHORARIOS];
 // GPS Globals
 // ============================================================================
 EXTERN bool gpsFlag;
-
+EXTERN modbus_sensor_type_t *vfdcmdDesc;
 #endif // MAIN_GLOBALS_H

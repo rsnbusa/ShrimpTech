@@ -176,7 +176,7 @@ descriptor_array_t* initialize_sensor_descriptors(
         }
             
         descriptors->devices[sensor_count].param_size = (mb_descr_size_t)(points * sizeof(uint16_t));
-        descriptors->devices[sensor_count].access =mux>0 ? PAR_PERMS_READ: PAR_PERMS_WRITE;  // if mux is >0 then its writable since we can write the value to be multiplied by mux and get the real value in the sensor. if mux is 0 then its read only since we cant write to it.
+        descriptors->devices[sensor_count].access = mux>0.1 ? PAR_PERMS_READ: PAR_PERMS_WRITE;  // if mux is >0 then its writable since we can write the value to be multiplied by mux and get the real value in the sensor. if mux is 0 then its read only since we cant write to it.
         
         sensor_count++;
     }

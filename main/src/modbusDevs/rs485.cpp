@@ -129,6 +129,8 @@ void rs485_task_manager(void *arg)
                 if ((err != ESP_ERR_NOT_FOUND) && (param_descriptor != NULL) && 
                     (param_descriptor->mb_param_type == MB_PARAM_HOLDING))
                 {
+                    // printf("Cid %d param key %s offset %d access %d data %p-%p\n",cid,param_descriptor->param_key,param_descriptor->param_offset-1,
+                        // param_descriptor->access,mensaje.dataReceiver,&vfdCmdData);
                     uint8_t* temp_data_ptr = (uint8_t*)mensaje.dataReceiver + param_descriptor->param_offset - 1;
                     assert(temp_data_ptr);
                     uint8_t type = 0;
@@ -137,8 +139,17 @@ void rs485_task_manager(void *arg)
                             // mensaje.dataReceiver);
         
                         // this is the actual request from master to slave (stupid name for routine)
-                        err = mbc_master_get_parameter(cid, (char*)param_descriptor->param_key,
+                        if(param_descriptor->access==PAR_PERMS_READ)
+                        {
+                             err = mbc_master_get_parameter(cid, (char*)param_descriptor->param_key,
                                                             (uint8_t*)temp_data_ptr, &type);
+                        }
+                        else if(param_descriptor->access==PAR_PERMS_WRITE)
+                        {
+                            err = mbc_master_set_parameter(cid, (char*)param_descriptor->param_key,
+                                                            (uint8_t*)temp_data_ptr, &type);
+                            // esp_log_buffer_hex("WRITE", (void*)temp_data_ptr, 10);
+                        }
                         if (err == ESP_OK) 
                             mensaje.errCode[cid] = ESP_OK;   // success
                         else 

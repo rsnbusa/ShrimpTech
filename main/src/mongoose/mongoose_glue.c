@@ -5,7 +5,7 @@
 // Default mock implementation of the API callbacks
 
 #include "mongoose_glue.h"
-struct VFDCmd s_VFDCmd = {100, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+struct VFDCmd s_VFDCmd = {10, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 void glue_get_VFDCmd(struct VFDCmd *data) {
   *data = s_VFDCmd;  // Sync with your device
 }
@@ -13,7 +13,7 @@ void glue_set_VFDCmd(struct VFDCmd *data) {
   s_VFDCmd = *data; // Sync with your device
 }
 
-struct VFD s_VFD = {20, 5, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 2, 0, 1};
+struct VFD s_VFD = {5, 20, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 2, 0, 0};
 void glue_get_VFD(struct VFD *data) {
   *data = s_VFD;  // Sync with your device
 }

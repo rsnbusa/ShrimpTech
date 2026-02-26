@@ -76,9 +76,11 @@ void generic_modbus_task(void *pArg)
     mensaje.numerrs=sensor_count;
     
     // Zero out data structure before use
-    bzero(modbus_sensor->modbus_sensor_data, modbus_sensor->modbus_sensor_data_size);
+    // todo set to zero if read only
+    // bzero(modbus_sensor->modbus_sensor_data, modbus_sensor->modbus_sensor_data_size);
     mensaje.dataReceiver = modbus_sensor->modbus_sensor_data;
 
+    vTaskDelay(pdMS_TO_TICKS(400));      // give time to be suspended if caller wants to start it suspended
     // Main monitoring loop
     while (true)
     {

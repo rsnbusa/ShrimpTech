@@ -19,6 +19,72 @@
 // Environmental Sensors
 // ============================================================================
 
+void send_cmd(void *vfdd, int *errors,char *color,int numerrs)
+{
+    bool hasErrors=false;
+ 
+    printf("Cmd callback call\n");
+    if(vfdcmdDesc)
+        free(vfdcmdDesc);
+    vTaskDelete(vfdcmdHandle);
+}
+
+/**
+ * @brief Print environmental VFD data for debugging
+ * 
+ * Logs environmental monitoring data including water temperature, dissolved
+ * oxygen concentration and percentage.
+ * 
+ * @param sensors Pointer to sensor_t data structure
+ * @param errors Pointer to error code array
+ * @param color String representing the color for logging
+ * @param numerrs Number of error codes
+ * @note Checks errors[1] instead of errors[0] for multi-sensor setups
+ * @note Only prints if MODBUS debug flag is enabled and no errors occurred
+ *  Limits WTEMP,LIMITDO,LIMITPH,ATEMP,AHUM
+ */
+void print_vfd_data(void *vfdd, int *errors,char *color,int numerrs)
+{
+    bool hasErrors=false;
+ 
+    // check errors before printing
+    for (int a=0;a<numerrs;a++)
+    {
+        if(errors[a]!=0)
+        {
+            if (((theConf.debug_flags >> dMODBUS) & 1U))
+                MESP_LOGE(TAG,"%sVFD Error CID %d=0x%x %s ",color,a,errors[a],esp_err_to_name(errors[a]));
+            hasErrors=true;
+        }
+    }
+
+    if (hasErrors)
+    {
+        globalErrors|= (1U << VFD_ERROR_BIT); // set sensor error bit
+        if (((theConf.debug_flags >> dMODBUS) & 1U))
+            printf("\n");
+        return;
+    }   
+
+    globalErrors &= ~(1U << VFD_ERROR_BIT); // clear the error bit
+     
+    vfd_t *data = (vfd_t*)vfdd;
+
+    globalErrors &= ~(1U << VFD_LIMIT_ERROR_BIT); // clear the limit error bit
+        
+    if (!((theConf.debug_flags >> dMODBUS) & 1U))
+        return;
+
+
+    MESP_LOGI(TAG, "%s Motor Current:%.02f amps Volts %d Power:%.02f RPM: %d%s", color,
+             data->mcurrent,
+             data->mvolts,
+             data->mpower,data->mrpm,RESETC);
+    // save data to frame blower sensors
+            //  theBlower.setSensors( data->DO,  0,data->WTemp,
+            //             temperature, 0);
+}
+
 /**
  * @brief Print environmental sensor data for debugging
  * 
@@ -78,8 +144,7 @@ void print_sensor_data(void *sensors, int *errors,char *color,int numerrs)
 // ============================================================================
 // Energy Monitoring
 // ============================================================================
-
-/**
+ /**
  * @brief Print energy sensor data for debugging
  * 
  * Logs energy monitoring data including battery charge/discharge statistics,

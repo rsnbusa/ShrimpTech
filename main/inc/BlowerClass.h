@@ -17,7 +17,7 @@
 #define BLOWERCLASS_H_
 
 #include "includes.h"
-
+// A L W A Y S set pragma pack 1 for alignment 
 // ============================================================================
 // VFD Monitor Data Structures
 // ============================================================================
@@ -27,13 +27,14 @@
  * 
  * Contains frequency and cmds as actions and monitoring data.
  * Used for starting the blower via the VFD and get dta from the vfd perfomances and motor status */
+#pragma pack(push, 1) 
 typedef struct {        
     float mcurrent;             // offset 0              
     uint16_t mvolts;            // offset 4             
     float mpower;               // offset 6            
     uint16_t mrpm;              // offset 10             
 } vfd_t;
-
+#pragma pack(pop)  
 // ============================================================================
 // VFD Data Structures
 // ============================================================================
@@ -43,11 +44,12 @@ typedef struct {
  * 
  * Contains frequency and cmds as actions and monitoring data.
  * Used for starting the blower via the VFD and get dta from the vfd perfomances and motor status */
-typedef struct {
+#pragma pack(push, 1) 
+ typedef struct {
     uint16_t frequency;         // offset 0
     uint16_t cmd;               // offset 2                        
 } vfdcmd_t;
-
+#pragma pack(pop)  
 // ============================================================================
 // PV Panel Data Structures
 // ============================================================================

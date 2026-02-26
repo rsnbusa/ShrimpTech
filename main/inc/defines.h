@@ -230,11 +230,13 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 #define PANELS_ERROR_BIT                (1) // Bit 1 for panel errors
 #define BATTERY_ERROR_BIT               (2) // Bit 2 for battery errors
 #define ENERGY_ERROR_BIT                (3) // Bit 3 for energy errors
+#define VFD_ERROR_BIT                   (8) // Bit 8 for VFD errors
 
 #define SENSOR_LIMIT_ERROR_BIT          (4) // Bit 4 for limit errors
 #define PANELS_LIMIT_ERROR_BIT          (5) // Bit 5 for limit errors
 #define BATTERY_LIMIT_ERROR_BIT         (6) // Bit 6 for limit errors
 #define ENERGY_LIMIT_ERROR_BIT          (7) // Bit 7 for limit errors
+#define VFD_LIMIT_ERROR_BIT             (9) // Bit 7 for limit errors
 
 // Dissolved Oxygen Sensor Calibration Values 
 // for a VFC min should be 30Hz and max 60Hz nomally.  Could be adjusted specifically MAX to 90Hz if needed

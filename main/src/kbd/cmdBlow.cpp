@@ -85,10 +85,22 @@ int cmdBlow(int argc, char **argv)
     // Set modbus for simulation
     if (blowArgs.modbus->count) {
         int modbuss = blowArgs.modbus->ival[0];
-        MESP_LOGI(TAG,"Setting Modbus to %d from %d", modbuss, theConf.temp_sensor);
-        if(modbuss<0) modbuss=1;
-        theConf.temp_sensor = modbuss;
-        write_to_flash();
+        // MESP_LOGI(TAG,"Setting Modbus to %d from %d", modbuss, theConf.temp_sensor);
+        // if(modbuss<0) modbuss=1;
+        // theConf.temp_sensor = modbuss;
+        // write_to_flash();
+        if(modbuss==0)
+        { 
+            start_vfd(0);
+            // vTaskSuspend(vfdHandle);
+            MESP_LOGI(TAG,"VFD Modbus stop and  suspended");
+        }
+        else
+        {
+            start_vfd(modbuss);
+            // vTaskResume(vfdHandle);
+            MESP_LOGI(TAG,"VFD Modbus start and  resumed");
+        }
         return 0;
     }
 

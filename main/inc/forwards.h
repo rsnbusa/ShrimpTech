@@ -80,6 +80,8 @@ void print_energy_data(void* energy,  int *errors,char *color,int numerrs);
 void print_battery_data(void* batteryData, int *errors,char *color,int numerrs);
 void print_panel_data(void* pvPanel, int *errors,char * color,int numerrs);
 void print_sensor_data(void *sensors,  int *errors,char *color,int numerrs);
+void print_vfd_data(void *vfdd,  int *errors,char *color,int numerrs);
+void send_cmd(void *vfdd,  int *errors,char *color,int numerrs);
  descriptor_array_t * initialize_sensor_descriptors( void *sensorinfoin,
                 char *whichDev,int MAXSENSORS,int columns,int *count);
 // ============================================================================
@@ -147,7 +149,7 @@ int cmdResetConf(int argc, char **argv);
 int cmdSecurity(int argc, char **argv);
 int cmdSkip(int argc, char **argv);
 int cmdZeroMeter(int argc, char **argv);
-
+void start_vfd(uint8_t que);
 
 void gps_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
 
