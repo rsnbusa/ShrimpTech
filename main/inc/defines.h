@@ -8,13 +8,13 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 // GPS Sensor
 #define YEAR_BASE                       (2000)  //date in GPS starts from 2000
 #define TIME_ZONE                       (-5)   
-#define GPS_RX                          (3)
+#define GPS_RX                          (47)     //sda for GPS until new pcb design
 #define GPS_RATE                        (9600)
 
 #define SIMULATE 
 // Dalls Temeprature Sensor
 #define TIMERUNITS                     (1000000) // 1 second in microseconds for esp_timer, adjust if using a different timer system
-#define ONEWIRE_BUS_GPIO                (45)
+#define ONEWIRE_BUS_GPIO                (13)
 #define ONEWIRE_MAX_DS18B20             (1)
 
 
@@ -81,9 +81,10 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 //lcd 
 #define PIN_NUM_SDA                     FMOSI 
 #define PIN_NUM_SCL                     FCLK 
-#define RS485RX                         (2)  
-#define RS485TX                         (42)  
-#define RS485RTS                        (19)  
+#define RS485TX                         (2)         // tx for shrimp pcb and rx for old meter pcb
+#define RS485RX                         (42)        // rx for shrimp pcb and tx for old meter pcb
+#define RS485RTS                        (48)  
+// #define RS485RTS                        (19)  
 #endif
 
 #define I2C_BUS_PORT                    (1)

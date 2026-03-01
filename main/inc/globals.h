@@ -345,6 +345,7 @@ EXTERN pvPanel_t pvPanelData;
 EXTERN sensor_t sensorData;
 EXTERN vfd_t vfdData;
 EXTERN vfdcmd_t vfdCmdData;
+EXTERN inverter_t inverterData;
 EXTERN double doValue, setPoint, outputVal,KP,KI,KD;
 EXTERN float temperature;
 EXTERN start_timer_ctx_t * ctx_timers[MAXHORARIOS];
@@ -353,5 +354,4 @@ EXTERN start_timer_ctx_t * ctx_timers[MAXHORARIOS];
 // GPS Globals
 // ============================================================================
 EXTERN bool gpsFlag;
-EXTERN modbus_sensor_type_t *vfdcmdDesc;
 #endif // MAIN_GLOBALS_H

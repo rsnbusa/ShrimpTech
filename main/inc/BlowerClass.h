@@ -19,6 +19,22 @@
 #include "includes.h"
 // A L W A Y S set pragma pack 1 for alignment 
 // ============================================================================
+//Inverter Status Monitor Data Structures
+// ============================================================================
+
+/**
+ * @brief Inverter monitoring data
+ * 
+ * Contains status of inverter as a Heartbeat
+*/
+#pragma pack(push, 1) 
+typedef struct {        
+    uint16_t inverter_status;             // offset 0              
+          
+} inverter_t;
+#pragma pack(pop)  
+
+// ============================================================================
 // VFD Monitor Data Structures
 // ============================================================================
 

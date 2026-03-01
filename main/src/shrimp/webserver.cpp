@@ -1129,6 +1129,25 @@ void my_get_modbBattery(struct modbBattery *data) // return limits saved in theb
 }
 
 /**
+ * @brief Set Modbus battery configuration
+ * @param data Pointer to modbBattery structure with new settings
+ */
+void my_set_Inverter(struct Inverter *data) // save limits from web to theblower
+{
+	theConf.inverter=*data;
+	write_to_flash();
+}
+
+/**
+ * @brief Get current Modbus battery configuration
+ * @param data Pointer to Inverter structure to populate
+ */
+void my_get_Inverter(struct Inverter *data) // return limits saved in theblower
+{
+	*data=theConf.inverter;
+}
+
+/**
  * @brief Get current Modbus solar panels configuration
  * @param data Pointer to modbPanels structure to populate
  */
@@ -1287,6 +1306,7 @@ void start_webserver(void *pArg)
   	mongoose_set_http_handlers("VFD", my_get_VFD ,my_set_VFD);				
   	mongoose_set_http_handlers("VFDCmd", my_get_VFDCmd ,my_set_VFDCmd);				
   	mongoose_set_http_handlers("DO", my_get_DO ,my_set_DO);				
+  	mongoose_set_http_handlers("Inverter", my_get_Inverter ,my_set_Inverter);				
   	mongoose_set_http_handlers("reboot", my_check_reboot ,my_start_reboot);		
 
 	//web timeout if not done in 2 minutes restart

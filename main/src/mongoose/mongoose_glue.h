@@ -109,6 +109,18 @@ void glue_update_state(void);
 
 // Firmware Glue
 
+struct Inverter {
+  int refresh;
+  int address;
+  int offset;
+  int start;
+  int points;
+  int type;
+  int mux;
+};
+void glue_get_Inverter(struct Inverter *);
+void glue_set_Inverter(struct Inverter *);
+
 struct VFDCmd {
   int refresh;
   int address;

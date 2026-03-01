@@ -117,26 +117,31 @@ void ds18b20_task(void *pArg)
     // create 1-wire device iterator, which is used for device search
     ESP_ERROR_CHECK(onewire_new_device_iter(bus, &iter));
     do {
+        printf("Search\n");
         search_result = onewire_device_iter_get_next(iter, &next_onewire_device);
         if (search_result == ESP_OK) { // found a new device, let's check if we can upgrade it to a DS18B20
             ds18b20_config_t ds_cfg = {};
             onewire_device_address_t address;
             // check if the device is a DS18B20, if so, return the ds18b20 handle
+            printf("enumerate\n");
             if (ds18b20_new_device_from_enumeration(&next_onewire_device, &ds_cfg, &ds18b20s[ds18b20_device_num]) == ESP_OK) {
+                printf("new dev\n");
                 ds18b20_get_device_address(ds18b20s[ds18b20_device_num], &address);
                 if ((theConf.debug_flags >> dTEMP) & 1U) 
-                    MESP_LOGI(TAG, "Found a DS18B20[%d], address: %016llX", ds18b20_device_num, address);
+                    MESP_LOGW(TAG, "Found a DS18B20[%d], address: %016llX", ds18b20_device_num, address);
                 ds18b20_device_num++;
                 if (ds18b20_device_num >= ONEWIRE_MAX_DS18B20) {
-                    MESP_LOGI(TAG, "Max DS18B20 number reached, stop searching...");
+                    MESP_LOGE(TAG, "Max DS18B20 number reached, stop searching...");
                     break;
                 }
             } else {
                 if ((theConf.debug_flags >> dTEMP) & 1U) {
-                    MESP_LOGI(TAG, "Found an unknown device, address: %016llX", next_onewire_device.address);
+                    MESP_LOGW(TAG, "Found an unknown device, address: %016llX", next_onewire_device.address);
                 }
             }
         }
+        vTaskDelay(pdMS_TO_TICKS(1000));       //allow hot plug
+
     } while (search_result != ESP_ERR_NOT_FOUND);
     ESP_ERROR_CHECK(onewire_del_device_iter(iter));
     if ((theConf.debug_flags >> dTEMP) & 1U) {
@@ -144,15 +149,17 @@ void ds18b20_task(void *pArg)
     }
 
     while (1) {
-        vTaskDelay(pdMS_TO_TICKS(60000));
-
-        // trigger temperature conversion for all sensors on the bus
-        ESP_ERROR_CHECK(ds18b20_trigger_temperature_conversion_for_all(bus));
-        for (int i = 0; i < ds18b20_device_num; i ++) {
-            ESP_ERROR_CHECK(ds18b20_get_temperature(ds18b20s[i], &temperature));
-            if((theConf.debug_flags >> dTEMP) & 1U)
-                MESP_LOGI(TAG, "%s Temp[%d]: %.2fC%s", DBG_TEMP, i, temperature,RESETC);
-        }
+        vTaskDelay(pdMS_TO_TICKS(10000));
+        if(ds18b20_device_num>0)
+        {
+            // trigger temperature conversion for all sensors on the bus
+            ESP_ERROR_CHECK(ds18b20_trigger_temperature_conversion_for_all(bus));
+            for (int i = 0; i < ds18b20_device_num; i ++) {
+                ESP_ERROR_CHECK(ds18b20_get_temperature(ds18b20s[i], &temperature));
+                if((theConf.debug_flags >> dTEMP) & 1U)
+                    MESP_LOGI(TAG, "%s Temp[%d]: %.2fC%s", DBG_TEMP, i, temperature,RESETC);
+            }
+        }      
     }
 }
 
@@ -179,17 +186,20 @@ void start_vfd(uint8_t que)
 {
     // set data
     if(que)
-        vfdCmdData.frequency=45;
+    {
+        vfdCmdData.frequency=que;
+        vfdCmdData.cmd=1;
+        vTaskResume(vfdcmdHandle);
+    }
     else
+    {
         vfdCmdData.frequency=0;
+        vfdCmdData.cmd=0;
+        vTaskResume(vfdcmdHandle);
+    }
     vfdCmdData.cmd=que;
+    
 
-    vfdcmdDesc=setModbusSensor((char*)"VFDCmd",2,4,
-    (void*)&theConf.modbus_vfdcmd,DBG_VFD,(void*)&vfdCmdData,sizeof(vfdCmdData),&cb_vfd_cmd,false);     //write call in modbus
-    if(vfdcmdDesc)
-        xTaskCreate(&generic_modbus_task,vfdcmdDesc->modbus_sensor_name,1024*4,(void*)vfdcmdDesc, 5, &vfdcmdHandle); 
-    else
-        MESP_LOGE(TAG, "Failed to create vfdcmd modbus task due to memory allocation failure"); 
 }
 
 void launch_sensors()
@@ -213,37 +223,50 @@ void launch_sensors()
                 (void*)&theConf.modbus_sensors,DBG_SENSORS,(void*)&sensorData,sizeof(sensorData),&cb_sensor_data,true);
 
             // VFD Monitor Modbus Device
-            modbus_sensor_type_t *VFDDev=setModbusSensor((char*)"VFD",4,4,
+            modbus_sensor_type_t *VFDDev=setModbusSensor((char*)"VFDData",4,4,
                 (void*)&theConf.modbus_vfd,DBG_VFD,(void*)&vfdData,sizeof(vfdData),&cb_vfd_data,true);
 
-            // if(battery)
-            //     xTaskCreate(&generic_modbus_task,battery->modbus_sensor_name,1024*4,(void*)battery, 5, NULL); 
-            // else
-            //     MESP_LOGE(TAG, "Failed to create Battery modbus task due to memory allocation failure"); 
+            // VFD Cmd Modbus Device
 
-            // if(panels)  
-            //     xTaskCreate(&generic_modbus_task,panels->modbus_sensor_name,1024*4,(void*)panels, 5, NULL); 
-            // else
-            //     MESP_LOGE(TAG, "Failed to create Panels modbus task due to memory allocation failure"); 
+            modbus_sensor_type_t *vfdcmd=setModbusSensor((char*)"VFDCmd",2,4,
+                (void*)&theConf.modbus_vfdcmd,DBG_VFD,(void*)&vfdCmdData,sizeof(vfdCmdData),&cb_vfd_cmd,false);     
 
-            // if(energy)
-            //     xTaskCreate(&generic_modbus_task,energy->modbus_sensor_name,1024*4,(void*)energy, 5, NULL); 
-            // else
-            //     MESP_LOGE(TAG, "Failed to create Energy modbus task due to memory allocation failure"); 
+            if(vfdcmd)
+            {
+                xTaskCreate(&generic_modbus_task,vfdcmd->modbus_sensor_name,1024*4,(void*)vfdcmd, 5, &vfdcmdHandle);    // this handle is important. Manged via suspend and resume
+                vTaskSuspend(vfdcmdHandle);   // start suspended, will be resumed by the blower task when the blower is started, and killed when the blower is stopped
+            }
+            else
+                MESP_LOGE(TAG, "Failed to create vfdcmd modbus task due to memory allocation failure"); 
 
-            // if(sensorDev)
-            //     xTaskCreate(&generic_modbus_task,sensorDev->modbus_sensor_name,1024*4,(void*)sensorDev, 5, NULL); 
-            // else
-            //     MESP_LOGE(TAG, "Failed to create Sensors modbus task due to memory allocation failure"); 
+            if(battery)
+                xTaskCreate(&generic_modbus_task,battery->modbus_sensor_name,1024*4,(void*)battery, 5, NULL); 
+            else
+                MESP_LOGE(TAG, "Failed to create Battery modbus task due to memory allocation failure"); 
 
-            // if(VFDDev)
-            // {
-            //     xTaskCreate(&generic_modbus_task,VFDDev->modbus_sensor_name,1024*4,(void*)VFDDev, 5, &vfdHandle);       // task handle will be use to start kill it
-            //     delay(400);  // give it some time to start and be ready to be suspended, otherwise we can have
-            //     vTaskSuspend(vfdHandle);   // start suspended, will be resumed by the blower task when the blower is started, and killed when the blower is stopped
-            // }
-            // else
-            //     MESP_LOGE(TAG, "Failed to create VFD modbus task due to memory allocation failure"); 
+            if(panels)  
+                xTaskCreate(&generic_modbus_task,panels->modbus_sensor_name,1024*4,(void*)panels, 5, NULL); 
+            else
+                MESP_LOGE(TAG, "Failed to create Panels modbus task due to memory allocation failure"); 
+
+            if(energy)
+                xTaskCreate(&generic_modbus_task,energy->modbus_sensor_name,1024*4,(void*)energy, 5, NULL); 
+            else
+                MESP_LOGE(TAG, "Failed to create Energy modbus task due to memory allocation failure"); 
+
+            if(sensorDev)
+                xTaskCreate(&generic_modbus_task,sensorDev->modbus_sensor_name,1024*4,(void*)sensorDev, 5, NULL); 
+            else
+                MESP_LOGE(TAG, "Failed to create Sensors modbus task due to memory allocation failure"); 
+
+            if(VFDDev)
+            {
+                xTaskCreate(&generic_modbus_task,VFDDev->modbus_sensor_name,1024*4,(void*)VFDDev, 5, &vfdHandle);       // task handle will be use to start kill it
+                delay(400);  // give it some time to start and be ready to be suspended, otherwise we can have
+                vTaskSuspend(vfdHandle);   // start suspended, will be resumed by the blower task when the blower is started, and killed when the blower is stopped
+            }
+            else
+                MESP_LOGE(TAG, "Failed to create VFD modbus task due to memory allocation failure"); 
 }
 
 void print_blower(char * title,solarSystem_t *msolar,bool dumphex)
@@ -5238,6 +5261,7 @@ void handle_past_schedule_in_progress(time_t endtime, time_t now, int ck
     ctx_timers[ck_h]->isLast=(ck_h == num_horarios - 1)? true : false;
     
     turn_blower_onOff(true);  // Ensure blower is on since Started ALREADY happened 
+    start_vfd(true);
 
     if ((theConf.debug_flags >> dSCH) & 1U) {
         format_log_time(endtime, time_str, 30);
@@ -6084,6 +6108,8 @@ void blower_start(void * pArg)
     }
     
     turn_blower_onOff(true);
+    start_vfd(true);
+
     // the schedule should change its status here to active, it also marks the profile,cycle and dazy for recovery in PF
     // theBlower.setScheduleStatus(POOLBLOWERON); // this is the status that will be set when the timer starts, 
     // it will be used to know that we are in active schedule mode and to recover the schedule status in case of power loss, it will be set to next or off in the end timer according to if we have more timers or not
@@ -6143,6 +6169,7 @@ void blower_end(void * pArg)
     }
     // elapsed[ulCount]=0;
     turn_blower_onOff(false);
+    start_vfd(false);
 
     if (start_timer_ctx->isLast)
     {
@@ -6181,6 +6208,11 @@ void app_main(void)
     // to start and set the schedule status in blower
    
  
+        if(theConf.temp_sensor)      // temperature settings
+   {
+        xTaskCreate(&ds18b20_task,"ds18b20",1024*3,NULL, 5, NULL); 	            // start the modbus task  
+    }
+
     theBlower.initBlower();        
     // start the time keeper to get a "relative valid" date to set the system time  for our the schedule process, 
     // this is important to be the first thing that starts after the blower init as we need a valid time to start the schedule process 
@@ -6256,11 +6288,7 @@ void app_main(void)
     if(theConf.modbuson)        // start the sensors, inverter etc 
         xTaskCreate(&rs485_task_manager,"modbus",1024*10,NULL, 5, NULL); 	            // start the modbus task  
   
-    if(theConf.temp_sensor)      // temperature settings
-   {
-        xTaskCreate(&ds18b20_task,"ds18b20",1024*3,NULL, 5, NULL); 	            // start the modbus task  
-    }
- 
+
     MESP_LOGI(TAG,"Network mode is %s",theConf.wifi_mode?"Mesh":"WiFi");
 
     if(!theConf.masternode && theConf.wifi_mode)     // in Mesh mode if not root allow master to boot

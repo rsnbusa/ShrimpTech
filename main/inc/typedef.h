@@ -388,6 +388,7 @@ typedef struct config {
     struct VFD          modbus_vfd;
     struct VFDCmd       modbus_vfdcmd;
     struct DO           doParms;
+    struct Inverter     inverter;
     uint32_t            centinel;           // at the end to protect the whole structure in case any changes in between
 
 } config_flash;

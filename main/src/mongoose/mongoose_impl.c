@@ -149,6 +149,16 @@ struct custom_api_handler {
 };
 static struct custom_api_handler *s_custom_handlers;
 
+struct attribute s_Inverter_attributes[] = {
+  {"refresh", "int", NULL, offsetof(struct Inverter, refresh), 0, false},
+  {"address", "int", NULL, offsetof(struct Inverter, address), 0, false},
+  {"offset", "int", NULL, offsetof(struct Inverter, offset), 0, false},
+  {"start", "int", NULL, offsetof(struct Inverter, start), 0, false},
+  {"points", "int", NULL, offsetof(struct Inverter, points), 0, false},
+  {"type", "int", NULL, offsetof(struct Inverter, type), 0, false},
+  {"mux", "int", NULL, offsetof(struct Inverter, mux), 0, false},
+  {NULL, NULL, NULL, 0, 0, false}
+};
 struct attribute s_VFDCmd_attributes[] = {
   {"refresh", "int", NULL, offsetof(struct VFDCmd, refresh), 0, false},
   {"address", "int", NULL, offsetof(struct VFDCmd, address), 0, false},
@@ -450,6 +460,7 @@ struct attribute s_sysset_attributes[] = {
   {NULL, NULL, NULL, 0, 0, false}
 };
 
+struct apihandler_data s_apihandler_Inverter = {{"Inverter", "data", false, 0, 0, 0UL}, s_Inverter_attributes, sizeof(struct Inverter), (void (*)(void *)) glue_get_Inverter, (void (*)(void *)) glue_set_Inverter};
 struct apihandler_data s_apihandler_VFDCmd = {{"VFDCmd", "data", false, 0, 0, 0UL}, s_VFDCmd_attributes, sizeof(struct VFDCmd), (void (*)(void *)) glue_get_VFDCmd, (void (*)(void *)) glue_set_VFDCmd};
 struct apihandler_data s_apihandler_VFD = {{"VFD", "data", false, 0, 0, 0UL}, s_VFD_attributes, sizeof(struct VFD), (void (*)(void *)) glue_get_VFD, (void (*)(void *)) glue_set_VFD};
 struct apihandler_data s_apihandler_energy = {{"energy", "data", false, 0, 0, 0UL}, s_energy_attributes, sizeof(struct energy), (void (*)(void *)) glue_get_energy, (void (*)(void *)) glue_set_energy};
@@ -469,6 +480,7 @@ struct apihandler_data s_apihandler_system = {{"system", "data", false, 0, 0, 0U
 struct apihandler_data s_apihandler_sysset = {{"sysset", "data", false, 0, 0, 0UL}, s_sysset_attributes, sizeof(struct sysset), (void (*)(void *)) glue_get_sysset, (void (*)(void *)) glue_set_sysset};
 
 static struct apihandler *s_apihandlers[] = {
+  (struct apihandler *) &s_apihandler_Inverter,
   (struct apihandler *) &s_apihandler_VFDCmd,
   (struct apihandler *) &s_apihandler_VFD,
   (struct apihandler *) &s_apihandler_energy,

@@ -5,6 +5,14 @@
 // Default mock implementation of the API callbacks
 
 #include "mongoose_glue.h"
+struct Inverter s_Inverter = {0, 0, 0, 0, 0, 0, 0};
+void glue_get_Inverter(struct Inverter *data) {
+  *data = s_Inverter;  // Sync with your device
+}
+void glue_set_Inverter(struct Inverter *data) {
+  s_Inverter = *data; // Sync with your device
+}
+
 struct VFDCmd s_VFDCmd = {10, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 void glue_get_VFDCmd(struct VFDCmd *data) {
   *data = s_VFDCmd;  // Sync with your device

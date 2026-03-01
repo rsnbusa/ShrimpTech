@@ -51,6 +51,7 @@ devPoints int
 devStart int
 devOffset int
 -----------
+## THE ORDER SENT is in the REST API order in Mongosse Wizard
 
 This configuration is saved/displayed to/from the website and stored int
 theConf.xxxx where xxx is each Modbus device

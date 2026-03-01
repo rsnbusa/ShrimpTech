@@ -9,12 +9,13 @@ char lims[][10]={"AHUM","ATEMP","WTEMP","LIMITPH","LIMITDO","GENLCT","BMDDKW","B
 "BMDDKT","BMCHKT","BMDDAH","BMCHAH","BMTEMP","BMCC","BMSOH","BMSOC","PV1A","PV1V","PV2A","PV2V"};
 
 char modb_names[][30]={
- "ChargeState","PV1Volts","PV1AMps","PV2Volts","PV2AMps",
+"ChargeState","PV1Volts","PV1AMps","PV2Volts","PV2AMps",
 "SOC","SOH","CycleCount","BatTemp",
 "DO","PH","WTemp","A Temp","Humidity",
-"BatChToday","BatDscToday","BatChgTotal","BatDscTotal","GenToday","UsedToday","LoadUsedTotal","BatChdToday","BatDscToday","LoadUsedToday","BatTemp"
+"BatChToday","BatDscToday","BatChgTotal","BatDscTotal","GenToday","UsedToday","LoadUsedTotal","BatChdToday","BatDscToday","LoadUsedToday","BatTemp",
+"VFDFreq","VFDCmd","VFDMotorAmps","VFDMotorVolts","VFDMotorPower","VFDMotrRPM","InvertStatus"
 };
-
+//25
 char schStatus[][11]={"READY","BLOWERON","NEXTHOUR","BLOWEROFF","CROP","PARK"};
 
 void show_timers()
@@ -81,6 +82,15 @@ void show_modbus()
     printf("┌─────────────────────────────────────────────────────────────────┐\n");
     printf("│%s%s                  MODBUS CONFIGURATION                           %s│\n",RESETC,BK_RED,RESETC);
     printf("└─────────────────────────────────────────────────────────────────┘\n\n");
+
+    // ===== Inverter Status =====
+    printf("  ┌─ %sInverter  (Addr: %3d | Refresh: %3dm ) %s──────────────────┐\n",BK_BLUE, 
+           theConf.inverter.address, theConf.inverter.refresh,RESETC);
+    printf("  │ %-14s │ Offset │ Start  │ Points  │ Type │  Mux  │\n", "Name");
+    printf("  ├────────────────┼───────┼─────────┼─────────┼──────┼───────┤\n");
+    printf("  │ %-14s │ %6d │ %5d  │ %6d  │ %4d │ %4.2f  │\n\n", modb_names[31], 
+           theConf.inverter.offset, theConf.inverter.start, 
+           theConf.inverter.points, theConf.inverter.type, theConf.inverter.mux);
 
     // ===== PV PANELS =====
     printf("  ┌─ %sPV Panels (Addr: %3d | Refresh: %3dm ) %s──────────────────┐\n",BK_BLUE, 

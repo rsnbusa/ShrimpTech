@@ -23,10 +23,21 @@ void cb_vfd_cmd(void *vfdd, int *errors,char *color,int numerrs)
 {
     bool hasErrors=false;
  
-    printf("VFD Cmd callback\n");
-    if(vfdcmdDesc)
-        free(vfdcmdDesc);
-    vTaskDelete(vfdcmdHandle);
+    printf("VFD Cmd callback cmd %d\n",vfdCmdData.cmd);
+
+    if(vfdHandle!=NULL)
+    {
+        if(vfdCmdData.cmd>0 )
+            vTaskResume(vfdHandle);
+        else
+            vTaskSuspend(vfdHandle);
+    }
+
+    // ! execution order here is important. First do the above and then suspend the task, WHICH includes this code. 
+    // ! SO if suspended before sending resume/suspend order, nothing done
+
+    if(vfdcmdHandle)
+        vTaskSuspend(vfdcmdHandle); // suspend the command task, it will be resumed by the blower task when the blower is started, and killed when the blower is stopped
 }
 
 /**
@@ -111,6 +122,8 @@ void cb_sensor_data(void *sensors, int *errors,char *color,int numerrs)
             if (((theConf.debug_flags >> dMODBUS) & 1U))
                 MESP_LOGE(TAG,"%sSensor Error CID %d=0x%x %s ",color,a,errors[a],esp_err_to_name(errors[a]));
             hasErrors=true;
+            // bzero(sensors,sizeof(sensor_t));
+            theBlower.setSensors( 0.0,  0,0.0,0.0, 0.0);
         }
     }
 
@@ -168,6 +181,7 @@ void cb_energy_data(void *energy, int *errors,char * color,int numerrs)
             if (((theConf.debug_flags >> dMODBUS) & 1U))
                 MESP_LOGE(TAG,"%sEnergyError CID %d=0x%x %s ",color,a,errors[a],esp_err_to_name(errors[a]));
             hasErrors=true;
+                theBlower.setEnergy(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);  // has to save 0 because sender will read from FRAM which has old values probably valid
         }
     }
 
@@ -246,6 +260,8 @@ void cb_battery_data(void *batteryData, int *errors,char *color,int numerrs)
             if (((theConf.debug_flags >> dMODBUS) & 1U))
                 MESP_LOGE(TAG,"%sBattery Error CID %d=0x%x %s ",color,a,errors[a],esp_err_to_name(errors[a]));
             hasErrors=true;
+                theBlower.setBattery(0, 0,0, 0);
+
         }
     }
 
@@ -306,6 +322,7 @@ void cb_panel_data(void *pvPanel, int *errors,char * color,int numerrs)
                 MESP_LOGE(TAG,"%sPanels Error CID %d=0x%x %s ",color,a,errors[a],esp_err_to_name(errors[a]));
             hasErrors=true;
             // here the logic to ERROR MANAGEMNET reporting
+            theBlower.setPVPanel(0, 0, 0, 0, 0);
         }
     }
 

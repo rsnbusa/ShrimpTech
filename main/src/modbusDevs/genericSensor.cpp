@@ -76,11 +76,12 @@ void generic_modbus_task(void *pArg)
     mensaje.numerrs=sensor_count;
     
     // Zero out data structure before use if Read modbus call 
-    if(modbus_sensor->rw)
+    // printf("modbus_sensor->rw: %s %d\n", modbus_sensor->modbus_sensor_name, modbus_sensor->rw);
+    if(modbus_sensor->rw>0)
         bzero(modbus_sensor->modbus_sensor_data, modbus_sensor->modbus_sensor_data_size);
     mensaje.dataReceiver = modbus_sensor->modbus_sensor_data;
 
-    // ! DO NOT REMOVE used to give time to the caller to suspend the task before interacting eith the modbus rs485 manager
+    // ! DO NOT REMOVE used to give time to the caller to suspend the task before interacting with the modbus rs485 manager
     vTaskDelay(pdMS_TO_TICKS(400));      // give time to be suspended if caller wants to start it suspended
     // Main monitoring loop
     while (true)
