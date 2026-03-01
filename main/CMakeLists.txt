@@ -33,6 +33,7 @@ set(CMD_SOURCES
     src/cmdMqtt/cmdSensors.cpp
     src/cmdMqtt/cmdInverter.cpp
     src/cmdMqtt/cmdVFDCmd.cpp
+    src/cmdMqtt/cmdVFDMon.cpp
     src/cmdMqtt/cmdProfile.cpp
 )
 
