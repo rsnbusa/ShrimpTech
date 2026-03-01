@@ -122,6 +122,7 @@ int cmdBattery(void *argument);
 int cmdSensors(void *argument);
 int cmdInverter(void *argument);
 int cmdProfile(void *argument);
+int cmdVFDCmd(void *argument);
 
 // ============================================================================
 // CONSOLE COMMAND FUNCTIONS (argc/argv-based)
