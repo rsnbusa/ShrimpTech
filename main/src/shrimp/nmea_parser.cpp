@@ -658,12 +658,12 @@ static void nmea_parser_task_entry(void *arg)
             case UART_DATA:
                 break;
             case UART_FIFO_OVF:
-                MESP_LOGW(GPS_TAG, "HW FIFO Overflow");
+                // MESP_LOGW(GPS_TAG, "HW FIFO Overflow");
                 uart_flush(esp_gps->uart_port);
                 xQueueReset(esp_gps->event_queue);
                 break;
             case UART_BUFFER_FULL:
-                MESP_LOGW(GPS_TAG, "Ring Buffer Full");
+                // MESP_LOGW(GPS_TAG, "Ring Buffer Full");
                 uart_flush(esp_gps->uart_port);
                 xQueueReset(esp_gps->event_queue);
                 break;

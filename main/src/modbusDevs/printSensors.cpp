@@ -19,9 +19,14 @@
 // Environmental Sensors
 // ============================================================================
 
-void cb_vfd_cmd(void *vfdd, int *errors,char *color,int numerrs)
+void cb_vfd_cmd(void *vfdd, int *errors,char *color,int numerrs,int devAddr)
 {
     bool hasErrors=false;
+    (void)vfdd;
+    (void)errors;
+    (void)color;
+    (void)numerrs;
+    (void)devAddr;
  
     printf("VFD Cmd callback cmd %d\n",vfdCmdData.cmd);
 
@@ -54,7 +59,7 @@ void cb_vfd_cmd(void *vfdd, int *errors,char *color,int numerrs)
  * @note Only prints if MODBUS debug flag is enabled and no errors occurred
  *  Limits WTEMP,LIMITDO,LIMITPH,ATEMP,AHUM
  */
-void cb_vfd_data(void *vfdd, int *errors,char *color,int numerrs)
+void cb_vfd_data(void *vfdd, int *errors,char *color,int numerrs,int devAddr)
 {
     bool hasErrors=false;
  
@@ -64,7 +69,7 @@ void cb_vfd_data(void *vfdd, int *errors,char *color,int numerrs)
         if(errors[a]!=0)
         {
             if (((theConf.debug_flags >> dMODBUS) & 1U))
-                MESP_LOGE(TAG,"%sVFD Error CID %d=0x%x %s ",color,a,errors[a],esp_err_to_name(errors[a]));
+                MESP_LOGE(TAG,"%s[%3d] VFD Error CID %d=0x%x %s ",color,devAddr,a,errors[a],esp_err_to_name(errors[a]));
             hasErrors=true;
         }
     }
@@ -87,7 +92,7 @@ void cb_vfd_data(void *vfdd, int *errors,char *color,int numerrs)
         return;
 
 
-    MESP_LOGI(TAG, "%s Motor Current:%.02f amps Volts %d Power:%.02f RPM: %d%s", color,
+    MESP_LOGI(TAG, "%s[%3d] Motor Current:%.02f amps Volts %d Power:%.02f RPM: %d%s", color,devAddr,
              data->mcurrent,
              data->mvolts,
              data->mpower,data->mrpm,RESETC);
@@ -110,7 +115,7 @@ void cb_vfd_data(void *vfdd, int *errors,char *color,int numerrs)
  * @note Only prints if MODBUS debug flag is enabled and no errors occurred
  *  Limits WTEMP,LIMITDO,LIMITPH,ATEMP,AHUM
  */
-void cb_sensor_data(void *sensors, int *errors,char *color,int numerrs)
+void cb_sensor_data(void *sensors, int *errors,char *color,int numerrs,int devAddr)
 {
     bool hasErrors=false;
  
@@ -120,7 +125,7 @@ void cb_sensor_data(void *sensors, int *errors,char *color,int numerrs)
         if(errors[a]!=0)
         {
             if (((theConf.debug_flags >> dMODBUS) & 1U))
-                MESP_LOGE(TAG,"%sSensor Error CID %d=0x%x %s ",color,a,errors[a],esp_err_to_name(errors[a]));
+                MESP_LOGE(TAG,"%s[%3d] Sensor Error CID %d=0x%x %s ",color,devAddr,a,errors[a],esp_err_to_name(errors[a]));
             hasErrors=true;
             // bzero(sensors,sizeof(sensor_t));
             theBlower.setSensors( 0.0,  0,0.0,0.0, 0.0);
@@ -145,7 +150,7 @@ void cb_sensor_data(void *sensors, int *errors,char *color,int numerrs)
         return;
 
 
-    MESP_LOGI(TAG, "%s WaterTemp:%.02f°C DO%%.%.02f%% DO:%.02fppm", color,
+    MESP_LOGI(TAG, "%s[%3d] WaterTemp:%.02f°C DO%%.%.02f%% DO:%.02fppm", color,devAddr,
              data->WTemp,
              data->percentDO * 100.0,
              data->DO);
@@ -170,7 +175,7 @@ void cb_sensor_data(void *sensors, int *errors,char *color,int numerrs)
  * @note Only prints if MODBUS debug flag is enabled and no errors occurred
  * * limits BMCHAH,BMDDAH,BMCHKT,BMDDKT,GENEER,USEDEN,LCONLI,BMCHKW,BMDDKW,GENLCT
  */
-void cb_energy_data(void *energy, int *errors,char * color,int numerrs)
+void cb_energy_data(void *energy, int *errors,char * color,int numerrs,int devAddr)
 {
     bool hasErrors=false;
     // check errors before printing
@@ -179,7 +184,7 @@ void cb_energy_data(void *energy, int *errors,char * color,int numerrs)
         if(errors[a]!=0)
         {
             if (((theConf.debug_flags >> dMODBUS) & 1U))
-                MESP_LOGE(TAG,"%sEnergyError CID %d=0x%x %s ",color,a,errors[a],esp_err_to_name(errors[a]));
+                MESP_LOGE(TAG,"%s[%3d] EnergyError CID %d=0x%x %s ",color,devAddr,a,errors[a],esp_err_to_name(errors[a]));
             hasErrors=true;
                 theBlower.setEnergy(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);  // has to save 0 because sender will read from FRAM which has old values probably valid
         }
@@ -207,7 +212,7 @@ void cb_energy_data(void *energy, int *errors,char * color,int numerrs)
     // Print charging or discharging data based on current state
     if (pvPanelData.chargeCurr)
     {
-        MESP_LOGI(TAG, "%s [CHARGING] - BatChgAH(Today:%u Total:%u) GenEnergy:%.02fkWh BatChg:%.02fkWh", color,
+        MESP_LOGI(TAG, "%s[%3d] [CHARGING] - BatChgAH(Today:%u Total:%u) GenEnergy:%.02fkWh BatChg:%.02fkWh", color, devAddr,
                  data->batChgAHToday,
                  data->batChgAHTotal,
                  data->generateEnergyToday,
@@ -215,7 +220,7 @@ void cb_energy_data(void *energy, int *errors,char * color,int numerrs)
     }
     else
     {
-        MESP_LOGI(TAG, "%s [DISCHARGING] - BatDischgAH(Today:%u Total:%u) UsedEnergy:%.02fkWh LoadConsumTotal:%.02fkWh BatDischg:%.02fkWh GenLoadConsum:%.02fkWh", color,
+        MESP_LOGI(TAG, "%s[%3d] [DISCHARGING] - BatDischgAH(Today:%u Total:%u) UsedEnergy:%.02fkWh LoadConsumTotal:%.02fkWh BatDischg:%.02fkWh GenLoadConsum:%.02fkWh", color, devAddr,
                  data->batDischgAHToday,
                  data->batDischgAHTotal,
                  data->usedEnergyToday,
@@ -249,7 +254,7 @@ void cb_energy_data(void *energy, int *errors,char * color,int numerrs)
  * @note Only prints if MODBUS debug flag is enabled and no errors occurred
  * * limits BMSOC,BMSOH,BMCC,BMTEMP
  */
-void cb_battery_data(void *batteryData, int *errors,char *color,int numerrs)
+void cb_battery_data(void *batteryData, int *errors,char *color,int numerrs,int devAddr)
 {
     bool hasErrors=false;
     // check errors before printing
@@ -258,7 +263,7 @@ void cb_battery_data(void *batteryData, int *errors,char *color,int numerrs)
         if(errors[a]!=0)
         {
             if (((theConf.debug_flags >> dMODBUS) & 1U))
-                MESP_LOGE(TAG,"%sBattery Error CID %d=0x%x %s ",color,a,errors[a],esp_err_to_name(errors[a]));
+                MESP_LOGE(TAG,"%s[%3d] Battery Error CID %d=0x%x %s ",color,devAddr,a,errors[a],esp_err_to_name(errors[a]));
             hasErrors=true;
                 theBlower.setBattery(0, 0,0, 0);
 
@@ -283,7 +288,7 @@ void cb_battery_data(void *batteryData, int *errors,char *color,int numerrs)
     if (!((theConf.debug_flags >> dMODBUS) & 1U))
         return;
 
-    MESP_LOGI(TAG, "%s- SOC:%d%% SOH:%d%% CycleCount:%d BmsTemp:%.02f°C", color,
+    MESP_LOGI(TAG, "%s[%3d] SOC:%d%% SOH:%d%% CycleCount:%d BmsTemp:%.02f°C", color, devAddr,
              data->batSOC,
              data->batSOH,
              data->batteryCycleCount,
@@ -310,7 +315,7 @@ void cb_battery_data(void *batteryData, int *errors,char *color,int numerrs)
  * @note Only prints if MODBUS debug flag is enabled and no errors occurred
  * * limits PV1V,PV1A,PV2V,PV2A
  */
-void cb_panel_data(void *pvPanel, int *errors,char * color,int numerrs)
+void cb_panel_data(void *pvPanel, int *errors,char * color,int numerrs,int devAddr)
 {
     bool hasErrors=false;
     // check errors before printing
@@ -319,7 +324,7 @@ void cb_panel_data(void *pvPanel, int *errors,char * color,int numerrs)
         if(errors[a]!=0)
         {
             if (((theConf.debug_flags >> dMODBUS) & 1U))
-                MESP_LOGE(TAG,"%sPanels Error CID %d=0x%x %s ",color,a,errors[a],esp_err_to_name(errors[a]));
+                MESP_LOGE(TAG,"%s[%3d] Panels Error CID %d=0x%x %s ",color,devAddr,a,errors[a],esp_err_to_name(errors[a]));
             hasErrors=true;
             // here the logic to ERROR MANAGEMNET reporting
             theBlower.setPVPanel(0, 0, 0, 0, 0);
@@ -344,7 +349,7 @@ void cb_panel_data(void *pvPanel, int *errors,char * color,int numerrs)
         return;
 
         
-    MESP_LOGI(TAG, "%s [%s] - String1:[%.02fV / %.02fA] String2:[%.02fV / %.02fA]", color,
+    MESP_LOGI(TAG, "%s[%3d] [%s] - String1:[%.02fV / %.02fA] String2:[%.02fV / %.02fA]", color, devAddr,
              data->chargeCurr ? "CHARGING" : "DISCHARGING",
              data->pv1Volts,                    
              data->pv1Amp,

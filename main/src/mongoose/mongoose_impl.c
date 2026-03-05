@@ -149,6 +149,10 @@ struct custom_api_handler {
 };
 static struct custom_api_handler *s_custom_handlers;
 
+struct attribute s_remoteDO_attributes[] = {
+  {"DOLevel", "double", NULL, offsetof(struct remoteDO, DOLevel), 0, false},
+  {NULL, NULL, NULL, 0, 0, false}
+};
 struct attribute s_Inverter_attributes[] = {
   {"refresh", "int", NULL, offsetof(struct Inverter, refresh), 0, false},
   {"address", "int", NULL, offsetof(struct Inverter, address), 0, false},
@@ -460,6 +464,7 @@ struct attribute s_sysset_attributes[] = {
   {NULL, NULL, NULL, 0, 0, false}
 };
 
+struct apihandler_data s_apihandler_remoteDO = {{"remoteDO", "data", false, 0, 0, 0UL}, s_remoteDO_attributes, sizeof(struct remoteDO), (void (*)(void *)) glue_get_remoteDO, (void (*)(void *)) glue_set_remoteDO};
 struct apihandler_data s_apihandler_Inverter = {{"Inverter", "data", false, 0, 0, 0UL}, s_Inverter_attributes, sizeof(struct Inverter), (void (*)(void *)) glue_get_Inverter, (void (*)(void *)) glue_set_Inverter};
 struct apihandler_data s_apihandler_VFDCmd = {{"VFDCmd", "data", false, 0, 0, 0UL}, s_VFDCmd_attributes, sizeof(struct VFDCmd), (void (*)(void *)) glue_get_VFDCmd, (void (*)(void *)) glue_set_VFDCmd};
 struct apihandler_data s_apihandler_VFD = {{"VFD", "data", false, 0, 0, 0UL}, s_VFD_attributes, sizeof(struct VFD), (void (*)(void *)) glue_get_VFD, (void (*)(void *)) glue_set_VFD};
@@ -480,6 +485,7 @@ struct apihandler_data s_apihandler_system = {{"system", "data", false, 0, 0, 0U
 struct apihandler_data s_apihandler_sysset = {{"sysset", "data", false, 0, 0, 0UL}, s_sysset_attributes, sizeof(struct sysset), (void (*)(void *)) glue_get_sysset, (void (*)(void *)) glue_set_sysset};
 
 static struct apihandler *s_apihandlers[] = {
+  (struct apihandler *) &s_apihandler_remoteDO,
   (struct apihandler *) &s_apihandler_Inverter,
   (struct apihandler *) &s_apihandler_VFDCmd,
   (struct apihandler *) &s_apihandler_VFD,
@@ -1193,8 +1199,6 @@ void mongoose_set_sntp_server(const char *url) {
 
 #if WIZARD_DNS_TYPE == 1
 static char s_dns_server[128];
-#elif WIZARD_DNS_TYPE == 2
-g_mgr.dns4.url = WIZARD_DNS_URL;
 #endif
 
 #if MG_ENABLE_TCPIP && WIZARD_ENABLE_WIFI
@@ -1455,6 +1459,10 @@ void mongoose_set_wifi_handlers(struct mongoose_wifi_handlers *h) {
 void mongoose_init(void) {
   mg_mgr_init(&g_mgr);      // Initialise event manager
   mg_log_set(MG_LL_DEBUG);  // Set log level to debug
+
+#if WIZARD_DNS_TYPE == 2
+  g_mgr.dns4.url = WIZARD_DNS_URL;
+#endif
 
 #if MG_ENABLE_TCPIP
   g_mgr.ifp->fn = mif_fn;  // add interface event handler

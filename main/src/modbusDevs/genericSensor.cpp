@@ -46,9 +46,10 @@ void generic_modbus_task(void *pArg)
     if ((theConf.debug_flags >> dMODBUS) & 1U)
          MESP_LOGI(TAG, "%s%s monitoring task started", modbus_sensor->color, modbus_sensor->modbus_sensor_name);
     
-    // Get sensor configuration and refresh rate
+    // Get sensor configuration and refresh rate and address
     void *sensor_specs = modbus_sensor->modbus_sensor_specs;
     int refresh_rate = ((general_4modbus_specs_t*)sensor_specs)->regfresh;
+    int deviceAddress= ((general_4modbus_specs_t*)sensor_specs)->addr;
 
     // Initialize sensor descriptors from configuration
     descriptors = initialize_sensor_descriptors(
@@ -99,7 +100,7 @@ void generic_modbus_task(void *pArg)
             // Print the received data using sensor-specific print function
             if (modbus_sensor->modbus_print_function)
             {
-                modbus_sensor->modbus_print_function(modbus_sensor->modbus_sensor_data, errors,modbus_sensor->color,sensor_count);
+                modbus_sensor->modbus_print_function(modbus_sensor->modbus_sensor_data, errors,modbus_sensor->color,sensor_count,deviceAddress);
             }
         }
         

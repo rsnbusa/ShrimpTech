@@ -76,12 +76,12 @@ void energy_task(void *pArg);
 void start_webserver(void *pArg);
 void PIDController(void *pArg);
 void generic_modbus_task(void *pArg);
-void cb_energy_data(void* energy,  int *errors,char *color,int numerrs);
-void cb_battery_data(void* batteryData, int *errors,char *color,int numerrs);
-void cb_panel_data(void* pvPanel, int *errors,char * color,int numerrs);
-void cb_sensor_data(void *sensors,  int *errors,char *color,int numerrs);
-void cb_vfd_data(void *vfdd,  int *errors,char *color,int numerrs);
-void cb_vfd_cmd(void *vfdd,  int *errors,char *color,int numerrs);
+void cb_energy_data(void* energy,  int *errors,char *color,int numerrs,int devAdd);
+void cb_battery_data(void* batteryData, int *errors,char *color,int numerrs,int devAdd);
+void cb_panel_data(void* pvPanel, int *errors,char * color,int numerrs,int devAdd);
+void cb_sensor_data(void *sensors,  int *errors,char *color,int numerrs,int devAdd);
+void cb_vfd_data(void *vfdd,  int *errors,char *color,int numerrs,int devAdd);
+void cb_vfd_cmd(void *vfdd,  int *errors,char *color,int numerrs,int devAdd);
  descriptor_array_t * initialize_sensor_descriptors( void *sensorinfoin,
                 char *whichDev,int MAXSENSORS,int columns,int *count);
 // ============================================================================
@@ -124,6 +124,7 @@ int cmdInverter(void *argument);
 int cmdProfile(void *argument);
 int cmdVFDCmd(void *argument);
 int cmdVFDMon(void *argument);
+int cmdPID(void *argument);
 
 // ============================================================================
 // CONSOLE COMMAND FUNCTIONS (argc/argv-based)

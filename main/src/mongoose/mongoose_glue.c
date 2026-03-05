@@ -5,6 +5,14 @@
 // Default mock implementation of the API callbacks
 
 #include "mongoose_glue.h"
+struct remoteDO s_remoteDO = {0};
+void glue_get_remoteDO(struct remoteDO *data) {
+  *data = s_remoteDO;  // Sync with your device
+}
+void glue_set_remoteDO(struct remoteDO *data) {
+  s_remoteDO = *data; // Sync with your device
+}
+
 struct Inverter s_Inverter = {0, 0, 0, 0, 0, 0, 0};
 void glue_get_Inverter(struct Inverter *data) {
   *data = s_Inverter;  // Sync with your device
