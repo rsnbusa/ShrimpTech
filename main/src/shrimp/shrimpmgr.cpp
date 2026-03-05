@@ -4533,7 +4533,7 @@ void wifi_init_network(void)
                                                         &wifi_event_handler_ap, NULL, NULL));
     
     // Configure WiFi parameters
-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B));
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_LR));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
     ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
     
@@ -4749,6 +4749,13 @@ esp_err_t wifi_connect_external_ap(void)
     if (ret != ESP_OK)
     {
         MESP_LOGE(MESH_TAG, "Failed to set WiFi mode to APSTA: %s", esp_err_to_name(ret));
+        return ESP_FAIL;
+    }
+
+    ret = esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_LR);
+    if (ret != ESP_OK)
+    {
+        MESP_LOGE(MESH_TAG, "Failed to set WiFi AP protocol to LR: %s", esp_err_to_name(ret));
         return ESP_FAIL;
     }
     
