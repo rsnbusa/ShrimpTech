@@ -4533,7 +4533,7 @@ void wifi_init_network(void)
                                                         &wifi_event_handler_ap, NULL, NULL));
     
     // Configure WiFi parameters
-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_LR));
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
     ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
     
@@ -4752,13 +4752,19 @@ esp_err_t wifi_connect_external_ap(void)
         return ESP_FAIL;
     }
 
-    ret = esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_LR);
+    esp_wifi_set_max_tx_power(20); // Value 78 corresponds to ~20 dBm
+
+    // 2. Set the protocol to 802.11b ONLY (disables g/n which are faster)
+
+    ret = esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B);
+    // ret = esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_LR);   // will not work with a browser
     if (ret != ESP_OK)
     {
         MESP_LOGE(MESH_TAG, "Failed to set WiFi AP protocol to LR: %s", esp_err_to_name(ret));
         return ESP_FAIL;
     }
-    
+    esp_wifi_internal_set_fix_rate(WIFI_IF_AP, true,WIFI_PHY_RATE_1M_L);        // for max distance, set to 1Mbps
+
     // Set WiFi STA configuration
     ret = esp_wifi_set_config(WIFI_IF_STA, &sta_config);
     if (ret != ESP_OK)
