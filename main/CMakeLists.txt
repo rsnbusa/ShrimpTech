@@ -175,6 +175,8 @@ idf_component_register(
     
 )
 
+target_compile_definitions(${COMPONENT_LIB} PRIVATE MG_ENABLE_LOG=0)
+
 
 # Note: Unused component include directory variable
 set(COMPONENT_ADD_INCLUDEDIRS "")

@@ -149,8 +149,14 @@ struct custom_api_handler {
 };
 static struct custom_api_handler *s_custom_handlers;
 
-struct attribute s_remoteDO_attributes[] = {
-  {"DOLevel", "double", NULL, offsetof(struct remoteDO, DOLevel), 0, false},
+struct attribute s_remoteLevels_attributes[] = {
+  {"WaterTemp", "double", NULL, offsetof(struct remoteLevels, WaterTemp), 0, false},
+  {"DOLevel", "double", NULL, offsetof(struct remoteLevels, DOLevel), 0, false},
+  {"PHLevel", "double", NULL, offsetof(struct remoteLevels, PHLevel), 0, false},
+  {"SALevel", "double", NULL, offsetof(struct remoteLevels, SALevel), 0, false},
+  {"IRLevel", "double", NULL, offsetof(struct remoteLevels, IRLevel), 0, false},
+  {"DOretry", "int", NULL, offsetof(struct remoteLevels, DOretry), 0, false},
+  {"DOCount", "int", NULL, offsetof(struct remoteLevels, DOCount), 0, false},
   {NULL, NULL, NULL, 0, 0, false}
 };
 struct attribute s_Inverter_attributes[] = {
@@ -464,7 +470,7 @@ struct attribute s_sysset_attributes[] = {
   {NULL, NULL, NULL, 0, 0, false}
 };
 
-struct apihandler_data s_apihandler_remoteDO = {{"remoteDO", "data", false, 0, 0, 0UL}, s_remoteDO_attributes, sizeof(struct remoteDO), (void (*)(void *)) glue_get_remoteDO, (void (*)(void *)) glue_set_remoteDO};
+struct apihandler_data s_apihandler_remoteLevels = {{"remoteLevels", "data", false, 0, 0, 0UL}, s_remoteLevels_attributes, sizeof(struct remoteLevels), (void (*)(void *)) glue_get_remoteLevels, (void (*)(void *)) glue_set_remoteLevels};
 struct apihandler_data s_apihandler_Inverter = {{"Inverter", "data", false, 0, 0, 0UL}, s_Inverter_attributes, sizeof(struct Inverter), (void (*)(void *)) glue_get_Inverter, (void (*)(void *)) glue_set_Inverter};
 struct apihandler_data s_apihandler_VFDCmd = {{"VFDCmd", "data", false, 0, 0, 0UL}, s_VFDCmd_attributes, sizeof(struct VFDCmd), (void (*)(void *)) glue_get_VFDCmd, (void (*)(void *)) glue_set_VFDCmd};
 struct apihandler_data s_apihandler_VFD = {{"VFD", "data", false, 0, 0, 0UL}, s_VFD_attributes, sizeof(struct VFD), (void (*)(void *)) glue_get_VFD, (void (*)(void *)) glue_set_VFD};
@@ -485,7 +491,7 @@ struct apihandler_data s_apihandler_system = {{"system", "data", false, 0, 0, 0U
 struct apihandler_data s_apihandler_sysset = {{"sysset", "data", false, 0, 0, 0UL}, s_sysset_attributes, sizeof(struct sysset), (void (*)(void *)) glue_get_sysset, (void (*)(void *)) glue_set_sysset};
 
 static struct apihandler *s_apihandlers[] = {
-  (struct apihandler *) &s_apihandler_remoteDO,
+  (struct apihandler *) &s_apihandler_remoteLevels,
   (struct apihandler *) &s_apihandler_Inverter,
   (struct apihandler *) &s_apihandler_VFDCmd,
   (struct apihandler *) &s_apihandler_VFD,

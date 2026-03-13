@@ -1054,25 +1054,26 @@ void my_get_modbInverter(struct modbInverter *data) // return limits saved in th
  * @brief Set Modbus inverter configuration
  * @param data Pointer to modbInverter structure with new settings
  */
-void my_set_remoteDO(struct remoteDO *data) // save limits from web to theblower
+void my_set_remoteLevels(struct remoteLevels *data) // save limits from web to theblower
 {
 	// theConf.modbus_inverter=*data;
 	// write_to_flash();
-	printf("Set RemoteDO value %f\n",data->DOLevel);
+	MESP_LOGI(TAG,"DOLevel %0.2f PHLevel %.2f Salinity %.2f Irradience %.2f WaterTemp %.02f Reads %d Retries %d",
+		data->DOLevel,data->PHLevel,data->SALevel,data->IRLevel,data->WaterTemp,data->DOCount,data->DOretry);
 }
 
 /**
  * @brief Get current Modbus inverter configuration
  * @param data Pointer to modbInverter structure to populate
  */
-void my_get_remoteDO(struct remoteDO *data) // save limits from web to theblower
+void my_get_remoteLevels(struct remoteLevels *data) // save limits from web to theblower
 {
 	// if( theConf.meterconf>CONF_STATE_PENDING)
    	// 	s_settings.disable_val=1;
 	// else
    	// 	s_settings.disable_val=0;
 
-	printf("Get sleep\n");
+	// printf("Get sleep\n");
 	// *data=theConf.modbus_inverter;
 }
 
@@ -1330,7 +1331,7 @@ void start_webserver(void *pArg)
   	mongoose_set_http_handlers("modbBattery", my_get_modbBattery ,my_set_modbBattery);				
   	mongoose_set_http_handlers("modbPanels", my_get_modbPanels ,my_set_modbPanels);				
   	mongoose_set_http_handlers("VFD", my_get_VFD ,my_set_VFD);				
-  	mongoose_set_http_handlers("remoteDO", my_get_remoteDO ,my_set_remoteDO);				
+  	mongoose_set_http_handlers("remoteLevels", my_get_remoteLevels ,my_set_remoteLevels);				
   	mongoose_set_http_handlers("VFDCmd", my_get_VFDCmd ,my_set_VFDCmd);				
   	mongoose_set_http_handlers("DO", my_get_DO ,my_set_DO);				
   	mongoose_set_http_handlers("Inverter", my_get_Inverter ,my_set_Inverter);				

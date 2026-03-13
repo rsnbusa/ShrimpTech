@@ -43,7 +43,7 @@ extern "C" {
 #define MG_ARCH_CMSIS_RTOS2 13  // CMSIS-RTOS API v2 (Keil RTX5, FreeRTOS)
 #define MG_ARCH_RTTHREAD 14     // RT-Thread RTOS
 #define MG_ARCH_ARMCGT 15       // Texas Semi ARM-CGT
-#define MG_ARCH_CUBE 16	        // STM32Cube environment
+#define MG_ARCH_CUBE 16         // STM32Cube environment
 
 #define MG_ARCH_NEWLIB MG_ARCH_ARMGCC  // Alias, deprecate in 2025
 
@@ -3083,7 +3083,7 @@ void mg_rpc_list(struct mg_rpc_req *r);
 #define MG_OTA_RT1060 302   // IMXRT1060
 #define MG_OTA_RT1064 303   // IMXRT1064
 #define MG_OTA_RT1170 304   // IMXRT1170
-#define MG_OTA_MCXN 310 	// MCXN947
+#define MG_OTA_MCXN 310   // MCXN947
 #define MG_OTA_RW612 320    // FRDM-RW612
 #define MG_OTA_FLASH 900    // OTA via an internal flash
 #define MG_OTA_ESP32 910    // ESP32 OTA implementation
@@ -3336,6 +3336,7 @@ extern struct mg_tcpip_driver mg_tcpip_driver_pico_w;
 extern struct mg_tcpip_driver mg_tcpip_driver_rw612;
 extern struct mg_tcpip_driver mg_tcpip_driver_cyw;
 extern struct mg_tcpip_driver mg_tcpip_driver_nxp_wifi;
+extern struct mg_tcpip_driver mg_tcpip_driver_st67w6;
 
 // Drivers that require SPI, can use this SPI abstraction
 struct mg_tcpip_spi {
@@ -3739,6 +3740,43 @@ bool mg_sdio_set_blksz(struct mg_tcpip_sdio *sdio, unsigned int f,
 // - Transfers of > 1 byte --> (uint32_t *) data. 1-byte --> (uint8_t *) data
 bool mg_sdio_transfer(struct mg_tcpip_sdio *sdio, bool write, unsigned int f,
                       uint32_t addr, void *data, uint32_t len);
+
+#endif
+
+
+#if MG_ENABLE_TCPIP && defined(MG_ENABLE_DRIVER_ST67W6) && \
+    MG_ENABLE_DRIVER_ST67W6
+
+struct mg_tcpip_spi_ {
+  void *spi;              // Opaque SPI bus descriptor
+  void (*begin)(void *);  // SPI begin: slave select low
+  void (*end)(void *);    // SPI end: slave select high
+  void (*txn)(void *, uint8_t *, uint8_t *,
+              size_t len);  // SPI transaction: write-read len bytes
+};
+
+struct mg_tcpip_driver_st67w6_data {
+  struct mg_wifi_data wifi;
+  void *spi;
+  bool (*is_ready)(void);     // return state of module RDY pin
+  struct mg_queue send_queue; // decouple tx calls from module polls
+};
+
+#define MG_TCPIP_DRIVER_INIT(mgr)                                 \
+  do {                                                            \
+    static struct mg_tcpip_driver_st67w6_data driver_data_;       \
+    static struct mg_tcpip_if mif_;                               \
+    MG_SET_WIFI_CONFIG(&driver_data_);                            \
+    mif_.ip = MG_TCPIP_IP;                                        \
+    mif_.mask = MG_TCPIP_MASK;                                    \
+    mif_.gw = MG_TCPIP_GW;                                        \
+    mif_.driver = &mg_tcpip_driver_st67w6;                        \
+    mif_.driver_data = &driver_data_;                             \
+    mif_.recv_queue.size = 8192;                                  \
+    mif_.mac[0] = 2; /* MAC read from OTP at driver init */       \
+    mg_tcpip_init(mgr, &mif_);                                    \
+    MG_INFO(("Driver: st67w6, MAC: %M", mg_print_mac, mif_.mac)); \
+  } while (0)
 
 #endif
 

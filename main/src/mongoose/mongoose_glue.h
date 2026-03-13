@@ -109,11 +109,17 @@ void glue_update_state(void);
 
 // Firmware Glue
 
-struct remoteDO {
+struct remoteLevels {
+  double WaterTemp;
   double DOLevel;
+  double PHLevel;
+  double SALevel;
+  double IRLevel;
+  int DOretry;
+  int DOCount;
 };
-void glue_get_remoteDO(struct remoteDO *);
-void glue_set_remoteDO(struct remoteDO *);
+void glue_get_remoteLevels(struct remoteLevels *);
+void glue_set_remoteLevels(struct remoteLevels *);
 
 struct Inverter {
   int refresh;

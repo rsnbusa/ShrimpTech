@@ -7,8 +7,5 @@ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 set(PROJECT_VERSION "3.0")
 project(shrimpiot)
 
-
 idf_build_set_property(COMPILE_OPTIONS "-Wno-missing-field-initializers -Wno-reorder" APPEND)
 idf_build_set_property(COMPILE_OPTIONS "-w" APPEND)
-# add_compile_options(-Wno-permissive)
-# target_add_binary_data(metermgr.elf "main/cert/hive.pem" TEXT)
