@@ -369,6 +369,8 @@ void show_mqtt_config()
     printf("│ Metrics Topic: %-65s│\n", metricQueue);
     printf("│ Alarm Topic:   %-65s│\n", alarmQueue);
     printf("│ Control Topic: %-65s│\n", controlQueue);
+    if(theConf.externDO)
+    printf("│ ExtDO Topic:   %-65s│\n", externDOQueue);
     printf("│ Server: [%-30s] | User: [%-10s] | Pass: [%-8s]│\n", theConf.mqttServer, theConf.mqttUser, theConf.mqttPass);
     printf("│ Retain:        %-65s│\n", theConf.retain?"Yes":"No");
     printf("└─────────────────────────────────────────────────────────────────────────────────┘\n\n");
