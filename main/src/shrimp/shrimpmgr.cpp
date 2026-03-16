@@ -1066,111 +1066,7 @@ esp_err_t root_average_Solar(solarSystem_t *accum, solarSystem_t *src, uint8_t c
 
     return ESP_OK;
 }
-/* original routine to send collected nodes to central server via mqtt
-esp_err_t root_send_collected_nodes(uint32_t cuantos)        //root only
-{
-    if (cuantos == 0) {
-        MESP_LOGW(MESH_TAG, "No nodes to send");
-        sendMeterf = false;
-        if (xTimerStart(collectTimer, 0) != pdPASS)
-            MESP_LOGE(MESH_TAG, "Repeat Timer collected failed");
-        return ESP_OK;
-    }
 
-    mqttSender_t mqttMsg;
-    solarSystem_t *solarPad = (solarSystem_t*)calloc(1, sizeof(solarSystem_t));
-    if (!solarPad) {
-        MESP_LOGE(MESH_TAG, "No RAM solarPad");
-        sendMeterf = false;
-        if (xTimerStart(collectTimer, 0) != pdPASS)
-            MESP_LOGE(MESH_TAG, "Repeat Timer collected failed");
-        return ESP_FAIL;
-    }
-
-    const uint32_t hp = esp_get_free_heap_size();
-    if ((theConf.debug_flags >> dMESH) & 1U)
-        MESP_LOGW(MESH_TAG, "%sCollected NODES heap %d nodes %d", DBG_MESH, hp, cuantos);
-
-    int valid_nodes = 0;
-    for (uint32_t a = 0; a < cuantos; a++) {
-        if (masterNode.theTable.thedata[a])
-            valid_nodes++;
-        else
-            MESP_LOGE(MESH_TAG, "Error null data on node %d " MACSTR, a, MAC2STR(masterNode.theTable.big_table[a].addr));
-    }
-
-    if (valid_nodes == 0) {
-        MESP_LOGE(MESH_TAG, "No valid node data to aggregate");
-        free(solarPad);
-        sendMeterf = false;
-        if (xTimerStart(collectTimer, 0) != pdPASS)
-            MESP_LOGE(MESH_TAG, "Repeat Timer collected failed");
-        return ESP_FAIL;
-    }
-
-    for (uint32_t a = 0; a < cuantos; a++) {
-        if (!masterNode.theTable.thedata[a])
-            continue;
-
-        meshunion_t *meshMsg = (meshunion_t*)masterNode.theTable.thedata[a];
-        solarSystem_t *solar = &meshMsg->nodedata.solarData.solarSystem;
-        root_average_Solar(solarPad, solar, valid_nodes);
-    }
-
-    shrimpMsg_t *shmsg = (shrimpMsg_t*)calloc(1, sizeof(shrimpMsg_t));
-    if (!shmsg) {
-        MESP_LOGE(MESH_TAG, "No ram shmsg");
-        sendMeterf = false;
-        if (xTimerStart(collectTimer, 0) != pdPASS)
-            MESP_LOGE(MESH_TAG, "Repeat Timer collected failed");
-        free(solarPad);
-        return ESP_FAIL;
-    }
-
-    memcpy(&shmsg->poolAvgMetrics, solarPad, sizeof(solarSystem_t));
-    wschedule_t *scheduleData = theBlower.getSchedulePtr();
-    if (scheduleData)
-        memcpy(&shmsg->poolAvgMetrics.wschedule, scheduleData, sizeof(wschedule_t));
-
-    print_blower("Root Average Solar Data", &shmsg->poolAvgMetrics, false);
-    shmsg->msgTime    = time(NULL);
-    shmsg->poolid     = theConf.poolid;
-    shmsg->countnodes = valid_nodes;
-    shmsg->centinel   = 0x12345678;
-    shmsg->lim_errs   = globalErrors;
-
-    free(solarPad);
-
-    if (root_delete_routing_table() != ESP_OK) {
-        MESP_LOGE(MESH_TAG, "Error deleting Routing table");
-        free(shmsg);
-        sendMeterf = false;
-        if (xTimerStart(collectTimer, 0) != pdPASS)
-            MESP_LOGE(MESH_TAG, "Repeat Timer collected failed");
-        return ESP_FAIL;
-    }
-
-    mqttMsg.queue = metricQueue;
-    mqttMsg.msg   = (char*)shmsg;  // freed by mqtt sender
-    mqttMsg.lenMsg = sizeof(shrimpMsg_t);
-    mqttMsg.code  = NULL;
-    mqttMsg.param = NULL;
-
-    if (xQueueSend(mqttSender, &mqttMsg, 0) != pdTRUE) {
-        MESP_LOGE(MESH_TAG, "Error queueing msg");
-        if (mqttMsg.msg)
-            free(mqttMsg.msg);
-        sendMeterf = false;
-        if (xTimerStart(collectTimer, 0) != pdPASS)
-            MESP_LOGE(MESH_TAG, "Repeat Timer collected mqttsender failed");
-        return ESP_FAIL;
-    }
-
-    //must set the wifi_event_bit SEND_MQTT_BIT, else it will just collect the message in the queue
-    xEventGroupSetBits(wifi_event_group, SENDMQTT_BIT); // Send everything now !!!!!
-
-    return ESP_OK;
-}*/
 /**
  * @brief Helper to restart collection timer
  */
@@ -1586,43 +1482,6 @@ esp_err_t send_datos_to_root()
     return ESP_OK;
 }
 
-// void format_my_meter(cJSON *cmd)
-// {
-//     time_t  now;
-//     cJSON *mid= 		cJSON_GetObjectItem(cmd,"mid");
-//     cJSON *reconf= 		cJSON_GetObjectItem(cmd,"erase");
-
-//     if(mid)
-//     {
-//         if (strcmp(mid->valuestring,theBlower.getMID())==0)
-//         {
-//             theBlower.deinit();
-//             theBlower.format();
-//             time(&now);
-//             theBlower.writeCreationDate(now);
-
-//             if(reconf)
-//             {
-//                 MESP_LOGW(MESH_TAG,"Format Meter Erase %s\n",reconf->valuestring);
-//                 if(strcmp(reconf->valuestring,"Y")==0)
-//                     erase_config(); 
-//             }
-
-//             char *tmp=(char*)calloc(1,200);
-//             if(tmp)
-//             {
-//                 sprintf(tmp,"Format meter [%s] FRAM Command executed",theBlower.getMID());
-//                 writeLog(tmp);
-//                 fclose(myFile);
-//                 free(tmp);
-//             }                     
-//             MESP_LOGW(MESH_TAG,"Format MID [%s] sent to [%s] Fram and Erase configuration. Virgin chip",theBlower.getMID(),mid->valuestring);
-//             delay(1000);
-//             esp_restart();                
-//         }
-//     }
-
-// }
 err_t root_mesh_broadcast_msg(char *msg)        // csjon format only
 {
     if (!msg) {
@@ -1665,30 +1524,6 @@ err_t root_mesh_broadcast_msg(char *msg)        // csjon format only
     free(intMessage);
     return ESP_OK;  
 }
-
-// void erase_my_meter(cJSON *cmd)
-// {
-//     time_t  now;
-//     cJSON *mid= 		cJSON_GetObjectItem(cmd,"mid");
-
-//     if(mid)
-//     {
-//         if (strcmp(mid->valuestring,theBlower.getMID())==0)
-//         {
-//             theBlower.eraseBlower();//erase kws/kwh/and other fields and save the same MID
-
-//             char *tmp=(char*)calloc(100,1);
-//             if(tmp)
-//             {
-//                 sprintf(tmp,"Erase meter [%s] Command executed",theBlower.getMID());
-//                 writeLog(tmp);
-//                 fclose(myFile);
-//                 free(tmp);
-//             }                               
-//         }
-//     }
-
-// }
 
 /**
  * @brief Handle binary meter data from child nodes (root only)
@@ -3126,103 +2961,7 @@ void mesh_event_handler(void *arg, esp_event_base_t event_base,
         handle_parent_disconnected((mesh_event_disconnected_t *)event_data);
     }
     break;
-    // case MESH_EVENT_LAYER_CHANGE: {
-    //     mesh_event_layer_change_t *layer_change = (mesh_event_layer_change_t *)event_data;
-    //     mesh_layer = layer_change->new_layer;
-    //     // MESP_LOGI(MESH_TAG, "<MESH_EVENT_LAYER_CHANGE>layer:%d-->%d%s",
-    //     //          last_layer, mesh_layer,
-    //     //          esp_mesh_is_root() ? "<ROOT>" :
-    //     //          (mesh_layer == 2) ? "<layer2>" : "");
-    //     last_mesh_layer = mesh_layer;
-    // }
-    // break;
-    // case MESH_EVENT_ROOT_ADDRESS: {
-    //     // mesh_event_root_address_t *root_addr = (mesh_event_root_address_t *)event_data;
-    //     // MESP_LOGI(MESH_TAG, "<MESH_EVENT_ROOT_ADDRESS>root address:"MACSTR"",
-    //     //          MAC2STR(root_addr->addr));
-    // }
-    // break;
-    // case MESH_EVENT_VOTE_STARTED: {
-    //     // mesh_event_vote_started_t *vote_started = (mesh_event_vote_started_t *)event_data;
-    //     // MESP_LOGI(MESH_TAG,
-    //     //          "<MESH_EVENT_VOTE_STARTED>attempts:%d, reason:%d, rc_addr:"MACSTR"",
-    //     //          vote_started->attempts,
-    //     //          vote_started->reason,
-    //     //          MAC2STR(vote_started->rc_addr.addr));
-    // }
-    // break;
-    // case MESH_EVENT_VOTE_STOPPED: {
-    //     // MESP_LOGI(MESH_TAG, "<MESH_EVENT_VOTE_STOPPED>");
-    //     break;
-    // }
-    // case MESH_EVENT_ROOT_SWITCH_REQ: {
-    //     // mesh_event_root_switch_req_t *switch_req = (mesh_event_root_switch_req_t *)event_data;
-    //     // MESP_LOGI(MESH_TAG,
-    //     //          "<MESH_EVENT_ROOT_SWITCH_REQ>reason:%d, rc_addr:"MACSTR"",
-    //     //          switch_req->reason,
-    //     //          MAC2STR( switch_req->rc_addr.addr));
-    // }
-    // break;
-    // case MESH_EVENT_ROOT_SWITCH_ACK: {
-    //     /* new root */
-    //     mesh_layer = esp_mesh_get_layer();
-    //     esp_mesh_get_parent_bssid(&mesh_parent_addr);
-    //     // MESP_LOGI(MESH_TAG, "<MESH_EVENT_ROOT_SWITCH_ACK>layer:%d, parent:"MACSTR"", mesh_layer, MAC2STR(mesh_parent_addr.addr));
-    // }
-    // break;
-    // case MESH_EVENT_TODS_STATE: {
-    //     // mesh_event_toDS_state_t *toDs_state = (mesh_event_toDS_state_t *)event_data;
-    //     // MESP_LOGI(MESH_TAG, "<MESH_EVENT_TODS_REACHABLE>state:%d", *toDs_state);
-    // }
-    // break;
-    // case MESH_EVENT_ROOT_FIXED: {
-    //     // mesh_event_root_fixed_t *root_fixed = (mesh_event_root_fixed_t *)event_data;
-    //     // MESP_LOGI(MESH_TAG, "<MESH_EVENT_ROOT_FIXED>%s",
-    //     //          root_fixed->is_fixed ? "fixed" : "not fixed");
-    // }
-    // break;
-    // case MESH_EVENT_ROOT_ASKED_YIELD: {
-    //     // mesh_event_root_conflict_t *root_conflict = (mesh_event_root_conflict_t *)event_data;
-    //     // MESP_LOGI(MESH_TAG,
-    //     //          "<MESH_EVENT_ROOT_ASKED_YIELD>"MACSTR", rssi:%d, capacity:%d",
-    //     //          MAC2STR(root_conflict->addr),
-    //     //          root_conflict->rssi,
-    //     //          root_conflict->capacity);
-    // }
-    // break;
-    // case MESH_EVENT_CHANNEL_SWITCH: {
-    //     // mesh_event_channel_switch_t *channel_switch = (mesh_event_channel_switch_t *)event_data;
-    //     // MESP_LOGI(MESH_TAG, "<MESH_EVENT_CHANNEL_SWITCH>new channel:%d", channel_switch->channel);
-    // }
-    // break;
-    // case MESH_EVENT_SCAN_DONE: {
-    //     // mesh_event_scan_done_t *scan_done = (mesh_event_scan_done_t *)event_data;
-    //     // MESP_LOGI(MESH_TAG, "<MESH_EVENT_SCAN_DONE>number:%d",
-    //     //          scan_done->number);
-    // }
-    // break;
-    // case MESH_EVENT_NETWORK_STATE: {
-    //     // mesh_event_network_state_t *network_state = (mesh_event_network_state_t *)event_data;
-    //     // MESP_LOGI(MESH_TAG, "<MESH_EVENT_NETWORK_STATE>is_rootless:%d",
-    //     //          network_state->is_rootless);
-    // }
-    // break;
-    // case MESH_EVENT_STOP_RECONNECTION: {
-    //     // MESP_LOGI(MESH_TAG, "<MESH_EVENT_STOP_RECONNECTION>");
-    // }
-    // break;
-    // case MESH_EVENT_FIND_NETWORK: {
-    //     mesh_event_find_network_t *find_network = (mesh_event_find_network_t *)event_data;
-    //     MESP_LOGI(MESH_TAG, "<MESH_EVENT_FIND_NETWORK>new channel:%d, router BSSID:"MACSTR"",
-    //              find_network->channel, MAC2STR(find_network->router_bssid));
-    // }
-    // break;
-    // case MESH_EVENT_ROUTER_SWITCH: {
-    //     // mesh_event_router_switch_t *router_switch = (mesh_event_router_switch_t *)event_data;
-    //     // MESP_LOGI(MESH_TAG, "<MESH_EVENT_ROUTER_SWITCH>new router:%s, channel:%d, "MACSTR"",
-    //     //          router_switch->ssid, router_switch->channel, MAC2STR(router_switch->bssid));
-    // }
-    // break;
+  
     default:
         MESP_LOGI(MESH_TAG, "Mesh unknown id:%d", event_id);
         break;
@@ -3607,29 +3346,6 @@ void init_system_queues(void)
     create_queue_safe(&mqttSender, 20, sizeof(mqttSender_t), "MQTT sender");
     create_queue_safe(&rs485Q, 10, sizeof(rs485queue_t), "RS485");
 }
-
-/**
- * @brief Calculate permanent data delivery time
- * 
- * Computes the time slot for data transmission based on network configuration
- * 
- * @return Calculated permanent time in milliseconds, minimum 500ms
- */
-// uint32_t calculate_permanent_delivery_time(void)
-// {
-//     uint32_t permanent_time = (theConf.totalnodes / theConf.conns) * EXPECTED_DELIVERY_TIME;
-    
-//     if (permanent_time == 0) {
-//         MESP_LOGI(MESH_TAG, "Permanent time calculated as 0, using default 500ms");
-//         permanent_time = 500;
-//     }
-    
-//     if (theConf.collectimer < 1) {
-//         theConf.collectimer = 1;
-//     }
-    
-//     return permanent_time;
-// }
 
 /**
  * @brief Initialize system timers for various periodic tasks
