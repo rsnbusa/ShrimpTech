@@ -417,6 +417,8 @@ void glue_get_settings(struct settings *);
 void glue_set_settings(struct settings *);
 
 struct system {
+  bool externDOMqtt;
+  bool externDO;
   bool retain;
   bool modbussensor;
   bool tempsensor;

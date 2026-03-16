@@ -243,6 +243,7 @@ EXTERN char *tempb;
 EXTERN char cmdQueue[60];
 EXTERN char metricQueue[60];
 EXTERN char controlQueue[60];
+EXTERN char externDOQueue[60];
 EXTERN char internal_cmds[MAXINTCMDS][20];
 EXTERN char emergencyQueue[60];
 EXTERN char cmdBroadcast[60];

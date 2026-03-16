@@ -400,6 +400,8 @@ void my_set_system(struct system *data) {
 	theConf.modbuson=s_system.modbussensor;
 	theConf.temp_sensor=s_system.tempsensor;
 	theConf.retain=s_system.retain;
+	theConf.externDO=s_system.externDO;
+	theConf.externDOMqtt=s_system.externDOMqtt;
 	if (theConf.meterconf == CONF_STATE_CONFIRMED)
 	{
 		theConf.meterconf = CONF_STATE_PENDING;
@@ -438,7 +440,8 @@ void my_get_system(struct system *data)
 	
 	s_system.repeat_val = theConf.test_timer_div;
 	s_system.baset_val = theConf.collectimer;
-	
+	s_system.externDO = theConf.externDO;
+	s_system.externDOMqtt = theConf.externDOMqtt;
 	SAFE_STRCPY(s_system.password_val, theConf.kpass, sizeof(s_system.password_val));
 	SAFE_STRCPY(s_system.loglevel_val, levels[theConf.loglevel], sizeof(s_system.loglevel_val));
 	SAFE_STRCPY(s_system.mqttpass_val, theConf.mqttPass, sizeof(s_system.mqttpass_val));
@@ -1060,6 +1063,10 @@ void my_set_remoteLevels(struct remoteLevels *data) // save limits from web to t
 	// write_to_flash();
 	MESP_LOGI(TAG,"DOLevel %0.2f PHLevel %.2f Salinity %.2f Irradience %.2f WaterTemp %.02f Reads %d Retries %d",
 		data->DOLevel,data->PHLevel,data->SALevel,data->IRLevel,data->WaterTemp,data->DOCount,data->DOretry);
+
+	// should be used if settings in theConf.exterDO-externDOMwqtt are set, but the fact thats it received...
+	// if(theConf.externDO && theConf.externDOMqtt)
+	theBlower.setSensors( data->DOLevel,  0,data->WaterTemp,temperature, 0);	//just save it
 }
 
 /**

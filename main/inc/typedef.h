@@ -370,6 +370,7 @@ typedef struct config {
     char                mqttcert[2100];
     uint8_t             mesh_wifi;
     char                lastVersion[20];
+    bool                externDO, externDOMqtt;
     uint16_t            mqttDiscoRetry,gpsSensor;
     profile_t           profiles[MAXPROFILES];
     uint8_t             activeProfile, dayCycle;

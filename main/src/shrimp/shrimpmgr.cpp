@@ -7,7 +7,7 @@
 #include "led_utils.h"
 #include "display_utils.h"
 
-
+    // Meter collection timer (based on WiFi mode)-> send Mqtt Broker  data/cmd search to0 change frequency. now in 10000 should be 60000 for minutes
 /**
  * ? que sera
  * ! warning
@@ -2552,6 +2552,17 @@ void handle_mqtt_data_event(esp_mqtt_event_handle_t event)
         return;
     }
     
+    char eltopic[60];
+    memset(eltopic, 0, sizeof(eltopic));
+    memcpy(eltopic, event->topic, event->topic_len);
+    printf("MQTT data received on topic: %s\n", eltopic);
+    if(strcmp(eltopic, externDOQueue) == 0)
+    {
+        MESP_LOGW(MESH_TAG, "Received MQTT message from ExternalDo: %s", eltopic);
+        // its a json
+        return;
+    }
+
     mqttMsg_t mqttHandle;
     memset(&mqttHandle, 0, sizeof(mqttHandle));
     
@@ -2576,9 +2587,7 @@ void handle_mqtt_data_event(esp_mqtt_event_handle_t event)
     theBlower.setStatsBytesIn(event->data_len);
     theBlower.setStatsMsgIn();
     
-    char eltopic[60];
-    memset(eltopic, 0, sizeof(eltopic));
-    memcpy(eltopic, event->topic, event->topic_len);
+
     
     if(xQueueSend(mqttQ, &mqttHandle, 0) != pdTRUE)
     {
@@ -2598,6 +2607,18 @@ void handle_mqtt_data_event(esp_mqtt_event_handle_t event)
         // todo Verify if MEs is using wifi in Root node and DO NOT RETAIN in that case
             clear_retained(eltopic);
     }
+}
+
+/**
+ * @brief Handle MQTT connection event to externalDO
+ * 
+ * Subscribes to command queue and sets connection flags.
+ */
+void handle_mqtt_connected_event_to_externalDO(void)
+{
+    int err = esp_mqtt_client_subscribe(clientCloud, externDOQueue, 0);
+    if(err == 0 && (theConf.debug_flags >> dMQTT) & 1U)
+        MESP_LOGE(MESH_TAG, "%sSubscription Ok to %s", DBG_MQTT, externDOQueue);
 }
 
 /**
@@ -2639,6 +2660,8 @@ void root_mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t 
         break;
     case MQTT_EVENT_CONNECTED:
         handle_mqtt_connected_event();
+        if(theConf.externDO)
+            handle_mqtt_connected_event_to_externalDO();
         break;
     case MQTT_EVENT_DISCONNECTED:
         handle_mqtt_disconnected_event();
@@ -3429,6 +3452,7 @@ void init_mqtt_queue_names(void)
     snprintf(metricQueue, sizeof(metricQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTINFO);
     snprintf(alarmQueue, sizeof(alarmQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTALARM);
     snprintf(controlQueue, sizeof(controlQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTCONTROL);
+    snprintf(externDOQueue, sizeof(externDOQueue), "%s/%d/%d", "shrimpDO", theConf.poolid, theConf.unitid);
 }
 /**
  * @brief Initialize internal mesh command strings
@@ -3496,6 +3520,7 @@ void register_external_mqtt_commands(void)
     set_cmd("VFDMon", "VFDM", cmdVFDMon);
     set_cmd("profile", "PROF", cmdProfile);
     set_cmd("PID", "PID", cmdPID);
+    set_cmd("DOEX", "DOEX", cmdDOEX);
 }
 /**
  * @brief Configure GPIO pins for relay, LED, and heartbeat
