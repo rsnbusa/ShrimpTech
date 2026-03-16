@@ -774,82 +774,6 @@ int check_my_metrics(char *cmd, char *mid)
     cJSON_Delete(elcmd);
     return ESP_OK;
 }
-// do not think the shrimp app needs an Update. This is more for the meter app to update its kwh and bpk values and other params.
-/*
-int update_my_meter(char *cmd)
-{
-    if (!cmd) {
-        MESP_LOGE(MESH_TAG, "Update meter called with null cmd");
-        return ESP_FAIL;
-    }
-
-    cJSON *elcmd = cJSON_Parse(cmd);
-    if (!elcmd) {
-        MESP_LOGE(MESH_TAG, "Update Internal error not parsable");
-        return ESP_FAIL;
-    }
-
-    cJSON *cualm   = cJSON_GetObjectItem(elcmd, "mid");       // the meter
-    cJSON *bpk     = cJSON_GetObjectItem(elcmd, "bpk");       // bpk value
-    cJSON *ks      = cJSON_GetObjectItem(elcmd, "ks");        // kwh start
-    cJSON *k       = cJSON_GetObjectItem(elcmd, "k");         // kwh life
-    cJSON *sk      = cJSON_GetObjectItem(elcmd, "sk");        // skip active y/n
-    cJSON *skn     = cJSON_GetObjectItem(elcmd, "skn");       // skip count
-    cJSON *ver     = cJSON_GetObjectItem(elcmd, "ver");       // version for possible OTA
-    cJSON *baset   = cJSON_GetObjectItem(elcmd, "baset");     // base time for development
-    cJSON *repeatt = cJSON_GetObjectItem(elcmd, "repeat");    // repeat time for development
-
-    if (!cualm) {
-        MESP_LOGE(MESH_TAG, "Update Cmd missing required param");
-        cJSON_Delete(elcmd);
-        return ESP_FAIL;
-    }
-
-    // if(strcmp(theBlower.getMID(),cualm->valuestring)==0)
-    if (true) {   // its for me
-
-        if (bpk && k && ks) {
-            if (k->valueint < ks->valueint) {
-                MESP_LOGW(MESH_TAG, "Update kwh [%d} < Kwstart [%d}", k->valueint, ks->valueint);
-                cJSON_Delete(elcmd);
-                return ESP_FAIL;
-            }
-
-            theBlower.eraseBlower();           // erase all metrics given new ks and k
-            // theBlower.setBPK(bpk->valueint);
-            // theBlower.setLkwh(k->valueint);
-            // theBlower.setKstart(ks->valueint);
-            theBlower.saveBlower();
-        }
-
-        // if(sk)
-        // {
-        //     if(strcmp("y",sk->valuestring)==0)
-        //         theConf.allowSkips=true;
-        //     else
-        //         theConf.allowSkips=false;
-        // }
-        // if(skn)
-        //     theConf.maxSkips=skn->valueint;
-        if (baset)
-            theConf.collectimer = baset->valueint;
-        if (repeatt)
-            theConf.test_timer_div = repeatt->valueint;
-
-        if (sk || skn || baset || repeatt)
-            write_to_flash();
-
-        if (baset || repeatt)
-            esp_restart();      // for timers need to reboot
-
-    } else {
-        MESP_LOGI(MESH_TAG, "Update It wasnt for me!");
-    }
-
-    cJSON_Delete(elcmd);
-    return ESP_OK;
-}
-*/
 // internal Mesh network message, we use cjson since no big limit
 // used to give to all connecting nodes certain "global" system parameter
 // Date, last known ssid and passw, time slot, mqtt params and Application location params like prov, canton,etc
@@ -1874,21 +1798,16 @@ void dispatch_mesh_command(int cualf, cJSON *elcmd, mesh_addr_t *from, mesh_data
         break;
 
     case UPDATEMETER:
-        // if ((theConf.debug_flags >> dMESH) & 1U)
-        //     MESP_LOGI(MESH_TAG, "Mesh Update Mesh Cmd");
-        // update_my_meter((char*)data->data);
         break;
 
     case FORMAT:
         if ((theConf.debug_flags >> dMESH) & 1U)
             MESP_LOGI(MESH_TAG, "Mesh Format cmd");
-        // format_my_meter(elcmd);
         break;
 
     case ERASEMETRICS:
         if ((theConf.debug_flags >> dMESH) & 1U)
             MESP_LOGI(MESH_TAG, "Mesh Erase Metrics cmd");
-        // erase_my_meter(elcmd);
         break;
 
     case MQTTMETRICS:
@@ -3871,29 +3790,6 @@ void root_mqtt_sender(void *pArg)
     }
 }
 
-
-/**
- * ? que sera
- * ! warning
- * * Important
- * TODO: algo
- * @param xTimer este parametro
- */
-//  void root_firstCallback( TimerHandle_t xTimer )
-//  {
-
-//     int ulCount = ( uint32_t ) pvTimerGetTimerID( xTimer );
-//     if(!theConf.meterconf)  
-//         return;
-
-//     // collect_meter_data(NULL);           // first time 
-    
-//     // collectTimer=xTimerCreate("Timer",pdMS_TO_TICKS(permanent_time*theConf.collectimer),pdFALSE,( void * ) ulCount, collect_meter_data);    //no repeat, manually start it
-//     // collectTimer=xTimerCreate("Timer",pdMS_TO_TICKS(permanent_time*theConf.collectimer),pdTRUE,( void * ) ulCount, collect_meter_data);    // every hour for now
-//     if( xTimerStart(collectTimer, 0 ) != pdPASS )
-//         MESP_LOGE(MESH_TAG,"Repeat Timer failed");
-//  }
-
 /**
  * @brief Calculate current meter collection cycle
  * 
@@ -4545,25 +4441,6 @@ esp_err_t wifi_connect_external_ap(void)
     MESP_LOGI(MESH_TAG, "WiFi APSTA initialization complete. AP SSID: %s, STA connecting to: %s", thename, theConf.thessid);
     return ESP_OK;
 }
-
-/**
- * @brief Generate and store configuration ID for new meter
- * 
- * Creates random CID and displays SSID with CID for user information.
- */
-// void generate_meter_cid(void)
-// {
-//     int cid = esp_random() % 99999999;
-//     char tmp[50];
-    
-//     sprintf(tmp, "%s %d", apssid, cid);
-//     MESP_LOGI(TAG, "Generated CID: %s", tmp);
-//     showLVGL(tmp, 600000, 1);
-    
-//     theConf.cid = cid;
-//     write_to_flash();
-// }
-
 /**
  * @brief Display configuration status on LVGL display
  */
@@ -4587,17 +4464,16 @@ void wait_for_webserver_config(void)
 /**
  * @brief Initialize meter and wait for configuration via web interface
  * 
- * Sets up WiFi in AP mode and waits for configuration. If meter is new
- * (meterconf==0), generates and displays a unique CID. Displays status
- * on LVGL display and blocks until webserver completes configuration.
+ * Sets up WiFi in AP mode and waits for configuration. For already
+ * configured meters, it displays status on LVGL. Then blocks until
+ * webserver completes configuration.
  */
 void meter_configure(void)
 {
     wifi_init_network();
     
     if (theConf.meterconf == 0) {
-        // New meter: generate CID
-        // generate_meter_cid();
+        // New meter path reserved for future onboarding flow.
     } else {
         // Already configured: show status
         display_config_status();

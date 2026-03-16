@@ -440,13 +440,6 @@ void BlowerClass::setSchedule(uint16_t currentProfile,uint16_t currentCycle, uin
     saveBlower();
 }
 
-// void BlowerClass::setScheduleStatus(uint16_t status)
-// {
-//     framConfig.solarSystem.wschedule.status = status;
-//     framConfig.lastUpdate = time(NULL);
-//     saveBlower();
-// }
-
 void BlowerClass::getSchedule(uint16_t *currentCycle, uint16_t *currentDay, uint16_t *currentHorario,
                               uint16_t *currentStartHour, uint16_t *currentEndHour, uint16_t *currentPwmDuty, uint16_t *status)
 {

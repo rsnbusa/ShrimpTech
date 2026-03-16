@@ -41,7 +41,6 @@ void showData(void *pArg);
 // ============================================================================
 
 void check_dups(cJSON *elArr, int nodeid);
-char *convertBinaryToJson(meshunion_t *elNodo);
 void delete_dup_buffers();
 void print_blower(char *title, solarSystem_t *msolar, bool dumphex);
 err_t root_mesh_broadcast_msg(char *msg);
