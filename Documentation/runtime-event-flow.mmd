@@ -1,0 +1,41 @@
+flowchart TD
+    A[App running] --> B{Network mode}
+
+    B -->|WiFi mode| C[wifi_connect_external_ap]
+    C --> D[WIFI_EVENT_STA_START]
+    D --> E[Connect STA]
+    E --> F[IP_EVENT_STA_GOT_IP]
+    F --> G[Set WIFI_CONNECTED_BIT]
+    G --> H[Start MQTT app and sender]
+    H --> I[SNTP or time sync path]
+    I --> J[root_set_senddata_timer and schedule start]
+
+    B -->|Mesh mode| K[start_mesh]
+    K --> L[MESH_EVENT_STARTED]
+    L --> M[MESH_EVENT_PARENT_CONNECTED]
+    M --> N[IP_EVENT_STA_GOT_IP]
+    N --> O{Root node decision}
+    O -->|Yes| P[Start MQTT stack and mesh root services]
+    O -->|No| Q[Leaf waits for root commands]
+    P --> J
+
+    J --> R[collectTimer fires]
+    R --> S{Mode callback}
+    S -->|Mesh| T[root_collect_meter_data]
+    S -->|WiFi| U[wifi_send_meter_data]
+
+    T --> V[Broadcast request to child nodes]
+    V --> W[Gather node data or timeout]
+    W --> X[Queue MQTT payload]
+    U --> X
+
+    X --> Y[root_mqtt_sender]
+    Y --> Z[Connect then publish then disconnect]
+
+    Z --> AA{Production schedule active}
+    AA -->|Yes| AB[start_schedule_timers task]
+    AB --> AC[Create start and end timers per horario]
+    AC --> AD[blower_start and blower_end callbacks]
+    AD --> AE[Update schedule state and next wait]
+    AE --> AB
+    AA -->|No| AF[Idle until command or event]

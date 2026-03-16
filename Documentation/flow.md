@@ -70,3 +70,96 @@ As is normal, entry point of app. THis is a cpp (C++) so in the includes.h forld
         -- MQTT manager is on a Need Basis
          ✨Connect -> Send _> Disconnect✨  no permanete connection
         CHECK DOCUMENTATION OF THIS ROUTIME
+
+## App Flowchart (Mermaid)
+
+```mermaid
+flowchart TD
+    A[app_main entry] --> B[init_process and app_spiffs_log]
+    B --> C{temp sensor enabled}
+    C -->|Yes| C1[Start ds18b20_task]
+    C -->|No| D[Init Blower state]
+    C1 --> D[Init Blower state]
+
+    D --> E{wifi mode disabled}
+    E -->|Yes| E1[Start time_keeper_task]
+    E -->|No| F[Boot log and optional keyboard task]
+    E1 --> F[Boot log and optional keyboard task]
+
+    F --> G{meterconf equals zero}
+    G -->|Yes| G1[Format FRAM and blink config]
+    G1 --> G2[meter_configure]
+    G2 --> G3[Stop blink and write config]
+    G -->|No| H{meterconf greater than two}
+    G3 --> H
+    H -->|Yes| H1[blinkConf and meter_configure]
+    H -->|No| I[Continue startup]
+    H1 --> I[Continue startup]
+
+    I --> J{mesh mode enabled}
+    J -->|Yes| J1[Start root_timer task]
+    J -->|No| K[Skip root_timer]
+    J1 --> L{modbus enabled}
+    K --> L{modbus enabled}
+    L -->|Yes| L1[Start rs485_task_manager]
+    L -->|No| M[Network startup branch]
+    L1 --> M[Network startup branch]
+
+    M --> N{wifi mode disabled}
+    N -->|Yes| N1[wifi_connect_external_ap]
+    N1 --> N2[Start webserver task]
+    N2 --> P{gps sensor enabled}
+    N -->|No| N3[start_mesh and set loginwait]
+    N3 --> P{gps sensor enabled}
+
+    P -->|Yes| P1[Init NMEA parser and GPS handler]
+    P -->|No| Q[Log free heap]
+    P1 --> Q[Log free heap]
+    Q --> R[Run time behavior via events, timers, and tasks]
+```
+
+## Runtime Event Flow (Mermaid)
+
+```mermaid
+flowchart TD
+    A[App running] --> B{Network mode}
+
+    B -->|WiFi mode| C[wifi_connect_external_ap]
+    C --> D[WIFI_EVENT_STA_START]
+    D --> E[Connect STA]
+    E --> F[IP_EVENT_STA_GOT_IP]
+    F --> G[Set WIFI_CONNECTED_BIT]
+    G --> H[Start MQTT app and sender]
+    H --> I[SNTP or time sync path]
+    I --> J[root_set_senddata_timer and schedule start]
+
+    B -->|Mesh mode| K[start_mesh]
+    K --> L[MESH_EVENT_STARTED]
+    L --> M[MESH_EVENT_PARENT_CONNECTED]
+    M --> N[IP_EVENT_STA_GOT_IP]
+    N --> O{Root node decision}
+    O -->|Yes| P[Start MQTT stack and mesh root services]
+    O -->|No| Q[Leaf waits for root commands]
+    P --> J
+
+    J --> R[collectTimer fires]
+    R --> S{Mode callback}
+    S -->|Mesh| T[root_collect_meter_data]
+    S -->|WiFi| U[wifi_send_meter_data]
+
+    T --> V[Broadcast request to child nodes]
+    V --> W[Gather node data or timeout]
+    W --> X[Queue MQTT payload]
+    U --> X
+
+    X --> Y[root_mqtt_sender]
+    Y --> Z[Connect then publish then disconnect]
+
+    Z --> AA{Production schedule active}
+    AA -->|Yes| AB[start_schedule_timers task]
+    AB --> AC[Create start and end timers per horario]
+    AC --> AD[blower_start and blower_end callbacks]
+    AD --> AE[Update schedule state and next wait]
+    AE --> AB
+    AA -->|No| AF[Idle until command or event]
+```
