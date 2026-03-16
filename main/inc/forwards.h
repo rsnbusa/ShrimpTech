@@ -125,6 +125,7 @@ int cmdProfile(void *argument);
 int cmdVFDCmd(void *argument);
 int cmdVFDMon(void *argument);
 int cmdPID(void *argument);
+int cmdDOEX(void *argument);
 
 // ============================================================================
 // CONSOLE COMMAND FUNCTIONS (argc/argv-based)

@@ -2560,7 +2560,7 @@ void handle_mqtt_data_event(esp_mqtt_event_handle_t event)
     {
         MESP_LOGW(MESH_TAG, "Received MQTT message from ExternalDo: %s", eltopic);
         // its a json
-        return;
+        // return;
     }
 
     mqttMsg_t mqttHandle;

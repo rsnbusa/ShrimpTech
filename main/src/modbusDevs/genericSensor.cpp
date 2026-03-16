@@ -62,7 +62,7 @@ void generic_modbus_task(void *pArg)
     
     if (descriptors == NULL)
     {
-        MESP_LOGW(TAG, "%s task: No valid sensors configured, task exiting", modbus_sensor->modbus_sensor_name);
+        MESP_LOGE(TAG, "%s task: No valid sensors configured, task exiting", modbus_sensor->modbus_sensor_name);
         vTaskDelete(NULL);
     }
     if ((theConf.debug_flags >> dMODBUS) & 1U)

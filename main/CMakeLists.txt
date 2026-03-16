@@ -36,6 +36,7 @@ set(CMD_SOURCES
     src/cmdMqtt/cmdVFDMon.cpp
     src/cmdMqtt/cmdProfile.cpp
     src/cmdMqtt/cmdPID.cpp
+    src/cmdMqtt/cmdDOEX.cpp
 )
 
 # Keyboard/Console interface commands

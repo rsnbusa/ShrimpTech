@@ -182,5 +182,6 @@ descriptor_array_t* initialize_sensor_descriptors(
     }
     
     *count = sensor_count;
-    return descriptors;
+    //in case there is no valid count of descriptors (all offsets are -1), return a NULL
+    return sensor_count>0?descriptors:NULL;
 }
