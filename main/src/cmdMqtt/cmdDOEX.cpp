@@ -42,6 +42,8 @@ static bool validate_doex_command(cJSON *cmd, DOEXFields *out)
         return false;
     }
 
+    cJSON *poolid       = cJSON_GetObjectItem(cmd, "poolid");
+    cJSON *unitid       = cJSON_GetObjectItem(cmd, "unitid");
     cJSON *doLevelNode  = cJSON_GetObjectItem(cmd, "DOLevel");
     cJSON *doCountNode  = cJSON_GetObjectItem(cmd, "DOCount");
     cJSON *doRetryNode  = cJSON_GetObjectItem(cmd, "DOretry");
@@ -52,7 +54,7 @@ static bool validate_doex_command(cJSON *cmd, DOEXFields *out)
     cJSON *intervalNode = cJSON_GetObjectItem(cmd, "Interval");
 
     if (!doLevelNode || !doCountNode || !doRetryNode || !phLevelNode ||
-        !irLevelNode || !saLevelNode || !wTempNode   || !intervalNode)
+        !irLevelNode || !saLevelNode || !wTempNode   || !intervalNode || !poolid || !unitid)
     {
         MESP_LOGE(MESH_TAG, "DOEX: missing required fields");
         return false;
@@ -61,9 +63,17 @@ static bool validate_doex_command(cJSON *cmd, DOEXFields *out)
     if (!cJSON_IsNumber(doLevelNode) || !cJSON_IsNumber(doCountNode) ||
         !cJSON_IsNumber(doRetryNode) || !cJSON_IsNumber(phLevelNode) ||
         !cJSON_IsNumber(irLevelNode) || !cJSON_IsNumber(saLevelNode) ||
-        !cJSON_IsNumber(wTempNode)   || !cJSON_IsNumber(intervalNode))
+        !cJSON_IsNumber(wTempNode)   || !cJSON_IsNumber(intervalNode) ||
+        !cJSON_IsNumber(poolid) || !cJSON_IsNumber(unitid))
     {
         MESP_LOGE(MESH_TAG, "DOEX: invalid field types");
+        return false;
+    }
+
+    // already validated by the Topic itself but....
+    if(poolid->valueint != theConf.poolid || unitid->valueint != theConf.unitid)
+    {
+        MESP_LOGE(MESH_TAG, "DOEX: poolid and unitid not matching configuration");
         return false;
     }
 

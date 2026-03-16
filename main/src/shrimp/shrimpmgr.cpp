@@ -2534,8 +2534,16 @@ void clear_retained(char *eltopic)
 {
     if(strcmp(eltopic, cmdQueue) == 0)
         esp_mqtt_client_publish(clientCloud, cmdQueue, "", 0, 0, 1);
-    else if(strcmp(eltopic, cmdBroadcast) == 0)
-        esp_mqtt_client_publish(clientCloud, cmdBroadcast, "", 0, 0, 1);
+    else if(strcmp(eltopic, externDOQueue) == 0)
+        esp_mqtt_client_publish(clientCloud, externDOQueue, "", 0, 0, 1);
+}
+
+static bool is_allowed_mqtt_topic(const char *topic)
+{
+    if(!topic)
+        return false;
+
+    return (strcmp(topic, cmdQueue) == 0) || (strcmp(topic, externDOQueue) == 0);
 }
 
 /**
@@ -2552,15 +2560,19 @@ void handle_mqtt_data_event(esp_mqtt_event_handle_t event)
         return;
     }
     
-    char eltopic[60];
-    memset(eltopic, 0, sizeof(eltopic));
-    memcpy(eltopic, event->topic, event->topic_len);
-    printf("MQTT data received on topic: %s\n", eltopic);
-    if(strcmp(eltopic, externDOQueue) == 0)
+    char eltopic[60] = {0};
+    if(event->topic_len <= 0 || event->topic_len >= (int)sizeof(eltopic))
     {
-        MESP_LOGW(MESH_TAG, "Received MQTT message from ExternalDo: %s", eltopic);
-        // its a json
-        // return;
+        MESP_LOGW(MESH_TAG, "Dropping MQTT message with invalid topic length: %d", event->topic_len);
+        return;
+    }
+    memcpy(eltopic, event->topic, event->topic_len);
+    eltopic[event->topic_len] = '\0';
+
+    if(!is_allowed_mqtt_topic(eltopic))
+    {
+        MESP_LOGW(MESH_TAG, "Dropping MQTT message from unauthorized topic: %s", eltopic);
+        return;
     }
 
     mqttMsg_t mqttHandle;
