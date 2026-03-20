@@ -220,7 +220,7 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 #define POOLCROP                        (5)    // currently beign harvbested
 #define POOLPARK                        (6)    // not being used
 
-#define MINUTES                         (1)   
+#define MODBUSMINUTES                   (60000)   
 // Modbus descriptor fields offsets
 #define DADDR                           (4)
 #define DOFFSET                         (3)
@@ -239,7 +239,6 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 #define ENERGY_LIMIT_ERROR_BIT          (7) // Bit 7 for limit errors
 #define VFD_LIMIT_ERROR_BIT             (9) // Bit 7 for limit errors
 
-// Dissolved Oxygen Sensor Calibration Values 
 // for a VFC min should be 30Hz and max 60Hz nomally.  Could be adjusted specifically MAX to 90Hz if needed
 #define OUTPUT_MIN                      (30)
 #define OUTPUT_MAX                      (60)
@@ -250,6 +249,8 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 #define MOTORVOLTS                      (220)  // 220 V motor -> 10amps
 
 #define WIFI_MESH                       (0)
+
+// Color definitons for debugging 
 
 #define DBG_SCH						    "\e[36m[SCH]\e[0m"               
 #define DBG_BLOW						"\e[34m[SCH]\e[0m"               

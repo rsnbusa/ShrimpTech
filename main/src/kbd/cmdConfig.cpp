@@ -87,10 +87,45 @@ void show_modbus()
     printf("  ┌─ %sInverter  (Addr: %3d | Refresh: %3dm ) %s──────────────────┐\n",BK_BLUE, 
            theConf.inverter.address, theConf.inverter.refresh,RESETC);
     printf("  │ %-14s │ Offset │ Start  │ Points  │ Type │  Mux  │\n", "Name");
-    printf("  ├────────────────┼───────┼─────────┼─────────┼──────┼───────┤\n");
-    printf("  │ %-14s │ %6d │ %5d  │ %6d  │ %4d │ %4.2f  │\n\n", modb_names[31], 
+    printf("  ├────────────────┼────────┼────────┼─────────┼──────┼───────┤\n");
+    printf("  │ %-14s │ %6d │ %5d  │ %6d  │ %4d │ %4.2f  │\n", modb_names[31], 
            theConf.inverter.offset, theConf.inverter.start, 
            theConf.inverter.points, theConf.inverter.type, theConf.inverter.mux);
+    printf("  └────────────────┴────────┴────────┴─────────┴──────┴───────┘\n\n");
+
+    // ===== VFD Cmd =====
+    printf("  ┌─ %sVFD CMD   (Addr: %3d | Refresh: %3dm ) %s──────────────────┐\n",BK_YELLOW, 
+           theConf.modbus_vfdcmd.address, theConf.modbus_vfdcmd.refresh,RESETC);
+    printf("  │ %-14s │ Offset │ Start  │ Points  │ Type │  Mux  │\n", "Name");
+    printf("  ├────────────────┼────────┼────────┼─────────┼──────┼───────┤\n");
+    printf("  │ %-14s │ %6d │ %5d  │ %6d  │ %4d │ %4.2f  │\n", modb_names[25], 
+           theConf.modbus_vfdcmd.cmdoff, theConf.modbus_vfdcmd.cmdstart, 
+           theConf.modbus_vfdcmd.cmdpoints, theConf.modbus_vfdcmd.cmdtype, theConf.modbus_vfdcmd.cmdmux);
+    printf("  │ %-14s │ %6d │ %5d  │ %6d  │ %4d │ %4.2f  │\n", modb_names[26], 
+           theConf.modbus_vfdcmd.freqoff, theConf.modbus_vfdcmd.freqstart, 
+           theConf.modbus_vfdcmd.freqpoints, theConf.modbus_vfdcmd.freqtype, theConf.modbus_vfdcmd.freqmux);
+    printf("  └────────────────┴────────┴────────┴─────────┴──────┴───────┘\n\n");
+
+    // ===== VFD Monitor =====
+    printf("  ┌─ %sVFD Monit (Addr: %3d | Refresh: %3dm ) %s──────────────────┐\n",BK_YELLOW, 
+           theConf.modbus_vfd.address, theConf.modbus_vfd.refresh,RESETC);
+    printf("  │ %-14s │ Offset │ Start  │ Points  │ Type │  Mux  │\n", "Name");
+    printf("  ├────────────────┼────────┼────────┼─────────┼──────┼───────┤\n");
+
+    printf("  │ %-14s │ %6d │ %5d  │ %6d  │ %4d │ %4.2f  │\n", modb_names[27], 
+           theConf.modbus_vfd.curroff, theConf.modbus_vfd.currstart, 
+           theConf.modbus_vfd.currpoints, theConf.modbus_vfd.currtype, theConf.modbus_vfd.currmux);
+    printf("  │ %-14s │ %6d │ %5d  │ %6d  │ %4d │ %4.2f  │\n", modb_names[28], 
+           theConf.modbus_vfd.voltoff, theConf.modbus_vfd.voltstart, 
+           theConf.modbus_vfd.voltpoints, theConf.modbus_vfd.volttype, theConf.modbus_vfd.voltmux);
+    printf("  │ %-14s │ %6d │ %5d  │ %6d  │ %4d │ %4.2f  │\n", modb_names[29], 
+           theConf.modbus_vfd.pwroff, theConf.modbus_vfd.pwrstart, 
+           theConf.modbus_vfd.pwrpoints, theConf.modbus_vfd.pwrtype, theConf.modbus_vfd.pwrmux);
+    printf("  │ %-14s │ %6d │ %5d  │ %6d  │ %4d │ %4.2f  │\n", modb_names[30], 
+           theConf.modbus_vfd.rpmoff, theConf.modbus_vfd.rmpstart, 
+           theConf.modbus_vfd.rpmpoints, theConf.modbus_vfd.rpmtype, theConf.modbus_vfd.rpmmux);
+
+    printf("  └────────────────┴────────┴────────┴─────────┴──────┴───────┘\n\n");
 
     // ===== PV PANELS =====
     printf("  ┌─ %sPV Panels (Addr: %3d | Refresh: %3dm ) %s──────────────────┐\n",BK_BLUE, 

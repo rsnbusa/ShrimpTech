@@ -1365,6 +1365,33 @@ void wifi_send_meter_data(TimerHandle_t algo)
         shmsg->longi=theConf.longi;
     }
 
+    // if ((theConf.debug_flags >> dMQTT) & 1U)
+    // {
+    //     printf("=== poolAvgMetrics ===\n");
+    //     printf("PV: chargeCurr %u pv1V %.02f pv2V %.02f pv1Amp %.02f pv2Amp %.02f\n",
+    //         shmsg->poolAvgMetrics.pvPanel.chargeCurr, shmsg->poolAvgMetrics.pvPanel.pv1Volts,
+    //         shmsg->poolAvgMetrics.pvPanel.pv2Volts, shmsg->poolAvgMetrics.pvPanel.pv1Amp,
+    //         shmsg->poolAvgMetrics.pvPanel.pv2Amp);
+    //     printf("Bat: SOC %u SOH %u Cycles %u Temp %.02f\n",
+    //         shmsg->poolAvgMetrics.battery.batSOC, shmsg->poolAvgMetrics.battery.batSOH,
+    //         shmsg->poolAvgMetrics.battery.batteryCycleCount, shmsg->poolAvgMetrics.battery.batBmsTemp);
+    //     printf("Energy: ChgAHToday %u DischAHToday %u ChgAHTotal %u DischAHTotal %u\n",
+    //         shmsg->poolAvgMetrics.energy.batChgAHToday, shmsg->poolAvgMetrics.energy.batDischgAHToday,
+    //         shmsg->poolAvgMetrics.energy.batChgAHTotal, shmsg->poolAvgMetrics.energy.batDischgAHTotal);
+    //     printf("Energy: GenToday %.02f UsedToday %.02f LoadConsumTotal %.02f ChgKWhToday %.02f DischKWhToday %.02f LoadConsumToday %.02f\n",
+    //         shmsg->poolAvgMetrics.energy.generateEnergyToday, shmsg->poolAvgMetrics.energy.usedEnergyToday,
+    //         shmsg->poolAvgMetrics.energy.gLoadConsumLineTotal, shmsg->poolAvgMetrics.energy.batChgkWhToday,
+    //         shmsg->poolAvgMetrics.energy.batDischgkWhToday, shmsg->poolAvgMetrics.energy.genLoadConsumToday);
+    //     printf("Sensors: WTemp %.02f percentDO %.02f DO %.02f PH %.02f ATemp %.02f AHum %.02f\n",
+    //         shmsg->poolAvgMetrics.sensors.WTemp, shmsg->poolAvgMetrics.sensors.percentDO,
+    //         shmsg->poolAvgMetrics.sensors.DO, shmsg->poolAvgMetrics.sensors.PH,
+    //         shmsg->poolAvgMetrics.sensors.ATemp, shmsg->poolAvgMetrics.sensors.AHum);
+    //     printf("Schedule: profile %u cycle %u day %u horario %u startHr %u endHr %u pwmDuty %u status %u\n",
+    //         shmsg->poolAvgMetrics.wschedule.currentProfile, shmsg->poolAvgMetrics.wschedule.currentCycle,
+    //         shmsg->poolAvgMetrics.wschedule.currentDay, shmsg->poolAvgMetrics.wschedule.currentHorario,
+    //         shmsg->poolAvgMetrics.wschedule.currentStartHour, shmsg->poolAvgMetrics.wschedule.currentEndHour,
+    //         shmsg->poolAvgMetrics.wschedule.currentPwmDuty, shmsg->poolAvgMetrics.wschedule.status);
+    // }
     int msgid = esp_mqtt_client_publish(clientCloud, (char*)metricQueue, (char*)shmsg,
                                         sizeof(shrimpMsg_t), QOS1, NORETAIN);
     if (msgid < 0) {
@@ -3290,7 +3317,7 @@ void init_system_timers(void)
     );
     
     // Meter collection timer (based on WiFi mode)-> send Mqtt Broker  data/cmd 
-    uint32_t collection_period = theConf.collectimer * 10000;        //  minutes to ms
+    uint32_t collection_period = theConf.collectimer * 60000;        //  minutes to ms
     TimerCallbackFunction_t collection_callback = 
         (theConf.wifi_mode > 0) ? root_collect_meter_data : wifi_send_meter_data;
     BaseType_t collection_autoreload = 
