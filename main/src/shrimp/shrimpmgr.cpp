@@ -281,6 +281,8 @@ void launch_sensors()
             if(VFDDev)
             {
                 xTaskCreate(&generic_modbus_task,VFDDev->modbus_sensor_name,1024*4,(void*)VFDDev, 5, &vfdHandle);       // task handle will be use to start kill it
+// ! IMPORTANT this taskhandle is saved in the vfdcmd data structure for later use in the callback, so we can start and stop the task which includes the callback itself, to avoid problems with execution order of suspend and resume, which can cause the task to be suspended before the resume command is sent, and then never resumed. So we start it, give it some time to be ready to be suspended, and then suspend it, it will be resumed by the blower task when the blower is started, and killed when the blower is stopped
+                vfdcmd->theHandle=vfdHandle;   // pass the handle to the device for later use in the callback
                 delay(400);  // give it some time to start and be ready to be suspended, otherwise we can have
                 vTaskSuspend(vfdHandle);   // start suspended, will be resumed by the blower task when the blower is started, and killed when the blower is stopped
             }
@@ -290,6 +292,8 @@ void launch_sensors()
             if(VFDDev2)
             {
                 xTaskCreate(&generic_modbus_task,VFDDev2->modbus_sensor_name,1024*4,(void*)VFDDev2, 6, &vfdHandle2);       // task handle will be use to start kill it
+// ! IMPORTANT this taskhandle is saved in the vfdcmd data structure for later use in the callback, so we can start and stop the task which includes the callback itself, to avoid problems with execution order of suspend and resume, which can cause the task to be suspended before the resume command is sent, and then never resumed. So we start it, give it some time to be ready to be suspended, and then suspend it, it will be resumed by the blower task when the blower is started, and killed when the blower is stopped
+                vfdcmd2->theHandle=vfdHandle2;   // pass the handle to the device for later use in the callback
                 delay(400);  // give it some time to start and be ready to be suspended, otherwise we can have
                 vTaskSuspend(vfdHandle2);   // start suspended, will be resumed by the blower task when the blower is started, and killed when the blower is stopped
             }

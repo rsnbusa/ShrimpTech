@@ -75,12 +75,12 @@ void energy_task(void *pArg);
 void start_webserver(void *pArg);
 void PIDController(void *pArg);
 void generic_modbus_task(void *pArg);
-void cb_energy_data(void* energy,  int *errors,char *color,int numerrs,int devAdd);
-void cb_battery_data(void* batteryData, int *errors,char *color,int numerrs,int devAdd);
-void cb_panel_data(void* pvPanel, int *errors,char * color,int numerrs,int devAdd);
-void cb_sensor_data(void *sensors,  int *errors,char *color,int numerrs,int devAdd);
-void cb_vfd_data(void *vfdd,  int *errors,char *color,int numerrs,int devAdd);
-void cb_vfd_cmd(void *vfdd,  int *errors,char *color,int numerrs,int devAdd);
+void cb_energy_data(void* energy,  int *errors,char *color,int numerrs,int devAdd,TaskHandle_t theHandle);
+void cb_battery_data(void* batteryData, int *errors,char *color,int numerrs,int devAdd,TaskHandle_t theHandle);
+void cb_panel_data(void* pvPanel, int *errors,char * color,int numerrs,int devAdd,TaskHandle_t theHandle);
+void cb_sensor_data(void *sensors,  int *errors,char *color,int numerrs,int devAdd,TaskHandle_t theHandle);
+void cb_vfd_data(void *vfdd,  int *errors,char *color,int numerrs,int devAdd,TaskHandle_t theHandle);
+void cb_vfd_cmd(void *vfdd,  int *errors,char *color,int numerrs,int devAdd,TaskHandle_t theHandle);
  descriptor_array_t * initialize_sensor_descriptors( void *sensorinfoin,
                 char *whichDev,int MAXSENSORS,int columns,int *count);
 // ============================================================================

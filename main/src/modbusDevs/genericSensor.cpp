@@ -100,7 +100,8 @@ void generic_modbus_task(void *pArg)
             // Print the received data using sensor-specific print function
             if (modbus_sensor->modbus_print_function)
             {
-                modbus_sensor->modbus_print_function(modbus_sensor->modbus_sensor_data, errors,modbus_sensor->color,sensor_count,deviceAddress);
+                modbus_sensor->modbus_print_function(modbus_sensor->modbus_sensor_data, errors,
+                    modbus_sensor->color,sensor_count,deviceAddress, modbus_sensor->theHandle);
             }
         }
         

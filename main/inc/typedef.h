@@ -98,7 +98,7 @@ typedef struct {
     mb_parameter_descriptor_t devices[20];
 } descriptor_array_t;
 
-typedef void (*printcb)(void*, int *, char * color,int numerrs,int devAddr);
+typedef void (*printcb)(void*, int *, char * color,int numerrs,int devAddr,TaskHandle_t miTask);
 
 typedef struct {
     char *      modbus_sensor_name;
@@ -110,6 +110,7 @@ typedef struct {
     printcb     modbus_print_function;
     char *      color;
     bool        rw;                 // read true write false
+    TaskHandle_t theHandle;
 
 } modbus_sensor_type_t;
 

@@ -19,7 +19,7 @@
 // Environmental Sensors
 // ============================================================================
 
-void cb_vfd_cmd(void *vfdd, int *errors,char *color,int numerrs,int devAddr)
+void cb_vfd_cmd(void *vfdd, int *errors,char *color,int numerrs,int devAddr,TaskHandle_t theHandle)
 {
     bool hasErrors=false;
     (void)vfdd;
@@ -30,28 +30,25 @@ void cb_vfd_cmd(void *vfdd, int *errors,char *color,int numerrs,int devAddr)
  
     printf("VFD Cmd callback cmd %d\n",vfdCmdData.cmd);
 
-    if(vfdHandle!=NULL)
+    if(theHandle!=NULL)
     {
         if(vfdCmdData.cmd>0 )
         {
-            vTaskResume(vfdHandle);
-            vTaskResume(vfdHandle2);
+            vTaskResume(theHandle);
+            // vTaskResume(vfdHandle2);
         }
         else
         {
-            vTaskSuspend(vfdHandle);
-            vTaskSuspend(vfdHandle2);
+            vTaskSuspend(theHandle);
+            // vTaskSuspend(vfdHandle2);
         }
     }
 
     // ! execution order here is important. First do the above and then suspend the task, WHICH includes this code. 
     // ! SO if suspended before sending resume/suspend order, nothing done
+    // our genericsensor task is the caller so we suspend this task
+        vTaskSuspend(xTaskGetCurrentTaskHandle()); // suspend the command task, it will be resumed by the blower task when the blower is started, and killed when the blower is stopped
 
-    if(vfdcmdHandle)
-    {
-        vTaskSuspend(vfdcmdHandle); // suspend the command task, it will be resumed by the blower task when the blower is started, and killed when the blower is stopped
-        vTaskSuspend(vfdcmdHandle2); // suspend the command task, it will be resumed by the blower task when the blower is started, and killed when the blower is stopped
-    }
     }
 
 /**
@@ -68,7 +65,7 @@ void cb_vfd_cmd(void *vfdd, int *errors,char *color,int numerrs,int devAddr)
  * @note Only prints if MODBUS debug flag is enabled and no errors occurred
  *  Limits WTEMP,LIMITDO,LIMITPH,ATEMP,AHUM
  */
-void cb_vfd_data(void *vfdd, int *errors,char *color,int numerrs,int devAddr)
+void cb_vfd_data(void *vfdd, int *errors,char *color,int numerrs,int devAddr,TaskHandle_t theHandle)
 {
     bool hasErrors=false;
  
@@ -93,7 +90,7 @@ void cb_vfd_data(void *vfdd, int *errors,char *color,int numerrs,int devAddr)
 
     globalErrors &= ~(1U << VFD_ERROR_BIT); // clear the error bit
      
-    vfd_t *data = (vfd_t*)vfdd;
+    vfd_t *data = (vfd_t*)vfdd;             // get pointer to the data where it was stored by the sender task
 
     globalErrors &= ~(1U << VFD_LIMIT_ERROR_BIT); // clear the limit error bit
         
@@ -124,7 +121,7 @@ void cb_vfd_data(void *vfdd, int *errors,char *color,int numerrs,int devAddr)
  * @note Only prints if MODBUS debug flag is enabled and no errors occurred
  *  Limits WTEMP,LIMITDO,LIMITPH,ATEMP,AHUM
  */
-void cb_sensor_data(void *sensors, int *errors,char *color,int numerrs,int devAddr)
+void cb_sensor_data(void *sensors, int *errors,char *color,int numerrs,int devAddr,TaskHandle_t theHandle)
 {
     bool hasErrors=false;
  
@@ -184,7 +181,7 @@ void cb_sensor_data(void *sensors, int *errors,char *color,int numerrs,int devAd
  * @note Only prints if MODBUS debug flag is enabled and no errors occurred
  * * limits BMCHAH,BMDDAH,BMCHKT,BMDDKT,GENEER,USEDEN,LCONLI,BMCHKW,BMDDKW,GENLCT
  */
-void cb_energy_data(void *energy, int *errors,char * color,int numerrs,int devAddr)
+void cb_energy_data(void *energy, int *errors,char * color,int numerrs,int devAddr,TaskHandle_t theHandle)
 {
     bool hasErrors=false;
     // check errors before printing
@@ -263,7 +260,7 @@ void cb_energy_data(void *energy, int *errors,char * color,int numerrs,int devAd
  * @note Only prints if MODBUS debug flag is enabled and no errors occurred
  * * limits BMSOC,BMSOH,BMCC,BMTEMP
  */
-void cb_battery_data(void *batteryData, int *errors,char *color,int numerrs,int devAddr)
+void cb_battery_data(void *batteryData, int *errors,char *color,int numerrs,int devAddr,TaskHandle_t theHandle)
 {
     bool hasErrors=false;
     // check errors before printing
@@ -324,7 +321,7 @@ void cb_battery_data(void *batteryData, int *errors,char *color,int numerrs,int 
  * @note Only prints if MODBUS debug flag is enabled and no errors occurred
  * * limits PV1V,PV1A,PV2V,PV2A
  */
-void cb_panel_data(void *pvPanel, int *errors,char * color,int numerrs,int devAddr)
+void cb_panel_data(void *pvPanel, int *errors,char * color,int numerrs,int devAddr,TaskHandle_t theHandle)
 {
     bool hasErrors=false;
     // check errors before printing
