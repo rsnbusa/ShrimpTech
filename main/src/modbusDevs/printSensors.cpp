@@ -33,17 +33,26 @@ void cb_vfd_cmd(void *vfdd, int *errors,char *color,int numerrs,int devAddr)
     if(vfdHandle!=NULL)
     {
         if(vfdCmdData.cmd>0 )
+        {
             vTaskResume(vfdHandle);
+            vTaskResume(vfdHandle2);
+        }
         else
+        {
             vTaskSuspend(vfdHandle);
+            vTaskSuspend(vfdHandle2);
+        }
     }
 
     // ! execution order here is important. First do the above and then suspend the task, WHICH includes this code. 
     // ! SO if suspended before sending resume/suspend order, nothing done
 
     if(vfdcmdHandle)
+    {
         vTaskSuspend(vfdcmdHandle); // suspend the command task, it will be resumed by the blower task when the blower is started, and killed when the blower is stopped
-}
+        vTaskSuspend(vfdcmdHandle2); // suspend the command task, it will be resumed by the blower task when the blower is started, and killed when the blower is stopped
+    }
+    }
 
 /**
  * @brief Print environmental VFD data for debugging

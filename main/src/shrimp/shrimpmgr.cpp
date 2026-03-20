@@ -187,15 +187,21 @@ void start_vfd(uint8_t que)
     // set data
     if(que)
     {
-        vfdCmdData.frequency=que;
+        vfdCmdData.frequency=(uint8_t)(25 + (esp_random() % 36));
         vfdCmdData.cmd=1;
+        vfdCmdData2.frequency=(uint8_t)(25 + (esp_random() % 36));
+        vfdCmdData2.cmd=1;
         vTaskResume(vfdcmdHandle);
+        vTaskResume(vfdcmdHandle2);
     }
     else
     {
         vfdCmdData.frequency=0;
         vfdCmdData.cmd=0;
+        vfdCmdData2.frequency=0;
+        vfdCmdData2.cmd=0;
         vTaskResume(vfdcmdHandle);
+        vTaskResume(vfdcmdHandle2);
     }
     vfdCmdData.cmd=que;
     
@@ -222,22 +228,35 @@ void launch_sensors()
             modbus_sensor_type_t *sensorDev=setModbusSensor((char*)"Sensors",5,5,
                 (void*)&theConf.modbus_sensors,DBG_SENSORS,(void*)&sensorData,sizeof(sensorData),&cb_sensor_data,true);
 
+// vfd uses the original descriptors for cmd and data to create 2 devices for 2 blowers
+// address of frist one is set in the configuration, the second's address is 1 more thant the original 
+// ! careful with this scheme is cheap and fast but could have problems with address
+// alternaitve is to create two configurations in the vfd section for each vfd
+
             // VFD Monitor Modbus Device
             modbus_sensor_type_t *VFDDev=setModbusSensor((char*)"VFDData",4,4,
                 (void*)&theConf.modbus_vfd,DBG_VFD,(void*)&vfdData,sizeof(vfdData),&cb_vfd_data,true);
 
-            // VFD Cmd Modbus Device
 
+            // the twin is identical except the address which is 1 more than the original
+            // data is another global differente form the first obviously, same call back function
+            memcpy(&localconfig, &theConf.modbus_vfd, sizeof(localconfig));   // copy original config to local variable to modify the address
+
+            localconfig.address++;
+            modbus_sensor_type_t *VFDDev2=setModbusSensor((char*)"VFDData2",4,4,
+                (void*)&localconfig,DBG_VFD,(void*)&vfdData2,sizeof(vfdData2),&cb_vfd_data,true);
+// restore address for whatever reasons
+
+            // VFD Cmd Modbus Device same iodea as above
             modbus_sensor_type_t *vfdcmd=setModbusSensor((char*)"VFDCmd",2,4,
                 (void*)&theConf.modbus_vfdcmd,DBG_VFD,(void*)&vfdCmdData,sizeof(vfdCmdData),&cb_vfd_cmd,false);     
+// the twin
+            memcpy(&localcmd, &theConf.modbus_vfdcmd, sizeof(localcmd));   // copy original config to local variable to modify the address
+            localcmd.address++;
+            modbus_sensor_type_t *vfdcmd2=setModbusSensor((char*)"VFDCmd2",2,4,
+                (void*)&localcmd,DBG_VFD,(void*)&vfdCmdData,sizeof(vfdCmdData),&cb_vfd_cmd,false);  
 
-            if(vfdcmd)
-            {
-                xTaskCreate(&generic_modbus_task,vfdcmd->modbus_sensor_name,1024*4,(void*)vfdcmd, 5, &vfdcmdHandle);    // this handle is important. Manged via suspend and resume
-                vTaskSuspend(vfdcmdHandle);   // start suspended, will be resumed by the blower task when the blower is started, and killed when the blower is stopped
-            }
-            else
-                MESP_LOGE(TAG, "Failed to create vfdcmd modbus task due to memory allocation failure"); 
+            //start tasks for all modbus devices
 
             if(battery)
                 xTaskCreate(&generic_modbus_task,battery->modbus_sensor_name,1024*4,(void*)battery, 5, NULL); 
@@ -267,6 +286,32 @@ void launch_sensors()
             }
             else
                 MESP_LOGE(TAG, "Failed to create VFD modbus task due to memory allocation failure"); 
+// the twin
+            if(VFDDev2)
+            {
+                xTaskCreate(&generic_modbus_task,VFDDev2->modbus_sensor_name,1024*4,(void*)VFDDev2, 6, &vfdHandle2);       // task handle will be use to start kill it
+                delay(400);  // give it some time to start and be ready to be suspended, otherwise we can have
+                vTaskSuspend(vfdHandle2);   // start suspended, will be resumed by the blower task when the blower is started, and killed when the blower is stopped
+            }
+            else
+                MESP_LOGE(TAG, "Failed to create VFD modbus 2 task due to memory allocation failure"); 
+
+            if(vfdcmd)
+            {
+                xTaskCreate(&generic_modbus_task,vfdcmd->modbus_sensor_name,1024*4,(void*)vfdcmd, 5, &vfdcmdHandle);    // this handle is important. Managed via suspend and resume
+                vTaskSuspend(vfdcmdHandle);   // start suspended, will be resumed by the blower task when the blower is started, and killed when the blower is stopped
+            }
+            else
+                MESP_LOGE(TAG, "Failed to create vfdcmd modbus task due to memory allocation failure"); 
+
+            if(vfdcmd2)
+            {
+                xTaskCreate(&generic_modbus_task,vfdcmd2->modbus_sensor_name,1024*4,(void*)vfdcmd2, 5, &vfdcmdHandle2);    // this handle is important. Managed via suspend and resume
+                vTaskSuspend(vfdcmdHandle2);   // start suspended, will be resumed by the blower task when the blower is started, and killed when the blower is stopped
+            }
+            else
+                MESP_LOGE(TAG, "Failed to create vfdcmd modbus task due to memory allocation failure"); 
+
 }
 
 void print_blower(char * title,solarSystem_t *msolar,bool dumphex)

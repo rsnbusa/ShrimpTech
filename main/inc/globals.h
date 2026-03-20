@@ -62,8 +62,8 @@ EXTERN TaskHandle_t blinkHandle;
 EXTERN TaskHandle_t ssidHandle;
 EXTERN TaskHandle_t timeKeeperHandle;
 EXTERN TaskHandle_t gpsH;
-EXTERN TaskHandle_t vfdHandle;
-EXTERN TaskHandle_t vfdcmdHandle;
+EXTERN TaskHandle_t vfdHandle,vfdHandle2;
+EXTERN TaskHandle_t vfdcmdHandle,vfdcmdHandle2;
 
 // gps
 
@@ -344,12 +344,16 @@ EXTERN energy_t energyData;
 EXTERN battery_t batteryData;
 EXTERN pvPanel_t pvPanelData;
 EXTERN sensor_t sensorData;
-EXTERN vfd_t vfdData;
-EXTERN vfdcmd_t vfdCmdData;
+EXTERN vfd_t vfdData,vfdData2;
+EXTERN vfdcmd_t vfdCmdData,vfdCmdData2;
 EXTERN inverter_t inverterData;
 EXTERN double doValue, setPoint, outputVal,KP,KI,KD;
 EXTERN float temperature;
 EXTERN start_timer_ctx_t * ctx_timers[MAXHORARIOS];
+
+
+EXTERN struct VFD          localconfig;
+EXTERN struct VFDCmd       localcmd;
 
 // ============================================================================
 // GPS Globals

@@ -101,15 +101,15 @@ descriptor_array_t* initialize_sensor_descriptors(
         {
             if (columns < 5)
             {
-                MESP_LOGI(TAG, "%s%s Descriptor %d/%d: \tOffset=%d \tStart=%d \tPoints=%d \tType=%d[%s] \tMux=%.02f",
-                    GRAY, whichDev, a, sensor_count, 
+                MESP_LOGI(TAG, "%s%s Address %d Descriptor %d/%d: \tOffset=%d \tStart=%d \tPoints=%d \tType=%d[%s] \tMux=%.02f",
+                    GRAY, whichDev,address, a,sensor_count, 
                     offset, start, points, type, 
                     TYPES_NAME[type], mux);
             }
             else
             {
-                MESP_LOGI(TAG, "%s%s Descriptor %d/%d: \tAddress=%d \tOffset=%d \tStart=%d \tPoints=%d \tType=%d[%s] \tMux=%.02f",
-                    GRAY, whichDev, a, sensor_count, 
+                MESP_LOGI(TAG, "%s%s Address %d Descriptor %d/%d: \tAddress=%d \tOffset=%d \tStart=%d \tPoints=%d \tType=%d[%s] \tMux=%.02f",
+                    GRAY, whichDev,address, a ,sensor_count, 
                     address, offset, start, points, type, 
                     TYPES_NAME[type], mux);
             }
