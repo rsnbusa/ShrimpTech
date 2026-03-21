@@ -196,6 +196,7 @@ typedef struct {
     energy_t  energy;       // offset 30 + 16 = 46 size 32
     sensor_t  sensors;      // offset 62 + 16 = 78 size 24
     wschedule_t wschedule;  // offset 86 + 16 = 102 size 14
+    vfd_t vfd;              // offset 100 + 16 = 116 size 10
 } solarSystem_t;
 
 /**
@@ -439,6 +440,28 @@ public:
      * @param[out] batBmsTemp Temperature
      */
     void getBattery(uint8_t *batSoc, uint8_t *batSOH, uint16_t *batteryCycleCount, float *batBmsTemp);
+
+    // ========================================================================
+    // VFD Data Access
+    // ========================================================================
+    
+    /**
+     * @brief Set VFD (Variable Frequency Drive) data
+     * @param mcurrent Motor current (A)
+     * @param mfreq Motor frequency (Hz)
+     * @param mvoltage Motor voltage (V)
+     * @param rpm Motor RPM
+     */
+    void setVFD(float mcurrent, uint16_t mfreq, float mvoltage, uint16_t rpm);
+    
+    /**
+     * @brief Get VFD (Variable Frequency Drive) data
+     * @param[out] mcurrent Motor current
+     * @param[out] mfreq Motor frequency
+     * @param[out] mvoltage Motor voltage
+     * @param[out] rpm Motor RPM
+     */
+    void getVFD(float *mcurrent, uint16_t *mfreq, float *mvoltage, uint16_t *mtemp);
 
     // ========================================================================
     // Energy Tracking Data Access

@@ -103,8 +103,7 @@ void cb_vfd_data(void *vfdd, int *errors,char *color,int numerrs,int devAddr,Tas
              data->mvolts,
              data->mpower,data->mrpm,RESETC);
     // save data to frame blower sensors
-            //  theBlower.setSensors( data->DO,  0,data->WTemp,
-            //             temperature, 0);
+    theBlower.setVFD(data->mcurrent,data->mvolts,data->mpower,data->mrpm);
 }
 
 /**

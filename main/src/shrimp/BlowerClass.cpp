@@ -351,6 +351,31 @@ void BlowerClass::getBattery(uint8_t *batSoc, uint8_t *batSOH, uint16_t *battery
 }
 
 // ============================================================================
+// VFD Data Access
+// ============================================================================
+
+void BlowerClass::setVFD(float mcurrent, uint16_t mvolts, float mpower, uint16_t mrpm)
+{
+    framConfig.solarSystem.vfd.mcurrent = mcurrent;
+    framConfig.solarSystem.vfd.mvolts = mvolts;
+    framConfig.solarSystem.vfd.mpower = mpower;
+    framConfig.solarSystem.vfd.mrpm = mrpm;
+    saveBlower();
+}
+
+void BlowerClass::getVFD(float *mcurrent, uint16_t *mvolts, float *mpower, uint16_t *mrpm)
+{
+    if (!mcurrent || !mvolts || !mpower || !mrpm) {
+        MESP_LOGE(MESH_TAG, "getVFD: null pointer argument");
+        return;
+    }
+    *mcurrent = framConfig.solarSystem.vfd.mcurrent;
+    *mvolts = framConfig.solarSystem.vfd.mvolts;
+    *mpower = framConfig.solarSystem.vfd.mpower;
+    *mrpm = framConfig.solarSystem.vfd.mrpm;
+}
+
+// ============================================================================
 // Energy Tracking Data Access
 // ============================================================================
 
