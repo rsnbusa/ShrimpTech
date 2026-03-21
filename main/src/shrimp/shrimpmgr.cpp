@@ -184,12 +184,12 @@ modbus_sensor_type_t * setModbusSensor(char * sensor_name,int numberDescriptors,
 
 void start_vfd(uint8_t que)
 {
-    // set data
+
     if(que)
     {
-        vfdCmdData.frequency=(uint8_t)(25 + (esp_random() % 36));
+        vfdCmdData.frequency=(uint16_t)(50 + (esp_random() % 401));
         vfdCmdData.cmd=1;
-        vfdCmdData2.frequency=(uint8_t)(25 + (esp_random() % 36));
+        vfdCmdData2.frequency=(uint16_t)(50 + (esp_random() % 401));
         vfdCmdData2.cmd=1;
         vTaskResume(vfdcmdHandle);
         vTaskResume(vfdcmdHandle2);
