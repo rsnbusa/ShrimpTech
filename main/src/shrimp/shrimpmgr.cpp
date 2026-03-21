@@ -2184,9 +2184,10 @@ void root_sntpget(void *pArg)
         
         MESP_LOGI(MESH_TAG, "SNTP Date %s", ctime((time_t*)&now));
         update_system_time_tracking(now);
-
-        xTaskCreate(&start_schedule_timers,"sched",1024*10,NULL, 5, &scheduleHandle); 	       
-        if(theConf.doParms.docontrol)
+      
+        if(!theConf.doParms.docontrol)  //either Schedule Manager or DO control not both
+              xTaskCreate(&start_schedule_timers,"sched",1024*10,NULL, 5, &scheduleHandle); 	       
+        else
             xTaskCreate(&PIDController,"PID",1024*10,NULL, 5, NULL); 	            // start the {PID} task  
 
         start_blower_if_ready();
@@ -5748,7 +5749,9 @@ void PIDController(void *pArg)
     myPID.setTimeStep(10000); // Set PID update interval to 10000ms
 
     // MUST BE AWARE of DO reading delays from the sensor and if any error to handle this scenerio
-
+// in case DO hasnt been updated read it from the Blower
+float dummy;
+theBlower.getSensors(&sensorData.DO,&dummy,&dummy,&dummy,&dummy); // get the current DO value from the blower, this is just in case we have not yet received any DO reading from the sensor task, we will get the last known DO value from the blower, this is not ideal but it is better than having a zero value for DO which can cause issues with the PID calculation, we should have some error handling mechanism to deal with this scenario more gracefully in the future, for now we will just log it and skip the PID update if DO is zero as it can cause issues with the PID calculation, but ideally we should have some error handling mechanism to deal with this scenario more gracefully.
     while (true) {
         denuevo:
         time(&now);                     // the nightonly parameter requires knowing the current time
@@ -5776,6 +5779,9 @@ void PIDController(void *pArg)
                 KD=1.0; // night time
 
         doValue=sensorData.DO; // get the current DO value from sensorsData structure that mantains all sensor readings
+        // ! WE DO NOT query the DO sensor. Thats a MODBUS device conmnected or an external DO.
+        // ! either way, they are independently managed and the data is store in sensorData.DO and updated by the respective task, so we just read the value from there and use it in the PID. We have to be aware of any delay in the DO sensor readings and if we have any error in the reading, we should handle this scenario, for now we will just log it and skip the PID update if DO is zero as it can cause issues with the PID calculation, but ideally we should have some error handling mechanism to deal with this scenario more gracefully.  
+
         if (doValue==0){
             if (((theConf.debug_flags >> dDO) & 1U)) 
                 MESP_LOGE(TAG, "DO reading is ZERO, cannot run PID");
@@ -5791,8 +5797,12 @@ void PIDController(void *pArg)
             if ((theConf.debug_flags >> dDO) & 1U) 
                 MESP_LOGI(TAG, "At setpoint");
         }
+        // else {
         // send the VFD the current outputVal to set blower speed
-        // VFDSetSpeed(outputVal); // to be implemented in blower control task
+        // if outputVal>0.0)
+        //      VFDSetSpeed(outputVal); // to be implemented in blower control task
+        // }
+        
         if ((theConf.debug_flags >> dDO) & 1U) 
             MESP_LOGI(TAG, "KD: %.4f DO: %.2f, SetPoint: %.2f, Output: %.2f", KD,doValue, setPoint, outputVal); // Log the values
 
