@@ -364,3 +364,32 @@ void cb_panel_data(void *pvPanel, int *errors,char * color,int numerrs,int devAd
     // save data to frame blower Panels
     theBlower.setPVPanel(data->chargeCurr, data->pv1Volts, data->pv2Volts,data->pv1Amp, data->pv2Amp);  
 }
+
+// ============================================================================
+// Inverter Status
+// ============================================================================
+
+/**
+ * @brief Print inverter status data for debugging
+ * 
+ * Logs inverter monitoring data including operational state and various
+ * electrical parameters.
+ * 
+ * @param inverter Pointer to inverter_t data structure
+ * @param errors Pointer to error code array
+ * @param color String representing the color for logging
+ * @param numerrs Number of error codes
+ * @note Only prints if MODBUS debug flag is enabled and no errors occurred
+ */
+void cb_inverter_status(void *inverter, int *errors,char * color,int numerrs,int devAddr,TaskHandle_t theHandle)
+{
+    inverter_t *data = (inverter_t*)inverter;
+
+    // if (!((theConf.debug_flags >> dMODBUS) & 1U))
+    //     return;
+
+        
+    MESP_LOGI(TAG, "%s[%3d] Inverter Status %d ", color, devAddr,data->inverter_status);
+
+    // save data to frame blower Panels
+}

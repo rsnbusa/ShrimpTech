@@ -162,11 +162,11 @@ struct attribute s_remoteLevels_attributes[] = {
 struct attribute s_Inverter_attributes[] = {
   {"refresh", "int", NULL, offsetof(struct Inverter, refresh), 0, false},
   {"address", "int", NULL, offsetof(struct Inverter, address), 0, false},
-  {"offset", "int", NULL, offsetof(struct Inverter, offset), 0, false},
-  {"start", "int", NULL, offsetof(struct Inverter, start), 0, false},
-  {"points", "int", NULL, offsetof(struct Inverter, points), 0, false},
+  {"mux", "double", NULL, offsetof(struct Inverter, mux), 0, false},
   {"type", "int", NULL, offsetof(struct Inverter, type), 0, false},
-  {"mux", "int", NULL, offsetof(struct Inverter, mux), 0, false},
+  {"points", "int", NULL, offsetof(struct Inverter, points), 0, false},
+  {"start", "int", NULL, offsetof(struct Inverter, start), 0, false},
+  {"offset", "int", NULL, offsetof(struct Inverter, offset), 0, false},
   {NULL, NULL, NULL, 0, 0, false}
 };
 struct attribute s_VFDCmd_attributes[] = {

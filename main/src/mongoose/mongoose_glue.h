@@ -124,11 +124,11 @@ void glue_set_remoteLevels(struct remoteLevels *);
 struct Inverter {
   int refresh;
   int address;
-  int offset;
-  int start;
-  int points;
+  double mux;
   int type;
-  int mux;
+  int points;
+  int start;
+  int offset;
 };
 void glue_get_Inverter(struct Inverter *);
 void glue_set_Inverter(struct Inverter *);

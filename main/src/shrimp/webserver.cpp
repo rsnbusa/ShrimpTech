@@ -1169,6 +1169,8 @@ void my_get_modbBattery(struct modbBattery *data) // return limits saved in theb
 void my_set_Inverter(struct Inverter *data) // save limits from web to theblower
 {
 	theConf.inverter=*data;
+	printf("Inverter Status Refresh %d Address %d Offset %d Start %d Points %d Type %d Mux %d\n",
+		data->refresh,data->address,data->offset,data->start,data->points,data->type,data->mux);
 	write_to_flash();
 }
 

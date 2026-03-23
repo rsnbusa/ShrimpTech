@@ -81,6 +81,7 @@ void cb_panel_data(void* pvPanel, int *errors,char * color,int numerrs,int devAd
 void cb_sensor_data(void *sensors,  int *errors,char *color,int numerrs,int devAdd,TaskHandle_t theHandle);
 void cb_vfd_data(void *vfdd,  int *errors,char *color,int numerrs,int devAdd,TaskHandle_t theHandle);
 void cb_vfd_cmd(void *vfdd,  int *errors,char *color,int numerrs,int devAdd,TaskHandle_t theHandle);
+void cb_inverter_status(void *vfdd,  int *errors,char *color,int numerrs,int devAdd,TaskHandle_t theHandle);
  descriptor_array_t * initialize_sensor_descriptors( void *sensorinfoin,
                 char *whichDev,int MAXSENSORS,int columns,int *count);
 // ============================================================================

@@ -245,7 +245,7 @@ void launch_sensors()
             localconfig.address++;
             modbus_sensor_type_t *VFDDev2=setModbusSensor((char*)"VFDData2",4,4,
                 (void*)&localconfig,DBG_VFD,(void*)&vfdData2,sizeof(vfdData2),&cb_vfd_data,true);
-// restore address for whatever reasons
+// restore address for whatever reasons 
 
             // VFD Cmd Modbus Device same iodea as above
             modbus_sensor_type_t *vfdcmd=setModbusSensor((char*)"VFDCmd",2,4,
@@ -255,6 +255,12 @@ void launch_sensors()
             localcmd.address++;
             modbus_sensor_type_t *vfdcmd2=setModbusSensor((char*)"VFDCmd2",2,4,
                 (void*)&localcmd,DBG_VFD,(void*)&vfdCmdData,sizeof(vfdCmdData),&cb_vfd_cmd,false);  
+
+
+            // Inverter Status Modbus Device
+            modbus_sensor_type_t *invstatus=setModbusSensor((char*)"invstat",1,4,
+                (void*)&theConf.inverter,DBG_INVSTATUS,(void*)&inverterData,sizeof(inverterData),&cb_inverter_status,true);
+
 
             //start tasks for all modbus devices
 
@@ -277,6 +283,12 @@ void launch_sensors()
                 xTaskCreate(&generic_modbus_task,sensorDev->modbus_sensor_name,1024*4,(void*)sensorDev, 5, NULL); 
             else
                 MESP_LOGE(TAG, "Failed to create Sensors modbus task due to memory allocation failure"); 
+
+            if(invstatus)
+                xTaskCreate(&generic_modbus_task,invstatus->modbus_sensor_name,1024*4,(void*)invstatus, 5, NULL); 
+            else
+                MESP_LOGE(TAG, "Failed to create Inverter status modbus task due to memory allocation failure"); 
+
 
             if(VFDDev)
             {
@@ -316,6 +328,7 @@ void launch_sensors()
             else
                 MESP_LOGE(TAG, "Failed to create vfdcmd modbus task due to memory allocation failure"); 
 
+                
 }
 
 void print_blower(char * title,solarSystem_t *msolar,bool dumphex)

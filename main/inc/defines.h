@@ -265,6 +265,7 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 #define DBG_ENERGY					    "\e[35m[ENERGY]"                
 #define DBG_SENSORS					    "\e[34m[SENSORS]"                
 #define DBG_VFD					        "\e[33m[VFD]"                
+#define DBG_INVSTATUS   		        "\e[93m[INVSTATUS]"                
 
 #define BLACKC							"\e[30m"
 #define BLUE							"\e[34m"
