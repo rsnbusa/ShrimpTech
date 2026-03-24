@@ -388,6 +388,8 @@ void cb_inverter_status(void *inverter, int *errors,char * color,int numerrs,int
     // if (!((theConf.debug_flags >> dMODBUS) & 1U))
     //     return;
 
+        // if an error or time out (specailly this) a genreal alarm should be sent after X tries
+        // no inverter is no data....
         
     MESP_LOGI(TAG, "%s[%3d] Inverter Status %d ", color, devAddr,data->inverter_status);
 
