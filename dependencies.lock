@@ -21,17 +21,17 @@ dependencies:
       type: service
     version: 1.0.18
   espressif/esp_lcd_sh1107:
-    component_hash: 9cc00a4d066e3e1d120fd2006d30612766488379b820804092a9bfedb3c1f93c
+    component_hash: ca21f114b60c756e6c5adc7d173f1572d2f4f64fb7b6370ba82a21d92789e1e9
     dependencies:
     - name: idf
       require: private
-      version: '>=4.4'
+      version: '>=5.2'
     source:
       registry_url: https://components.espressif.com/
       type: service
-    version: 1.1.0
+    version: 1.1.0~1
   espressif/onewire_bus:
-    component_hash: 11729fd9a5de80225177a61e9cd77de91683b8ec300e83710d5327b666dbe884
+    component_hash: d709015ba466095259228521cf1bad9c0cdaaa42a92ea5d9c88ec6c28ae89e9b
     dependencies:
     - name: idf
       require: private
@@ -39,7 +39,7 @@ dependencies:
     source:
       registry_url: https://components.espressif.com
       type: service
-    version: 1.0.4
+    version: 1.1.0
   hayschan/autopid_for_esp_idf:
     component_hash: abb01ee57353d22df70c27840ddec00b90544540c9a78ec18932737d7fbb7878
     dependencies: []
@@ -50,7 +50,7 @@ dependencies:
   idf:
     source:
       type: idf
-    version: 5.5.2
+    version: 5.5.4
   lvgl/lvgl:
     component_hash: 2409fdc84e9766d2a18afd84b051aef3f838348136cdb1c10ac2e8bcdb012bf6
     dependencies: []
@@ -61,7 +61,7 @@ dependencies:
   mb_example_common:
     dependencies: []
     source:
-      path: /Users/rsn/esp/v5.5.1/esp-idf/examples/protocols/modbus/mb_example_common
+      path: /volumes/macdata/.espressif/v5.5.4/esp-idf/examples/protocols/modbus/mb_example_common
       type: local
     version: '*'
 direct_dependencies:
