@@ -377,13 +377,13 @@ void show_lvgl(void *showLVGL)
                     lv_style_set_text_font(&style, &lv_font_montserrat_14);
                     break;
                 case 1:
-                    lv_style_set_text_font(&style, &lv_font_montserrat_18); 
+                    lv_style_set_text_font(&style, &lv_font_montserrat_14); 
                     break;
                 case 2:
-                    // lv_style_set_text_font(&style, &lv_font_montserrat_22); 
+                    // lv_style_set_text_font(&style, &lv_font_montserrat_14); 
                     break;
                 case 3:
-                    lv_style_set_text_font(&style, &lv_font_montserrat_30); 
+                    lv_style_set_text_font(&style, &lv_font_montserrat_14); 
                     break;
                 default:
                     lv_style_set_text_font(&style, &lv_font_montserrat_14);
@@ -5544,7 +5544,7 @@ bool spiffs_register_and_mount(const char* partition_label)
     esp_vfs_spiffs_conf_t conf = {
         .base_path = "/spiffs",
         .partition_label = partition_label,
-        .max_files = 2,
+        .max_files = 10,
         .format_if_mount_failed = true
     };
 
@@ -5627,14 +5627,12 @@ bool spiffs_verify_partition_info(const char* partition_label)
  */
 void app_spiffs_log(void)
 {
-    MESP_LOGI(TAG, "Initializing SPIFFS Logs");
+    MESP_LOGI(TAG, "Performing SPIFFS integrity checks");
     
     const char* partition_label = "profile";
     
-    if (!spiffs_register_and_mount(partition_label)) {
-        return;
-    }
-    
+    // Note: SPIFFS is already mounted by logFileInit()
+    // Just perform consistency checks
     if (!spiffs_perform_check(partition_label)) {
         return;
     }

@@ -28,7 +28,8 @@
 #define LOG_BUFFER_SIZE         500
 #define LOG_MOUNT_POINT         "/spiffs"
 #define LOG_FILE_PATH           "/spiffs/log.txt"
-#define LOG_MAX_FILES           2
+#define LOG_MAX_FILES           10
+#define LOG_MAX_FILE_SIZE       65536  // 64KB max before recycling
 #define TIMESTAMP_FORMAT        "[%d-%02d-%02d %02d:%02d:%02d] %s\n"
 
 // ===================================================================
@@ -180,7 +181,7 @@ void logFileInit()
 {
     esp_vfs_spiffs_conf_t conf = {
         .base_path = LOG_MOUNT_POINT,
-        .partition_label = NULL,
+        .partition_label = "profile",
         .max_files = LOG_MAX_FILES,
         .format_if_mount_failed = true
     };
@@ -210,16 +211,18 @@ void logFileInit()
     
     if(result != ESP_OK)
     {
-        MESP_LOGE("LOG", "Failed to get SPIFFS partition info: %s. Formatting...", 
+        MESP_LOGW("LOG", "Failed to get SPIFFS partition info: %s. Formatting...", 
                  esp_err_to_name(result));
         esp_spiffs_format(conf.partition_label);
-        return;
+        // Continue to open file after formatting
     }
-    
-    // Calculate and display usage percentage
-    int usagePercent = (totalBytes > 0) ? (usedBytes * 100 / totalBytes) : 0;
-    MESP_LOGI("LOG", "SPIFFS - Total: %d bytes, Used: %d bytes (%d%%)", 
-             totalBytes, usedBytes, usagePercent);
+    else
+    {
+        // Calculate and display usage percentage only if info was retrieved successfully
+        int usagePercent = (totalBytes > 0) ? (usedBytes * 100 / totalBytes) : 0;
+        MESP_LOGI("LOG", "SPIFFS - Total: %d bytes, Used: %d bytes (%d%%)", 
+                 totalBytes, usedBytes, usagePercent);
+    }
     
     // Open log file in append mode
     myFile = fopen(LOG_FILE_PATH, "a");

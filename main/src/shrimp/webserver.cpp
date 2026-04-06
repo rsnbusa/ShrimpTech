@@ -21,6 +21,7 @@
 #include "includes.h"
 #include "globals.h"
 #include "mongoose_glue.h"
+#include <errno.h>
 
 // Configuration state constants
 #define CONF_STATE_UNCONFIGURED  0
@@ -954,9 +955,27 @@ void my_set_profile(struct profile *data)
 	FILE* f = fopen(PROFILE_FILE, "w");
 	if (f == NULL)
 	{
-		MESP_LOGE(TAG, "Failed to open profile file for writing: %s", PROFILE_FILE);
-		cJSON_Delete(prof_root);
-		return;
+		// If out of space (errno 28), clear log file and retry
+		if (errno == 28)  // ENOSPC - No space left on device
+		{
+			MESP_LOGW(TAG, "SPIFFS full (errno 28), clearing log file to make space for profile");
+			remove("/spiffs/log.txt");
+			
+			// Retry opening profile file after clearing log
+			f = fopen(PROFILE_FILE, "w");
+			if (f == NULL)
+			{
+				MESP_LOGE(TAG, "Failed to open profile file after clearing log (errno: %d)", errno);
+				cJSON_Delete(prof_root);
+				return;
+			}
+		}
+		else
+		{
+			MESP_LOGE(TAG, "Failed to open profile file for writing: %s (errno: %d)", PROFILE_FILE, errno);
+			cJSON_Delete(prof_root);
+			return;
+		}
 	}
 	
 	size_t written = fprintf(f, "%s", s_profile.schedule);
@@ -1222,7 +1241,7 @@ void app_spiffs(void)
     esp_vfs_spiffs_conf_t conf = {
       .base_path = "/spiffs",
       .partition_label = "profile",
-      .max_files = 2,
+      .max_files = 10,
       .format_if_mount_failed = true
     };
 
