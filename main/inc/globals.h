@@ -229,7 +229,7 @@ EXTERN wstate_t webState;
 // SECURITY & ENCRYPTION
 // ============================================================================
 
-EXTERN esp_aes_context actx;
+// EXTERN esp_aes_context actx;
 EXTERN char iv[16];
 EXTERN char key[32];
 

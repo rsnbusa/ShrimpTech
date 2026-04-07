@@ -50,7 +50,6 @@ static void registerAllCommands()
     ESP_ERROR_CHECK(esp_console_cmd_register(&erase_cmd));
     ESP_ERROR_CHECK(esp_console_cmd_register(&loglevel_cmd));
     ESP_ERROR_CHECK(esp_console_cmd_register(&resetconf_cmd));
-    ESP_ERROR_CHECK(esp_console_cmd_register(&aes_cmd));
     ESP_ERROR_CHECK(esp_console_cmd_register(&app_cmd));
     ESP_ERROR_CHECK(esp_console_cmd_register(&log_cmd));
     ESP_ERROR_CHECK(esp_console_cmd_register(&findunit_cmd));
@@ -272,14 +271,6 @@ void kbd(void *pArg)
         .hint = NULL,
         .func = &cmdBlow,
         .argtable = &blowArgs
-    };
-
-    aes_cmd = {
-        .command = "aes",
-        .help = "Encrypt Decrypt",
-        .hint = NULL,
-        .func = &cmdEnDecrypt,
-        .argtable = &endec
     };
 
      security_cmd = {

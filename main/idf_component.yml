@@ -2,8 +2,8 @@ dependencies:
   lvgl/lvgl: 9.2.0
   esp_lcd_sh1107: ^1
   espressif/esp-modbus:
-    version: ^1.0
-  mb_example_common:
-    path: ${IDF_PATH}/examples/protocols/modbus/mb_example_common
+    version: ^2
   hayschan/autopid_for_esp_idf: ^1.0.2
   espressif/ds18b20: ^0.2.0
+  espressif/cjson: ^1.7.19
+  espressif/mqtt: '*'

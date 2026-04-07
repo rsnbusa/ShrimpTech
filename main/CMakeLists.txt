@@ -45,7 +45,7 @@ set(KBD_SOURCES
     src/kbd/cmdBlow.cpp
     src/kbd/cmdConfig.cpp
     src/kbd/cmdDebug.cpp
-    src/kbd/cmdEnDecrypt.cpp
+    # src/kbd/cmdEnDecrypt.cpp
     src/kbd/cmdErase.cpp
     src/kbd/cmdFindUnit.cpp
     src/kbd/cmdFram.cpp
@@ -64,7 +64,7 @@ set(CORE_SOURCES
     src/shrimp/displayManager.cpp
     src/shrimp/FramI2C.cpp
     src/shrimp/kbd.cpp
-    src/shrimp/lcd.cpp
+    # src/shrimp/lcd.cpp
     src/shrimp/logmanager.cpp
     src/shrimp/mesh_netif.c
     src/shrimp/shrimpmgr.cpp
@@ -83,7 +83,7 @@ set(MODBUS_SOURCES
 
 #utilities functions
 set(UTILS_SOURCES
-    src/utilities/crypto_utils.cpp
+ #   src/utilities/crypto_utils.cpp
     src/utilities/time_utils.cpp
     src/utilities/led_utils.cpp
     )
@@ -162,7 +162,6 @@ idf_component_register(
         mqtt
         
         # Storage & data
-        json
         spiffs
         
         # Application components

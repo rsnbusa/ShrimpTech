@@ -38,6 +38,12 @@
 #include "services/gap/ble_svc_gap.h"
 #include "services/gatt/ble_svc_gatt.h"
 
+// ============================================================================
+// MODBUS
+// ============================================================================
+#include "mbcontroller.h"
+#include "misparams.h"  // Modbus parameter structures
+
 extern "C" {
 #include "nmea_parser.h"
 // ============================================================================
@@ -60,6 +66,7 @@ extern "C" {
 #include "esp_err.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include "esp_log_buffer.h"
 #include "esp_mac.h"
 #include "esp_netif.h"
 #include "esp_random.h"
@@ -106,7 +113,7 @@ extern "C" {
 // ============================================================================
 // SECURITY/CRYPTO
 // ============================================================================
-#include "aes_alt.h"  // HW acceleration
+// #include "aes_alt.h"  // HW acceleration
 
 // ============================================================================
 // THIRD-PARTY LIBRARIES
@@ -114,12 +121,6 @@ extern "C" {
 #include "argtable3/argtable3.h"
 #include "cJSON.h"
 #include "lvgl.h"
-
-// ============================================================================
-// MODBUS
-// ============================================================================
-#include "mbcontroller.h"
-#include "misparams.h"  // Modbus parameter structures
 
 // ============================================================================
 // PROJECT COMPONENTS

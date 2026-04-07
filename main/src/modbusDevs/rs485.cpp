@@ -10,56 +10,54 @@
 // Constants
 static constexpr int MODBUS_PORT = 1;
 static constexpr int MODBUS_BAUD = 9600;
-static constexpr mb_mode_type_t MODBUS_MODE = (mb_mode_type_t)0;
 static constexpr uart_mode_t MODBUS_UART_MODE = UART_MODE_RS485_HALF_DUPLEX;
 static constexpr TickType_t POLL_DELAY_MS = 500;
 static constexpr uint8_t ERROR_FILL = 0xFF;
 static constexpr size_t ERROR_BUF_LEN = 20;
 
+static void *g_master_handle = NULL;
+static bool g_master_started = false;
+
 
 // Modbus master initialization
 static esp_err_t master_init(void)
 {
-     esp_log_level_set("MB_CONTROLLER_MASTER", (esp_log_level_t)0);
+    if (g_master_handle != NULL) {
+        return ESP_OK;
+    }
 
-     // Initialize and start Modbus controller
-    mb_communication_info_t comm = {
-        .mode = MODBUS_MODE,
-        .port = (uart_port_t)MODBUS_PORT,
-        .baudrate = MODBUS_BAUD,
-        .parity = MB_PARITY_NONE
-    };
-    void* master_handler = NULL;
+    esp_log_level_set("mb_object.master", ESP_LOG_NONE);
+    esp_log_level_set("mbc_serial.master", ESP_LOG_NONE);
 
-    esp_err_t err = mbc_master_init(MB_PORT_SERIAL_MASTER, &master_handler);
-    MB_RETURN_ON_FALSE((master_handler != NULL), ESP_ERR_INVALID_STATE, TAG,
+    // Initialize and start Modbus controller
+    mb_communication_info_t comm = {};
+    comm.ser_opts.port = (uart_port_t)MODBUS_PORT;
+    comm.ser_opts.mode = MB_RTU;
+    comm.ser_opts.baudrate = MODBUS_BAUD;
+    comm.ser_opts.parity = MB_PARITY_NONE;
+    comm.ser_opts.uid = 0;
+    comm.ser_opts.response_tout_ms = 1000;
+    comm.ser_opts.data_bits = UART_DATA_8_BITS;
+    comm.ser_opts.stop_bits = UART_STOP_BITS_1;
+
+    esp_err_t err = mbc_master_create_serial(&comm, &g_master_handle);
+    MB_RETURN_ON_FALSE((g_master_handle != NULL), ESP_ERR_INVALID_STATE, TAG,
                                 "mb controller initialization fail.");
     MB_RETURN_ON_FALSE((err == ESP_OK), ESP_ERR_INVALID_STATE, TAG,
                             "mb controller initialization fail, returns(0x%x).", (int)err);
-    err = mbc_master_setup((void*)&comm);
-    MB_RETURN_ON_FALSE((err == ESP_OK), ESP_ERR_INVALID_STATE, TAG,
-                            "mb controller setup fail, returns(0x%x).", (int)err);
 
-                            
     // Set UART pin numbers
     err = uart_set_pin((uart_port_t)MODBUS_PORT, RS485RX, RS485TX,
                               RS485RTS, UART_PIN_NO_CHANGE);
     MB_RETURN_ON_FALSE((err == ESP_OK), ESP_ERR_INVALID_STATE, TAG,
         "mb serial set pin failure, uart_set_pin() returned (0x%x).", (int)err);
 
-    err = mbc_master_start();
-    MB_RETURN_ON_FALSE((err == ESP_OK), ESP_ERR_INVALID_STATE, TAG,
-                            "mb controller start fail, returned (0x%x).", (int)err);
-
     // Set driver mode to Half Duplex
     err = uart_set_mode((uart_port_t)MODBUS_PORT, MODBUS_UART_MODE);
     MB_RETURN_ON_FALSE((err == ESP_OK), ESP_ERR_INVALID_STATE, TAG,
             "mb serial set mode failure, uart_set_mode() returned (0x%x).", (int)err);
 
-    if ((theConf.debug_flags >> dMODBUS) & 1U) {
-        MESP_LOGI(TAG, "Modbus master stack initialized...");
-    }
-    vTaskDelay(pdMS_TO_TICKS(5));
+    g_master_started = false;
     return err;
 }
 
@@ -70,7 +68,7 @@ will be set in the options parameter of the descriptor
 uint8_t type = 0; // Type of parameter
 uint8_t temp_data[4] = {0}; // temporary buffer
 
-esp_err_t err = mbc_master_set_parameter(CID_TEMP_DATA_2, "Temperature_2", (uint8_t*)temp_data, &type);
+esp_err_t err = mbc_master_set_parameter(g_master_handle, CID_TEMP_DATA_2, (uint8_t*)temp_data, &type);
 if (err == ESP_OK) {
     ESP_LOGI(TAG, "Set parameter data successfully.");
 } else {
@@ -108,7 +106,7 @@ void rs485_task_manager(void *arg)
             }
             // printf("RSQueue set descriptors\n");
             // set descriptors for this message
-            err = mbc_master_set_descriptor(mensaje.descriptors, mensaje.numCids);
+            err = mbc_master_set_descriptor(g_master_handle, mensaje.descriptors, mensaje.numCids);
             if (err != ESP_OK)
             {
                 MESP_LOGE(TAG, "Set descriptor fail, err = 0x%x (%s)", (int)err, esp_err_to_name(err));
@@ -117,6 +115,24 @@ void rs485_task_manager(void *arg)
                 xTaskNotifyGive(mensaje.requester);
                 goto again;
             }
+
+            if (!g_master_started)
+            {
+                vTaskDelay(pdMS_TO_TICKS(5));
+                err = mbc_master_start(g_master_handle);
+                if (err != ESP_OK)
+                {
+                    MESP_LOGE(TAG, "mb controller start fail, returned (0x%x)", (int)err);
+                    memset(mensaje.errCode, ERROR_FILL, ERROR_BUF_LEN);
+                    xTaskNotifyGive(mensaje.requester);
+                    goto again;
+                }
+                g_master_started = true;
+                if ((theConf.debug_flags >> dMODBUS) & 1U) {
+                    MESP_LOGI(TAG, "Modbus master stack initialized...");
+                }
+            }
+
             // printf("RSQueue read all cids %d\n",mensaje.numCids);
                 // Read all found characteristics from slave(s)
             for (uint16_t cid = 0; cid < mensaje.numCids; cid++)
@@ -125,7 +141,7 @@ void rs485_task_manager(void *arg)
                 // and use this information to fill the characteristics description table
                 // and having all required fields in just one table
                 // printf("RSQueue requesting cid %d\n",cid);
-                err = mbc_master_get_cid_info(cid, &param_descriptor);
+                err = mbc_master_get_cid_info(g_master_handle, cid, &param_descriptor);
                 if ((err != ESP_ERR_NOT_FOUND) && (param_descriptor != NULL) && 
                     (param_descriptor->mb_param_type == MB_PARAM_HOLDING))
                 {
@@ -139,16 +155,16 @@ void rs485_task_manager(void *arg)
                             // mensaje.dataReceiver);
         
                         // this is the actual request from master to slave (stupid name for routine)
-                        if(param_descriptor->access==PAR_PERMS_READ)
+                        if (param_descriptor->access & PAR_PERMS_READ)
                         {
-                             err = mbc_master_get_parameter(cid, (char*)param_descriptor->param_key,
+                             err = mbc_master_get_parameter(g_master_handle, cid,
                                                             (uint8_t*)temp_data_ptr, &type);
                         }
-                        else if(param_descriptor->access==PAR_PERMS_WRITE)
+                        else if (param_descriptor->access & PAR_PERMS_WRITE)
                         {
-                            err = mbc_master_set_parameter(cid, (char*)param_descriptor->param_key,
+                            err = mbc_master_set_parameter(g_master_handle, cid,
                                                             (uint8_t*)temp_data_ptr, &type);
-                            // esp_log_buffer_hex("WRITE", (void*)temp_data_ptr, 10);
+                            // ESP_LOG_BUFFER_HEX("WRITE", (void*)temp_data_ptr, 10);
                         }
                         if (err == ESP_OK) 
                             mensaje.errCode[cid] = ESP_OK;   // success
@@ -189,5 +205,9 @@ void rs485_task_manager(void *arg)
     }
 // should not happend 
     MESP_LOGI(TAG, "Destroy master...");
-    ESP_ERROR_CHECK(mbc_master_destroy());
+    if (g_master_handle != NULL) {
+        ESP_ERROR_CHECK(mbc_master_delete(g_master_handle));
+        g_master_handle = NULL;
+        g_master_started = false;
+    }
 }

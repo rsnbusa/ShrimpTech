@@ -337,7 +337,7 @@ void print_blower(char * title,solarSystem_t *msolar,bool dumphex)
     {
         printf("From %s\n",title);
         if(dumphex)
-            esp_log_buffer_hex("SOL",msolar,sizeof(solarSystem_t));
+            ESP_LOG_BUFFER_HEX("SOL",msolar,sizeof(solarSystem_t));
         printf("Charge Curr %d pv1V %.02f pv2V %.02f pv1Amp %.02f pv2Amp %.02f\n",msolar->pvPanel.chargeCurr,msolar->pvPanel.pv1Volts,msolar->pvPanel.pv2Volts,msolar->pvPanel.pv1Amp,msolar->pvPanel.pv2Amp); 
         printf("Bat SOC %d SOH %d Cycles %d Temp %.02f \n",msolar->battery.batSOC,msolar->battery.batSOH,msolar->battery.batteryCycleCount,msolar->battery.batBmsTemp); 
         printf("Enery ChgAHToday %d DischAHToday %d ChgAHTotal %d DiscAHTotal %d GenToday %.02f UsedToday %.02f \
@@ -1962,7 +1962,7 @@ void mesh_manager(mesh_addr_t *from, mesh_data_t *data)
     cJSON *cualm = cJSON_GetObjectItem(elcmd, "cmd");
     if (!cualm) {
         MESP_LOGI(MESH_TAG, "MeshMgr Internal cJSON but no CMD found");
-        esp_log_buffer_hex(MESH_TAG, data->data, 60);
+        ESP_LOG_BUFFER_HEX(MESH_TAG, data->data, 60);
         cJSON_Delete(elcmd);
         return;
     }
@@ -3180,7 +3180,7 @@ void init_global_state_flags(void)
     memset(MESH_ID, 0x77, 6);
     uint8_t pool_id = theConf.poolid;
     memcpy(&MESH_ID[5], &pool_id, 1);
-    esp_log_buffer_hex(MESH_TAG, &MESH_ID, 6);
+    ESP_LOG_BUFFER_HEX(MESH_TAG, &MESH_ID, 6);
     
     // MQTT state
     mqttf = false;
@@ -3319,7 +3319,7 @@ void init_gpio_pins(void)
  */
 void init_crypto_engine(void)
 {
-    esp_aes_init(&actx);
+    // esp_aes_init(&actx);
 }
 
 /**
@@ -4731,7 +4731,7 @@ void start_mesh(void)
     mesh_cfg_t cfg;
     setup_mesh_config(&cfg, ssid, password);
     
-    esp_log_buffer_hex("MESHID", &cfg.mesh_id, 6);
+    ESP_LOG_BUFFER_HEX("MESHID", &cfg.mesh_id, 6);
     
     if (!apply_mesh_config(&cfg)) {
         return;

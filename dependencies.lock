@@ -1,4 +1,14 @@
 dependencies:
+  espressif/cjson:
+    component_hash: e788323270d90738662d66fffa910bfe1fba019bba087f01557e70c40485b469
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=5.0'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 1.7.19~2
   espressif/ds18b20:
     component_hash: 9792f38a20eb2fe7435cba349e3b4b7085381f05400233aacd849ced69e2207f
     dependencies:
@@ -11,15 +21,15 @@ dependencies:
       type: service
     version: 0.2.0
   espressif/esp-modbus:
-    component_hash: 5d5e90b9e55721a8a194b301ad8102d4affb647f47b74cd413ff7d1ce2c1169c
+    component_hash: 56be3df9f436ce30ee513b9c4a77db13b0c3d6c1f52ee48f2198e7aba4319d3c
     dependencies:
     - name: idf
       require: private
-      version: '>=4.3'
+      version: '>=5.0'
     source:
       registry_url: https://components.espressif.com/
       type: service
-    version: 1.0.18
+    version: 2.1.2
   espressif/esp_lcd_sh1107:
     component_hash: ca21f114b60c756e6c5adc7d173f1572d2f4f64fb7b6370ba82a21d92789e1e9
     dependencies:
@@ -30,6 +40,16 @@ dependencies:
       registry_url: https://components.espressif.com/
       type: service
     version: 1.1.0~1
+  espressif/mqtt:
+    component_hash: ffdad5659706b4dc14bc63f8eb73ef765efa015bf7e9adf71c813d52a2dc9342
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=5.3'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 1.0.0
   espressif/onewire_bus:
     component_hash: d709015ba466095259228521cf1bad9c0cdaaa42a92ea5d9c88ec6c28ae89e9b
     dependencies:
@@ -50,7 +70,7 @@ dependencies:
   idf:
     source:
       type: idf
-    version: 5.5.4
+    version: 6.0.0
   lvgl/lvgl:
     component_hash: 2409fdc84e9766d2a18afd84b051aef3f838348136cdb1c10ac2e8bcdb012bf6
     dependencies: []
@@ -58,19 +78,14 @@ dependencies:
       registry_url: https://components.espressif.com/
       type: service
     version: 9.2.0
-  mb_example_common:
-    dependencies: []
-    source:
-      path: /volumes/macdata/.espressif/v5.5.4/esp-idf/examples/protocols/modbus/mb_example_common
-      type: local
-    version: '*'
 direct_dependencies:
+- espressif/cjson
 - espressif/ds18b20
 - espressif/esp-modbus
 - espressif/esp_lcd_sh1107
+- espressif/mqtt
 - hayschan/autopid_for_esp_idf
 - lvgl/lvgl
-- mb_example_common
-manifest_hash: 89a53d2a5bc70e1c40000d5221a8c06265b2be657765a7dfc93aac0d6da1528d
+manifest_hash: 7a1725a1651870f6a41aebb57a169f8409d5538ca6dbc52dd6c3061a530490d1
 target: esp32s3
-version: 2.0.0
+version: 3.0.0
