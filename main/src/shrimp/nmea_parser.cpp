@@ -61,6 +61,8 @@ extern config_flash theConf;
 #define NMEA_PARSER_RUNTIME_BUFFER_SIZE (CONFIG_NMEA_PARSER_RING_BUFFER_SIZE / 2)
 #define NMEA_MAX_STATEMENT_ITEM_LENGTH (16)
 #define NMEA_EVENT_LOOP_QUEUE_SIZE (16)
+#define NMEA_PATTERN_QUEUE_MIN (32)
+#define NMEA_PATTERN_QUEUE_MULTIPLIER (4)
 
 /**
  * @brief Define of NMEA Parser Event base
@@ -626,20 +628,25 @@ static esp_err_t gps_decode(esp_gps_t *esp_gps, size_t len)
  */
 static void esp_handle_uart_pattern(esp_gps_t *esp_gps)
 {
-    int pos = uart_pattern_pop_pos(esp_gps->uart_port);
-    if (pos != -1) {
-        /* read one line(include '\n') */
+    int pos = -1;
+    while ((pos = uart_pattern_pop_pos(esp_gps->uart_port)) != -1) {
+        if (pos >= (NMEA_PARSER_RUNTIME_BUFFER_SIZE - 1)) {
+            ESP_LOGW(GPS_TAG, "GPS line too long (%d), flushing input", pos);
+            uart_flush_input(esp_gps->uart_port);
+            continue;
+        }
+
+        /* read one line (include '\n') */
         int read_len = uart_read_bytes(esp_gps->uart_port, esp_gps->buffer, pos + 1, 100 / portTICK_PERIOD_MS);
+        if (read_len <= 0) {
+            continue;
+        }
+
         /* make sure the line is a standard string */
         esp_gps->buffer[read_len] = '\0';
-        /* Send new line to handle */
-        // printf("In [%s]\n",esp_gps->buffer);
         if (gps_decode(esp_gps, read_len + 1) != ESP_OK) {
             ESP_LOGW(GPS_TAG, "GPS decode line failed");
         }
-    } else {
-        ESP_LOGW(GPS_TAG, "Pattern Queue Size too small");
-        uart_flush_input(esp_gps->uart_port);
     }
 }
 
@@ -768,8 +775,14 @@ nmea_parser_handle_t nmea_parser_init(const nmea_parser_config_t *config)
         
     /* Set pattern interrupt, used to detect the end of a line */
     uart_enable_pattern_det_baud_intr(esp_gps->uart_port, '\n', 1, 9, 0, 0);
-    /* Set pattern queue size */
-    uart_pattern_queue_reset(esp_gps->uart_port, config->uart.event_queue_size*2);
+    /* Set a larger pattern queue so bursty UART traffic does not overflow. */
+    int pattern_queue_size = config->uart.event_queue_size * NMEA_PATTERN_QUEUE_MULTIPLIER;
+    if (pattern_queue_size < NMEA_PATTERN_QUEUE_MIN) {
+        pattern_queue_size = NMEA_PATTERN_QUEUE_MIN;
+    }
+    if (uart_pattern_queue_reset(esp_gps->uart_port, pattern_queue_size) != ESP_OK) {
+        MESP_LOGW(GPS_TAG, "failed to reset pattern queue");
+    }
     uart_flush(esp_gps->uart_port);
     /* Create Event loop */
     esp_event_loop_args_t loop_args = {
