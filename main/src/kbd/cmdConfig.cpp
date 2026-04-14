@@ -534,7 +534,7 @@ void show_first_profile()
     
 //     printf("%s\n", MAGENTA);
     printf("┌──────────────────────────────────────────────────────────────────┐\n");
-    printf("│%s%s                      FIRST PROFILE DETAILS                       %s│\n",RESETC,BK_MAGENTA,RESETC);
+    printf("│%s%s                        SCHEDULER PROFILE                         %s│\n",RESETC,BK_MAGENTA,RESETC);
     printf("├──────────────────────────────────────────────────────────────────┤\n");
        //  printf("%s", RESETC);
     printf("│ Name:            %-47s │\n", profile->name);
@@ -583,6 +583,69 @@ void show_first_profile()
                        j, (int)horario->hourStart, (int)horario->minutesStart, (int)horario->horarioLen, horario->pwmDuty);
             }
             
+            printf("    └────────────┴──────────┴──────────┴─────────────────┴──────────┘\n");
+        }
+        printf("\n");
+    }
+}
+
+/**
+ * @brief Display detailed information for the first feeder profile
+ *
+ * Mirrors show_first_profile() output but reads from theConf.feedprofiles.
+ */
+void show_first_feed_profile()
+{
+    feedprofile_t *profile = &theConf.feedprofiles[0];
+
+    printf("┌──────────────────────────────────────────────────────────────────┐\n");
+    printf("│%s%s                     FEEDER PROFILE SCHEDULE                      %s│\n", RESETC, BK_MAGENTA, RESETC);
+    printf("├──────────────────────────────────────────────────────────────────┤\n");
+    printf("│ Name:            %-47s │\n", profile->name);
+    printf("│ Version:         %-47s │\n", profile->version);
+
+    char date_buf[30];
+    struct tm timeinfo;
+
+    if (profile->issued > 0) {
+        localtime_r(&profile->issued, &timeinfo);
+        strftime(date_buf, sizeof(date_buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
+        printf("│ Issued:          %-47s │\n", date_buf);
+    } else {
+        printf("│ Issued:          %-47s │\n", "Not Set");
+    }
+
+    if (profile->expires > 0) {
+        localtime_r(&profile->expires, &timeinfo);
+        strftime(date_buf, sizeof(date_buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
+        printf("│ Expires:         %-47s │\n", date_buf);
+    } else {
+        printf("│ Expires:         %-47s │\n", "Not Set");
+    }
+
+    printf("│ Number of Cycles: %-46d │\n", profile->numCycles);
+    printf("└──────────────────────────────────────────────────────────────────┘\n\n");
+
+    for (int i = 0; i < profile->numCycles && i < MAXCICLOS; i++) {
+        ciclo_t *cycle = &profile->cycle[i];
+
+        printf("  ┌─ %sFeed Cycle %1d%s ──────────────────────────────────────────────┐\n", BK_GRAY, i, RESETC);
+        printf("  │ Day:             %-42d │\n", cycle->day);
+        printf("  │ Duration:        %-42d │\n", cycle->duration);
+        printf("  │ Num Schedules:   %-42d │\n", cycle->numHorarios);
+        printf("  └─────────────────────────────────────────────────────────────┘\n");
+
+        if (cycle->numHorarios > 0) {
+            printf("    ┌───────────────────────────────────────────────────────────────┐\n");
+            printf("    │%s %-10s │ %-8s │ %-8s │ %-15s │ %-8s %s│\n", BK_BLUE, "Schedule", "Hour", "Minutes", "Duration", "Weight", RESETC);
+            printf("    ├────────────┼──────────┼──────────┼─────────────────┼──────────┤\n");
+
+            for (int j = 0; j < cycle->numHorarios && j < MAXHORARIOS; j++) {
+                horario_t *horario = &cycle->horarios[j];
+                printf("    │ %-10d │ %-8d │ %-8d │ %-15d │ %-8d │\n",
+                       j, (int)horario->hourStart, (int)horario->minutesStart, (int)horario->horarioLen, horario->weight);
+            }
+
             printf("    └────────────┴──────────┴──────────┴─────────────────┴──────────┘\n");
         }
         printf("\n");
@@ -741,7 +804,10 @@ int cmdConfig(int argc, char **argv)
     if (configArgs.all->count || configArgs.sch->count)         
        show_schedule_info();
     if (configArgs.all->count || configArgs.profile->count)         
-           show_first_profile();
+        {
+            show_first_profile();
+            show_first_feed_profile();
+        }
     if (configArgs.all->count || configArgs.modbus->count)         
            show_modbus();
     if (configArgs.all->count || configArgs.DO->count)         

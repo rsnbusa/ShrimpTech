@@ -672,11 +672,15 @@ static err_t parse_horario(cJSON *hour_item, int profile_idx, int cycle_idx, int
 	}
 	theConf.profiles[profile_idx].cycle[cycle_idx].horarios[hour_idx].horarioLen = (float)hmeta->valueint;
 	
-	// Parse PWM duty
+	// Parse PWM duty for production profiles or weight for feeder profiles.
 	hmeta = cJSON_GetObjectItem(hour_item, "pwm_duty");
 	if (!hmeta)
 	{
-		MESP_LOGE(TAG, "Profile %d Cycle %d Horario %d: Missing PWM duty", profile_idx, cycle_idx, hour_idx);
+		hmeta = cJSON_GetObjectItem(hour_item, "weight");
+	}
+	if (!hmeta)
+	{
+		MESP_LOGE(TAG, "Profile %d Cycle %d Horario %d: Missing PWM duty or Weight", profile_idx, cycle_idx, hour_idx);
 		return ESP_FAIL;
 	}
 	theConf.profiles[profile_idx].cycle[cycle_idx].horarios[hour_idx].pwmDuty = hmeta->valueint;
