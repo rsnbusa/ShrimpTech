@@ -5,7 +5,25 @@
 // Default mock implementation of the API callbacks
 
 #include "mongoose_glue.h"
-// Do not edit! See https://mongoose.ws/documentation/#overriding-default-glue-callbacks
+// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
+struct feeder s_feeder = {4, 110, 2};
+void glue_get_feeder(struct feeder *data) {
+  *data = s_feeder;  // Sync with your device
+}
+void glue_set_feeder(struct feeder *data) {
+  s_feeder = *data; // Sync with your device
+}
+
+// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
+struct feederprofile s_feederprofile = {"", ""};
+void glue_get_feederprofile(struct feederprofile *data) {
+  *data = s_feederprofile;  // Sync with your device
+}
+void glue_set_feederprofile(struct feederprofile *data) {
+  s_feederprofile = *data; // Sync with your device
+}
+
+// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
 struct remoteLevels s_remoteLevels = {0, 0, 0, 0, 0, 0, 0};
 void glue_get_remoteLevels(struct remoteLevels *data) {
   *data = s_remoteLevels;  // Sync with your device
@@ -14,7 +32,7 @@ void glue_set_remoteLevels(struct remoteLevels *data) {
   s_remoteLevels = *data; // Sync with your device
 }
 
-// Do not edit! See https://mongoose.ws/documentation/#overriding-default-glue-callbacks
+// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
 struct Inverter s_Inverter = {0, 0, 0, 0, 0, 0, 0};
 void glue_get_Inverter(struct Inverter *data) {
   *data = s_Inverter;  // Sync with your device
@@ -23,7 +41,7 @@ void glue_set_Inverter(struct Inverter *data) {
   s_Inverter = *data; // Sync with your device
 }
 
-// Do not edit! See https://mongoose.ws/documentation/#overriding-default-glue-callbacks
+// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
 struct VFDCmd s_VFDCmd = {10, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 void glue_get_VFDCmd(struct VFDCmd *data) {
   *data = s_VFDCmd;  // Sync with your device
@@ -32,7 +50,7 @@ void glue_set_VFDCmd(struct VFDCmd *data) {
   s_VFDCmd = *data; // Sync with your device
 }
 
-// Do not edit! See https://mongoose.ws/documentation/#overriding-default-glue-callbacks
+// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
 struct VFD s_VFD = {5, 20, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 2, 0, 0};
 void glue_get_VFD(struct VFD *data) {
   *data = s_VFD;  // Sync with your device
@@ -41,7 +59,7 @@ void glue_set_VFD(struct VFD *data) {
   s_VFD = *data; // Sync with your device
 }
 
-// Do not edit! See https://mongoose.ws/documentation/#overriding-default-glue-callbacks
+// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
 struct energy s_energy = {0, 0, 0, 0, 0};
 void glue_get_energy(struct energy *data) {
   *data = s_energy;  // Sync with your device
@@ -50,7 +68,7 @@ void glue_set_energy(struct energy *data) {
   s_energy = *data; // Sync with your device
 }
 
-// Do not edit! See https://mongoose.ws/documentation/#overriding-default-glue-callbacks
+// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
 struct panels s_panels = {0, 0, 0, 0, ""};
 void glue_get_panels(struct panels *data) {
   *data = s_panels;  // Sync with your device
@@ -59,7 +77,7 @@ void glue_set_panels(struct panels *data) {
   s_panels = *data; // Sync with your device
 }
 
-// Do not edit! See https://mongoose.ws/documentation/#overriding-default-glue-callbacks
+// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
 struct sensors s_sensors = {0, 0, 0, 0, 0};
 void glue_get_sensors(struct sensors *data) {
   *data = s_sensors;  // Sync with your device
@@ -68,7 +86,7 @@ void glue_set_sensors(struct sensors *data) {
   s_sensors = *data; // Sync with your device
 }
 
-// Do not edit! See https://mongoose.ws/documentation/#overriding-default-glue-callbacks
+// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
 struct battery s_battery = {0, 0, 0, 0};
 void glue_get_battery(struct battery *data) {
   *data = s_battery;  // Sync with your device
@@ -77,7 +95,7 @@ void glue_set_battery(struct battery *data) {
   s_battery = *data; // Sync with your device
 }
 
-// Do not edit! See https://mongoose.ws/documentation/#overriding-default-glue-callbacks
+// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
 struct Prod s_Prod = {1, 1, 1, "Start"};
 void glue_get_Prod(struct Prod *data) {
   *data = s_Prod;  // Sync with your device
@@ -86,7 +104,7 @@ void glue_set_Prod(struct Prod *data) {
   s_Prod = *data; // Sync with your device
 }
 
-// Do not edit! See https://mongoose.ws/documentation/#overriding-default-glue-callbacks
+// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
 struct DO s_DO = {10, false, false, 1.5, 0.05, 1.1, 5.1};
 void glue_get_DO(struct DO *data) {
   *data = s_DO;  // Sync with your device
@@ -95,7 +113,7 @@ void glue_set_DO(struct DO *data) {
   s_DO = *data; // Sync with your device
 }
 
-// Do not edit! See https://mongoose.ws/documentation/#overriding-default-glue-callbacks
+// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
 struct modbInverter s_modbInverter = {10, 1, 10, 1, 2, 61530, 0, 10, 1, 1, 61518, 0, 10, 1, 1, 61517, 0, 10, 1, 2, 61528, 0, 10, 1, 1, 61526, 0, 10, 1, 1, 61527, 0, 10, 1, 2, 61522, 0, 10, 1, 2, 61520, 0, 10, 1, 1, 61518, 0, 10, 1, 1, 61517, 0};
 void glue_get_modbInverter(struct modbInverter *data) {
   *data = s_modbInverter;  // Sync with your device
@@ -104,7 +122,7 @@ void glue_set_modbInverter(struct modbInverter *data) {
   s_modbInverter = *data; // Sync with your device
 }
 
-// Do not edit! See https://mongoose.ws/documentation/#overriding-default-glue-callbacks
+// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
 struct modbSensors s_modbSensors = {15, 42, 1.5, 1, 0, 0, -1, 20, 1, 1, 0, 0, -1, 19, 1, 1, 0, 0, -1, 17, 1, 1, 6, 8192, 0, 16, 1, 1, 2, 8192, 0, 16};
 void glue_get_modbSensors(struct modbSensors *data) {
   *data = s_modbSensors;  // Sync with your device
@@ -113,7 +131,7 @@ void glue_set_modbSensors(struct modbSensors *data) {
   s_modbSensors = *data; // Sync with your device
 }
 
-// Do not edit! See https://mongoose.ws/documentation/#overriding-default-glue-callbacks
+// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
 struct modbBattery s_modbBattery = {30, 3, 10, 1, 1, 276, 0, 1, 1, 1, 268, 0, 1, 1, 1, 260, 0, 1, 1, 1, 256, 0};
 void glue_get_modbBattery(struct modbBattery *data) {
   *data = s_modbBattery;  // Sync with your device
@@ -122,7 +140,7 @@ void glue_set_modbBattery(struct modbBattery *data) {
   s_modbBattery = *data; // Sync with your device
 }
 
-// Do not edit! See https://mongoose.ws/documentation/#overriding-default-glue-callbacks
+// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
 struct modbPanels s_modbPanels = {30, 4, 10, 1, 1, 272, 0, 10, 1, 1, 271, 0, 10, 1, 1, 264, 0, 10, 1, 1, 263, 0, 1, 1, 1, 267, 0};
 void glue_get_modbPanels(struct modbPanels *data) {
   *data = s_modbPanels;  // Sync with your device
@@ -131,7 +149,7 @@ void glue_set_modbPanels(struct modbPanels *data) {
   s_modbPanels = *data; // Sync with your device
 }
 
-// Do not edit! See https://mongoose.ws/documentation/#overriding-default-glue-callbacks
+// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
 uint64_t s_action_timeout_reboot;  // Time when reboot ends
 bool glue_check_reboot(void) {
   return s_action_timeout_reboot > mg_now(); // Return true if reboot is in progress
@@ -141,7 +159,7 @@ void glue_start_reboot(struct mg_str params) {
   s_action_timeout_reboot = mg_now() + 1000; // Start reboot, finish after 1 second
 }
 
-// Do not edit! See https://mongoose.ws/documentation/#overriding-default-glue-callbacks
+// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
 struct profile s_profile = {"", ""};
 void glue_get_profile(struct profile *data) {
   *data = s_profile;  // Sync with your device
@@ -150,7 +168,7 @@ void glue_set_profile(struct profile *data) {
   s_profile = *data; // Sync with your device
 }
 
-// Do not edit! See https://mongoose.ws/documentation/#overriding-default-glue-callbacks
+// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
 struct settings s_settings = {false, false, false, 0, 0, 0, "", "", false, 0, ""};
 void glue_get_settings(struct settings *data) {
   *data = s_settings;  // Sync with your device
@@ -159,7 +177,7 @@ void glue_set_settings(struct settings *data) {
   s_settings = *data; // Sync with your device
 }
 
-// Do not edit! See https://mongoose.ws/documentation/#overriding-default-glue-callbacks
+// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
 struct system s_system = {false, false, false, false, false, 0, 1000, false, "5.0.1", false, 3, 5, 25, 0, 0, "", "", "csttpstt", "robert", "http://64.123.180.233:1883", "", 60000, "", "", 0, false, 400000, 10000};
 void glue_get_system(struct system *data) {
   *data = s_system;  // Sync with your device
@@ -168,7 +186,7 @@ void glue_set_system(struct system *data) {
   s_system = *data; // Sync with your device
 }
 
-// Do not edit! See https://mongoose.ws/documentation/#overriding-default-glue-callbacks
+// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
 struct sysset s_sysset = {"", "", 0, 0, 0, 0, "", "", "", 0, 0, 0, 0, 0, 0, ""};
 void glue_get_sysset(struct sysset *data) {
   *data = s_sysset;  // Sync with your device
