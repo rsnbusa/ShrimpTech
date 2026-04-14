@@ -14,6 +14,14 @@ extern esp_err_t esp_console_setup_prompt(const char *prompt, esp_console_repl_c
 #define CHOICE_BUFFER_SIZE 4
 #define MAX_PASSWORD_LENGTH 32
 
+static void registerSecureCommand(const esp_console_cmd_t *cmd)
+{
+    esp_err_t err = esp_console_cmd_register(cmd);
+    if (err != ESP_OK) {
+        MESP_LOGE(MESH_TAG, "Command register failed for '%s': %s", cmd && cmd->command ? cmd->command : "<null>", esp_err_to_name(err));
+    }
+}
+
 /**
  * @brief Register all secure console commands
  * 
@@ -22,20 +30,19 @@ extern esp_err_t esp_console_setup_prompt(const char *prompt, esp_console_repl_c
  */
 void registerSecureCommands()
 {
-    ESP_ERROR_CHECK(esp_console_cmd_register(&meter_cmd));
-    ESP_ERROR_CHECK(esp_console_cmd_register(&config_cmd));
-    ESP_ERROR_CHECK(esp_console_cmd_register(&erase_cmd));
-    ESP_ERROR_CHECK(esp_console_cmd_register(&loglevel_cmd));
-    ESP_ERROR_CHECK(esp_console_cmd_register(&resetconf_cmd));
-    ESP_ERROR_CHECK(esp_console_cmd_register(&aes_cmd));
-    ESP_ERROR_CHECK(esp_console_cmd_register(&app_cmd));
-    ESP_ERROR_CHECK(esp_console_cmd_register(&log_cmd));
-    ESP_ERROR_CHECK(esp_console_cmd_register(&findunit_cmd));
-    ESP_ERROR_CHECK(esp_console_cmd_register(&meshreset_cmd));
-    ESP_ERROR_CHECK(esp_console_cmd_register(&fram_cmd));
-    ESP_ERROR_CHECK(esp_console_cmd_register(&node_cmd));
-    ESP_ERROR_CHECK(esp_console_cmd_register(&debug_cmd));
-    ESP_ERROR_CHECK(esp_console_cmd_register(&blow_cmd));
+    registerSecureCommand(&meter_cmd);
+    registerSecureCommand(&config_cmd);
+    registerSecureCommand(&erase_cmd);
+    registerSecureCommand(&loglevel_cmd);
+    registerSecureCommand(&resetconf_cmd);
+    registerSecureCommand(&app_cmd);
+    registerSecureCommand(&log_cmd);
+    registerSecureCommand(&findunit_cmd);
+    registerSecureCommand(&meshreset_cmd);
+    registerSecureCommand(&fram_cmd);
+    registerSecureCommand(&node_cmd);
+    registerSecureCommand(&debug_cmd);
+    registerSecureCommand(&blow_cmd);
 }
 
 /**

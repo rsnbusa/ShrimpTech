@@ -137,7 +137,6 @@ int cmdBasetimer(int argc, char **argv);
 int cmdBlow(int argc, char **argv);
 int cmdConfig(int argc, char **argv);
 int cmdDebug(int argc, char **argv);
-int cmdEnDecrypt(int argc, char **argv);
 int cmdErase(int argc, char **argv);
 int cmdFindUnit(int argc, char **argv);
 int cmdFram(int argc, char **argv);

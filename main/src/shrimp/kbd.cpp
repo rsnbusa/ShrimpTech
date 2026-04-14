@@ -160,9 +160,6 @@ void kbd(void *pArg)
   // Define Command Arguments - Security & Network
   // ===================================================================
   
-  endec.key = arg_int0(NULL, "k", "AES key numeric", "AES Key");
-  endec.end = arg_end(1);
-
   kbdsedcurity.password = arg_str0(NULL, "p", "password",      "Kbd Security");
   kbdsedcurity.newpass  = arg_str0(NULL, "n", "new password",  "Kbd Security");
   kbdsedcurity.nopass   = arg_str0(NULL, "a", "no password",   "Kbd Security");

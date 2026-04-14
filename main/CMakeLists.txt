@@ -63,6 +63,8 @@ set(CORE_SOURCES
     src/shrimp/BlowerClass.cpp
     src/shrimp/displayManager.cpp
     src/shrimp/FramI2C.cpp
+    src/shrimp/Pump.cpp
+    src/shrimp/Valve.cpp
     src/shrimp/kbd.cpp
     # src/shrimp/lcd.cpp
     src/shrimp/logmanager.cpp

@@ -1,0 +1,93 @@
+#include "Valve.hpp"
+
+#include <cstring>
+#include "esp_log.h"
+
+static const char *TAG = "Valve";
+
+Valve::~Valve()
+{
+    if (m_initialized) {
+        deinit();
+    }
+}
+
+void Valve::init(gpio_num_t gpio1, gpio_num_t gpio2, const char *name, uint16_t timerSetting)
+{
+    strncpy(m_name, name, sizeof(m_name) - 1);
+    m_name[sizeof(m_name) - 1] = '\0';
+
+    open_gpio       = gpio1;
+    close_gpio       = gpio2;
+    m_timerSetting = timerSetting;
+    m_state        = ValveState::NONE;
+    m_initialized  = true;
+
+    gpio_config_t cfg = {
+        .pin_bit_mask = (1ULL << gpio1) | (1ULL << gpio2),
+        .mode         = GPIO_MODE_OUTPUT,
+        .pull_up_en   = GPIO_PULLUP_ENABLE,         // the ssr is providing GND so keep the +rail active until GPIO changes it
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type    = GPIO_INTR_DISABLE,
+    };
+    gpio_config(&cfg);
+
+    // Both outputs LOW (de-energised) at init
+    // start Valve in CLOSED state
+    gpio_set_level(open_gpio, 1);
+    gpio_set_level(close_gpio, 0);
+
+    ESP_LOGI(TAG, "Valve '%s' initialised — GPIO%d / GPIO%d, timer=%u",
+             m_name, open_gpio, close_gpio, m_timerSetting);
+}
+
+void Valve::deinit()
+{
+    if (!m_initialized) return;
+
+    gpio_set_level(open_gpio, 1);
+    gpio_set_level(close_gpio, 1);
+    gpio_reset_pin(open_gpio);
+    gpio_reset_pin(close_gpio);
+
+    m_state       = ValveState::NONE;
+    m_initialized = false;
+
+    ESP_LOGI(TAG, "Valve '%s' de-initialised", m_name);
+}
+
+void Valve::setCurrSetting(uint16_t setting)
+{
+    m_currSetting = setting;
+    ESP_LOGI(TAG, "Valve '%s' currSetting = %u", m_name, m_currSetting);
+}
+
+void Valve::setTimer(uint16_t timerSetting)
+{
+    m_timerSetting = timerSetting;
+    ESP_LOGI(TAG, "Valve '%s' timerSetting = %u", m_name, m_timerSetting);
+}
+
+void Valve::open()
+{
+    if (!m_initialized) {
+        ESP_LOGW(TAG, "Valve '%s' not initialised", m_name);
+        return;
+    }
+    gpio_set_level(open_gpio, 1);
+    gpio_set_level(close_gpio, 0);
+    m_state = ValveState::OPEN;
+    ESP_LOGI(TAG, "Valve '%s' OPEN", m_name);
+}
+
+void Valve::close()
+{
+    if (!m_initialized) {
+        ESP_LOGW(TAG, "Valve '%s' not initialised", m_name);
+        return;
+    }
+    gpio_set_level(open_gpio, 0);
+    gpio_set_level(close_gpio, 1);
+    m_state = ValveState::CLOSE;
+    ESP_LOGI(TAG, "Valve '%s' CLOSED", m_name);
+}

@@ -276,7 +276,6 @@ EXTERN securit_t appSkip;
 EXTERN logargs_t logArgs;
 EXTERN blow_t blowArgs;
 EXTERN cfg_t  configArgs;
-EXTERN aes_en_dec_t endec;
 
 // ============================================================================
 // CONSOLE COMMAND DEFINITIONS
@@ -292,7 +291,6 @@ EXTERN esp_console_cmd_t loglevel_cmd;
 EXTERN esp_console_cmd_t basetimer_cmd;
 EXTERN esp_console_cmd_t prepaid_cmd;
 EXTERN esp_console_cmd_t resetconf_cmd;
-EXTERN esp_console_cmd_t aes_cmd;
 EXTERN esp_console_cmd_t security_cmd;
 EXTERN esp_console_cmd_t app_cmd;
 EXTERN esp_console_cmd_t node_cmd;

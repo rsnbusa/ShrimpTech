@@ -149,7 +149,10 @@ typedef struct {
     uint8_t hourStart;
     uint8_t minutesStart;
     uint32_t horarioLen;
+    union {
     uint8_t pwmDuty;
+    uint8_t weight;
+    };
 } horario_t;
 
 typedef struct {
@@ -167,6 +170,15 @@ typedef struct {
     uint8_t numCycles;
     ciclo_t cycle[MAXCICLOS];
 } profile_t;
+
+typedef struct {
+    char name[20];
+    char version[30];
+    time_t issued;
+    time_t expires;
+    uint8_t numCycles;
+    ciclo_t cycle[MAXCICLOS];
+} feedprofile_t;
 
 typedef struct {
     uint8_t cycle;
@@ -374,6 +386,7 @@ typedef struct config {
     bool                externDO, externDOMqtt;
     uint16_t            mqttDiscoRetry,gpsSensor;
     profile_t           profiles[MAXPROFILES];
+    feedprofile_t       feedprofiles[MAXPROFILES];
     uint8_t             activeProfile, dayCycle;
     time_t              dateProfile, dateDayCycle;
     uint8_t             wifi_mode;           // 0=off, 1=activated for power loss cases

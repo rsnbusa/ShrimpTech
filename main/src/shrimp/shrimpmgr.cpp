@@ -19,6 +19,10 @@
 extern const uint8_t cert_start[]           asm("_binary_cloudamp_pem_start");
 extern const uint8_t cert_end[]             asm("_binary_cloudamp_pem_end");
 
+static const char *CFG_NVS_PARTITION = "config";
+static const char *CFG_NVS_NAMESPACE = "config";
+static const char *CFG_NVS_KEY = "sysconf";
+
 // Custom logging function with custom timestamp
 void my_log(const char *color,const char* tag, const char* format, ...) {
     // Generate custom timestamp
@@ -2053,15 +2057,15 @@ void read_flash()
     if (!xSemaphoreTake(flashSem, portMAX_DELAY))
         return;
 
-    esp_err_t err = nvs_open("config", NVS_READWRITE, &nvshandle);
+    esp_err_t err = nvs_open_from_partition(CFG_NVS_PARTITION, CFG_NVS_NAMESPACE, NVS_READWRITE, &nvshandle);
     if (err != ESP_OK) {
-        MESP_LOGE(MESH_TAG, "Error opening NVS Read File %x", err);
+        MESP_LOGE(MESH_TAG, "Error opening NVS read namespace: %s", esp_err_to_name(err));
         xSemaphoreGive(flashSem);
         return;
     }
 
     size_t size = sizeof(theConf);
-    err = nvs_get_blob(nvshandle, "sysconf", (void*)&theConf, &size);
+    err = nvs_get_blob(nvshandle, CFG_NVS_KEY, (void*)&theConf, &size);
     
     if (err != ESP_OK)
         MESP_LOGE(MESH_TAG, "Error read %x size %d expected %d", err, size, sizeof(theConf));
@@ -2081,14 +2085,24 @@ void write_to_flash()
     if (!xSemaphoreTake(flashSem, portMAX_DELAY))
         return;
 
-    esp_err_t err = nvs_set_blob(nvshandle, "sysconf", &theConf, sizeof(theConf));
+    esp_err_t err = nvs_set_blob(nvshandle, CFG_NVS_KEY, &theConf, sizeof(theConf));
+
+    if (err == ESP_ERR_NVS_NOT_ENOUGH_SPACE) {
+        MESP_LOGW(MESH_TAG, "NVS full while writing config blob, erasing old blob and retrying");
+        esp_err_t erase_err = nvs_erase_key(nvshandle, CFG_NVS_KEY);
+        if (erase_err == ESP_OK || erase_err == ESP_ERR_NVS_NOT_FOUND) {
+            err = nvs_set_blob(nvshandle, CFG_NVS_KEY, &theConf, sizeof(theConf));
+        } else {
+            MESP_LOGE(MESH_TAG, "Failed to erase old config blob: %s", esp_err_to_name(erase_err));
+        }
+    }
     
     if (err == ESP_OK) {
         err = nvs_commit(nvshandle);
         if (err != ESP_OK)
-            MESP_LOGE(MESH_TAG, "Flash commit write failed %d", err);
+            MESP_LOGE(MESH_TAG, "Flash commit write failed %s", esp_err_to_name(err));
     } else {
-        MESP_LOGE(MESH_TAG, "Fail to write flash %x", err);
+        MESP_LOGE(MESH_TAG, "Fail to write flash %s (0x%x)", esp_err_to_name(err), err);
     }
 
     // Keep NVS handle open
@@ -3114,6 +3128,14 @@ void init_nvs_flash(void)
     }
     
     ESP_ERROR_CHECK(err);
+
+    err = nvs_flash_init_partition(CFG_NVS_PARTITION);
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        MESP_LOGI(MESH_TAG, "Config NVS partition needs recovery, erasing...");
+        ESP_ERROR_CHECK(nvs_flash_erase_partition(CFG_NVS_PARTITION));
+        err = nvs_flash_init_partition(CFG_NVS_PARTITION);
+    }
+    ESP_ERROR_CHECK(err);
 }
 
 /**
@@ -3573,6 +3595,8 @@ void erase_config(void)
     esp_wifi_restore();
     nvs_flash_erase();
     nvs_flash_init();
+    nvs_flash_erase_partition(CFG_NVS_PARTITION);
+    nvs_flash_init_partition(CFG_NVS_PARTITION);
     
     // Clear configuration structure
     bzero(&theConf, sizeof(theConf));
@@ -3602,7 +3626,7 @@ void erase_config(void)
     }
     
     // Open NVS and persist configuration
-    esp_err_t nvs_err = nvs_open("config", NVS_READWRITE, &nvshandle);
+    esp_err_t nvs_err = nvs_open_from_partition(CFG_NVS_PARTITION, CFG_NVS_NAMESPACE, NVS_READWRITE, &nvshandle);
     if (nvs_err != ESP_OK) {
         MESP_LOGE(MESH_TAG, "Error opening NVS: %s", esp_err_to_name(nvs_err));
     }
