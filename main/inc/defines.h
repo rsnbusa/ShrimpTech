@@ -202,6 +202,7 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 #define MAXDAYCYCLE                     (100)
 
 #define PROFILE_FILE                    "/spiffs/profilejson.txt"
+#define FEEDPROFILE_FILE                "/spiffs/feedprofilejson.txt"
 #define LOG_FILE                        "/spiffs/log.txt"
 
 #define BLE_MODE                        (0)

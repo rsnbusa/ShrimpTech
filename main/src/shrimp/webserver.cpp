@@ -78,10 +78,12 @@ extern struct profile s_profile;			// schedule profile cycles and working timers
 extern struct sysset s_sysset;				// system parameters --> third sidebar
 extern struct DO s_DO;						// Dissolved Oxygen control parameters
 extern uint64_t s_action_timeout_reboot;  	// Reboot button
+static struct profile s_feedprofile = {"", ""};  // feedprofile temporary storage for mongoose
 
 #include "crypto_utils.h"
 #include "time_utils.h"
 extern void write_to_flash();
+extern void show_first_feed_profile(void);  // Forward declaration from cmdConfig.cpp
 extern char levels[6][10];			// log levels external in cmdConfig.cpp
 static bool restartf=false,restart_profile=false;;
 extern 	int findLevel(char * cual);
@@ -870,6 +872,40 @@ err_t make_profile(char * prof)
 }
 
 /**
+ * @brief Parse and validate feeder profile configuration
+ * @param prof JSON string containing feeder profile data
+ * @return ESP_OK on success, ESP_FAIL on error
+ * 
+ * This function reuses the existing profile parser by:
+ * 1. Backing up theConf.profiles
+ * 2. Clearing theConf.profiles
+ * 3. Calling make_profile() to parse into profiles
+ * 4. Copying parsed result to theConf.feedprofiles
+ * 5. Restoring theConf.profiles from backup
+ */
+err_t make_feed_profile(char * prof)
+{
+	profile_t profileBackup[MAXPROFILES];
+	memcpy(profileBackup, theConf.profiles, sizeof(profileBackup));
+	
+	memset(theConf.profiles, 0, sizeof(theConf.profiles));
+	err_t err = make_profile(prof);
+	
+	if (err != ESP_OK)
+	{
+		memcpy(theConf.profiles, profileBackup, sizeof(profileBackup));
+		MESP_LOGE(TAG, "Failed to parse feeder profile");
+		return ESP_FAIL;
+	}
+	
+	memcpy(theConf.feedprofiles, theConf.profiles, sizeof(theConf.feedprofiles));
+	memcpy(theConf.profiles, profileBackup, sizeof(profileBackup));
+	
+	MESP_LOGI(TAG, "Feeder profile(s) parsed successfully");
+	return ESP_OK;
+}
+
+/**
  * @brief Set and validate profile configuration from web interface
  * @param data Pointer to profile structure with new configuration
  */
@@ -1050,6 +1086,121 @@ void my_get_profile(struct profile *data)
 	
 	fclose(f);
 	*data = s_profile;
+}
+
+/**
+ * @brief Set feeder profile configuration from web interface
+ * @param data Pointer to profile structure with feeder configuration data
+ * 
+ * Saves the feeder profile JSON to file and applies it using make_feed_profile()
+ * which parses and populates theConf.feedprofiles while preserving production profiles.
+ */
+void my_set_feedprofile(struct profile *data)
+{
+	if (!data)
+	{
+		MESP_LOGE(TAG, "Invalid feedprofile data pointer");
+		return;
+	}
+	
+	s_feedprofile = *data;
+	
+	// Validate JSON before processing
+	cJSON *prof_root = cJSON_Parse(s_feedprofile.schedule);
+	if (!prof_root)
+	{
+		MESP_LOGE(TAG, "Invalid JSON feedprofile format");
+		return;
+	}
+	
+	// Try to save to file
+	FILE* f = fopen(FEEDPROFILE_FILE, "w");
+	if (f == NULL)
+	{
+		// If out of space (errno 28), clear log file and retry
+		if (errno == 28)  // ENOSPC - No space left on device
+		{
+			MESP_LOGW(TAG, "SPIFFS full (errno 28), clearing log file to make space for feedprofile");
+			remove("/spiffs/log.txt");
+			
+			// Retry opening feedprofile file after clearing log
+			f = fopen(FEEDPROFILE_FILE, "w");
+			if (f == NULL)
+			{
+				MESP_LOGE(TAG, "Failed to open feedprofile file after clearing log (errno: %d)", errno);
+				cJSON_Delete(prof_root);
+				return;
+			}
+		}
+		else
+		{
+			MESP_LOGE(TAG, "Failed to open feedprofile file for writing: %s (errno: %d)", FEEDPROFILE_FILE, errno);
+			cJSON_Delete(prof_root);
+			return;
+		}
+	}
+	
+	size_t written = fprintf(f, "%s", s_feedprofile.schedule);
+	fclose(f);
+	
+	if (written <= 0)
+	{
+		MESP_LOGE(TAG, "Failed to write feedprofile to file");
+		cJSON_Delete(prof_root);
+		return;
+	}
+	
+	cJSON_Delete(prof_root);
+	
+	// Parse and apply feeder profile
+	err_t err = make_feed_profile(s_feedprofile.schedule);
+	if (err == ESP_OK)
+	{
+		// Sanity checks are optional for feedprofiles but can be added if needed
+		strcpy(s_feedprofile.msg, "OK");
+		write_to_flash();
+		show_first_feed_profile();  // Display the applied profile
+		MESP_LOGI(TAG, "Feedprofile successfully applied");
+	}
+	else
+	{
+		strcpy(s_feedprofile.msg, "Failed");
+		MESP_LOGE(TAG, "Failed to parse and apply feedprofile");
+	}
+}
+
+/**
+ * @brief Get current feeder profile configuration for web interface
+ * @param data Pointer to profile structure to populate with feedprofile data
+ */
+void my_get_feedprofile(struct profile *data)
+{
+	if (!data)
+	{
+		MESP_LOGE(TAG, "Invalid feedprofile data pointer");
+		return;
+	}
+
+	strcpy(s_feedprofile.msg, "");
+	
+	FILE* f = fopen(FEEDPROFILE_FILE, "r");
+	if (f == NULL)
+	{
+		MESP_LOGW(TAG, "Feedprofile file not found, using empty profile");
+		s_feedprofile.schedule[0] = '\0';
+		*data = s_feedprofile;
+		return;
+	}
+	
+	// Read with size limit to prevent buffer overflow
+	if (fgets(s_feedprofile.schedule, sizeof(s_feedprofile.schedule), f) == NULL)
+	{
+		MESP_LOGE(TAG, "Failed to read feedprofile file");
+		s_feedprofile.schedule[0] = '\0';
+	}
+	
+	fclose(f);
+	*data = s_feedprofile;
 }
 
 /**
@@ -1358,6 +1509,7 @@ void start_webserver(void *pArg)
   	mongoose_set_http_handlers("system", my_get_system ,my_set_system);				
   	mongoose_set_http_handlers("sysset", my_get_sysset ,my_set_sysset);				
   	mongoose_set_http_handlers("profile", my_get_profile ,my_set_profile);							
+  	mongoose_set_http_handlers("feedprofile", my_get_feedprofile ,my_set_feedprofile);
   	mongoose_set_http_handlers("modbInverter", my_get_modbInverter ,my_set_modbInverter);				
   	mongoose_set_http_handlers("modbSensors", my_get_modbSensors ,my_set_modbSensors);				
   	mongoose_set_http_handlers("modbBattery", my_get_modbBattery ,my_set_modbBattery);				
