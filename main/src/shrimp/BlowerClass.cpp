@@ -75,7 +75,7 @@ void BlowerClass::format()
     if (xSemaphoreTake(framSem, portMAX_DELAY / portTICK_PERIOD_MS))
     {
         fram.format(NULL, 3000, true);
-        framConfig.centinel = CENTINEL;
+        framConfig.sentinel = SENTINEL;
         xSemaphoreGive(framSem);
     }
     else
@@ -96,9 +96,9 @@ int BlowerClass::initBlower()
     if (framFlag)
     {
         loadBlower();
-        if (framConfig.centinel != CENTINEL)
+        if (framConfig.sentinel != SENTINEL)
         {
-            MESP_LOGE(MESH_TAG, "FRAM Centinel %x failed... should format FRAM", framConfig.centinel);
+            MESP_LOGE(MESH_TAG, "FRAM Sentinel %x failed... should format FRAM", framConfig.sentinel);
             return ESP_FAIL;
         }
     }

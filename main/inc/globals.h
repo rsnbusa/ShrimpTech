@@ -357,4 +357,8 @@ EXTERN struct VFDCmd       localcmd;
 // GPS Globals
 // ============================================================================
 EXTERN bool gpsFlag;
+
+EXTERN Valve line_valves[4],feeder_valve;
+EXTERN Pump hopper;
+
 #endif // MAIN_GLOBALS_H

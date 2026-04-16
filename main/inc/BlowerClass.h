@@ -234,7 +234,7 @@ typedef struct {
  * The centinel field is used to validate FRAM contents on startup.
  */
 typedef struct {
-    uint32_t centinel;
+    uint32_t sentinel;
     time_t lastUpdate;
     time_t lifeDate, creationDate;
     uint32_t framWrites;

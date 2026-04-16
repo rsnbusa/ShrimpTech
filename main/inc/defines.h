@@ -8,30 +8,19 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 // GPS Sensor
 #define YEAR_BASE                       (2000)  //date in GPS starts from 2000
 #define TIME_ZONE                       (-5)   
-#define GPS_RX                          (47)     //sda for GPS until new pcb design
+//GPIOs for GPS
+#define GPS_RX                          (16)     //GPIO ofr GPS Rx
 #define GPS_RATE                        (9600)
 
 #define SIMULATE 
 // Dalls Temeprature Sensor
 #define TIMERUNITS                     (1000000) // 1 second in microseconds for esp_timer, adjust if using a different timer system
-#define ONEWIRE_BUS_GPIO                (13)
+#define ONEWIRE_BUS_GPIO                (13)        // GPIO for DS18B20
 #define ONEWIRE_MAX_DS18B20             (1)
 
-
-#ifdef  CONFIG_IDF_TARGET_ESP32
-#define UTXD                            (25)
-#define URXD                            (27)
-// RTS for RS485 Half-Duplex Mode manages DE/~RE
-#define URTS                            (13)
-#endif 
-#ifdef  CONFIG_IDF_TARGET_ESP32S3
-#define UTXD                            (4)
-#define URXD                            (5)
-// RTS for RS485 Half-Duplex Mode manages DE/~RE
-#define URTS                            (6)
-#endif 
-#define UCTS                            (-1)
-#define ECHO_UART_PORT                  (1)
+//GPIOS assignment accordin to PCB Shrimp-Feeder-TVL April 16/2026
+// RS232C standard ports ... in theory rx-43 and tx-44 
+#define UART_PORT                       (1)
 
 #define MBUF_SIZE                       (200)
 #define BAUD_RATE                       (9600)
@@ -39,64 +28,30 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 #define ECHO_READ_TOUT                  (3) // 3.5T * 8 = 28 ticks, TOUT=3 -> ~24..33 ticks
 #define PACKET_READ_TICS                (100 / portTICK_PERIOD_MS)
 #define MAXMODBUS                       (10) // sensors
-// #define FRAMSPI
-//FRAM pins SPI
-#ifdef  CONFIG_IDF_TARGET_ESP32
-#define FMOSI							(23)
-#define FMISO							(19)
-#define FCLK							(18)
-// #define FCS								(5)
-#define OLED_SDA                        (22)
-#define OLED_SCL                        (21)
-#define RELAY                           (14)
-#define WIFILED                         (7)     // is really 4 burt need test modbus
-#define BEATPIN                         (26)
-// I2C Fram
-#define FSDA                            FCLK        
-#define FSCL                            FMOSI
 
-//lcd 
-#define PIN_NUM_SDA                     FMOSI 
-#define PIN_NUM_SCL                     FCLK 
-
-#endif
-//s3 pcb design EasyEDA meterIoTPSRAMS3 pins Dic/15/2025
-#ifdef  CONFIG_IDF_TARGET_ESP32S3
-
-#define FMOSI							(01)
-#define FMISO							(40)
-#define FCLK							(39)
-#define FCS								(38)
-
-#define OLED_SDA                        (2)
-#define OLED_SCL                        (42)
-#define RELAY                           (8)
-#define WIFILED                         (41)
-#define BEATPIN                         (19)
-// I2C Fram
-#define FSDA                            FMOSI      // latest reviewed Diuc 15-2025 happy birthdat Robert!!!
+// SPI for FRAM 
+#define FMOSI							(01)    // GPIO for SPI MOSI
+#define FMISO							(40)    // GPIO for SPI MISO
+#define FCLK							(39)    // GPIO for SPI Clock
+#define FCS								(38)    // GPIO for SPI Chip Select
+#define FSDA                            FMOSI      
 #define FSCL                            FCLK
 
-#define DISPLAY
-//lcd 
-#define PIN_NUM_SDA                     FMOSI 
-#define PIN_NUM_SCL                     FCLK 
-#define RS485TX                         (2)         // tx for shrimp pcb and rx for old meter pcb
-#define RS485RX                         (42)        // rx for shrimp pcb and tx for old meter pcb
-#define RS485RTS                        (48)  
-// #define RS485RTS                        (19)  
-#endif
+#define WIFILED                         (41)
 
-#define I2C_BUS_PORT                    (1)
-#define LCD_PIXEL_CLOCK_HZ              (400 * 1000)
+// RS485 GPIOs
+#define RS485TX                         (8)         //GPIO for RS485 TX
+#define RS485RX                         (18)        //GPIO for RS485 RX
+#define RS485DE                         (19)        //GPIO for RS485 MBDE
+#define RS485RE                         (20)        //GPIO for RS485 NMBRE
+#define RS485RTS                        RS485RE    // IF only a simple RTS is used, solder a 0 Resistance between RE and DE and use this define for both
 
-#define PIN_NUM_RST                     (-1)
-#define I2C_HW_ADDR                     (0x3C)
-#define LCD_H_RES                       (128)
-#define LCD_V_RES                       (64)
-// Bit number used to represent command and parameter
-#define LCD_CMD_BITS                    8
-#define LCD_PARAM_BITS                  8
+// Other GPIOS
+// Door latch sensor
+#define DOOR                            (02)        // GPIO for door sensor input
+#define RPM                             (42)        // GPIO for Blower RPM input via HAL sensor
+#define HXDOUT                          (48)        // GPIO for HX711 data output
+#define HXCLK                           (14)        // GPIO for HX711 clock
 
 #define RELAYON                         (0)
 #define RELAYOFF                        (1)
@@ -109,10 +64,7 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 #define STATSDELAY                      (60000)
 #define MAXCMDS                         (30)            // use a good number not sharing ram with anybody else
 
-#define CENTINEL                        (0x12345678)
-
-// #define BIASHOUR                        (14)
-
+#define SENTINEL                        (0x12345678)
 #define MQTTBIG                         (3500)  // big enough for 3500-byte MQTT payloads
 #define MESH_TAG                        "Shrimp"
 #define WIFI_CONNECTED_BIT              BIT0
@@ -251,6 +203,17 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 
 #define WIFI_MESH                       (0)
 
+// valves GPIOs
+#define VAL0OPEN                        (4) //GPIO for valve 0 open
+#define VAL0CLOSE                       (5) //GPIO for valve 0 close
+#define VAL1OPEN                        (6) //GPIO for valve 1 open
+#define VAL1CLOSE                       (7) //GPIO for valve 1 close
+#define VAL2OPEN                        (12) //GPIO for valve 2 open
+#define VAL2CLOSE                       (9) //GPIO for valve 2 close
+#define VAL3OPEN                        (10) //GPIO for valve 3 open
+#define VAL3CLOSE                       (11) //GPIO for valve 3 close
+#define FEEDEROPEN                      (15) //GPIO for feeder open
+#define FEEDERCLOSE                     (3)  //GPIO for feeder close
 // Color definitons for debugging 
 
 #define DBG_SCH						    "\e[36m[SCH]\e[0m"               
@@ -291,33 +254,3 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 #define BK_RED							"\e[41m"
 #define BK_WHITEC						"\e[47m"
 #define BK_GRAY 						"\e[100m"
-
-
-// Future PCB Design ports/gpios esp32s3
-// FRAM SPI
-// #define SI                              (01)
-// #define SCLK                            (39)
-// #define CS                              (38)
-// #define SO                              (40)
-
-// OLED I2C
-// #define OLED_SDA                        (47)
-// #define OLED_SCL                        (21)
-
-// MAX485 RS485 1 and 2
-// #define RS485_1_RX                      (02)
-// #define RS485_1_TX                      (42)
-// #define RS485_1_RTS                     (19)
-// #define RS485_2_RX                      (4)
-// #define RS485_2_TX                      (5)
-// #define RS485_2_RTS                     (6)
-
-// LEDS
-// #define WIFILED                         (41)     
-// #define MRPM                            (48)
-// #define DS18B20                         (13) 
-// #define DOORSENSOR                      (14)
-
-// // RS232C
-// #define TXD_RS232                      TXDO
-// #define RXD_RS232                      RXDO

@@ -3148,7 +3148,7 @@ void load_and_validate_config(void)
 {
     read_flash();
     
-    if (theConf.centinel != CENTINEL) {
+    if (theConf.sentinel != SENTINEL) {
         MESP_LOGI(MESH_TAG, "Invalid centinel check. Erasing config...");
         erase_config();
     }
@@ -3319,19 +3319,19 @@ void init_gpio_pins(void)
     io_conf.mode = GPIO_MODE_OUTPUT;
     io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
     io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
-    io_conf.pin_bit_mask = (1ULL << RELAY);
-    gpio_set_level((gpio_num_t)RELAY, 1);  // Set HIGH initially
+    io_conf.pin_bit_mask = (1ULL << WIFILED);
+    gpio_set_level((gpio_num_t)WIFILED, 0);  // Set HIGH initially
     gpio_config(&io_conf);
 
-    // Configure WiFi LED pin
-    io_conf.pin_bit_mask = (1ULL << WIFILED);
-    gpio_set_level((gpio_num_t)WIFILED, 0);  // Set LOW initially
-    gpio_config(&io_conf);
+    // // Configure WiFi LED pin
+    // io_conf.pin_bit_mask = (1ULL << WIFILED);
+    // gpio_set_level((gpio_num_t)WIFILED, 0);  // Set LOW initially
+    // gpio_config(&io_conf);
     
-    // Configure Heartbeat pin
-    io_conf.pin_bit_mask = (1ULL << BEATPIN);
-    gpio_set_level((gpio_num_t)BEATPIN, 1);  // Set HIGH initially
-    gpio_config(&io_conf);
+    // // Configure Heartbeat pin
+    // io_conf.pin_bit_mask = (1ULL << BEATPIN);
+    // gpio_set_level((gpio_num_t)BEATPIN, 1);  // Set HIGH initially
+    // gpio_config(&io_conf);
 }
 
 
@@ -3493,6 +3493,16 @@ void init_DO_Defaults(void)
     theConf.doParms.sampletime=10;
 }
 
+
+void init_valves()
+{
+    line_valves[0].init((gpio_num_t)VAL0OPEN, (gpio_num_t)VAL0CLOSE, "Valve0", 5000);
+    line_valves[1].init((gpio_num_t)VAL1OPEN, (gpio_num_t)VAL1CLOSE, "Valve1", 5000);
+    line_valves[2].init((gpio_num_t)VAL2OPEN, (gpio_num_t)VAL2CLOSE, "Valve2", 5000);
+    line_valves[3].init((gpio_num_t)VAL3OPEN, (gpio_num_t)VAL3CLOSE, "Valve3", 5000);
+    feeder_valve.init((gpio_num_t)FEEDEROPEN, (gpio_num_t)FEEDERCLOSE, "FeederValve", 5000);
+}
+
 /**
  * @brief Main initialization process for the system
  * 
@@ -3523,7 +3533,7 @@ void init_process(void)
     init_system_timers();
     init_logging_system();
     init_event_groups();
-    
+    init_valves();
     MESP_LOGI(MESH_TAG, "System initialization complete");
 }
 
@@ -3564,7 +3574,7 @@ void init_default_network_config(void)
     strncpy(theConf.kpass, DEFAULT_MESH_PASSW, sizeof(theConf.kpass) - 1);
     
     // Serial configuration
-    theConf.port = (uart_port_t)ECHO_UART_PORT;
+    theConf.port = (uart_port_t)UART_PORT;
     theConf.baud = BAUD_RATE;
 }
 
@@ -3601,7 +3611,7 @@ void erase_config(void)
     
     // Clear configuration structure
     bzero(&theConf, sizeof(theConf));
-    theConf.centinel = CENTINEL;
+    theConf.sentinel = SENTINEL;
     
     // Clear profile file
     FILE* f = fopen(PROFILE_FILE, "w");
@@ -4164,10 +4174,10 @@ void blinkSSID(void *pArg)
     while(true)
     {
         gpio_set_level((gpio_num_t)WIFILED,1);
-        gpio_set_level((gpio_num_t)BEATPIN,0);
+        // gpio_set_level((gpio_num_t)BEATPIN,0);
         delay(cuanto);
         gpio_set_level((gpio_num_t)WIFILED,0);
-        gpio_set_level((gpio_num_t)BEATPIN,1);
+        // gpio_set_level((gpio_num_t)BEATPIN,1);
         delay(cuanto);
     }
 }
@@ -4191,7 +4201,7 @@ void handle_sta_connected(void)
 void handle_sta_disconnected(void)
 {
     if (ssidHandle != NULL) {
-        gpio_set_level((gpio_num_t)BEATPIN, 1);
+        gpio_set_level((gpio_num_t)WIFILED, 1);
         vTaskDelete(ssidHandle);
         ssidHandle = NULL;
         MESP_LOGI(MESH_TAG, "Station disconnected from AP, stopped SSID blink");
@@ -4878,9 +4888,9 @@ void turn_blower_onOff(bool onoff)
      }
     
     if(onoff)
-        gpio_set_level((gpio_num_t)BEATPIN, 0);
+        gpio_set_level((gpio_num_t)WIFILED, 1);
     else
-        gpio_set_level((gpio_num_t)BEATPIN, 1);
+        gpio_set_level((gpio_num_t)WIFILED, 0);
 }
 
 /**

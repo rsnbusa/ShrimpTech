@@ -24,10 +24,10 @@ void blinkConf(void *pArg)
     while(1)
     {
         gpio_set_level((gpio_num_t)WIFILED, 1);
-        gpio_set_level((gpio_num_t)BEATPIN, 0);
+        // gpio_set_level((gpio_num_t)BEATPIN, 0);
         delay(cuanto);
         gpio_set_level((gpio_num_t)WIFILED, 0);
-        gpio_set_level((gpio_num_t)BEATPIN, 1);
+        // gpio_set_level((gpio_num_t)BEATPIN, 1);
         delay(cuanto);
     }
 }

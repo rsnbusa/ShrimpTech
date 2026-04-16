@@ -44,6 +44,12 @@
 #include "mbcontroller.h"
 #include "misparams.h"  // Modbus parameter structures
 
+
+// valves and pumps
+
+#include "Valve.hpp"
+#include "Pump.hpp"
+
 extern "C" {
 #include "nmea_parser.h"
 // ============================================================================
