@@ -361,4 +361,5 @@ EXTERN bool gpsFlag;
 EXTERN Valve line_valves[4],feeder_valve;
 EXTERN Pump hopper;
 
+EXTERN float hxweight;
 #endif // MAIN_GLOBALS_H

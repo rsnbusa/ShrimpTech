@@ -52,6 +52,7 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 #define RPM                             (42)        // GPIO for Blower RPM input via HAL sensor
 #define HXDOUT                          (48)        // GPIO for HX711 data output
 #define HXCLK                           (14)        // GPIO for HX711 clock
+#define HXSCK                           HXCLK       // HX711 clock alias
 
 #define RELAYON                         (0)
 #define RELAYOFF                        (1)

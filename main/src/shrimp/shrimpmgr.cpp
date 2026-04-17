@@ -22,6 +22,11 @@ extern const uint8_t cert_end[]             asm("_binary_cloudamp_pem_end");
 static const char *CFG_NVS_PARTITION = "config";
 static const char *CFG_NVS_NAMESPACE = "config";
 static const char *CFG_NVS_KEY = "sysconf";
+static hx711_t s_hx711 = {
+    .dout = (gpio_num_t)HXDOUT,
+    .pd_sck = (gpio_num_t)HXSCK,
+    .gain = HX711_GAIN_A_128,
+};
 
 // Custom logging function with custom timestamp
 void my_log(const char *color,const char* tag, const char* format, ...) {
@@ -3334,6 +3339,91 @@ void init_gpio_pins(void)
     // gpio_config(&io_conf);
 }
 
+/**
+ * @brief Initialize HX711 ADC device
+ *
+ * Uses managed component driver to configure HXDOUT and HXSCK pins.
+ */
+void init_hx711_device(void)
+{
+    esp_err_t err = hx711_init(&s_hx711);
+    if (err != ESP_OK) {
+        MESP_LOGE(MESH_TAG, "HX711 init failed (DOUT=%d SCK=%d): %s", HXDOUT, HXSCK, esp_err_to_name(err));
+        return;
+    }
+
+    err = hx711_wait(&s_hx711, 500);
+    if (err != ESP_OK) {
+        MESP_LOGW(MESH_TAG, "HX711 initialized but not ready yet: %s", esp_err_to_name(err));
+        return;
+    }
+
+    MESP_LOGI(MESH_TAG, "HX711 initialized on DOUT=%d SCK=%d", HXDOUT, HXSCK);
+}
+
+static int32_t s_tare_offset = 0;
+
+static int32_t hx711_read_average(int samples)
+{
+    int64_t sum = 0;
+    for (int i = 0; i < samples; i++) {
+        esp_err_t err = hx711_wait(&s_hx711, 200);
+        if (err != ESP_OK) {
+            MESP_LOGW(MESH_TAG, "HX711 not ready during read: %s", esp_err_to_name(err));
+            continue;
+        }
+        int32_t val = 0;
+        err = hx711_read_data(&s_hx711, &val);
+        if (err != ESP_OK) {
+            MESP_LOGW(MESH_TAG, "HX711 read error: %s", esp_err_to_name(err));
+            continue;
+        }
+        sum += val;
+    }
+    return (int32_t)(sum / samples);
+}
+
+static void hx711_do_tare(int samples)
+{
+    MESP_LOGI(MESH_TAG, "HX711 taring with %d samples...", samples);
+    s_tare_offset = hx711_read_average(samples);
+    MESP_LOGI(MESH_TAG, "HX711 tare offset: %" PRId32, s_tare_offset);
+}
+
+/**
+ * @brief FreeRTOS task: tares the HX711 then reads weight in a loop
+ *
+ * Performs an initial tare, then reads and logs weight every second.
+ * If the computed weight drops below -0.1 g (sensor drift), re-tares automatically.
+ *
+ * @param pArg unused
+ */
+void hx711_weight_task(void *pArg)
+{
+    static const int   TARE_SAMPLES = 10;
+    static const int   READ_SAMPLES = 5;
+    static const float SCALE_FACTOR = 903.0f; // raw units per gram — replace with calibrated value
+
+    hx711_do_tare(TARE_SAMPLES);
+
+    MESP_LOGI(MESH_TAG, "HX711 weight task running (scale=%.2f raw/g)", SCALE_FACTOR);
+
+    while (true) {
+        int32_t raw    = hx711_read_average(READ_SAMPLES);
+        hxweight = static_cast<float>(raw - s_tare_offset) / SCALE_FACTOR;
+
+        if (hxweight < -0.1f) {
+            MESP_LOGW(MESH_TAG, "HX711 negative drift detected — re-taring");
+            hx711_do_tare(TARE_SAMPLES);
+            vTaskDelay(pdMS_TO_TICKS(500));
+            continue;
+        }
+
+        MESP_LOGI(MESH_TAG, "Weight: %.1f g  (raw: %" PRId32 ")", hxweight, raw);
+        vTaskDelay(pdMS_TO_TICKS(10000));
+    }
+}
+
 
 /**
  * @brief Initialize cryptographic engine
@@ -3528,6 +3618,7 @@ void init_process(void)
     init_internal_mesh_commands();
     register_external_mqtt_commands();
     init_gpio_pins();
+    init_hx711_device();
     init_crypto_engine();
     init_system_queues();
     init_system_timers();
@@ -5985,10 +6076,13 @@ void app_main(void)
     // to start and set the schedule status in blower
    
  
-        if(theConf.temp_sensor)      // temperature settings
+   if(theConf.temp_sensor)      // temperature settings
    {
         xTaskCreate(&ds18b20_task,"ds18b20",1024*3,NULL, 5, NULL); 	            // start the modbus task  
     }
+
+    xTaskCreate(&hx711_weight_task, "hx711w", 1024 * 4, NULL, 5, NULL);
+
 
     theBlower.initBlower();        
     // start the time keeper to get a "relative valid" date to set the system time  for our the schedule process, 

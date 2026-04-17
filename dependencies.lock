@@ -1,4 +1,44 @@
 dependencies:
+  esp-idf-lib/esp_idf_lib_helpers:
+    component_hash: 689853bb8993434f9556af0f2816e808bf77b5d22100144b21f3519993daf237
+    dependencies: []
+    source:
+      registry_url: https://components.espressif.com
+      type: service
+    targets:
+    - esp32
+    - esp32c2
+    - esp32c3
+    - esp32c5
+    - esp32c6
+    - esp32c61
+    - esp32h2
+    - esp32p4
+    - esp32s2
+    - esp32s3
+    version: 1.4.0
+  esp-idf-lib/hx711:
+    component_hash: a746fa21c76a94e9796e85c9b5ac7054eff64587ab8e87c94615b4e80ccc2992
+    dependencies:
+    - name: esp-idf-lib/esp_idf_lib_helpers
+      registry_url: https://components.espressif.com
+      require: private
+      version: '*'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    targets:
+    - esp32
+    - esp32c2
+    - esp32c3
+    - esp32c5
+    - esp32c6
+    - esp32c61
+    - esp32h2
+    - esp32p4
+    - esp32s2
+    - esp32s3
+    version: 1.1.0
   espressif/cjson:
     component_hash: e788323270d90738662d66fffa910bfe1fba019bba087f01557e70c40485b469
     dependencies:
@@ -79,6 +119,7 @@ dependencies:
       type: service
     version: 9.2.0
 direct_dependencies:
+- esp-idf-lib/hx711
 - espressif/cjson
 - espressif/ds18b20
 - espressif/esp-modbus
@@ -86,6 +127,6 @@ direct_dependencies:
 - espressif/mqtt
 - hayschan/autopid_for_esp_idf
 - lvgl/lvgl
-manifest_hash: 7a1725a1651870f6a41aebb57a169f8409d5538ca6dbc52dd6c3061a530490d1
+manifest_hash: 7174c1061739828df8ae33a599b3a3ecd578e47738b00a8229cbf307b62892f3
 target: esp32s3
 version: 3.0.0
