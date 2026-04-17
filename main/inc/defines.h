@@ -53,6 +53,12 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 #define HXDOUT                          (48)        // GPIO for HX711 data output
 #define HXCLK                           (14)        // GPIO for HX711 clock
 #define HXSCK                           HXCLK       // HX711 clock alias
+// t
+#define HX711_SCALE_FACTOR              (903.0f)    // Raw ADC counts per gram
+#define HX711_WEIGHT_CORRECTION         (1.0062f)      // If 100g reads 90g use (100.0f/99.4.0f); if 110g use (100.0f/110.0f)
+#define HX711_TARE_SAMPLES              (10)
+#define HX711_READ_SAMPLES              (5)
+#define HX711_READ_PERIOD_MS            (1000)
 
 #define RELAYON                         (0)
 #define RELAYOFF                        (1)

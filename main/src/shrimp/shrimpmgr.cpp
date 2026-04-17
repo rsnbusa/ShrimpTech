@@ -219,6 +219,7 @@ void start_vfd(uint8_t que)
 
 void launch_sensors()
 {
+    return;
     if(!theConf.modbuson)
        return;
             // Battery Modbus Device
@@ -3400,27 +3401,26 @@ static void hx711_do_tare(int samples)
  */
 void hx711_weight_task(void *pArg)
 {
-    static const int   TARE_SAMPLES = 10;
-    static const int   READ_SAMPLES = 5;
-    static const float SCALE_FACTOR = 903.0f; // raw units per gram — replace with calibrated value
+    static const float SCALE_FACTOR = HX711_SCALE_FACTOR;
+    static const float CORRECTION_FACTOR = HX711_WEIGHT_CORRECTION;
 
-    hx711_do_tare(TARE_SAMPLES);
+    hx711_do_tare(HX711_TARE_SAMPLES);
 
-    MESP_LOGI(MESH_TAG, "HX711 weight task running (scale=%.2f raw/g)", SCALE_FACTOR);
+    MESP_LOGI(MESH_TAG, "HX711 weight task running (scale=%.2f raw/g, correction=%.4f)", SCALE_FACTOR, CORRECTION_FACTOR);
 
     while (true) {
-        int32_t raw    = hx711_read_average(READ_SAMPLES);
-        hxweight = static_cast<float>(raw - s_tare_offset) / SCALE_FACTOR;
+        int32_t raw = hx711_read_average(HX711_READ_SAMPLES);
+        hxweight = (static_cast<float>(raw - s_tare_offset) / SCALE_FACTOR) * CORRECTION_FACTOR;
 
         if (hxweight < -0.1f) {
-            MESP_LOGW(MESH_TAG, "HX711 negative drift detected — re-taring");
-            hx711_do_tare(TARE_SAMPLES);
+            // MESP_LOGW(MESH_TAG, "HX711 negative drift detected — re-taring");
+            hx711_do_tare(HX711_TARE_SAMPLES);
             vTaskDelay(pdMS_TO_TICKS(500));
             continue;
         }
-
-        MESP_LOGI(MESH_TAG, "Weight: %.1f g  (raw: %" PRId32 ")", hxweight, raw);
-        vTaskDelay(pdMS_TO_TICKS(10000));
+        if (((theConf.debug_flags >> dLOGIC) & 1U))
+            MESP_LOGI(MESH_TAG, "Weight: %.1f g  (raw: %" PRId32 ")", hxweight, raw);
+        vTaskDelay(pdMS_TO_TICKS(HX711_READ_PERIOD_MS));
     }
 }
 
@@ -4415,7 +4415,7 @@ void wifi_init_network(void)
     ESP_ERROR_CHECK(esp_wifi_start());
     
     // Start web server for configuration
-    xTaskCreate(&start_webserver, "webs", 1024 * 10, NULL, 5, NULL);
+    xTaskCreate(&start_webserver, "webs", 1024 * 15, NULL, 5, NULL);
     MESP_LOGI(TAG, "WiFi AP initialized and web server started");
 }
 // WiFi STA connection state variables
@@ -6173,7 +6173,7 @@ void app_main(void)
     {
         wifi_connect_external_ap(); //start wifi which will start many ither tasks from got ip event wiht SNTP starting the scheduler
         webserverf=true;
-        xTaskCreate(&start_webserver, "webs", 1024 * 10, NULL, 5, NULL);
+        xTaskCreate(&start_webserver, "webs", 1024 * 15, NULL, 5, NULL);
     }
     else  
     {

@@ -24,7 +24,8 @@
 
 // How to create a self signed Elliptic Curve certificate, see
 // https://github.com/cesanta/mongoose/blob/master/test/certs/generate.sh
-#define TLS_CERT                                                       \
+#ifndef WIZARD_TLS_CERT
+#define WIZARD_TLS_CERT                                                \
   "-----BEGIN CERTIFICATE-----\n"                                      \
   "MIIBMTCB2aADAgECAgkAluqkgeuV/zUwCgYIKoZIzj0EAwIwEzERMA8GA1UEAwwI\n" \
   "TW9uZ29vc2UwHhcNMjQwNTA3MTQzNzM2WhcNMzQwNTA1MTQzNzM2WjARMQ8wDQYD\n" \
@@ -34,13 +35,16 @@
   "RAIgTXW9MITQSwzqbNTxUUdt9DcB+8pPUTbWZpiXcA26GMYCIBiYw+DSFMLHmkHF\n" \
   "+5U3NXW3gVCLN9ntD5DAx8LTG8sB\n"                                     \
   "-----END CERTIFICATE-----\n"
+#endif
 
-#define TLS_KEY                                                        \
+#ifndef WIZARD_TLS_KEY
+#define WIZARD_TLS_KEY                                                 \
   "-----BEGIN EC PRIVATE KEY-----\n"                                   \
   "MHcCAQEEIAVdo8UAScxG7jiuNY2UZESNX/KPH8qJ0u0gOMMsAzYWoAoGCCqGSM49\n" \
   "AwEHoUQDQgAEqN6BIhvgbk7ecmUcn8Da9Avkj/uDNERtqWJG9r/or26X4u9jR5Jl\n" \
   "4hf5Gx17YJkq5/z3k6ogPDPpoAYWIw1/sw==\n"                             \
   "-----END EC PRIVATE KEY-----\n"
+#endif
 
 #define CONN_OTA 'O'
 #define CONN_FILE_UPLOAD 'F'
@@ -442,7 +446,7 @@ struct attribute s_settings_attributes[] = {
   {"challenge_val", "string", NULL, offsetof(struct settings, challenge_val), 16, false},
   {"master_val", "bool", NULL, offsetof(struct settings, master_val), 0, false},
   {"pool_val", "int", NULL, offsetof(struct settings, pool_val), 0, false},
-  {"mac_val", "string", NULL, offsetof(struct settings, mac_val), 10, false},
+  {"mac_val", "string", NULL, offsetof(struct settings, mac_val), 16, false},
   {NULL, NULL, NULL, 0, 0, false}
 };
 struct attribute s_system_attributes[] = {
@@ -624,10 +628,11 @@ void mongoose_set_auth_handler(int (*fn)(const char *, const char *)) {
 static struct user *authenticate(struct mg_http_message *hm) {
   char user[100], pass[100];
   struct user *u, *result = NULL;
+  struct mg_str *ah = mg_http_get_header(hm, "Authorization");
   mg_http_creds(hm, user, sizeof(user), pass, sizeof(pass));
 
-  if (user[0] != '\0' && pass[0] != '\0') {
-    // Both user and password is set, auth by user/password via glue API
+  if (ah != NULL && pass[0] != '\0') {
+    // Auth header and password are set, auth by user/password via glue API
     int level = s_auth(user, pass);
     MG_DEBUG(("user %s, level: %d", user, level));
     if (level > 0) {  // Proceed only if the firmware authenticated us
@@ -643,7 +648,7 @@ static struct user *authenticate(struct mg_http_message *hm) {
         result->level = level, result->next = s_users, s_users = result;
       }
     }
-  } else if (user[0] == '\0' && pass[0] != '\0') {
+  } else if (ah == NULL && pass[0] != '\0') {
     for (u = s_users; u != NULL && result == NULL; u = u->next) {
       if (strcmp(u->token, pass) == 0) result = u;
     }
@@ -807,8 +812,8 @@ size_t print_struct(void (*out)(char, void *), void *ptr, va_list *ap) {
     } else if (strcmp(a[i].type, "bool") == 0) {
       len += mg_xprintf(out, ptr, "%s", *(bool *) buf ? "true" : "false");
     } else if (strcmp(a[i].type, "string") == 0) {
-      // We don't use MG_ESC cause the buffer may not be 0-terminated
-      len += mg_xprintf(out, ptr, "%m", mg_print_esc, a[i].size, buf);
+      size_t slen = strnlen(buf, a[i].size);
+      len += mg_xprintf(out, ptr, "%m", mg_print_esc, (int) slen, buf);
     } else {
       len += mg_xprintf(out, ptr, "null");
     }
@@ -1107,8 +1112,8 @@ static void http_ev_handler(struct mg_connection *c, int ev, void *ev_data) {
     if (c->fn_data != NULL) {  // TLS listener
       struct mg_tls_opts opts;
       memset(&opts, 0, sizeof(opts));
-      opts.cert = mg_str(TLS_CERT);
-      opts.key = mg_str(TLS_KEY);
+      opts.cert = mg_str(WIZARD_TLS_CERT);
+      opts.key = mg_str(WIZARD_TLS_KEY);
       mg_tls_init(c, &opts);
     }
   }

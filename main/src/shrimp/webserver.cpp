@@ -304,7 +304,7 @@ void my_get_settings(struct settings *data) {
 	// Check if settings should be disabled based on configuration state
 	s_settings.disable_val = should_disable_settings();
 	// Set challenge initial value
-	sprintf(s_settings.mac_val, "%d", theConf.cid);
+	snprintf(s_settings.mac_val, sizeof(s_settings.mac_val), "%d", theConf.cid);
 	
 	// Handle restart scenario
 	if (restartf)
@@ -1299,6 +1299,26 @@ void my_get_VFDCmd(struct VFDCmd *data) // return limits saved in theblower
 }
 
 /**
+ * @brief Set Modbus VFDCmd configuration
+ * @param data Pointer to modbus_vfd structure with new settings
+ */
+void my_set_VFDFeedCmd(struct VFDCmd *data) // save limits from web to theblower
+{
+	// theConf.modbus_vfdcmd=*data;
+	write_to_flash();
+}
+
+/**
+ * @brief Get current Modbus VFDCmd configuration
+ * @param data Pointer to VFDCmd structure to populate
+ */
+void my_get_VFDFeedCmd(struct VFDCmd *data) // return limits saved in theblower
+{
+
+	// *data=theConf.modbus_vfdcmd;
+}
+
+/**
  * @brief Set Modbus sensors configuration
  * @param data Pointer to modbSensors structure with new settings
  */
@@ -1517,6 +1537,7 @@ void start_webserver(void *pArg)
   	mongoose_set_http_handlers("VFD", my_get_VFD ,my_set_VFD);				
   	mongoose_set_http_handlers("remoteLevels", my_get_remoteLevels ,my_set_remoteLevels);				
   	mongoose_set_http_handlers("VFDCmd", my_get_VFDCmd ,my_set_VFDCmd);				
+  	// mongoose_set_http_handlers("VFDFeedCmd", my_get_VFDFeedCmd ,my_set_VFDFeedCmd);				
   	mongoose_set_http_handlers("DO", my_get_DO ,my_set_DO);				
   	mongoose_set_http_handlers("Inverter", my_get_Inverter ,my_set_Inverter);				
   	mongoose_set_http_handlers("reboot", my_check_reboot ,my_start_reboot);		

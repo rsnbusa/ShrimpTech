@@ -433,7 +433,7 @@ struct settings {
   char challenge_val[16];
   bool master_val;
   int pool_val;
-  char mac_val[10];
+  char mac_val[16];
 };
 void glue_get_settings(struct settings *);
 void glue_set_settings(struct settings *);
