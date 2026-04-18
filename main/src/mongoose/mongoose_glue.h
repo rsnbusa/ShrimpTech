@@ -172,6 +172,23 @@ struct VFDCmd {
 void glue_get_VFDCmd(struct VFDCmd *);
 void glue_set_VFDCmd(struct VFDCmd *);
 
+struct VFDFeed {
+  int refresh;
+  int address;
+  double cmdmux;
+  int cmdtype;
+  int cmdpoints;
+  int cmdstart;
+  int cmdoff;
+  double freqmux;
+  int freqtype;
+  int freqpoints;
+  int freqstart;
+  int freqoff;
+};
+void glue_get_VFDFeed(struct VFDFeed *);
+void glue_set_VFDFeed(struct VFDFeed *);
+
 struct VFD {
   int refresh;
   int address;
@@ -433,7 +450,7 @@ struct settings {
   char challenge_val[16];
   bool master_val;
   int pool_val;
-  char mac_val[16];
+  char mac_val[10];
 };
 void glue_get_settings(struct settings *);
 void glue_set_settings(struct settings *);

@@ -212,6 +212,21 @@ struct attribute s_VFDCmd_attributes[] = {
   {"freqoff", "int", NULL, offsetof(struct VFDCmd, freqoff), 0, false},
   {NULL, NULL, NULL, 0, 0, false}
 };
+struct attribute s_VFDFeed_attributes[] = {
+  {"refresh", "int", NULL, offsetof(struct VFDFeed, refresh), 0, false},
+  {"address", "int", NULL, offsetof(struct VFDFeed, address), 0, false},
+  {"cmdmux", "double", NULL, offsetof(struct VFDFeed, cmdmux), 0, false},
+  {"cmdtype", "int", NULL, offsetof(struct VFDFeed, cmdtype), 0, false},
+  {"cmdpoints", "int", NULL, offsetof(struct VFDFeed, cmdpoints), 0, false},
+  {"cmdstart", "int", NULL, offsetof(struct VFDFeed, cmdstart), 0, false},
+  {"cmdoff", "int", NULL, offsetof(struct VFDFeed, cmdoff), 0, false},
+  {"freqmux", "double", NULL, offsetof(struct VFDFeed, freqmux), 0, false},
+  {"freqtype", "int", NULL, offsetof(struct VFDFeed, freqtype), 0, false},
+  {"freqpoints", "int", NULL, offsetof(struct VFDFeed, freqpoints), 0, false},
+  {"freqstart", "int", NULL, offsetof(struct VFDFeed, freqstart), 0, false},
+  {"freqoff", "int", NULL, offsetof(struct VFDFeed, freqoff), 0, false},
+  {NULL, NULL, NULL, 0, 0, false}
+};
 struct attribute s_VFD_attributes[] = {
   {"refresh", "int", NULL, offsetof(struct VFD, refresh), 0, false},
   {"address", "int", NULL, offsetof(struct VFD, address), 0, false},
@@ -446,7 +461,7 @@ struct attribute s_settings_attributes[] = {
   {"challenge_val", "string", NULL, offsetof(struct settings, challenge_val), 16, false},
   {"master_val", "bool", NULL, offsetof(struct settings, master_val), 0, false},
   {"pool_val", "int", NULL, offsetof(struct settings, pool_val), 0, false},
-  {"mac_val", "string", NULL, offsetof(struct settings, mac_val), 16, false},
+  {"mac_val", "string", NULL, offsetof(struct settings, mac_val), 10, false},
   {NULL, NULL, NULL, 0, 0, false}
 };
 struct attribute s_system_attributes[] = {
@@ -505,6 +520,7 @@ struct apihandler_data s_apihandler_feederprofile = {{"feederprofile", "data", f
 struct apihandler_data s_apihandler_remoteLevels = {{"remoteLevels", "data", false, 0, 0, 0UL}, s_remoteLevels_attributes, sizeof(struct remoteLevels), (void (*)(void *)) glue_get_remoteLevels, (void (*)(void *)) glue_set_remoteLevels};
 struct apihandler_data s_apihandler_Inverter = {{"Inverter", "data", false, 0, 0, 0UL}, s_Inverter_attributes, sizeof(struct Inverter), (void (*)(void *)) glue_get_Inverter, (void (*)(void *)) glue_set_Inverter};
 struct apihandler_data s_apihandler_VFDCmd = {{"VFDCmd", "data", false, 0, 0, 0UL}, s_VFDCmd_attributes, sizeof(struct VFDCmd), (void (*)(void *)) glue_get_VFDCmd, (void (*)(void *)) glue_set_VFDCmd};
+struct apihandler_data s_apihandler_VFDFeed = {{"VFDFeed", "data", false, 0, 0, 0UL}, s_VFDFeed_attributes, sizeof(struct VFDFeed), (void (*)(void *)) glue_get_VFDFeed, (void (*)(void *)) glue_set_VFDFeed};
 struct apihandler_data s_apihandler_VFD = {{"VFD", "data", false, 0, 0, 0UL}, s_VFD_attributes, sizeof(struct VFD), (void (*)(void *)) glue_get_VFD, (void (*)(void *)) glue_set_VFD};
 struct apihandler_data s_apihandler_energy = {{"energy", "data", false, 0, 0, 0UL}, s_energy_attributes, sizeof(struct energy), (void (*)(void *)) glue_get_energy, (void (*)(void *)) glue_set_energy};
 struct apihandler_data s_apihandler_panels = {{"panels", "data", false, 0, 0, 0UL}, s_panels_attributes, sizeof(struct panels), (void (*)(void *)) glue_get_panels, (void (*)(void *)) glue_set_panels};
@@ -528,6 +544,7 @@ static struct apihandler *s_apihandlers[] = {
   (struct apihandler *) &s_apihandler_remoteLevels,
   (struct apihandler *) &s_apihandler_Inverter,
   (struct apihandler *) &s_apihandler_VFDCmd,
+  (struct apihandler *) &s_apihandler_VFDFeed,
   (struct apihandler *) &s_apihandler_VFD,
   (struct apihandler *) &s_apihandler_energy,
   (struct apihandler *) &s_apihandler_panels,
@@ -812,8 +829,8 @@ size_t print_struct(void (*out)(char, void *), void *ptr, va_list *ap) {
     } else if (strcmp(a[i].type, "bool") == 0) {
       len += mg_xprintf(out, ptr, "%s", *(bool *) buf ? "true" : "false");
     } else if (strcmp(a[i].type, "string") == 0) {
-      size_t slen = strnlen(buf, a[i].size);
-      len += mg_xprintf(out, ptr, "%m", mg_print_esc, (int) slen, buf);
+      // We don't use MG_ESC cause the buffer may not be 0-terminated
+      len += mg_xprintf(out, ptr, "%m", mg_print_esc, a[i].size, buf);
     } else {
       len += mg_xprintf(out, ptr, "null");
     }
@@ -847,9 +864,18 @@ static void populate_struct_from_json(struct mg_str json, char *tmp,
 static void handle_object(struct mg_connection *c, struct mg_http_message *hm,
                           struct apihandler_data *h) {
   void *data = mg_calloc(1, h->data_size);
+  if (data == NULL) {
+    mg_http_reply(c, 500, JSON_HEADERS, "{\"error\":\"out of memory\"}\n");
+    return;
+  }
   h->getter(data);
   if (hm->body.len > 0 && h->data_size > 0) {
     char *tmp = mg_calloc(1, h->data_size);
+    if (tmp == NULL) {
+      mg_http_reply(c, 500, JSON_HEADERS, "{\"error\":\"out of memory\"}\n");
+      mg_free(data);
+      return;
+    }
     memcpy(tmp, data, h->data_size);
     populate_struct_from_json(hm->body, tmp, h->attributes);
     // If structure changes, increment version
@@ -878,6 +904,14 @@ static size_t print_array(void (*out)(char, void *), void *ptr, va_list *ap) {
   }
   if (start != stop) len += mg_xprintf(out, ptr, "[");
   void *data = mg_calloc(1, ha->data_size);
+  if (data == NULL) {
+    if (start != stop) {
+      len += mg_xprintf(out, ptr, "]");
+    } else {
+      len += mg_xprintf(out, ptr, "null");
+    }
+    return len;
+  }
   for (i = start; i <= stop; i++) {
     if (ha->getter(data, i) == false) break;
     if (i > start) len += mg_xprintf(out, ptr, ",");
@@ -893,6 +927,10 @@ static void handle_array(struct mg_connection *c, struct mg_http_message *hm,
                          struct apihandler_array *h) {
   if (hm->body.len > 0 && h->data_size > 0) {
     char *tmp = mg_calloc(2, h->data_size);  // Allocate struct and backup
+    if (tmp == NULL) {
+      mg_http_reply(c, 500, JSON_HEADERS, "{\"error\":\"out of memory\"}\n");
+      return;
+    }
     // The URI is /api/NAME/ITEM_INDEX. Get the array item index from the URI
     size_t index = 0;
     struct mg_str parts[3] = {{0, 0}, {0, 0}, {0, 0}};

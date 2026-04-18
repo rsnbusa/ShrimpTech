@@ -219,7 +219,12 @@ void start_vfd(uint8_t que)
 
 void launch_sensors()
 {
-    return;
+    // if(!framFlag)
+    // {
+    //     printf("NO FRAM FATAL\n");
+    //     return;
+
+    // }
     if(!theConf.modbuson)
        return;
             // Battery Modbus Device
@@ -275,34 +280,33 @@ void launch_sensors()
             //start tasks for all modbus devices
 
             if(battery)
-                xTaskCreate(&generic_modbus_task,battery->modbus_sensor_name,1024*4,(void*)battery, 5, NULL); 
+                xTaskCreate(&generic_modbus_task,battery->modbus_sensor_name,1024*6,(void*)battery, 5, NULL); 
             else
                 MESP_LOGE(TAG, "Failed to create Battery modbus task due to memory allocation failure"); 
 
             if(panels)  
-                xTaskCreate(&generic_modbus_task,panels->modbus_sensor_name,1024*4,(void*)panels, 5, NULL); 
+                xTaskCreate(&generic_modbus_task,panels->modbus_sensor_name,1024*6,(void*)panels, 5, NULL); 
             else
                 MESP_LOGE(TAG, "Failed to create Panels modbus task due to memory allocation failure"); 
 
             if(energy)
-                xTaskCreate(&generic_modbus_task,energy->modbus_sensor_name,1024*4,(void*)energy, 5, NULL); 
+                xTaskCreate(&generic_modbus_task,energy->modbus_sensor_name,1024*6,(void*)energy, 5, NULL); 
             else
                 MESP_LOGE(TAG, "Failed to create Energy modbus task due to memory allocation failure"); 
 
             if(sensorDev)
-                xTaskCreate(&generic_modbus_task,sensorDev->modbus_sensor_name,1024*4,(void*)sensorDev, 5, NULL); 
+                xTaskCreate(&generic_modbus_task,sensorDev->modbus_sensor_name,1024*6,(void*)sensorDev, 5, NULL); 
             else
                 MESP_LOGE(TAG, "Failed to create Sensors modbus task due to memory allocation failure"); 
 
             if(invstatus)
-                xTaskCreate(&generic_modbus_task,invstatus->modbus_sensor_name,1024*4,(void*)invstatus, 5, NULL); 
+                xTaskCreate(&generic_modbus_task,invstatus->modbus_sensor_name,1024*6,(void*)invstatus, 5, NULL); 
             else
                 MESP_LOGE(TAG, "Failed to create Inverter status modbus task due to memory allocation failure"); 
 
-
             if(VFDDev)
             {
-                xTaskCreate(&generic_modbus_task,VFDDev->modbus_sensor_name,1024*4,(void*)VFDDev, 5, &vfdHandle);       // task handle will be use to start kill it
+                xTaskCreate(&generic_modbus_task,VFDDev->modbus_sensor_name,1024*6,(void*)VFDDev, 5, &vfdHandle);       // task handle will be use to start kill it
 // ! IMPORTANT this taskhandle is saved in the vfdcmd data structure for later use in the callback, so we can start and stop the task which includes the callback itself, to avoid problems with execution order of suspend and resume, which can cause the task to be suspended before the resume command is sent, and then never resumed. So we start it, give it some time to be ready to be suspended, and then suspend it, it will be resumed by the blower task when the blower is started, and killed when the blower is stopped
                 vfdcmd->theHandle=vfdHandle;   // pass the handle to the device for later use in the callback
                 delay(400);  // give it some time to start and be ready to be suspended, otherwise we can have
@@ -313,7 +317,7 @@ void launch_sensors()
 // the twin
             if(VFDDev2)
             {
-                xTaskCreate(&generic_modbus_task,VFDDev2->modbus_sensor_name,1024*4,(void*)VFDDev2, 6, &vfdHandle2);       // task handle will be use to start kill it
+                xTaskCreate(&generic_modbus_task,VFDDev2->modbus_sensor_name,1024*6,(void*)VFDDev2, 6, &vfdHandle2);       // task handle will be use to start kill it
 // ! IMPORTANT this taskhandle is saved in the vfdcmd data structure for later use in the callback, so we can start and stop the task which includes the callback itself, to avoid problems with execution order of suspend and resume, which can cause the task to be suspended before the resume command is sent, and then never resumed. So we start it, give it some time to be ready to be suspended, and then suspend it, it will be resumed by the blower task when the blower is started, and killed when the blower is stopped
                 vfdcmd2->theHandle=vfdHandle2;   // pass the handle to the device for later use in the callback
                 delay(400);  // give it some time to start and be ready to be suspended, otherwise we can have
@@ -324,7 +328,7 @@ void launch_sensors()
 
             if(vfdcmd)
             {
-                xTaskCreate(&generic_modbus_task,vfdcmd->modbus_sensor_name,1024*4,(void*)vfdcmd, 5, &vfdcmdHandle);    // this handle is important. Managed via suspend and resume
+                xTaskCreate(&generic_modbus_task,vfdcmd->modbus_sensor_name,1024*6,(void*)vfdcmd, 5, &vfdcmdHandle);    // this handle is important. Managed via suspend and resume
                 vTaskSuspend(vfdcmdHandle);   // start suspended, will be resumed by the blower task when the blower is started, and killed when the blower is stopped
             }
             else
@@ -332,7 +336,7 @@ void launch_sensors()
 
             if(vfdcmd2)
             {
-                xTaskCreate(&generic_modbus_task,vfdcmd2->modbus_sensor_name,1024*4,(void*)vfdcmd2, 5, &vfdcmdHandle2);    // this handle is important. Managed via suspend and resume
+                xTaskCreate(&generic_modbus_task,vfdcmd2->modbus_sensor_name,1024*6,(void*)vfdcmd2, 5, &vfdcmdHandle2);    // this handle is important. Managed via suspend and resume
                 vTaskSuspend(vfdcmdHandle2);   // start suspended, will be resumed by the blower task when the blower is started, and killed when the blower is stopped
             }
             else
@@ -541,9 +545,9 @@ int get_routing_table()
 
         counting_nodes=masterNode.existing_nodes;  //copy for counting purposes
         time_t  now;
-        theBlower.setStatsLastNodeCount(masterNode.existing_nodes);
+        if(framFlag) theBlower.setStatsLastNodeCount(masterNode.existing_nodes);
         time(&now);
-        theBlower.setStatsLastCountTS(now);
+        if(framFlag) theBlower.setStatsLastCountTS(now);
         xSemaphoreGive(tableSem);
         if(err)
             return ESP_FAIL;
@@ -1417,9 +1421,11 @@ void wifi_send_meter_data(TimerHandle_t algo)
         return;
     }
 
-     theBlower.setReservedDate(time(NULL));
+     if(framFlag) theBlower.setReservedDate(time(NULL));
     // copy theBlower solar data into shrimp message to send to MAIN HOST via MQTT HQ
-    memcpy(&shmsg->poolAvgMetrics, theBlower.getSolarSystem(), sizeof(solarSystem_t));
+    solarSystem_t *tempSolar = framFlag ? theBlower.getSolarSystem() : NULL;
+    if(tempSolar) memcpy(&shmsg->poolAvgMetrics, tempSolar, sizeof(solarSystem_t));
+    else memset(&shmsg->poolAvgMetrics, 0, sizeof(solarSystem_t));
     // update the current schedule data that is lost during averaging
     wschedule_t *scheduleData = theBlower.getSchedulePtr();
     if (scheduleData)
@@ -2460,8 +2466,8 @@ void handle_mqtt_data_event(esp_mqtt_event_handle_t event)
     mqttHandle.message = (uint8_t*)msg;
     mqttHandle.msgLen = event->data_len;
     
-    theBlower.setStatsBytesIn(event->data_len);
-    theBlower.setStatsMsgIn();
+    if(framFlag) theBlower.setStatsBytesIn(event->data_len);
+    if(framFlag) theBlower.setStatsMsgIn();
     
 
     
@@ -2921,7 +2927,7 @@ void handle_parent_disconnected(mesh_event_disconnected_t *disconnected)
     {
         hostflag = false;
         mqttf = false;
-        theBlower.setStatsStaDiscos();
+        if(framFlag) theBlower.setStatsStaDiscos();
 
         char *msg = (char *)calloc(1, 100);
         if (msg)
@@ -3589,8 +3595,8 @@ void init_valves()
     line_valves[0].init((gpio_num_t)VAL0OPEN, (gpio_num_t)VAL0CLOSE, "Valve0", 5000);
     line_valves[1].init((gpio_num_t)VAL1OPEN, (gpio_num_t)VAL1CLOSE, "Valve1", 5000);
     line_valves[2].init((gpio_num_t)VAL2OPEN, (gpio_num_t)VAL2CLOSE, "Valve2", 5000);
-    line_valves[3].init((gpio_num_t)VAL3OPEN, (gpio_num_t)VAL3CLOSE, "Valve3", 5000);
-    feeder_valve.init((gpio_num_t)FEEDEROPEN, (gpio_num_t)FEEDERCLOSE, "FeederValve", 5000);
+    // line_valves[3].init((gpio_num_t)VAL3OPEN, (gpio_num_t)VAL3CLOSE, "Valve3", 5000);
+    // feeder_valve.init((gpio_num_t)FEEDEROPEN, (gpio_num_t)FEEDERCLOSE, "FeederValve", 5000);
 }
 
 /**
@@ -3853,8 +3859,8 @@ bool process_queued_message(mqttSender_t *msg, uint32_t startTime)
     }
     
     // Update statistics
-    theBlower.setStatsMsgOut();
-    theBlower.setStatsBytesOut(msg->lenMsg);
+    if(framFlag) theBlower.setStatsMsgOut();
+    if(framFlag) theBlower.setStatsBytesOut(msg->lenMsg);
     
     // Execute callback if provided
     if (msg->code != NULL) {
@@ -4198,7 +4204,7 @@ void handle_ip_got_ip(ip_event_got_ip_t *event)
     
     MESP_LOGI(MESH_TAG, "<IP_EVENT_STA_GOT_IP>IP:" IPSTR, IP2STR(&event->ip_info.ip));
     s_current_ip.addr = event->ip_info.ip.addr;
-    theBlower.setStatsStaConns();
+    if(framFlag) theBlower.setStatsStaConns();
     
     // Get DNS configuration
     esp_netif_t *netif = event->esp_netif;
@@ -5574,7 +5580,7 @@ void start_schedule_timers(void * pArg)
                         goto restart_schedule; // Timer validation failed, restart
                     }
                 }
-                theBlower.setSchedule(theConf.activeProfile, ck,ck_d,0,0,0,0,POOLREADY); // set the schedule in blower to indicate we are in active schedule mode and first hours. Blower_satar will change the hour
+                if(framFlag) theBlower.setSchedule(theConf.activeProfile, ck,ck_d,0,0,0,0,POOLREADY); // set the schedule in blower to indicate we are in active schedule mode and first hours. Blower_satar will change the hour
 
                 // ! all timers Scheduled, now wait for last timer. 
                 // ! THIS WILL EXECUTE INMMEDIATLY 
@@ -5647,7 +5653,7 @@ void start_schedule_timers(void * pArg)
             free(bbuff);
         }
         MESP_LOGE(TAG, "Production cycle ended");
-        theBlower.setSchedule(0, 0, 0, 0, 0,0,0,POOLCROP);
+        if(framFlag) theBlower.setSchedule(0, 0, 0, 0, 0,0,0,POOLCROP);
         schedulef = false;
 
         
@@ -5981,7 +5987,7 @@ void blower_start(void * pArg)
     // the schedule should change its status here to active, it also marks the profile,cycle and dazy for recovery in PF
     // theBlower.setScheduleStatus(POOLBLOWERON); // this is the status that will be set when the timer starts, 
     // it will be used to know that we are in active schedule mode and to recover the schedule status in case of power loss, it will be set to next or off in the end timer according to if we have more timers or not
-    theBlower.setSchedule(theConf.activeProfile, start_timer_ctx->cycle,start_timer_ctx->day,start_timer_ctx->timerNum,
+    if(framFlag) theBlower.setSchedule(theConf.activeProfile, start_timer_ctx->cycle,start_timer_ctx->day,start_timer_ctx->timerNum,
         start_timer_ctx->tostart,0,100,POOLBLOWERON); // set the schedule in blower to indicate we are in active schedule mode
 
     if ((theConf.debug_flags >> dSCH) & 1U) {
@@ -6142,14 +6148,6 @@ void app_main(void)
     }
 // reset reason code at https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/misc_system_api.html
  
-// BLE option not used but kept for code savinggs sake
-// if(theConf.bleboot==BLE_MODE && theConf.masternode)
-        // {
-        //     xTaskCreate(nimble_test,"nimble",1024*20,NULL, 14,NULL);      
-        //     while(true)
-        //         vTaskDelay(100);    
-        // }
-
     
 // Most important task are now launched that are NOT dependent on Network
 

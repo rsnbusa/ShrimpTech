@@ -49,6 +49,11 @@ void generic_modbus_task(void *pArg)
     // Get sensor configuration and refresh rate and address
     void *sensor_specs = modbus_sensor->modbus_sensor_specs;
     int refresh_rate = ((general_4modbus_specs_t*)sensor_specs)->regfresh;
+    if(refresh_rate <= 0)
+    {
+        MESP_LOGE(TAG, "%s task: Invalid refresh rate %d, defaulting to 10 minute", modbus_sensor->modbus_sensor_name, refresh_rate);
+        refresh_rate = 10; // Default to 1 minute if invalid
+    }
     int deviceAddress= ((general_4modbus_specs_t*)sensor_specs)->addr;
 
     // Initialize sensor descriptors from configuration

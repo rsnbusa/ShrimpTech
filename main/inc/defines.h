@@ -1,4 +1,7 @@
-
+#ifndef DEFINES_H
+#define DEFINES_H
+// #include "hal/hal-Sch-Shrimpo-Feeder-TVL.h"
+#include "hal/hal-SCH-ShrimpPcb.h"
 extern void my_log(const char * color,const char* tag, const char* format, ...);
 #define MESP_LOGI(tag, format, ...) my_log(GRAY,tag, format, ##__VA_ARGS__)
 #define MESP_LOGW(tag, format, ...) my_log(BK_YELLOW,tag, format, ##__VA_ARGS__)
@@ -8,14 +11,10 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 // GPS Sensor
 #define YEAR_BASE                       (2000)  //date in GPS starts from 2000
 #define TIME_ZONE                       (-5)   
-//GPIOs for GPS
-#define GPS_RX                          (16)     //GPIO ofr GPS Rx
 #define GPS_RATE                        (9600)
 
 #define SIMULATE 
-// Dalls Temeprature Sensor
 #define TIMERUNITS                     (1000000) // 1 second in microseconds for esp_timer, adjust if using a different timer system
-#define ONEWIRE_BUS_GPIO                (13)        // GPIO for DS18B20
 #define ONEWIRE_MAX_DS18B20             (1)
 
 //GPIOS assignment accordin to PCB Shrimp-Feeder-TVL April 16/2026
@@ -29,31 +28,6 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 #define PACKET_READ_TICS                (100 / portTICK_PERIOD_MS)
 #define MAXMODBUS                       (10) // sensors
 
-// SPI for FRAM 
-#define FMOSI							(01)    // GPIO for SPI MOSI
-#define FMISO							(40)    // GPIO for SPI MISO
-#define FCLK							(39)    // GPIO for SPI Clock
-#define FCS								(38)    // GPIO for SPI Chip Select
-#define FSDA                            FMOSI      
-#define FSCL                            FCLK
-
-#define WIFILED                         (41)
-
-// RS485 GPIOs
-#define RS485TX                         (8)         //GPIO for RS485 TX
-#define RS485RX                         (18)        //GPIO for RS485 RX
-#define RS485DE                         (19)        //GPIO for RS485 MBDE
-#define RS485RE                         (20)        //GPIO for RS485 NMBRE
-#define RS485RTS                        RS485RE    // IF only a simple RTS is used, solder a 0 Resistance between RE and DE and use this define for both
-
-// Other GPIOS
-// Door latch sensor
-#define DOOR                            (02)        // GPIO for door sensor input
-#define RPM                             (42)        // GPIO for Blower RPM input via HAL sensor
-#define HXDOUT                          (48)        // GPIO for HX711 data output
-#define HXCLK                           (14)        // GPIO for HX711 clock
-#define HXSCK                           HXCLK       // HX711 clock alias
-// t
 #define HX711_SCALE_FACTOR              (903.0f)    // Raw ADC counts per gram
 #define HX711_WEIGHT_CORRECTION         (1.0062f)      // If 100g reads 90g use (100.0f/99.4.0f); if 110g use (100.0f/110.0f)
 #define HX711_TARE_SAMPLES              (10)
@@ -81,7 +55,6 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 #define SNTPTRY                         (10)
 #define FREEANDNULL(x)		            if(x) {free(x);x=NULL;}
 #define MAXINTCMDS                      (18)
-#define SUPERSECRET                     "mi mama me mima mucho y MepsiCia"
 #define APPNAME                         "shrimp"
 #define MQTTSECURE       
 #define MAXNODES                        (20)                
@@ -210,17 +183,7 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 
 #define WIFI_MESH                       (0)
 
-// valves GPIOs
-#define VAL0OPEN                        (4) //GPIO for valve 0 open
-#define VAL0CLOSE                       (5) //GPIO for valve 0 close
-#define VAL1OPEN                        (6) //GPIO for valve 1 open
-#define VAL1CLOSE                       (7) //GPIO for valve 1 close
-#define VAL2OPEN                        (12) //GPIO for valve 2 open
-#define VAL2CLOSE                       (9) //GPIO for valve 2 close
-#define VAL3OPEN                        (10) //GPIO for valve 3 open
-#define VAL3CLOSE                       (11) //GPIO for valve 3 close
-#define FEEDEROPEN                      (15) //GPIO for feeder open
-#define FEEDERCLOSE                     (3)  //GPIO for feeder close
+
 // Color definitons for debugging 
 
 #define DBG_SCH						    "\e[36m[SCH]\e[0m"               
@@ -261,3 +224,5 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 #define BK_RED							"\e[41m"
 #define BK_WHITEC						"\e[47m"
 #define BK_GRAY 						"\e[100m"
+
+#endif

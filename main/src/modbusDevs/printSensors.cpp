@@ -102,8 +102,13 @@ void cb_vfd_data(void *vfdd, int *errors,char *color,int numerrs,int devAddr,Tas
              data->mcurrent,
              data->mvolts,
              data->mpower,data->mrpm,RESETC);
+
+
     // save data to frame blower sensors
-    theBlower.setVFD(data->mcurrent,data->mvolts,data->mpower,data->mrpm);
+    if(framFlag)
+    {
+        theBlower.setVFD(data->mcurrent,data->mvolts,data->mpower,data->mrpm);
+    }
 }
 
 /**
@@ -133,7 +138,8 @@ void cb_sensor_data(void *sensors, int *errors,char *color,int numerrs,int devAd
                 MESP_LOGE(TAG,"%s[%3d] Sensor Error CID %d=0x%x %s ",color,devAddr,a,errors[a],esp_err_to_name(errors[a]));
             hasErrors=true;
             // bzero(sensors,sizeof(sensor_t));
-            theBlower.setSensors( 0.0,  0,0.0,0.0, 0.0);
+            if(framFlag)
+                theBlower.setSensors( 0.0,  0,0.0,0.0, 0.0);
         }
     }
 
@@ -160,7 +166,8 @@ void cb_sensor_data(void *sensors, int *errors,char *color,int numerrs,int devAd
              data->percentDO * 100.0,
              data->DO);
     // save data to frame blower sensors
-             theBlower.setSensors( data->DO,  0,data->WTemp,
+    if(framFlag)
+        theBlower.setSensors( data->DO,  0,data->WTemp,
                         temperature, 0);
 }
 
@@ -235,11 +242,14 @@ void cb_energy_data(void *energy, int *errors,char * color,int numerrs,int devAd
     }
 
     // save data to frame blower Energy
-    theBlower.setEnergy(data->batChgAHToday, data->batDischgAHToday, 
-                       data->batChgAHTotal, data->batDischgAHTotal, 
-                       data->generateEnergyToday, data->usedEnergyToday, 
-                       data->gLoadConsumLineTotal, data->batChgkWhToday, 
-                       data->batDischgkWhToday, data->genLoadConsumToday);
+    if(framFlag)
+    {
+        theBlower.setEnergy(data->batChgAHToday, data->batDischgAHToday, 
+                           data->batChgAHTotal, data->batDischgAHTotal, 
+                           data->generateEnergyToday, data->usedEnergyToday, 
+                           data->gLoadConsumLineTotal, data->batChgkWhToday, 
+                           data->batDischgkWhToday, data->genLoadConsumToday);
+    }
 }
 
 // ============================================================================
@@ -270,6 +280,7 @@ void cb_battery_data(void *batteryData, int *errors,char *color,int numerrs,int 
             if (((theConf.debug_flags >> dMODBUS) & 1U))
                 MESP_LOGE(TAG,"%s[%3d] Battery Error CID %d=0x%x %s ",color,devAddr,a,errors[a],esp_err_to_name(errors[a]));
             hasErrors=true;
+            if(framFlag)
                 theBlower.setBattery(0, 0,0, 0);
 
         }
@@ -300,7 +311,8 @@ void cb_battery_data(void *batteryData, int *errors,char *color,int numerrs,int 
              data->batBmsTemp);
 
     // save data to frame blower battery
-    theBlower.setBattery(data->batSOC, data->batSOH, data->batteryCycleCount, data->batBmsTemp);
+    if(framFlag)
+        theBlower.setBattery(data->batSOC, data->batSOH, data->batteryCycleCount, data->batBmsTemp);
 }
 
 // ============================================================================
@@ -332,7 +344,8 @@ void cb_panel_data(void *pvPanel, int *errors,char * color,int numerrs,int devAd
                 MESP_LOGE(TAG,"%s[%3d] Panels Error CID %d=0x%x %s ",color,devAddr,a,errors[a],esp_err_to_name(errors[a]));
             hasErrors=true;
             // here the logic to ERROR MANAGEMNET reporting
-            theBlower.setPVPanel(0, 0, 0, 0, 0);
+            if(framFlag)
+                theBlower.setPVPanel(0, 0, 0, 0, 0);
         }
     }
 
@@ -362,7 +375,8 @@ void cb_panel_data(void *pvPanel, int *errors,char * color,int numerrs,int devAd
              data->pv2Amp);
 
     // save data to frame blower Panels
-    theBlower.setPVPanel(data->chargeCurr, data->pv1Volts, data->pv2Volts,data->pv1Amp, data->pv2Amp);  
+    if(framFlag)
+        theBlower.setPVPanel(data->chargeCurr, data->pv1Volts, data->pv2Volts,data->pv1Amp, data->pv2Amp);  
 }
 
 // ============================================================================

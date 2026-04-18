@@ -88,60 +88,60 @@ extern char levels[6][10];			// log levels external in cmdConfig.cpp
 static bool restartf=false,restart_profile=false;;
 extern 	int findLevel(char * cual);
 
-/**
- * @brief Validates the authentication key against the expected challenge
- * 
- * Converts the provided key into a challenge value using AES encryption
- * and compares it against the expected challenge derived from the configuration ID.
- * 
- * @param key The 64-bit authentication key to validate
- * @return true if the key is valid, false otherwise
- */
-bool check_key(uint64_t key)
-{
-	char cid_buffer[KEY_BUFFER_SIZE];
-	char encryption_key[KEY_STRING_SIZE];
-	int32_t challenge_from_key;
+// /**
+//  * @brief Validates the authentication key against the expected challenge
+//  * 
+//  * Converts the provided key into a challenge value using AES encryption
+//  * and compares it against the expected challenge derived from the configuration ID.
+//  * 
+//  * @param key The 64-bit authentication key to validate
+//  * @return true if the key is valid, false otherwise
+//  */
+// bool check_key(uint64_t key)
+// {
+// 	char cid_buffer[KEY_BUFFER_SIZE];
+// 	char encryption_key[KEY_STRING_SIZE];
+// 	int32_t challenge_from_key;
 	
-	// Extract challenge from the input key (reverse byte order)
-	uint8_t *key_bytes = (uint8_t*)&key;
-	uint8_t *challenge_bytes = (uint8_t*)&challenge_from_key;
-	challenge_bytes += 3;  // Start from the end
+// 	// Extract challenge from the input key (reverse byte order)
+// 	uint8_t *key_bytes = (uint8_t*)&key;
+// 	uint8_t *challenge_bytes = (uint8_t*)&challenge_from_key;
+// 	challenge_bytes += 3;  // Start from the end
 	
-	for (int i = 0; i < CHALLENGE_BYTES; i++)
-	{
-		*challenge_bytes = *key_bytes;
-		challenge_bytes--;
-		key_bytes++;
-	}
+// 	for (int i = 0; i < CHALLENGE_BYTES; i++)
+// 	{
+// 		*challenge_bytes = *key_bytes;
+// 		challenge_bytes--;
+// 		key_bytes++;
+// 	}
 
-	// Generate encryption key from configuration ID
-	sprintf(cid_buffer, "%016d", theConf.cid);
-	sprintf(encryption_key, "%s%s", cid_buffer, cid_buffer);  // Double the CID
+// 	// Generate encryption key from configuration ID
+// 	sprintf(cid_buffer, "%016d", theConf.cid);
+// 	sprintf(encryption_key, "%s%s", cid_buffer, cid_buffer);  // Double the CID
 	
-	// Allocate buffer for encrypted challenge
-	char *encrypted_challenge = (char*)calloc(AES_BUFFER_SIZE, 1);
-	if (encrypted_challenge == NULL)
-	{
-		MESP_LOGE("KEY", "Failed to allocate memory for encryption");
-		return false;
-	}
+// 	// Allocate buffer for encrypted challenge
+// 	char *encrypted_challenge = (char*)calloc(AES_BUFFER_SIZE, 1);
+// 	if (encrypted_challenge == NULL)
+// 	{
+// 		MESP_LOGE("KEY", "Failed to allocate memory for encryption");
+// 		return false;
+// 	}
 
-	// Encrypt the secret and compare with the challenge
-	int ret = shrimp_aes_encrypt(SUPERSECRET, sizeof(SUPERSECRET), encrypted_challenge, encryption_key);
-	if (ret == ESP_FAIL)
-	{
-		MESP_LOGE("KEY", "AES encryption failed");
-		free(encrypted_challenge);
-		return false;
-	}
+// 	// Encrypt the secret and compare with the challenge
+// 	int ret = shrimp_aes_encrypt(SUPERSECRET, sizeof(SUPERSECRET), encrypted_challenge, encryption_key);
+// 	if (ret == ESP_FAIL)
+// 	{
+// 		MESP_LOGE("KEY", "AES encryption failed");
+// 		free(encrypted_challenge);
+// 		return false;
+// 	}
 
-	// Compare the encrypted result with the challenge from the key
-	bool is_valid = (memcmp(encrypted_challenge, &challenge_from_key, CHALLENGE_BYTES) == 0);
+// 	// Compare the encrypted result with the challenge from the key
+// 	bool is_valid = (memcmp(encrypted_challenge, &challenge_from_key, CHALLENGE_BYTES) == 0);
 	
-	free(encrypted_challenge);
-	return is_valid;
-}
+// 	free(encrypted_challenge);
+// 	return is_valid;
+// }
 
 /**
  * @brief Helper function to check if settings should be disabled based on configuration state
@@ -186,11 +186,11 @@ static void populate_settings_data(void)
 {
 	if (theConf.meterconf == CONF_STATE_UNCONFIGURED)
 	{
-		strcpy(s_settings.msg_val, MSG_ENTER_KEY);
+		SAFE_STRCPY(s_settings.msg_val, MSG_ENTER_KEY, sizeof(s_settings.msg_val));
 	}
 	else
 	{
-		strcpy(s_settings.msg_val, MSG_REVIEWING);
+		SAFE_STRCPY(s_settings.msg_val, MSG_REVIEWING, sizeof(s_settings.msg_val));
 		s_settings.delay_val = theConf.delay_mesh;
 		s_settings.nodes_val = theConf.totalnodes;
 		s_settings.unit_val = theConf.unitid;
@@ -235,13 +235,18 @@ static void apply_settings_to_config(struct settings *data)
  */
 void my_get_battery(struct battery *data) {
 
-	solarSystem_t *solarData = theBlower.getPtrSolarsystem();
-	s_battery.soc=solarData->battery.batSOC;
-	s_battery.soh=solarData->battery.batSOH;	
-	s_battery.temp=solarData->battery.batBmsTemp;
-	s_battery.cycles=solarData->battery.batteryCycleCount;
-
+	if(!framFlag)
+		memset(&s_battery, 0, sizeof(struct battery));
+	else 
+	{ 
+		solarSystem_t *solarData = theBlower.getPtrSolarsystem();
+		s_battery.soc=solarData->battery.batSOC;
+		s_battery.soh=solarData->battery.batSOH;	
+		s_battery.temp=solarData->battery.batBmsTemp;
+		s_battery.cycles=solarData->battery.batteryCycleCount;
+	}
 	*data = s_battery;
+	printf("Get Battery\n");
 }
 
 /**
@@ -250,14 +255,20 @@ void my_get_battery(struct battery *data) {
  */
 void my_get_sensors(struct sensors *data) {
 
-	solarSystem_t *solarData = theBlower.getPtrSolarsystem();
-	s_sensors.airtemp = solarData->sensors.ATemp;
-	s_sensors.humidity = solarData->sensors.AHum;
-	s_sensors.wtemp = solarData->sensors.WTemp;
-	s_sensors.ph = solarData->sensors.PH;
-	s_sensors.doxy = solarData->sensors.DO;
-
+	if(!framFlag){
+		memset(&s_sensors, 0, sizeof(struct sensors));
+	}
+	else  
+	{
+		solarSystem_t *solarData = theBlower.getPtrSolarsystem();
+		s_sensors.airtemp = solarData->sensors.ATemp;
+		s_sensors.humidity = solarData->sensors.AHum;
+		s_sensors.wtemp = solarData->sensors.WTemp;
+		s_sensors.ph = solarData->sensors.PH;
+		s_sensors.doxy = solarData->sensors.DO;
+	}
 	*data = s_sensors;
+	printf("Get Sensors \n");
 }
 
 /**
@@ -266,16 +277,23 @@ void my_get_sensors(struct sensors *data) {
  */
 void my_get_panels(struct panels *data) {
 
-	solarSystem_t *solarData = theBlower.getPtrSolarsystem();
-	s_panels.pv1volts = solarData->pvPanel.pv1Volts;
-	s_panels.pv2volts = solarData->pvPanel.pv2Volts;
-	s_panels.pv1amps = solarData->pvPanel.pv1Amp;
-	s_panels.pv2amps = solarData->pvPanel.pv2Amp;
-	if(solarData->pvPanel.chargeCurr)
-		strcpy(s_panels.chargingstate, "Charging");
-	else
-		strcpy(s_panels.chargingstate, "Discharging");
+	if(!framFlag)
+		memset(&s_panels, 0, sizeof(struct panels));
+	
+	else 
+	{ 
+		solarSystem_t *solarData = theBlower.getPtrSolarsystem();
+		s_panels.pv1volts = solarData->pvPanel.pv1Volts;
+		s_panels.pv2volts = solarData->pvPanel.pv2Volts;
+		s_panels.pv1amps = solarData->pvPanel.pv1Amp;
+		s_panels.pv2amps = solarData->pvPanel.pv2Amp;
+		if(solarData->pvPanel.chargeCurr)
+			SAFE_STRCPY(s_panels.chargingstate, "Charging", sizeof(s_panels.chargingstate));
+		else
+			SAFE_STRCPY(s_panels.chargingstate, "Discharging", sizeof(s_panels.chargingstate));
+	}
 	*data = s_panels;
+	printf("Get Panels\n");
 }
 
 /**
@@ -284,16 +302,25 @@ void my_get_panels(struct panels *data) {
  */
 void my_get_energy(struct energy *data) {
 
-	solarSystem_t *solarData = theBlower.getPtrSolarsystem();
+	if(!framFlag)
+		memset(&s_energy, 0, sizeof(struct energy));	
+	else 
+	{	
+		solarSystem_t *solarData = theBlower.getPtrSolarsystem();
+		if (solarData == NULL) {
+			memset(data, 0, sizeof(struct energy));
+			return;
+		}
 
-	s_energy.bdisamphoy=solarData->energy.batDischgAHToday;
-	s_energy.bcharamphoy=solarData->energy.batChgAHToday;
-	s_energy. genkwhhoy=solarData->energy.generateEnergyToday;
-	s_energy. bchkwhhoy=solarData->energy.batChgkWhToday;
-	s_energy. loadkwhhoy=solarData->energy.genLoadConsumToday;
-
+		s_energy.bdisamphoy=solarData->energy.batDischgAHToday;
+		s_energy.bcharamphoy=solarData->energy.batChgAHToday;
+		s_energy. genkwhhoy=solarData->energy.generateEnergyToday;
+		s_energy. bchkwhhoy=solarData->energy.batChgkWhToday;
+		s_energy. loadkwhhoy=solarData->energy.genLoadConsumToday;
+	}
 
 	*data = s_energy;
+	printf("Get energy\n");
 }
 
 /**
@@ -309,7 +336,7 @@ void my_get_settings(struct settings *data) {
 	// Handle restart scenario
 	if (restartf)
 	{
-		strcpy(s_settings.msg_val, MSG_READY);
+		SAFE_STRCPY(s_settings.msg_val, MSG_READY, sizeof(s_settings.msg_val));
 		schedule_restart();
 	}
 	else
@@ -319,6 +346,7 @@ void my_get_settings(struct settings *data) {
 	}
 	
 	*data = s_settings;
+	printf("Get settings\n");
 }
 
 /**
@@ -455,6 +483,7 @@ void my_get_system(struct system *data)
 	SAFE_STRCPY(s_system.ssid_val, theConf.thessid, sizeof(s_system.ssid_val));
 	
 	*data = s_system;
+	printf("Get System\n");
 }
 
 /**
@@ -464,6 +493,7 @@ void my_get_system(struct system *data)
 void my_get_DO(struct DO *data) 
 {
 	*data = theConf.doParms;
+	printf("Get DO\n");
 }
 
 
@@ -473,6 +503,7 @@ void my_get_DO(struct DO *data)
  */
 void my_set_DO(struct DO *data) {
 	theConf.doParms = *data;
+	printf("Set DO\n");
 	write_to_flash();
 }
 /**
@@ -491,29 +522,52 @@ void my_get_sysset(struct sysset *data) 		// get data for general configuration 
 {
 	// set s_sysset strucutre to stored values in Meter or theConf structures
 	const esp_app_desc_t *mip=esp_app_get_description();
-	strcpy(s_sysset.idf_val,mip->version);
-	strcpy(s_sysset.compile_val,mip->idf_ver);
+	if (mip) {
+		SAFE_STRCPY(s_sysset.idf_val, mip->version, sizeof(s_sysset.idf_val));
+		SAFE_STRCPY(s_sysset.compile_val, mip->idf_ver, sizeof(s_sysset.compile_val));
+	}
 	s_sysset.boot_val=theConf.bootcount;
 	s_sysset.lreason_val=theConf.lastResetCode;
-	s_sysset.writes_val=theBlower.getFram_Writes();
-	s_sysset.reads_val=theBlower.getFram_Reads();
-	strcpy(s_sysset.nodetype_val,esp_mesh_is_root()?"ROOT":"NODE");		//not usefull since mesh is not active but...
+	
+	// Only call theBlower methods if FRAM is successfully initialized
+	if (framFlag) {
+		s_sysset.writes_val=theBlower.getFram_Writes();
+		s_sysset.reads_val=theBlower.getFram_Reads();
+		s_sysset.bytesout_val=theBlower.getStatsBytesOut();
+		s_sysset.bytesin_val=theBlower.getStatsBytesIn();
+		s_sysset.msgin_val=theBlower.getStatsMsgIn();	
+		s_sysset.msgout_val=theBlower.getStatsMsgOut();
+		s_sysset.conns_val=theBlower.getStatsStaConns();
+		s_sysset.disco_val=theBlower.getStatsStaDiscos();
+	    time_t  ahora=theBlower.getStatsLastCountTS();
+		const char *time_str = ctime(&ahora);
+		if (time_str) {
+			SAFE_STRCPY(s_sysset.ldate_val, time_str, sizeof(s_sysset.ldate_val));
+		}
+	} else {
+		// FRAM not initialized, zero out the stats
+		s_sysset.writes_val = 0;
+		s_sysset.reads_val = 0;
+		s_sysset.bytesout_val = 0;
+		s_sysset.bytesin_val = 0;
+		s_sysset.msgin_val = 0;
+		s_sysset.msgout_val = 0;
+		s_sysset.conns_val = 0;
+		s_sysset.disco_val = 0;
+		memset(s_sysset.ldate_val, 0, sizeof(s_sysset.ldate_val));
+	}
+	
+	SAFE_STRCPY(s_sysset.nodetype_val, esp_mesh_is_root()?"ROOT":"NODE", sizeof(s_sysset.nodetype_val));
 	mesh_addr_t mmeshid;
 	esp_mesh_get_id(&mmeshid);
-	sprintf(s_sysset.mesh_val,MACSTR,MAC2STR(mmeshid.addr));			// mac ok
+	snprintf(s_sysset.mesh_val, sizeof(s_sysset.mesh_val), MACSTR, MAC2STR(mmeshid.addr));
 	unsigned char mac_base[6] = {0};
 	esp_efuse_mac_get_default(mac_base);
 	esp_read_mac(mac_base, ESP_MAC_WIFI_STA);
-	sprintf(s_sysset.mac_val,MACSTR,MAC2STR(mac_base));
-	s_sysset.bytesout_val=theBlower.getStatsBytesOut();
-	s_sysset.bytesin_val=theBlower.getStatsBytesIn();
-	s_sysset.msgin_val=theBlower.getStatsMsgIn();	
-	s_sysset.msgout_val=theBlower.getStatsMsgOut();
-	s_sysset.conns_val=theBlower.getStatsStaConns();
-	s_sysset.disco_val=theBlower.getStatsStaDiscos();
-    time_t  ahora=theBlower.getStatsLastCountTS();
-	strcpy(s_sysset.ldate_val,ctime(&ahora));
+	snprintf(s_sysset.mac_val, sizeof(s_sysset.mac_val), MACSTR, MAC2STR(mac_base));
+	
 	*data = s_sysset;
+	printf("Get sysset\n");
 }
 
 /**
@@ -525,6 +579,8 @@ void my_set_sysset(struct sysset *data) // there is no setting in this menu opti
 {
 	s_sysset = *data;
 	write_to_flash();
+	printf("Set sysset\n");
+
 }
 
 /**
@@ -1049,6 +1105,7 @@ void my_set_profile(struct profile *data)
 	{
 		MESP_LOGE(TAG, "Failed to parse and apply profile");
 	}
+	printf("Set Profile\n");
 }
 
 /**
@@ -1086,6 +1143,7 @@ void my_get_profile(struct profile *data)
 	
 	fclose(f);
 	*data = s_profile;
+	printf("Get Profile\n");
 }
 
 /**
@@ -1167,6 +1225,7 @@ void my_set_feedprofile(struct profile *data)
 		strcpy(s_feedprofile.msg, "Failed");
 		MESP_LOGE(TAG, "Failed to parse and apply feedprofile");
 	}
+	printf("Set FeedProfile\n");
 }
 
 /**
@@ -1201,6 +1260,7 @@ void my_get_feedprofile(struct profile *data)
 	
 	fclose(f);
 	*data = s_feedprofile;
+	printf("Get FeedProfile\n");
 }
 
 /**
@@ -1211,6 +1271,7 @@ void my_set_modbInverter(struct modbInverter *data) // save limits from web to t
 {
 	theConf.modbus_inverter=*data;
 	write_to_flash();
+	printf("Set Inverter\n");
 }
 
 /**
@@ -1225,6 +1286,7 @@ void my_get_modbInverter(struct modbInverter *data) // return limits saved in th
    	// 	s_settings.disable_val=0;
 
 	*data=theConf.modbus_inverter;
+	printf("Get Inverter\n");
 }
 
 /**
@@ -1240,7 +1302,8 @@ void my_set_remoteLevels(struct remoteLevels *data) // save limits from web to t
 
 	// should be used if settings in theConf.exterDO-externDOMwqtt are set, but the fact thats it received...
 	// if(theConf.externDO && theConf.externDOMqtt)
-	theBlower.setSensors( data->DOLevel,  0,data->WaterTemp,temperature, 0);	//just save it
+	if(framFlag)
+		theBlower.setSensors( data->DOLevel,  0,data->WaterTemp,temperature, 0);	//just save it
 }
 
 /**
@@ -1276,6 +1339,7 @@ void my_get_VFD(struct VFD *data) // return limits saved in theblower
 {
 
 	*data=theConf.modbus_vfd;
+	printf("Get VFD\n");
 }
 
 /**
@@ -1286,6 +1350,7 @@ void my_set_VFDCmd(struct VFDCmd *data) // save limits from web to theblower
 {
 	theConf.modbus_vfdcmd=*data;
 	write_to_flash();
+	printf("Set VFDCmd\n");
 }
 
 /**
@@ -1296,6 +1361,7 @@ void my_get_VFDCmd(struct VFDCmd *data) // return limits saved in theblower
 {
 
 	*data=theConf.modbus_vfdcmd;
+	printf("Get VFDCmd\n");
 }
 
 /**
@@ -1305,7 +1371,8 @@ void my_get_VFDCmd(struct VFDCmd *data) // return limits saved in theblower
 void my_set_VFDFeedCmd(struct VFDCmd *data) // save limits from web to theblower
 {
 	// theConf.modbus_vfdcmd=*data;
-	write_to_flash();
+	// write_to_flash();
+	printf("Set VFDFeedCmd\n");
 }
 
 /**
@@ -1316,6 +1383,7 @@ void my_get_VFDFeedCmd(struct VFDCmd *data) // return limits saved in theblower
 {
 
 	// *data=theConf.modbus_vfdcmd;
+	printf("Get VFDFeedCmd\n");
 }
 
 /**
@@ -1326,6 +1394,7 @@ void my_set_modbSensors(struct modbSensors *data) // save limits from web to the
 {
 	theConf.modbus_sensors=*data;
 	write_to_flash();
+	printf("Set modbSensors\n");
 }
 
 /**
@@ -1335,6 +1404,7 @@ void my_set_modbSensors(struct modbSensors *data) // save limits from web to the
 void my_get_modbSensors(struct modbSensors *data) // return limits saved in theblower
 {
 	*data=theConf.modbus_sensors;
+	printf("Get modbSensors\n");
 }
 
 /**
@@ -1345,6 +1415,7 @@ void my_set_modbBattery(struct modbBattery *data) // save limits from web to the
 {
 	theConf.modbus_battery=*data;
 	write_to_flash();
+	printf("Set modbBattery\n");
 }
 
 /**
@@ -1354,6 +1425,7 @@ void my_set_modbBattery(struct modbBattery *data) // save limits from web to the
 void my_get_modbBattery(struct modbBattery *data) // return limits saved in theblower
 {
 	*data=theConf.modbus_battery;
+	printf("Get modbBattery\n");
 }
 
 /**
@@ -1366,6 +1438,7 @@ void my_set_Inverter(struct Inverter *data) // save limits from web to theblower
 	printf("Inverter Status Refresh %d Address %d Offset %d Start %d Points %d Type %d Mux %d\n",
 		data->refresh,data->address,data->offset,data->start,data->points,data->type,data->mux);
 	write_to_flash();
+	printf("Set Inverter2\n");
 }
 
 /**
@@ -1375,6 +1448,7 @@ void my_set_Inverter(struct Inverter *data) // save limits from web to theblower
 void my_get_Inverter(struct Inverter *data) // return limits saved in theblower
 {
 	*data=theConf.inverter;
+	printf("Get Inverter2\n");
 }
 
 /**
@@ -1385,6 +1459,7 @@ void my_get_modbPanels(struct modbPanels *data) // return limits saved in theblo
 {
 
 	*data=theConf.modbus_panels;
+	printf("Get modbPanels\n");
 }
 
 /**
@@ -1395,6 +1470,7 @@ void my_set_modbPanels(struct modbPanels *data) // save limits from web to thebl
 {
 	theConf.modbus_panels=*data;
 	write_to_flash();
+	printf("Set modbPanels\n");
 }
 
 /**
@@ -1537,7 +1613,7 @@ void start_webserver(void *pArg)
   	mongoose_set_http_handlers("VFD", my_get_VFD ,my_set_VFD);				
   	mongoose_set_http_handlers("remoteLevels", my_get_remoteLevels ,my_set_remoteLevels);				
   	mongoose_set_http_handlers("VFDCmd", my_get_VFDCmd ,my_set_VFDCmd);				
-  	// mongoose_set_http_handlers("VFDFeedCmd", my_get_VFDFeedCmd ,my_set_VFDFeedCmd);				
+  	mongoose_set_http_handlers("VFDFeedCmd", my_get_VFDFeedCmd ,my_set_VFDFeedCmd);				
   	mongoose_set_http_handlers("DO", my_get_DO ,my_set_DO);				
   	mongoose_set_http_handlers("Inverter", my_get_Inverter ,my_set_Inverter);				
   	mongoose_set_http_handlers("reboot", my_check_reboot ,my_start_reboot);		

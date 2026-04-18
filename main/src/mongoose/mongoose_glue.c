@@ -17,9 +17,11 @@ void glue_set_feeder(struct feeder *data) {
 // Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
 struct feederprofile s_feederprofile = {"", ""};
 void glue_get_feederprofile(struct feederprofile *data) {
+  if (data == NULL) return;
   *data = s_feederprofile;  // Sync with your device
 }
 void glue_set_feederprofile(struct feederprofile *data) {
+  if (data == NULL) return;
   s_feederprofile = *data; // Sync with your device
 }
 
@@ -48,6 +50,15 @@ void glue_get_VFDCmd(struct VFDCmd *data) {
 }
 void glue_set_VFDCmd(struct VFDCmd *data) {
   s_VFDCmd = *data; // Sync with your device
+}
+
+// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
+struct VFDFeed s_VFDFeed = {10, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+void glue_get_VFDFeed(struct VFDFeed *data) {
+  *data = s_VFDFeed;  // Sync with your device
+}
+void glue_set_VFDFeed(struct VFDFeed *data) {
+  s_VFDFeed = *data; // Sync with your device
 }
 
 // Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
@@ -162,9 +173,11 @@ void glue_start_reboot(struct mg_str params) {
 // Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
 struct profile s_profile = {"", ""};
 void glue_get_profile(struct profile *data) {
+  if (data == NULL) return;
   *data = s_profile;  // Sync with your device
 }
 void glue_set_profile(struct profile *data) {
+  if (data == NULL) return;
   s_profile = *data; // Sync with your device
 }
 
