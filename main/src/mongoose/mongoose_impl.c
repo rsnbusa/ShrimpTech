@@ -172,21 +172,6 @@ struct attribute s_feeder_attributes[] = {
   {"lineclear", "int", NULL, offsetof(struct feeder, lineclear), 0, false},
   {NULL, NULL, NULL, 0, 0, false}
 };
-struct attribute s_feederprofile_attributes[] = {
-  {"msg", "string", NULL, offsetof(struct feederprofile, msg), 30, false},
-  {"schedule", "string", NULL, offsetof(struct feederprofile, schedule), 10000, false},
-  {NULL, NULL, NULL, 0, 0, false}
-};
-struct attribute s_remoteLevels_attributes[] = {
-  {"WaterTemp", "double", NULL, offsetof(struct remoteLevels, WaterTemp), 0, false},
-  {"DOLevel", "double", NULL, offsetof(struct remoteLevels, DOLevel), 0, false},
-  {"PHLevel", "double", NULL, offsetof(struct remoteLevels, PHLevel), 0, false},
-  {"SALevel", "double", NULL, offsetof(struct remoteLevels, SALevel), 0, false},
-  {"IRLevel", "double", NULL, offsetof(struct remoteLevels, IRLevel), 0, false},
-  {"DOretry", "int", NULL, offsetof(struct remoteLevels, DOretry), 0, false},
-  {"DOCount", "int", NULL, offsetof(struct remoteLevels, DOCount), 0, false},
-  {NULL, NULL, NULL, 0, 0, false}
-};
 struct attribute s_Inverter_attributes[] = {
   {"refresh", "int", NULL, offsetof(struct Inverter, refresh), 0, false},
   {"address", "int", NULL, offsetof(struct Inverter, address), 0, false},
@@ -445,11 +430,6 @@ struct attribute s_modbPanels_attributes[] = {
   {"Charge_StateOffset", "int", NULL, offsetof(struct modbPanels, Charge_StateOffset), 0, false},
   {NULL, NULL, NULL, 0, 0, false}
 };
-struct attribute s_profile_attributes[] = {
-  {"msg", "string", NULL, offsetof(struct profile, msg), 30, false},
-  {"schedule", "string", NULL, offsetof(struct profile, schedule), 10000, false},
-  {NULL, NULL, NULL, 0, 0, false}
-};
 struct attribute s_settings_attributes[] = {
   {"meshwifi_val", "bool", NULL, offsetof(struct settings, meshwifi_val), 0, false},
   {"wifi_val", "bool", NULL, offsetof(struct settings, wifi_val), 0, false},
@@ -516,8 +496,6 @@ struct attribute s_sysset_attributes[] = {
 };
 
 struct apihandler_data s_apihandler_feeder = {{"feeder", "data", false, 0, 0, 0UL}, s_feeder_attributes, sizeof(struct feeder), (void (*)(void *)) glue_get_feeder, (void (*)(void *)) glue_set_feeder};
-struct apihandler_data s_apihandler_feederprofile = {{"feederprofile", "data", false, 0, 0, 0UL}, s_feederprofile_attributes, sizeof(struct feederprofile), (void (*)(void *)) glue_get_feederprofile, (void (*)(void *)) glue_set_feederprofile};
-struct apihandler_data s_apihandler_remoteLevels = {{"remoteLevels", "data", false, 0, 0, 0UL}, s_remoteLevels_attributes, sizeof(struct remoteLevels), (void (*)(void *)) glue_get_remoteLevels, (void (*)(void *)) glue_set_remoteLevels};
 struct apihandler_data s_apihandler_Inverter = {{"Inverter", "data", false, 0, 0, 0UL}, s_Inverter_attributes, sizeof(struct Inverter), (void (*)(void *)) glue_get_Inverter, (void (*)(void *)) glue_set_Inverter};
 struct apihandler_data s_apihandler_VFDCmd = {{"VFDCmd", "data", false, 0, 0, 0UL}, s_VFDCmd_attributes, sizeof(struct VFDCmd), (void (*)(void *)) glue_get_VFDCmd, (void (*)(void *)) glue_set_VFDCmd};
 struct apihandler_data s_apihandler_VFDFeed = {{"VFDFeed", "data", false, 0, 0, 0UL}, s_VFDFeed_attributes, sizeof(struct VFDFeed), (void (*)(void *)) glue_get_VFDFeed, (void (*)(void *)) glue_set_VFDFeed};
@@ -533,15 +511,12 @@ struct apihandler_data s_apihandler_modbSensors = {{"modbSensors", "data", false
 struct apihandler_data s_apihandler_modbBattery = {{"modbBattery", "data", false, 0, 0, 0UL}, s_modbBattery_attributes, sizeof(struct modbBattery), (void (*)(void *)) glue_get_modbBattery, (void (*)(void *)) glue_set_modbBattery};
 struct apihandler_data s_apihandler_modbPanels = {{"modbPanels", "data", false, 0, 0, 0UL}, s_modbPanels_attributes, sizeof(struct modbPanels), (void (*)(void *)) glue_get_modbPanels, (void (*)(void *)) glue_set_modbPanels};
 struct apihandler_action s_apihandler_reboot = {{"reboot", "action", false, 0, 0, 0UL}, glue_check_reboot, glue_start_reboot};
-struct apihandler_data s_apihandler_profile = {{"profile", "data", false, 0, 0, 0UL}, s_profile_attributes, sizeof(struct profile), (void (*)(void *)) glue_get_profile, (void (*)(void *)) glue_set_profile};
 struct apihandler_data s_apihandler_settings = {{"settings", "data", false, 0, 0, 0UL}, s_settings_attributes, sizeof(struct settings), (void (*)(void *)) glue_get_settings, (void (*)(void *)) glue_set_settings};
 struct apihandler_data s_apihandler_system = {{"system", "data", false, 0, 0, 0UL}, s_system_attributes, sizeof(struct system), (void (*)(void *)) glue_get_system, (void (*)(void *)) glue_set_system};
 struct apihandler_data s_apihandler_sysset = {{"sysset", "data", false, 0, 0, 0UL}, s_sysset_attributes, sizeof(struct sysset), (void (*)(void *)) glue_get_sysset, (void (*)(void *)) glue_set_sysset};
 
 static struct apihandler *s_apihandlers[] = {
   (struct apihandler *) &s_apihandler_feeder,
-  (struct apihandler *) &s_apihandler_feederprofile,
-  (struct apihandler *) &s_apihandler_remoteLevels,
   (struct apihandler *) &s_apihandler_Inverter,
   (struct apihandler *) &s_apihandler_VFDCmd,
   (struct apihandler *) &s_apihandler_VFDFeed,
@@ -557,7 +532,6 @@ static struct apihandler *s_apihandlers[] = {
   (struct apihandler *) &s_apihandler_modbBattery,
   (struct apihandler *) &s_apihandler_modbPanels,
   (struct apihandler *) &s_apihandler_reboot,
-  (struct apihandler *) &s_apihandler_profile,
   (struct apihandler *) &s_apihandler_settings,
   (struct apihandler *) &s_apihandler_system,
   (struct apihandler *) &s_apihandler_sysset
@@ -864,18 +838,9 @@ static void populate_struct_from_json(struct mg_str json, char *tmp,
 static void handle_object(struct mg_connection *c, struct mg_http_message *hm,
                           struct apihandler_data *h) {
   void *data = mg_calloc(1, h->data_size);
-  if (data == NULL) {
-    mg_http_reply(c, 500, JSON_HEADERS, "{\"error\":\"out of memory\"}\n");
-    return;
-  }
   h->getter(data);
   if (hm->body.len > 0 && h->data_size > 0) {
     char *tmp = mg_calloc(1, h->data_size);
-    if (tmp == NULL) {
-      mg_http_reply(c, 500, JSON_HEADERS, "{\"error\":\"out of memory\"}\n");
-      mg_free(data);
-      return;
-    }
     memcpy(tmp, data, h->data_size);
     populate_struct_from_json(hm->body, tmp, h->attributes);
     // If structure changes, increment version
@@ -904,14 +869,6 @@ static size_t print_array(void (*out)(char, void *), void *ptr, va_list *ap) {
   }
   if (start != stop) len += mg_xprintf(out, ptr, "[");
   void *data = mg_calloc(1, ha->data_size);
-  if (data == NULL) {
-    if (start != stop) {
-      len += mg_xprintf(out, ptr, "]");
-    } else {
-      len += mg_xprintf(out, ptr, "null");
-    }
-    return len;
-  }
   for (i = start; i <= stop; i++) {
     if (ha->getter(data, i) == false) break;
     if (i > start) len += mg_xprintf(out, ptr, ",");
@@ -927,10 +884,6 @@ static void handle_array(struct mg_connection *c, struct mg_http_message *hm,
                          struct apihandler_array *h) {
   if (hm->body.len > 0 && h->data_size > 0) {
     char *tmp = mg_calloc(2, h->data_size);  // Allocate struct and backup
-    if (tmp == NULL) {
-      mg_http_reply(c, 500, JSON_HEADERS, "{\"error\":\"out of memory\"}\n");
-      return;
-    }
     // The URI is /api/NAME/ITEM_INDEX. Get the array item index from the URI
     size_t index = 0;
     struct mg_str parts[3] = {{0, 0}, {0, 0}, {0, 0}};

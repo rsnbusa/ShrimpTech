@@ -124,25 +124,6 @@ struct feeder {
 void glue_get_feeder(struct feeder *);
 void glue_set_feeder(struct feeder *);
 
-struct feederprofile {
-  char msg[30];
-  char schedule[10000];
-};
-void glue_get_feederprofile(struct feederprofile *);
-void glue_set_feederprofile(struct feederprofile *);
-
-struct remoteLevels {
-  double WaterTemp;
-  double DOLevel;
-  double PHLevel;
-  double SALevel;
-  double IRLevel;
-  int DOretry;
-  int DOCount;
-};
-void glue_get_remoteLevels(struct remoteLevels *);
-void glue_set_remoteLevels(struct remoteLevels *);
-
 struct Inverter {
   int refresh;
   int address;
@@ -431,13 +412,6 @@ void glue_set_modbPanels(struct modbPanels *);
 
 void glue_start_reboot(struct mg_str);  // Start an action
 bool glue_check_reboot(void);  // Check if action is still in progress
-
-struct profile {
-  char msg[30];
-  char schedule[10000];
-};
-void glue_get_profile(struct profile *);
-void glue_set_profile(struct profile *);
 
 struct settings {
   bool meshwifi_val;

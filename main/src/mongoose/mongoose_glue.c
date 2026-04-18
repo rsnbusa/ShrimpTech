@@ -15,26 +15,6 @@ void glue_set_feeder(struct feeder *data) {
 }
 
 // Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
-struct feederprofile s_feederprofile = {"", ""};
-void glue_get_feederprofile(struct feederprofile *data) {
-  if (data == NULL) return;
-  *data = s_feederprofile;  // Sync with your device
-}
-void glue_set_feederprofile(struct feederprofile *data) {
-  if (data == NULL) return;
-  s_feederprofile = *data; // Sync with your device
-}
-
-// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
-struct remoteLevels s_remoteLevels = {0, 0, 0, 0, 0, 0, 0};
-void glue_get_remoteLevels(struct remoteLevels *data) {
-  *data = s_remoteLevels;  // Sync with your device
-}
-void glue_set_remoteLevels(struct remoteLevels *data) {
-  s_remoteLevels = *data; // Sync with your device
-}
-
-// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
 struct Inverter s_Inverter = {0, 0, 0, 0, 0, 0, 0};
 void glue_get_Inverter(struct Inverter *data) {
   *data = s_Inverter;  // Sync with your device
@@ -168,17 +148,6 @@ bool glue_check_reboot(void) {
 void glue_start_reboot(struct mg_str params) {
   MG_DEBUG(("Passed parameters: [%.*s]", params.len, params.buf));
   s_action_timeout_reboot = mg_now() + 1000; // Start reboot, finish after 1 second
-}
-
-// Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
-struct profile s_profile = {"", ""};
-void glue_get_profile(struct profile *data) {
-  if (data == NULL) return;
-  *data = s_profile;  // Sync with your device
-}
-void glue_set_profile(struct profile *data) {
-  if (data == NULL) return;
-  s_profile = *data; // Sync with your device
 }
 
 // Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers

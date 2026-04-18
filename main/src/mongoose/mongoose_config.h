@@ -1,6 +1,6 @@
 #define MG_ARCH MG_ARCH_ESP32
 
-#define MG_TLS MG_TLS_BUILTIN
-#define MG_OTA MG_OTA_ESP32
+// #define MG_TLS MG_TLS_BUILTIN
+// #define MG_OTA MG_OTA_ESP32
 #define MG_ENABLE_POLL 1
-#define MG_IO_SIZE 2048
+#define MG_IO_SIZE 3072

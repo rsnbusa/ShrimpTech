@@ -78,7 +78,6 @@ extern struct profile s_profile;			// schedule profile cycles and working timers
 extern struct sysset s_sysset;				// system parameters --> third sidebar
 extern struct DO s_DO;						// Dissolved Oxygen control parameters
 extern uint64_t s_action_timeout_reboot;  	// Reboot button
-static struct profile s_feedprofile = {"", ""};  // feedprofile temporary storage for mongoose
 
 #include "crypto_utils.h"
 #include "time_utils.h"
@@ -87,61 +86,6 @@ extern void show_first_feed_profile(void);  // Forward declaration from cmdConfi
 extern char levels[6][10];			// log levels external in cmdConfig.cpp
 static bool restartf=false,restart_profile=false;;
 extern 	int findLevel(char * cual);
-
-// /**
-//  * @brief Validates the authentication key against the expected challenge
-//  * 
-//  * Converts the provided key into a challenge value using AES encryption
-//  * and compares it against the expected challenge derived from the configuration ID.
-//  * 
-//  * @param key The 64-bit authentication key to validate
-//  * @return true if the key is valid, false otherwise
-//  */
-// bool check_key(uint64_t key)
-// {
-// 	char cid_buffer[KEY_BUFFER_SIZE];
-// 	char encryption_key[KEY_STRING_SIZE];
-// 	int32_t challenge_from_key;
-	
-// 	// Extract challenge from the input key (reverse byte order)
-// 	uint8_t *key_bytes = (uint8_t*)&key;
-// 	uint8_t *challenge_bytes = (uint8_t*)&challenge_from_key;
-// 	challenge_bytes += 3;  // Start from the end
-	
-// 	for (int i = 0; i < CHALLENGE_BYTES; i++)
-// 	{
-// 		*challenge_bytes = *key_bytes;
-// 		challenge_bytes--;
-// 		key_bytes++;
-// 	}
-
-// 	// Generate encryption key from configuration ID
-// 	sprintf(cid_buffer, "%016d", theConf.cid);
-// 	sprintf(encryption_key, "%s%s", cid_buffer, cid_buffer);  // Double the CID
-	
-// 	// Allocate buffer for encrypted challenge
-// 	char *encrypted_challenge = (char*)calloc(AES_BUFFER_SIZE, 1);
-// 	if (encrypted_challenge == NULL)
-// 	{
-// 		MESP_LOGE("KEY", "Failed to allocate memory for encryption");
-// 		return false;
-// 	}
-
-// 	// Encrypt the secret and compare with the challenge
-// 	int ret = shrimp_aes_encrypt(SUPERSECRET, sizeof(SUPERSECRET), encrypted_challenge, encryption_key);
-// 	if (ret == ESP_FAIL)
-// 	{
-// 		MESP_LOGE("KEY", "AES encryption failed");
-// 		free(encrypted_challenge);
-// 		return false;
-// 	}
-
-// 	// Compare the encrypted result with the challenge from the key
-// 	bool is_valid = (memcmp(encrypted_challenge, &challenge_from_key, CHALLENGE_BYTES) == 0);
-	
-// 	free(encrypted_challenge);
-// 	return is_valid;
-// }
 
 /**
  * @brief Helper function to check if settings should be disabled based on configuration state
@@ -246,7 +190,6 @@ void my_get_battery(struct battery *data) {
 		s_battery.cycles=solarData->battery.batteryCycleCount;
 	}
 	*data = s_battery;
-	printf("Get Battery\n");
 }
 
 /**
@@ -268,7 +211,6 @@ void my_get_sensors(struct sensors *data) {
 		s_sensors.doxy = solarData->sensors.DO;
 	}
 	*data = s_sensors;
-	printf("Get Sensors \n");
 }
 
 /**
@@ -293,7 +235,6 @@ void my_get_panels(struct panels *data) {
 			SAFE_STRCPY(s_panels.chargingstate, "Discharging", sizeof(s_panels.chargingstate));
 	}
 	*data = s_panels;
-	printf("Get Panels\n");
 }
 
 /**
@@ -320,7 +261,6 @@ void my_get_energy(struct energy *data) {
 	}
 
 	*data = s_energy;
-	printf("Get energy\n");
 }
 
 /**
@@ -346,7 +286,6 @@ void my_get_settings(struct settings *data) {
 	}
 	
 	*data = s_settings;
-	printf("Get settings\n");
 }
 
 /**
@@ -483,7 +422,6 @@ void my_get_system(struct system *data)
 	SAFE_STRCPY(s_system.ssid_val, theConf.thessid, sizeof(s_system.ssid_val));
 	
 	*data = s_system;
-	printf("Get System\n");
 }
 
 /**
@@ -493,7 +431,6 @@ void my_get_system(struct system *data)
 void my_get_DO(struct DO *data) 
 {
 	*data = theConf.doParms;
-	printf("Get DO\n");
 }
 
 
@@ -503,7 +440,6 @@ void my_get_DO(struct DO *data)
  */
 void my_set_DO(struct DO *data) {
 	theConf.doParms = *data;
-	printf("Set DO\n");
 	write_to_flash();
 }
 /**
@@ -567,7 +503,6 @@ void my_get_sysset(struct sysset *data) 		// get data for general configuration 
 	snprintf(s_sysset.mac_val, sizeof(s_sysset.mac_val), MACSTR, MAC2STR(mac_base));
 	
 	*data = s_sysset;
-	printf("Get sysset\n");
 }
 
 /**
@@ -579,8 +514,6 @@ void my_set_sysset(struct sysset *data) // there is no setting in this menu opti
 {
 	s_sysset = *data;
 	write_to_flash();
-	printf("Set sysset\n");
-
 }
 
 /**
@@ -928,342 +861,6 @@ err_t make_profile(char * prof)
 }
 
 /**
- * @brief Parse and validate feeder profile configuration
- * @param prof JSON string containing feeder profile data
- * @return ESP_OK on success, ESP_FAIL on error
- * 
- * This function reuses the existing profile parser by:
- * 1. Backing up theConf.profiles
- * 2. Clearing theConf.profiles
- * 3. Calling make_profile() to parse into profiles
- * 4. Copying parsed result to theConf.feedprofiles
- * 5. Restoring theConf.profiles from backup
- */
-err_t make_feed_profile(char * prof)
-{
-	profile_t profileBackup[MAXPROFILES];
-	memcpy(profileBackup, theConf.profiles, sizeof(profileBackup));
-	
-	memset(theConf.profiles, 0, sizeof(theConf.profiles));
-	err_t err = make_profile(prof);
-	
-	if (err != ESP_OK)
-	{
-		memcpy(theConf.profiles, profileBackup, sizeof(profileBackup));
-		MESP_LOGE(TAG, "Failed to parse feeder profile");
-		return ESP_FAIL;
-	}
-	
-	memcpy(theConf.feedprofiles, theConf.profiles, sizeof(theConf.feedprofiles));
-	memcpy(theConf.profiles, profileBackup, sizeof(profileBackup));
-	
-	MESP_LOGI(TAG, "Feeder profile(s) parsed successfully");
-	return ESP_OK;
-}
-
-/**
- * @brief Set and validate profile configuration from web interface
- * @param data Pointer to profile structure with new configuration
- */
-int sanity_check_profile()
-{
-	// two main checks: cycle and horarios do not overlap
-	// and that the profile is valid for current date
-	for (int p = 0; p < MAX_PROFILES; ++p)
-	{
-		profile_t *prof = &theConf.profiles[p];
-		if (prof->numCycles == 0)
-		{
-			continue;
-		}
-		
-		// Check cycle overlaps (day ranges)
-		for (int c1 = 0; c1 < prof->numCycles; ++c1)
-		{
-			uint32_t start1 = prof->cycle[c1].day;
-			uint32_t end1 = start1 + prof->cycle[c1].duration; // end is exclusive
-			
-			for (int c2 = c1 + 1; c2 < prof->numCycles; ++c2)
-			{
-				uint32_t start2 = prof->cycle[c2].day;
-				uint32_t end2 = start2 + prof->cycle[c2].duration; // end is exclusive
-				
-				if ((start1 < end2) && (start2 < end1))
-				{
-					MESP_LOGE(TAG, "Profile %d: Cycle overlap between %d (day %u len %u) and %d (day %u len %u)",
-							 p, c1, (unsigned)start1, (unsigned)prof->cycle[c1].duration,
-							 c2, (unsigned)start2, (unsigned)prof->cycle[c2].duration);
-					return ESP_FAIL;		// abort process
-				}
-			}
-			
-			// Check horario overlaps within each cycle (hour ranges)
-			uint8_t num_h = prof->cycle[c1].numHorarios;
-			for (int h1 = 0; h1 < num_h; ++h1)
-			{
-				float h1_start = prof->cycle[c1].horarios[h1].hourStart
-					+ prof->cycle[c1].horarios[h1].minutesStart/60;;
-				float h1_end = h1_start + prof->cycle[c1].horarios[h1].horarioLen/3600;
-				
-				for (int h2 = h1 + 1; h2 < num_h; ++h2)
-				{
-					float h2_start = prof->cycle[c1].horarios[h2].hourStart+  
-						prof->cycle[c1].horarios[h2].minutesStart/60;
-					float h2_end = h2_start + prof->cycle[c1].horarios[h2].horarioLen/3600;
-					
-					if ((h1_start < h2_end) && (h2_start < h1_end))
-					{
-						MESP_LOGE(TAG, "Profile %d Cycle %d: Horario overlap between %d (%d-%d) and %d (%d-%d)",
-								 p, c1, h1, (int)h1_start, (int)h1_end,
-								 h2, (int)h2_start, (int)h2_end);
-						return ESP_FAIL;		// abort process
-					}
-				}
-			}
-		}
-	}
-	return ESP_OK;
-}
-
-/**
- * @brief Set and validate profile configuration from web interface
- * @param data Pointer to profile structure with new configuration
- */
-void my_set_profile(struct profile *data)
-{
-	if (!data)
-	{
-		MESP_LOGE(TAG, "Invalid profile data pointer");
-		return;
-	}
-	
-	s_profile = *data;
-	
-	// Validate JSON before processing
-	cJSON *prof_root = cJSON_Parse(s_profile.schedule);
-	if (!prof_root)
-	{
-		MESP_LOGE(TAG, "Invalid JSON Profile format");
-		return;
-	}
-	
-	// Try to save to file
-	FILE* f = fopen(PROFILE_FILE, "w");
-	if (f == NULL)
-	{
-		// If out of space (errno 28), clear log file and retry
-		if (errno == 28)  // ENOSPC - No space left on device
-		{
-			MESP_LOGW(TAG, "SPIFFS full (errno 28), clearing log file to make space for profile");
-			remove("/spiffs/log.txt");
-			
-			// Retry opening profile file after clearing log
-			f = fopen(PROFILE_FILE, "w");
-			if (f == NULL)
-			{
-				MESP_LOGE(TAG, "Failed to open profile file after clearing log (errno: %d)", errno);
-				cJSON_Delete(prof_root);
-				return;
-			}
-		}
-		else
-		{
-			MESP_LOGE(TAG, "Failed to open profile file for writing: %s (errno: %d)", PROFILE_FILE, errno);
-			cJSON_Delete(prof_root);
-			return;
-		}
-	}
-	
-	size_t written = fprintf(f, "%s", s_profile.schedule);
-	fclose(f);
-	
-	if (written <= 0)
-	{
-		MESP_LOGE(TAG, "Failed to write profile to file");
-		cJSON_Delete(prof_root);
-		return;
-	}
-	
-	cJSON_Delete(prof_root);
-	restart_profile = true;
-	// Parse and apply profile
-	err_t err = make_profile(s_profile.schedule);
-	if (err == ESP_OK)
-	{
-		if(sanity_check_profile()!=ESP_OK)
-		{
-			MESP_LOGE(TAG, "Profile sanity check failed, not applying profile");
-			strcpy(s_profile.msg,"Conflicts");
-			return;
-		}
-		strcpy(s_profile.msg,"OK");
-		write_to_flash();
-		show_profiles();
-		MESP_LOGI(TAG, "Profile successfully applied");
-	}
-	else
-	{
-		MESP_LOGE(TAG, "Failed to parse and apply profile");
-	}
-	printf("Set Profile\n");
-}
-
-/**
- * @brief Get current profile configuration for web interface
- * @param data Pointer to profile structure to populate
- */
-void my_get_profile(struct profile *data)
-{
-	if (!data)
-	{
-		MESP_LOGE(TAG, "Invalid profile data pointer");
-		return;
-	}
-
-	if(!restart_profile)
-		strcpy(s_profile.msg,"");
-
-	// s_settings.disable_val = should_disable_settings();
-	
-	FILE* f = fopen(PROFILE_FILE, "r");
-	if (f == NULL)
-	{
-		MESP_LOGW(TAG, "Profile file not found, using empty profile");
-		s_profile.schedule[0] = '\0';
-		*data = s_profile;
-		return;
-	}
-	
-	// Read with size limit to prevent buffer overflow
-	if (fgets(s_profile.schedule, sizeof(s_profile.schedule), f) == NULL)
-	{
-		MESP_LOGE(TAG, "Failed to read profile file");
-		s_profile.schedule[0] = '\0';
-	}
-	
-	fclose(f);
-	*data = s_profile;
-	printf("Get Profile\n");
-}
-
-/**
- * @brief Set feeder profile configuration from web interface
- * @param data Pointer to profile structure with feeder configuration data
- * 
- * Saves the feeder profile JSON to file and applies it using make_feed_profile()
- * which parses and populates theConf.feedprofiles while preserving production profiles.
- */
-void my_set_feedprofile(struct profile *data)
-{
-	if (!data)
-	{
-		MESP_LOGE(TAG, "Invalid feedprofile data pointer");
-		return;
-	}
-	
-	s_feedprofile = *data;
-	
-	// Validate JSON before processing
-	cJSON *prof_root = cJSON_Parse(s_feedprofile.schedule);
-	if (!prof_root)
-	{
-		MESP_LOGE(TAG, "Invalid JSON feedprofile format");
-		return;
-	}
-	
-	// Try to save to file
-	FILE* f = fopen(FEEDPROFILE_FILE, "w");
-	if (f == NULL)
-	{
-		// If out of space (errno 28), clear log file and retry
-		if (errno == 28)  // ENOSPC - No space left on device
-		{
-			MESP_LOGW(TAG, "SPIFFS full (errno 28), clearing log file to make space for feedprofile");
-			remove("/spiffs/log.txt");
-			
-			// Retry opening feedprofile file after clearing log
-			f = fopen(FEEDPROFILE_FILE, "w");
-			if (f == NULL)
-			{
-				MESP_LOGE(TAG, "Failed to open feedprofile file after clearing log (errno: %d)", errno);
-				cJSON_Delete(prof_root);
-				return;
-			}
-		}
-		else
-		{
-			MESP_LOGE(TAG, "Failed to open feedprofile file for writing: %s (errno: %d)", FEEDPROFILE_FILE, errno);
-			cJSON_Delete(prof_root);
-			return;
-		}
-	}
-	
-	size_t written = fprintf(f, "%s", s_feedprofile.schedule);
-	fclose(f);
-	
-	if (written <= 0)
-	{
-		MESP_LOGE(TAG, "Failed to write feedprofile to file");
-		cJSON_Delete(prof_root);
-		return;
-	}
-	
-	cJSON_Delete(prof_root);
-	
-	// Parse and apply feeder profile
-	err_t err = make_feed_profile(s_feedprofile.schedule);
-	if (err == ESP_OK)
-	{
-		// Sanity checks are optional for feedprofiles but can be added if needed
-		strcpy(s_feedprofile.msg, "OK");
-		write_to_flash();
-		show_first_feed_profile();  // Display the applied profile
-		MESP_LOGI(TAG, "Feedprofile successfully applied");
-	}
-	else
-	{
-		strcpy(s_feedprofile.msg, "Failed");
-		MESP_LOGE(TAG, "Failed to parse and apply feedprofile");
-	}
-	printf("Set FeedProfile\n");
-}
-
-/**
- * @brief Get current feeder profile configuration for web interface
- * @param data Pointer to profile structure to populate with feedprofile data
- */
-void my_get_feedprofile(struct profile *data)
-{
-	if (!data)
-	{
-		MESP_LOGE(TAG, "Invalid feedprofile data pointer");
-		return;
-	}
-
-	strcpy(s_feedprofile.msg, "");
-	
-	FILE* f = fopen(FEEDPROFILE_FILE, "r");
-	if (f == NULL)
-	{
-		MESP_LOGW(TAG, "Feedprofile file not found, using empty profile");
-		s_feedprofile.schedule[0] = '\0';
-		*data = s_feedprofile;
-		return;
-	}
-	
-	// Read with size limit to prevent buffer overflow
-	if (fgets(s_feedprofile.schedule, sizeof(s_feedprofile.schedule), f) == NULL)
-	{
-		MESP_LOGE(TAG, "Failed to read feedprofile file");
-		s_feedprofile.schedule[0] = '\0';
-	}
-	
-	fclose(f);
-	*data = s_feedprofile;
-	printf("Get FeedProfile\n");
-}
-
-/**
  * @brief Set Modbus inverter configuration
  * @param data Pointer to modbInverter structure with new settings
  */
@@ -1271,7 +868,6 @@ void my_set_modbInverter(struct modbInverter *data) // save limits from web to t
 {
 	theConf.modbus_inverter=*data;
 	write_to_flash();
-	printf("Set Inverter\n");
 }
 
 /**
@@ -1286,39 +882,6 @@ void my_get_modbInverter(struct modbInverter *data) // return limits saved in th
    	// 	s_settings.disable_val=0;
 
 	*data=theConf.modbus_inverter;
-	printf("Get Inverter\n");
-}
-
-/**
- * @brief Set Modbus inverter configuration
- * @param data Pointer to modbInverter structure with new settings
- */
-void my_set_remoteLevels(struct remoteLevels *data) // save limits from web to theblower
-{
-	// theConf.modbus_inverter=*data;
-	// write_to_flash();
-	MESP_LOGI(TAG,"DOLevel %0.2f PHLevel %.2f Salinity %.2f Irradience %.2f WaterTemp %.02f Reads %d Retries %d",
-		data->DOLevel,data->PHLevel,data->SALevel,data->IRLevel,data->WaterTemp,data->DOCount,data->DOretry);
-
-	// should be used if settings in theConf.exterDO-externDOMwqtt are set, but the fact thats it received...
-	// if(theConf.externDO && theConf.externDOMqtt)
-	if(framFlag)
-		theBlower.setSensors( data->DOLevel,  0,data->WaterTemp,temperature, 0);	//just save it
-}
-
-/**
- * @brief Get current Modbus inverter configuration
- * @param data Pointer to modbInverter structure to populate
- */
-void my_get_remoteLevels(struct remoteLevels *data) // save limits from web to theblower
-{
-	// if( theConf.meterconf>CONF_STATE_PENDING)
-   	// 	s_settings.disable_val=1;
-	// else
-   	// 	s_settings.disable_val=0;
-
-	// printf("Get sleep\n");
-	// *data=theConf.modbus_inverter;
 }
 
 /**
@@ -1339,7 +902,6 @@ void my_get_VFD(struct VFD *data) // return limits saved in theblower
 {
 
 	*data=theConf.modbus_vfd;
-	printf("Get VFD\n");
 }
 
 /**
@@ -1350,7 +912,6 @@ void my_set_VFDCmd(struct VFDCmd *data) // save limits from web to theblower
 {
 	theConf.modbus_vfdcmd=*data;
 	write_to_flash();
-	printf("Set VFDCmd\n");
 }
 
 /**
@@ -1361,7 +922,6 @@ void my_get_VFDCmd(struct VFDCmd *data) // return limits saved in theblower
 {
 
 	*data=theConf.modbus_vfdcmd;
-	printf("Get VFDCmd\n");
 }
 
 /**
@@ -1372,7 +932,6 @@ void my_set_VFDFeedCmd(struct VFDCmd *data) // save limits from web to theblower
 {
 	// theConf.modbus_vfdcmd=*data;
 	// write_to_flash();
-	printf("Set VFDFeedCmd\n");
 }
 
 /**
@@ -1383,7 +942,6 @@ void my_get_VFDFeedCmd(struct VFDCmd *data) // return limits saved in theblower
 {
 
 	// *data=theConf.modbus_vfdcmd;
-	printf("Get VFDFeedCmd\n");
 }
 
 /**
@@ -1404,7 +962,6 @@ void my_set_modbSensors(struct modbSensors *data) // save limits from web to the
 void my_get_modbSensors(struct modbSensors *data) // return limits saved in theblower
 {
 	*data=theConf.modbus_sensors;
-	printf("Get modbSensors\n");
 }
 
 /**
@@ -1415,7 +972,6 @@ void my_set_modbBattery(struct modbBattery *data) // save limits from web to the
 {
 	theConf.modbus_battery=*data;
 	write_to_flash();
-	printf("Set modbBattery\n");
 }
 
 /**
@@ -1425,7 +981,6 @@ void my_set_modbBattery(struct modbBattery *data) // save limits from web to the
 void my_get_modbBattery(struct modbBattery *data) // return limits saved in theblower
 {
 	*data=theConf.modbus_battery;
-	printf("Get modbBattery\n");
 }
 
 /**
@@ -1438,7 +993,6 @@ void my_set_Inverter(struct Inverter *data) // save limits from web to theblower
 	printf("Inverter Status Refresh %d Address %d Offset %d Start %d Points %d Type %d Mux %d\n",
 		data->refresh,data->address,data->offset,data->start,data->points,data->type,data->mux);
 	write_to_flash();
-	printf("Set Inverter2\n");
 }
 
 /**
@@ -1448,7 +1002,6 @@ void my_set_Inverter(struct Inverter *data) // save limits from web to theblower
 void my_get_Inverter(struct Inverter *data) // return limits saved in theblower
 {
 	*data=theConf.inverter;
-	printf("Get Inverter2\n");
 }
 
 /**
@@ -1459,7 +1012,6 @@ void my_get_modbPanels(struct modbPanels *data) // return limits saved in theblo
 {
 
 	*data=theConf.modbus_panels;
-	printf("Get modbPanels\n");
 }
 
 /**
@@ -1470,7 +1022,6 @@ void my_set_modbPanels(struct modbPanels *data) // save limits from web to thebl
 {
 	theConf.modbus_panels=*data;
 	write_to_flash();
-	printf("Set modbPanels\n");
 }
 
 /**
@@ -1604,14 +1155,11 @@ void start_webserver(void *pArg)
   	mongoose_set_http_handlers("settings", my_get_settings, my_set_settings);		
   	mongoose_set_http_handlers("system", my_get_system ,my_set_system);				
   	mongoose_set_http_handlers("sysset", my_get_sysset ,my_set_sysset);				
-  	mongoose_set_http_handlers("profile", my_get_profile ,my_set_profile);							
-  	mongoose_set_http_handlers("feedprofile", my_get_feedprofile ,my_set_feedprofile);
   	mongoose_set_http_handlers("modbInverter", my_get_modbInverter ,my_set_modbInverter);				
   	mongoose_set_http_handlers("modbSensors", my_get_modbSensors ,my_set_modbSensors);				
   	mongoose_set_http_handlers("modbBattery", my_get_modbBattery ,my_set_modbBattery);				
   	mongoose_set_http_handlers("modbPanels", my_get_modbPanels ,my_set_modbPanels);				
   	mongoose_set_http_handlers("VFD", my_get_VFD ,my_set_VFD);				
-  	mongoose_set_http_handlers("remoteLevels", my_get_remoteLevels ,my_set_remoteLevels);				
   	mongoose_set_http_handlers("VFDCmd", my_get_VFDCmd ,my_set_VFDCmd);				
   	mongoose_set_http_handlers("VFDFeedCmd", my_get_VFDFeedCmd ,my_set_VFDFeedCmd);				
   	mongoose_set_http_handlers("DO", my_get_DO ,my_set_DO);				
