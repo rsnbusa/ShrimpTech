@@ -5980,7 +5980,7 @@ void blower_start(void * pArg)
     start_timer_ctx_t *start_timer_ctx = (start_timer_ctx_t *)pArg;
 
     //motor power  * duration is the needed kwh to be consumed in this schedule
-    uint16_t energy_amps= MOTORKW * (start_timer_ctx->horaslen)  / MOTORVOLTS;   // Expected energy consumption in AH
+    uint16_t energy_amps= theConf.BMOTORKW * (start_timer_ctx->horaslen)  / theConf.BMOTORVOLTS;   // Expected energy consumption in AH
 
     theBlower.getEnergy(&currentamps,&dummy,&dummy,&dummy,&dummyf,&dummyf,&dummyf,&dummyf,&dummyf,&dummyf); // get current amps form the blower
 

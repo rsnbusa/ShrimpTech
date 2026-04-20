@@ -445,6 +445,11 @@ struct attribute s_settings_attributes[] = {
   {NULL, NULL, NULL, 0, 0, false}
 };
 struct attribute s_system_attributes[] = {
+  {"bkw", "double", NULL, offsetof(struct system, bkw), 0, false},
+  {"bvolts", "int", NULL, offsetof(struct system, bvolts), 0, false},
+  {"fkw", "double", NULL, offsetof(struct system, fkw), 0, false},
+  {"fvolts", "int", NULL, offsetof(struct system, fvolts), 0, false},
+  {"syncsch", "bool", NULL, offsetof(struct system, syncsch), 0, false},
   {"externDOMqtt", "bool", NULL, offsetof(struct system, externDOMqtt), 0, false},
   {"externDO", "bool", NULL, offsetof(struct system, externDO), 0, false},
   {"retain", "bool", NULL, offsetof(struct system, retain), 0, false},

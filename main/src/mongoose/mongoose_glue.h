@@ -430,6 +430,11 @@ void glue_get_settings(struct settings *);
 void glue_set_settings(struct settings *);
 
 struct system {
+  double bkw;
+  int bvolts;
+  double fkw;
+  int fvolts;
+  bool syncsch;
   bool externDOMqtt;
   bool externDO;
   bool retain;

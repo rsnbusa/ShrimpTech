@@ -397,6 +397,9 @@ typedef struct config {
     uart_port_t         port;
     float               lat,longi;
     time_t              gpsDateTime;
+    uint16_t            BMOTORKW,BMOTORVOLTS;       // blower motor specs
+    uint16_t            FMOTORKW,FMOTORVOLTS;       // feeder motor specs
+    bool                blowerFeedSync;             // are blower and feeder schedules synced
     struct modbInverter modbus_inverter;
     struct modbSensors  modbus_sensors;
     struct modbBattery  modbus_battery;

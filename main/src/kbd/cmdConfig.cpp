@@ -519,6 +519,27 @@ void show_system_config()
 }
 
 /**
+ * @brief Display blower/feeder motor specs and sync configuration
+ *
+ * Shows values requested by operations for quick verification:
+ * - kWh/Volts (blower motor)
+ * - kW/Volts (feeder motor)
+ * - Schedules in Sync state
+ */
+void show_blower_feeder_settings()
+{
+    printf("┌─────────────────────────────────────────────────────────────┐\n");
+    printf("│%s%s         BLOWER / FEEDER MOTORS SETTINGS                     %s│\n", RESETC, BK_GREEN, RESETC);
+    printf("├─────────────────────────────────────────────────────────────┤\n");
+    printf("│ kWh:                   %-35u  │\n", theConf.BMOTORKW);
+    printf("│ Volts:                 %-35u  │\n", theConf.BMOTORVOLTS);
+    printf("│ kW:                    %-35u  │\n", theConf.FMOTORKW);
+    printf("│ Volts:                 %-35u  │\n", theConf.FMOTORVOLTS);
+    printf("│ Schedules in Sync:     %-35s  │\n", theConf.blowerFeedSync ? "Enabled" : "Disabled");
+    printf("└─────────────────────────────────────────────────────────────┘\n\n");
+}
+
+/**
  * @brief Display detailed information for the first profile
  * 
  * Shows complete profile structure including:
@@ -799,6 +820,8 @@ int cmdConfig(int argc, char **argv)
        show_statistics(now);
     if (configArgs.all->count || configArgs.system->count)         
        show_system_config();
+     if (configArgs.all->count || configArgs.system->count)
+         show_blower_feeder_settings();
     if (configArgs.all->count || configArgs.blow->count)         
        print_blower("Blower", theBlower.getSolarSystem(), false);
     if (configArgs.all->count || configArgs.sch->count)         

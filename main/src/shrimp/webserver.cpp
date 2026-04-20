@@ -376,7 +376,12 @@ void my_set_system(struct system *data) {
 	{
 		theConf.meterconf = CONF_STATE_PENDING;
 	}
-	
+	theConf.blowerFeedSync=s_system.syncsch;
+	theConf.BMOTORKW=s_system.bkw;
+	theConf.BMOTORVOLTS=s_system.bvolts;
+	theConf.FMOTORKW=s_system.fkw;
+	theConf.FMOTORVOLTS=s_system.fvolts;
+
 	write_to_flash();
 	MESP_LOGI(TAG, "System settings applied successfully");
 }
@@ -401,7 +406,11 @@ void my_get_system(struct system *data)
 	s_system.tempsensor=theConf.temp_sensor; 
 	s_system.modbussensor=theConf.modbuson;
 	s_system.retain=theConf.retain;
-
+	s_system.syncsch=theConf.blowerFeedSync;
+	s_system.bkw=theConf.BMOTORKW;
+	s_system.bvolts=theConf.BMOTORVOLTS;
+	s_system.fkw=theConf.FMOTORKW;
+	s_system.fvolts=theConf.FMOTORVOLTS;
 	const esp_app_desc_t *mip = esp_app_get_description();
 	if (mip && mip->version)
 	{
