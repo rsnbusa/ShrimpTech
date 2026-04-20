@@ -2,6 +2,7 @@
 #include "defines.h"
 #include "globals.h"
 #include "forwards.h"
+#include "feederScheduler.h"
 #include "crypto_utils.h"
 #include "time_utils.h"
 #include "led_utils.h"
@@ -22,6 +23,7 @@ extern const uint8_t cert_end[]             asm("_binary_cloudamp_pem_end");
 static const char *CFG_NVS_PARTITION = "config";
 static const char *CFG_NVS_NAMESPACE = "config";
 static const char *CFG_NVS_KEY = "sysconf";
+
 static hx711_t s_hx711 = {
     .dout = (gpio_num_t)HXDOUT,
     .pd_sck = (gpio_num_t)HXSCK,
@@ -1402,6 +1404,7 @@ void set_sta_cmd(char *cjText)      //message from Root giving stations ids and 
                  newProfile, newDay, newMux, startNow ? "Yes" : "No");
     if (startNow) {
         xSemaphoreGive(workTaskSem);    //activate task
+        feeder_scheduler_kick();
     }
 
     write_to_flash();      
@@ -1672,6 +1675,7 @@ void handle_production_start(uint8_t prof,uint8_t pday,uint8_t  pmux)
 {
     log_production_order(prof, pday, pmux,"Start");
     xSemaphoreGive(workTaskSem);
+    feeder_scheduler_kick();
 }
 
 /**
@@ -1685,6 +1689,7 @@ void handle_production_stop(uint8_t prof,uint8_t pday,uint8_t  pmux)
         vTaskDelete(scheduleHandle);
     }
     xTaskCreate(&start_schedule_timers, "sched", 1024 * 10, NULL, 5, &scheduleHandle);
+    feeder_scheduler_reset_task();
     schedulef = false;
 }
 
@@ -2197,6 +2202,7 @@ void start_blower_if_ready(void)
                 free(aca);
         }
          xSemaphoreGive(workTaskSem);
+            feeder_scheduler_kick();
    }  
    else
         schedule_restartf=false;
@@ -2228,6 +2234,7 @@ void root_sntpget(void *pArg)
               xTaskCreate(&start_schedule_timers,"sched",1024*10,NULL, 5, &scheduleHandle); 	       
         else
             xTaskCreate(&PIDController,"PID",1024*10,NULL, 5, NULL); 	            // start the {PID} task  
+        feeder_scheduler_start_task();
 
         start_blower_if_ready();
         vTaskDelete(timeKeeperHandle);
@@ -3121,6 +3128,8 @@ void init_system_semaphores(void)
 
     workTaskSem = xSemaphoreCreateBinary();
     // xSemaphoreGive(workTaskSem);  // Intentionally not given initially
+
+    feeder_scheduler_init();
 }
 
 /**
@@ -3310,6 +3319,7 @@ void register_external_mqtt_commands(void)
     set_cmd("Battery", "BATT", cmdBattery);
     set_cmd("Sensors", "SENS", cmdSensors);
     set_cmd("Inverter", "INVR", cmdInverter);
+    set_cmd("InvertStatus", "INVS", cmdInvertStatus);
     set_cmd("VFDCmd", "VFDC", cmdVFDCmd);
     set_cmd("VFDMon", "VFDM", cmdVFDMon);
     set_cmd("profile", "PROF", cmdProfile);

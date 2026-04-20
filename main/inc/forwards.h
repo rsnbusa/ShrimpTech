@@ -121,6 +121,7 @@ int cmdPanels(void *argument);
 int cmdBattery(void *argument);
 int cmdSensors(void *argument);
 int cmdInverter(void *argument);
+int cmdInvertStatus(void *argument);
 int cmdProfile(void *argument);
 int cmdFeedProfile(void *argument);
 int cmdVFDCmd(void *argument);

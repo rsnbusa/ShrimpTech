@@ -34,6 +34,7 @@ set(CMD_SOURCES
     src/cmdMqtt/cmdInverter.cpp
     src/cmdMqtt/cmdVFDCmd.cpp
     src/cmdMqtt/cmdVFDMon.cpp
+    src/cmdMqtt/cmdInvertStatus.cpp
     src/cmdMqtt/cmdProfile.cpp
     src/cmdMqtt/cmdFeedProfile.cpp
     src/cmdMqtt/cmdPID.cpp
@@ -66,6 +67,7 @@ set(CORE_SOURCES
     src/shrimp/FramI2C.cpp
     src/shrimp/Pump.cpp
     src/shrimp/Valve.cpp
+    src/shrimp/feederScheduler.cpp
     src/shrimp/kbd.cpp
     # src/shrimp/lcd.cpp
     src/shrimp/logmanager.cpp
