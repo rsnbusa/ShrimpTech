@@ -36,6 +36,22 @@ typedef struct {
     char orderCommand[ORDER_COMMAND_MAX_LENGTH];
 } ProductionCommandFields;
 
+static bool ensure_schedule_task_ready(void)
+{
+    if (scheduleHandle != NULL)
+        return true;
+
+    if (xTaskCreate(&start_schedule_timers, "sched", 1024 * 10, NULL, 5, &scheduleHandle) != pdPASS)
+    {
+        MESP_LOGE(MESH_TAG, "Failed to create start_schedule_timers task");
+        scheduleHandle = NULL;
+        return false;
+    }
+
+    MESP_LOGW(MESH_TAG, "Created start_schedule_timers task on production start");
+    return true;
+}
+
 /* Broadcasts production control message to all mesh nodes. */
 void send_start_production(uint8_t profileIndex, uint8_t dayIndex, uint32_t muxTime, char* orderCommand)
 {
@@ -178,8 +194,28 @@ static int handle_production_start(const ProductionCommandFields *fields, char *
     if((theConf.debug_flags >> dXCMDS) & 1U)  
         MESP_LOGI(MESH_TAG, "%sCMd Prod Start %s", DBG_XCMDS, fields->orderCommand);
     writeLog(logBuffer);
+
+    if (theConf.doParms.docontrol)
+    {
+        MESP_LOGW(MESH_TAG, "Production start received but DO/PID control is enabled; scheduler not activated");
+        return ESP_OK;
+    }
+
+    if (!workTaskSem)
+    {
+        MESP_LOGE(MESH_TAG, "workTaskSem is NULL; cannot activate scheduler");
+        return ESP_FAIL;
+    }
+
+    if (!ensure_schedule_task_ready())
+        return ESP_FAIL;
     
-    xSemaphoreGive(workTaskSem);        // start the schedule task!!!! and the schedulef flag
+    if (xSemaphoreGive(workTaskSem) != pdTRUE)
+    {
+        MESP_LOGE(MESH_TAG, "workTaskSem give failed; scheduler not signaled");
+        return ESP_FAIL;
+    }
+    MESP_LOGI(MESH_TAG, "Production start signaled scheduler task");
 
     theBlower.setSchedule(0,0, 0, 0, 0, 0,0,0); // start production means from 0 so reset all trackers for PF
     theConf.activeProfile = fields->profileIndex;

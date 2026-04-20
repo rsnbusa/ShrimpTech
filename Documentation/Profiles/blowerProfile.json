@@ -1,0 +1,170 @@
+{
+  "cmdarr": [
+    {
+      "cmd": "profile",
+      "unitid": 255,
+      "schedule": {
+        "profiles": [
+          {
+            "name": "Copilot",
+            "version": "1.0",
+            "issued": "2026-02-22",
+            "expires": "2027-02-02",
+            "ciclos": [
+              {
+                "startday": 1,
+                "dias": 10,
+                "horario": [
+                  {
+                    "h_start_hour": 18,
+                    "h_start_mins": 0,
+                    "h_secs": 7200,
+                    "pwm_duty": 100
+                  },
+                  {
+                    "h_start_hour": 21,
+                    "h_start_mins": 5,
+                    "h_secs": 600,
+                    "pwm_duty": 100
+                  },
+                  {
+                    "h_start_hour": 21,
+                    "h_start_mins": 30,
+                    "h_secs": 600,
+                    "pwm_duty": 100
+                  },
+                  {
+                    "h_start_hour": 22,
+                    "h_start_mins": 12,
+                    "h_secs": 140,
+                    "pwm_duty": 100
+                  }
+                ]
+              },
+              {
+                "startday": 11,
+                "dias": 10,
+                "horario": [
+                  {
+                    "h_start_hour": 18,
+                    "h_start_mins": 0,
+                    "h_secs": 7200,
+                    "pwm_duty": 100
+                  },
+                  {
+                    "h_start_hour": 21,
+                    "h_start_mins": 5,
+                    "h_secs": 600,
+                    "pwm_duty": 100
+                  },
+                  {
+                    "h_start_hour": 21,
+                    "h_start_mins": 30,
+                    "h_secs": 600,
+                    "pwm_duty": 100
+                  },
+                  {
+                    "h_start_hour": 22,
+                    "h_start_mins": 12,
+                    "h_secs": 120,
+                    "pwm_duty": 100
+                  }
+                ]
+              },
+              {
+                "startday": 21,
+                "dias": 10,
+                "horario": [
+                  {
+                    "h_start_hour": 18,
+                    "h_start_mins": 0,
+                    "h_secs": 7200,
+                    "pwm_duty": 100
+                  },
+                  {
+                    "h_start_hour": 21,
+                    "h_start_mins": 5,
+                    "h_secs": 600,
+                    "pwm_duty": 100
+                  },
+                  {
+                    "h_start_hour": 21,
+                    "h_start_mins": 30,
+                    "h_secs": 600,
+                    "pwm_duty": 100
+                  },
+                  {
+                    "h_start_hour": 22,
+                    "h_start_mins": 12,
+                    "h_secs": 120,
+                    "pwm_duty": 100
+                  }
+                ]
+              },
+              {
+                "startday": 31,
+                "dias": 30,
+                "horario": [
+                  {
+                    "h_start_hour": 18,
+                    "h_start_mins": 0,
+                    "h_secs": 7200,
+                    "pwm_duty": 100
+                  },
+                  {
+                    "h_start_hour": 21,
+                    "h_start_mins": 5,
+                    "h_secs": 600,
+                    "pwm_duty": 100
+                  },
+                  {
+                    "h_start_hour": 21,
+                    "h_start_mins": 30,
+                    "h_secs": 600,
+                    "pwm_duty": 100
+                  },
+                  {
+                    "h_start_hour": 22,
+                    "h_start_mins": 12,
+                    "h_secs": 120,
+                    "pwm_duty": 100
+                  }
+                ]
+              },
+              {
+                "startday": 61,
+                "dias": 24,
+                "horario": [
+                  {
+                    "h_start_hour": 18,
+                    "h_start_mins": 0,
+                    "h_secs": 7200,
+                    "pwm_duty": 100
+                  },
+                  {
+                    "h_start_hour": 21,
+                    "h_start_mins": 5,
+                    "h_secs": 600,
+                    "pwm_duty": 100
+                  },
+                  {
+                    "h_start_hour": 21,
+                    "h_start_mins": 30,
+                    "h_secs": 600,
+                    "pwm_duty": 100
+                  },
+                  {
+                    "h_start_hour": 22,
+                    "h_start_mins": 12,
+                    "h_secs": 120,
+                    "pwm_duty": 100
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

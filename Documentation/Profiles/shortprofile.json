@@ -6,10 +6,10 @@
       "schedule": {
         "profiles": [
           {
-            "name": "",
+            "name": "Short",
             "version": "1.0",
-            "issued": "",
-            "expires": "",
+            "issued": "2026-02-22",
+            "expires": "2027-02-26",
             "ciclos": [
               {
                 "startday": 1,
