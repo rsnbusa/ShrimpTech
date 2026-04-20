@@ -1,0 +1,170 @@
+{
+  "cmdarr": [
+    {
+      "cmd": "feeder",
+      "unitid": 255,
+      "feeder": {
+        "profiles": [
+          {
+            "name": "FeederProfile",
+            "version": "1.0",
+            "issued": "2026-02-22",
+            "expires": "2026-04-20",
+            "ciclos": [
+              {
+                "startday": 1,
+                "dias": 10,
+                "horario": [
+                  {
+                    "h_start_hour": 18,
+                    "h_start_mins": 0,
+                    "h_secs": 0,
+                    "weight": 10
+                  },
+                  {
+                    "h_start_hour": 19,
+                    "h_start_mins": 0,
+                    "h_secs": 0,
+                    "weight": 10
+                  },
+                  {
+                    "h_start_hour": 20,
+                    "h_start_mins": 30,
+                    "h_secs": 0,
+                    "weight": 15
+                  },
+                  {
+                    "h_start_hour": 21,
+                    "h_start_mins": 15,
+                    "h_secs": 0,
+                    "weight": 12
+                  }
+                ]
+              },
+              {
+                "startday": 11,
+                "dias": 10,
+                "horario": [
+                  {
+                    "h_start_hour": 18,
+                    "h_start_mins": 0,
+                    "h_secs": 0,
+                    "weight": 10
+                  },
+                  {
+                    "h_start_hour": 19,
+                    "h_start_mins": 0,
+                    "h_secs": 0,
+                    "weight": 10
+                  },
+                  {
+                    "h_start_hour": 20,
+                    "h_start_mins": 30,
+                    "h_secs": 0,
+                    "weight": 15
+                  },
+                  {
+                    "h_start_hour": 21,
+                    "h_start_mins": 15,
+                    "h_secs": 0,
+                    "weight": 12
+                  }
+                ]
+              },
+              {
+                "startday": 21,
+                "dias": 10,
+                "horario": [
+                  {
+                    "h_start_hour": 18,
+                    "h_start_mins": 0,
+                    "h_secs": 0,
+                    "weight": 10
+                  },
+                  {
+                    "h_start_hour": 19,
+                    "h_start_mins": 0,
+                    "h_secs": 0,
+                    "weight": 10
+                  },
+                  {
+                    "h_start_hour": 20,
+                    "h_start_mins": 30,
+                    "h_secs": 0,
+                    "weight": 15
+                  },
+                  {
+                    "h_start_hour": 21,
+                    "h_start_mins": 15,
+                    "h_secs": 0,
+                    "weight": 12
+                  }
+                ]
+              },
+              {
+                "startday": 31,
+                "dias": 30,
+                "horario": [
+                  {
+                    "h_start_hour": 18,
+                    "h_start_mins": 0,
+                    "h_secs": 0,
+                    "weight": 10
+                  },
+                  {
+                    "h_start_hour": 19,
+                    "h_start_mins": 0,
+                    "h_secs": 0,
+                    "weight": 10
+                  },
+                  {
+                    "h_start_hour": 20,
+                    "h_start_mins": 30,
+                    "h_secs": 0,
+                    "weight": 15
+                  },
+                  {
+                    "h_start_hour": 21,
+                    "h_start_mins": 15,
+                    "h_secs": 0,
+                    "weight": 12
+                  }
+                ]
+              },
+              {
+                "startday": 61,
+                "dias": 24,
+                "horario": [
+                  {
+                    "h_start_hour": 18,
+                    "h_start_mins": 0,
+                    "h_secs": 0,
+                    "weight": 10
+                  },
+                  {
+                    "h_start_hour": 19,
+                    "h_start_mins": 0,
+                    "h_secs": 0,
+                    "weight": 10
+                  },
+                  {
+                    "h_start_hour": 20,
+                    "h_start_mins": 30,
+                    "h_secs": 0,
+                    "weight": 15
+                  },
+                  {
+                    "h_start_hour": 21,
+                    "h_start_mins": 15,
+                    "h_secs": 0,
+                    "weight": 12
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

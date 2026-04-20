@@ -555,7 +555,7 @@ void show_first_profile()
     
 //     printf("%s\n", MAGENTA);
     printf("┌──────────────────────────────────────────────────────────────────┐\n");
-    printf("│%s%s                        SCHEDULER PROFILE                         %s│\n",RESETC,BK_MAGENTA,RESETC);
+    printf("│%s%s                     BLOWER PROFILE SCHEDULE                      %s│\n",RESETC,BK_MAGENTA,RESETC);
     printf("├──────────────────────────────────────────────────────────────────┤\n");
        //  printf("%s", RESETC);
     printf("│ Name:            %-47s │\n", profile->name);
