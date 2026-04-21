@@ -13,7 +13,7 @@ char modb_names[][30]={
 "SOC","SOH","CycleCount","BatTemp",
 "DO","PH","WTemp","A Temp","Humidity",
 "BatChToday","BatDscToday","BatChgTotal","BatDscTotal","GenToday","UsedToday","LoadUsedTotal","BatChdToday","BatDscToday","LoadUsedToday","BatTemp",
-"VFDFreq","VFDCmd","VFDMotorAmps","VFDMotorVolts","VFDMotorPower","VFDMotrRPM","InvertStatus"
+"VFDCmd","VFDFreq","VFDMotorAmps","VFDMotorVolts","VFDMotorPower","VFDMotrRPM","InvertStatus"
 };
 //25
 char schStatus[][11]={"READY","BLOWERON","NEXTHOUR","BLOWEROFF","CROP","PARK"};
@@ -168,8 +168,8 @@ void show_modbus()
            theConf.inverter.points, theConf.inverter.type, theConf.inverter.mux);
     printf("  └────────────────┴────────┴────────┴─────────┴──────┴───────┘\n\n");
 
-    // ===== VFD Cmd =====
-    printf("  ┌─ %sVFD CMD   (Addr: %3d | Refresh: %3dm ) %s──────────────────┐\n",BK_YELLOW, 
+    // ===== Blower VFD CMD =====
+    printf("  ┌─ %sVFD Blow CMD (Addr: %3d | Refresh: %3dm ) %s───────────────┐\n", BK_YELLOW,
            theConf.modbus_vfdcmd.address, theConf.modbus_vfdcmd.refresh,RESETC);
     printf("  │ %-14s │ Offset │ Start  │ Points  │ Type │  Mux  │\n", "Name");
     printf("  ├────────────────┼────────┼────────┼─────────┼──────┼───────┤\n");
@@ -181,8 +181,8 @@ void show_modbus()
            theConf.modbus_vfdcmd.freqpoints, theConf.modbus_vfdcmd.freqtype, theConf.modbus_vfdcmd.freqmux);
     printf("  └────────────────┴────────┴────────┴─────────┴──────┴───────┘\n\n");
 
-    // ===== VFD Monitor ===== 
-    printf("  ┌─ %sVFD Monit (Addr: %3d | Refresh: %3dm ) %s──────────────────┐\n",BK_YELLOW, 
+    // ===== Blower VFD Monitor =====
+    printf("  ┌─ %sVFD Blow Mon (Addr: %3d | Refresh: %3dm ) %s───────────────┐\n", BK_YELLOW,
            theConf.modbus_vfd.address, theConf.modbus_vfd.refresh,RESETC);
     printf("  │ %-14s │ Offset │ Start  │ Points  │ Type │  Mux  │\n", "Name");
     printf("  ├────────────────┼────────┼────────┼─────────┼──────┼───────┤\n");
@@ -200,6 +200,38 @@ void show_modbus()
            theConf.modbus_vfd.rpmoff, theConf.modbus_vfd.rmpstart, 
            theConf.modbus_vfd.rpmpoints, theConf.modbus_vfd.rpmtype, theConf.modbus_vfd.rpmmux);
 
+    printf("  └────────────────┴────────┴────────┴─────────┴──────┴───────┘\n\n");
+
+    // ===== Feeder VFD CMD =====
+    printf("  ┌─ %sVFD Feed CMD (Addr: %3d | Refresh: %3dm ) %s───────────────┐\n", BK_YELLOW,
+           theConf.modbus_vfdcmdFeed.address, theConf.modbus_vfdcmdFeed.refresh, RESETC);
+    printf("  │ %-14s │ Offset │ Start  │ Points  │ Type │  Mux  │\n", "Name");
+    printf("  ├────────────────┼────────┼────────┼─────────┼──────┼───────┤\n");
+    printf("  │ %-14s │ %6d │ %5d  │ %6d  │ %4d │ %4.2f  │\n", modb_names[25],
+           theConf.modbus_vfdcmdFeed.cmdoff, theConf.modbus_vfdcmdFeed.cmdstart,
+           theConf.modbus_vfdcmdFeed.cmdpoints, theConf.modbus_vfdcmdFeed.cmdtype, theConf.modbus_vfdcmdFeed.cmdmux);
+    printf("  │ %-14s │ %6d │ %5d  │ %6d  │ %4d │ %4.2f  │\n", modb_names[26],
+           theConf.modbus_vfdcmdFeed.freqoff, theConf.modbus_vfdcmdFeed.freqstart,
+           theConf.modbus_vfdcmdFeed.freqpoints, theConf.modbus_vfdcmdFeed.freqtype, theConf.modbus_vfdcmdFeed.freqmux);
+    printf("  └────────────────┴────────┴────────┴─────────┴──────┴───────┘\n\n");
+
+    // ===== Feeder VFD Monitor =====
+    printf("  ┌─ %sVFD Feed Mon (Addr: %3d | Refresh: %3dm ) %s───────────────┐\n", BK_YELLOW,
+           theConf.modbus_vfdFeed.address, theConf.modbus_vfdFeed.refresh, RESETC);
+    printf("  │ %-14s │ Offset │ Start  │ Points  │ Type │  Mux  │\n", "Name");
+    printf("  ├────────────────┼────────┼────────┼─────────┼──────┼───────┤\n");
+    printf("  │ %-14s │ %6d │ %5d  │ %6d  │ %4d │ %4.2f  │\n", modb_names[27],
+           theConf.modbus_vfdFeed.curroff, theConf.modbus_vfdFeed.currstart,
+           theConf.modbus_vfdFeed.currpoints, theConf.modbus_vfdFeed.currtype, theConf.modbus_vfdFeed.currmux);
+    printf("  │ %-14s │ %6d │ %5d  │ %6d  │ %4d │ %4.2f  │\n", modb_names[28],
+           theConf.modbus_vfdFeed.voltoff, theConf.modbus_vfdFeed.voltstart,
+           theConf.modbus_vfdFeed.voltpoints, theConf.modbus_vfdFeed.volttype, theConf.modbus_vfdFeed.voltmux);
+    printf("  │ %-14s │ %6d │ %5d  │ %6d  │ %4d │ %4.2f  │\n", modb_names[29],
+           theConf.modbus_vfdFeed.pwroff, theConf.modbus_vfdFeed.pwrstart,
+           theConf.modbus_vfdFeed.pwrpoints, theConf.modbus_vfdFeed.pwrtype, theConf.modbus_vfdFeed.pwrmux);
+    printf("  │ %-14s │ %6d │ %5d  │ %6d  │ %4d │ %4.2f  │\n", modb_names[30],
+           theConf.modbus_vfdFeed.rpmoff, theConf.modbus_vfdFeed.rmpstart,
+           theConf.modbus_vfdFeed.rpmpoints, theConf.modbus_vfdFeed.rpmtype, theConf.modbus_vfdFeed.rpmmux);
     printf("  └────────────────┴────────┴────────┴─────────┴──────┴───────┘\n\n");
 
     // ===== PV PANELS =====

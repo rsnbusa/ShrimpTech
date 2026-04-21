@@ -64,6 +64,61 @@ static void cleanup_feeder_timers(int howmany)
     }
 }
 
+static void feed_now(uint8_t weight)
+{
+    const int num_lines_cfg = theConf.feederData.numlines;
+    const int grams_per_liter = theConf.feederData.gramsliter;
+    const int feeder_flow = theConf.feederFlow;
+
+    if (num_lines_cfg <= 0 || grams_per_liter <= 0 || feeder_flow <= 0) {
+        MESP_LOGW(TAG,
+                 "feed_now skipped: invalid feeder config numlines=%d gramsliter=%d feederFlow=%d",
+                 num_lines_cfg, grams_per_liter, feeder_flow);
+        return;
+    }
+
+    const uint32_t denominator = (uint32_t)grams_per_liter * (uint32_t)feeder_flow * (uint32_t)num_lines_cfg;
+    const uint32_t dispense_ms = ((uint32_t)weight * 1000U * 60U) / denominator*1000U;  // Convert to ms
+    const uint32_t line_clear_ms = (uint32_t)theConf.feederData.lineclear * 60000U;  // minutes to ms
+    const int num_lines = (num_lines_cfg > 4) ? 4 : num_lines_cfg;
+
+    if ((theConf.debug_flags >> dSCH) & 1U) {
+        MESP_LOGI(TAG,
+                 "%sfeed_now start weight=%u dispenseMs=%lu lineClearMs=%lu lines=%d",
+                 DBG_SCH, weight, (unsigned long)dispense_ms, (unsigned long)line_clear_ms, num_lines);
+    }
+
+    // get current wight of the Hopper
+    float hopper_weight_start = hxweight;
+    float hooper_weight_end=0.0f;
+
+    for (int x = 0; x < num_lines; x++) {
+        line_valves[x].open();
+        // start_vfd(true);  // Dummy feeder VFD start call for now
+
+        if (line_clear_ms > 0) {
+            vTaskDelay(pdMS_TO_TICKS(line_clear_ms));
+        }
+
+        feeder_valve.open();
+
+        if (dispense_ms > 0) {
+            vTaskDelay(pdMS_TO_TICKS(dispense_ms));
+        }
+        else {
+            MESP_LOGW(TAG, "%sfeed_now calculated dispense_ms is 0, skipping delay", DBG_SCH);
+            vTaskDelay(pdMS_TO_TICKS(3000));  // Default to 3 seconds if calculation is invalid
+        }
+
+        feeder_valve.close();
+        // start_vfd(false);  // Dummy feeder VFD stop call for now
+        line_valves[x].close();
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+    MESP_LOGI(TAG, "%sfeed_now completed weight=%u dispenseMs=%lu lineClearMs=%lu lines=%dn starting weight=%.2f ending weight=%.2f",
+             DBG_SCH, weight, (unsigned long)dispense_ms, (unsigned long)line_clear_ms, num_lines, hopper_weight_start, hooper_weight_end);
+}
+
 static void feeder_timer_fire(void *pArg)
 {
     feeder_timer_ctx_t *ctx = (feeder_timer_ctx_t *)pArg;
@@ -81,6 +136,7 @@ static void feeder_timer_fire(void *pArg)
         MESP_LOGI(TAG, "%sFeeder timer Start C-%d D-%d H-%d Weight %d At %s",
              DBG_SCH, ctx->cycle, ctx->day, ctx->horario, ctx->weight, fired_at);
 
+    feed_now(ctx->weight);
     if (ctx->isLastScheduled && feedDaySem) {
         xSemaphoreGive(feedDaySem);
     }

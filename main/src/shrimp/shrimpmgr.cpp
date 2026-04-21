@@ -200,19 +200,13 @@ void start_vfd(uint8_t que)
     {
         vfdCmdData.frequency=(uint16_t)(50 + (esp_random() % 401));
         vfdCmdData.cmd=1;
-        vfdCmdData2.frequency=(uint16_t)(50 + (esp_random() % 401));
-        vfdCmdData2.cmd=1;
         vTaskResume(vfdcmdHandle);
-        vTaskResume(vfdcmdHandle2);
     }
     else
     {
         vfdCmdData.frequency=0;
         vfdCmdData.cmd=0;
-        vfdCmdData2.frequency=0;
-        vfdCmdData2.cmd=0;
         vTaskResume(vfdcmdHandle);
-        vTaskResume(vfdcmdHandle2);
     }
     vfdCmdData.cmd=que;
     
@@ -245,33 +239,25 @@ void launch_sensors()
             modbus_sensor_type_t *sensorDev=setModbusSensor((char*)"Sensors",5,5,
                 (void*)&theConf.modbus_sensors,DBG_SENSORS,(void*)&sensorData,sizeof(sensorData),&cb_sensor_data,true);
 
-// vfd uses the original descriptors for cmd and data to create 2 devices for 2 blowers
-// address of frist one is set in the configuration, the second's address is 1 more thant the original 
-// ! careful with this scheme is cheap and fast but could have problems with address
-// alternaitve is to create two configurations in the vfd section for each vfd
+// VFD will manage BOTH blowers in one connection
 
-            // VFD Monitor Modbus Device
+            // VFD Monitor Modbus Device for the Blowers
             modbus_sensor_type_t *VFDDev=setModbusSensor((char*)"VFDData",4,4,
                 (void*)&theConf.modbus_vfd,DBG_VFD,(void*)&vfdData,sizeof(vfdData),&cb_vfd_data,true);
 
-
-            // the twin is identical except the address which is 1 more than the original
-            // data is another global differente form the first obviously, same call back function
-            memcpy(&localconfig, &theConf.modbus_vfd, sizeof(localconfig));   // copy original config to local variable to modify the address
-
-            localconfig.address++;
-            modbus_sensor_type_t *VFDDev2=setModbusSensor((char*)"VFDData2",4,4,
-                (void*)&localconfig,DBG_VFD,(void*)&vfdData2,sizeof(vfdData2),&cb_vfd_data,true);
-// restore address for whatever reasons 
-
-            // VFD Cmd Modbus Device same iodea as above
+            // VFD Cmd Modbus Device for the Blowers
             modbus_sensor_type_t *vfdcmd=setModbusSensor((char*)"VFDCmd",2,4,
                 (void*)&theConf.modbus_vfdcmd,DBG_VFD,(void*)&vfdCmdData,sizeof(vfdCmdData),&cb_vfd_cmd,false);     
-// the twin
-            memcpy(&localcmd, &theConf.modbus_vfdcmd, sizeof(localcmd));   // copy original config to local variable to modify the address
-            localcmd.address++;
-            modbus_sensor_type_t *vfdcmd2=setModbusSensor((char*)"VFDCmd2",2,4,
-                (void*)&localcmd,DBG_VFD,(void*)&vfdCmdData,sizeof(vfdCmdData),&cb_vfd_cmd,false);  
+
+// VFD for the Feeder
+
+            // VFD Monitor Modbus Device for the Feeder
+            modbus_sensor_type_t *VFDDev2=setModbusSensor((char*)"FeederVFDData",4,4,
+                (void*)&theConf.modbus_vfdFeed,DBG_VFD,(void*)&vfdDataFeeder,sizeof(vfdDataFeeder),&cb_vfd_data,true);
+
+            // VFD Cmd Modbus Device for the Feeder
+            modbus_sensor_type_t *vfdcmd2=setModbusSensor((char*)"FeederVFDCmd",2,4,
+                (void*)&theConf.modbus_vfdcmdFeed,DBG_VFD,(void*)&vfdCmdDataFeeder,sizeof(vfdCmdDataFeeder),&cb_vfd_cmd,false);     
 
 
             // Inverter Status Modbus Device
@@ -3603,11 +3589,11 @@ void init_DO_Defaults(void)
 
 void init_valves()
 {
-    line_valves[0].init((gpio_num_t)VAL0OPEN, (gpio_num_t)VAL0CLOSE, "Valve0", 5000);
-    line_valves[1].init((gpio_num_t)VAL1OPEN, (gpio_num_t)VAL1CLOSE, "Valve1", 5000);
-    line_valves[2].init((gpio_num_t)VAL2OPEN, (gpio_num_t)VAL2CLOSE, "Valve2", 5000);
-    // line_valves[3].init((gpio_num_t)VAL3OPEN, (gpio_num_t)VAL3CLOSE, "Valve3", 5000);
-    // feeder_valve.init((gpio_num_t)FEEDEROPEN, (gpio_num_t)FEEDERCLOSE, "FeederValve", 5000);
+    line_valves[0].init((gpio_num_t)VAL0OPEN, (gpio_num_t)VAL0CLOSE, "Valve0", theConf.feederData.full, theConf.feederData.full);
+    line_valves[1].init((gpio_num_t)VAL1OPEN, (gpio_num_t)VAL1CLOSE, "Valve1", theConf.feederData.full, theConf.feederData.full);
+    line_valves[2].init((gpio_num_t)VAL2OPEN, (gpio_num_t)VAL2CLOSE, "Valve2", theConf.feederData.full, theConf.feederData.full);
+    line_valves[3].init((gpio_num_t)VAL3OPEN, (gpio_num_t)VAL3CLOSE, "Valve3", theConf.feederData.full, theConf.feederData.full);
+    feeder_valve.init((gpio_num_t)FEEDEROPEN, (gpio_num_t)FEEDERCLOSE, "FeederValve", theConf.feederData.feedopen, theConf.feederData.full);
 }
 
 /**

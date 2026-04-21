@@ -938,24 +938,45 @@ void my_get_VFDCmd(struct VFDCmd *data) // return limits saved in theblower
 }
 
 /**
+ * @brief Set Modbus VFD configuration
+ * @param data Pointer to modbus_vfd structure with new settings
+ */
+void my_set_VFDFeed(struct VFD *data) // save limits from web to theblower
+{
+	theConf.modbus_vfdFeed=*data;
+	write_to_flash();
+}
+
+/**
+ * @brief Get current Modbus VFD configuration
+ * @param data Pointer to VFD structure to populate
+ */
+void my_get_VFDFeed(struct VFD *data) // return limits saved in theblower
+{
+
+	*data=theConf.modbus_vfdFeed;
+}
+
+/**
  * @brief Set Modbus VFDCmd configuration
  * @param data Pointer to modbus_vfd structure with new settings
  */
-void my_set_VFDFeedCmd(struct VFDCmd *data) // save limits from web to theblower
+void my_set_VFDCmdFeed(struct VFDCmd *data) // save limits from web to theblower
 {
-	// theConf.modbus_vfdcmd=*data;
-	// write_to_flash();
+	theConf.modbus_vfdcmdFeed=*data;
+	write_to_flash();
 }
 
 /**
  * @brief Get current Modbus VFDCmd configuration
  * @param data Pointer to VFDCmd structure to populate
  */
-void my_get_VFDFeedCmd(struct VFDCmd *data) // return limits saved in theblower
+void my_get_VFDCmdFeed(struct VFDCmd *data) // return limits saved in theblower
 {
 
-	// *data=theConf.modbus_vfdcmd;
+	*data=theConf.modbus_vfdcmdFeed;
 }
+
 
 /**
  * @brief Set Modbus sensors configuration
@@ -1194,7 +1215,8 @@ void start_webserver(void *pArg)
   	mongoose_set_http_handlers("modbPanels", my_get_modbPanels ,my_set_modbPanels);				
   	mongoose_set_http_handlers("VFD", my_get_VFD ,my_set_VFD);				
   	mongoose_set_http_handlers("VFDCmd", my_get_VFDCmd ,my_set_VFDCmd);				
-  	mongoose_set_http_handlers("VFDFeedCmd", my_get_VFDFeedCmd ,my_set_VFDFeedCmd);				
+  	mongoose_set_http_handlers("VFDFeed", my_get_VFDFeed ,my_set_VFDFeed);				
+  	mongoose_set_http_handlers("VFDCmdFeed", my_get_VFDCmdFeed ,my_set_VFDCmdFeed);				
   	mongoose_set_http_handlers("DO", my_get_DO ,my_set_DO);				
   	mongoose_set_http_handlers("Inverter", my_get_Inverter ,my_set_Inverter);				
   	mongoose_set_http_handlers("feeder", my_get_feeder ,my_set_feeder);				

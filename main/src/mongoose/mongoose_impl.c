@@ -167,6 +167,8 @@ struct custom_api_handler {
 static struct custom_api_handler *s_custom_handlers;
 
 struct attribute s_feeder_attributes[] = {
+  {"feedopen", "int", NULL, offsetof(struct feeder, feedopen), 0, false},
+  {"full", "int", NULL, offsetof(struct feeder, full), 0, false},
   {"numlines", "int", NULL, offsetof(struct feeder, numlines), 0, false},
   {"gramsliter", "int", NULL, offsetof(struct feeder, gramsliter), 0, false},
   {"lineclear", "int", NULL, offsetof(struct feeder, lineclear), 0, false},
@@ -197,19 +199,19 @@ struct attribute s_VFDCmd_attributes[] = {
   {"freqoff", "int", NULL, offsetof(struct VFDCmd, freqoff), 0, false},
   {NULL, NULL, NULL, 0, 0, false}
 };
-struct attribute s_VFDFeed_attributes[] = {
-  {"refresh", "int", NULL, offsetof(struct VFDFeed, refresh), 0, false},
-  {"address", "int", NULL, offsetof(struct VFDFeed, address), 0, false},
-  {"cmdmux", "double", NULL, offsetof(struct VFDFeed, cmdmux), 0, false},
-  {"cmdtype", "int", NULL, offsetof(struct VFDFeed, cmdtype), 0, false},
-  {"cmdpoints", "int", NULL, offsetof(struct VFDFeed, cmdpoints), 0, false},
-  {"cmdstart", "int", NULL, offsetof(struct VFDFeed, cmdstart), 0, false},
-  {"cmdoff", "int", NULL, offsetof(struct VFDFeed, cmdoff), 0, false},
-  {"freqmux", "double", NULL, offsetof(struct VFDFeed, freqmux), 0, false},
-  {"freqtype", "int", NULL, offsetof(struct VFDFeed, freqtype), 0, false},
-  {"freqpoints", "int", NULL, offsetof(struct VFDFeed, freqpoints), 0, false},
-  {"freqstart", "int", NULL, offsetof(struct VFDFeed, freqstart), 0, false},
-  {"freqoff", "int", NULL, offsetof(struct VFDFeed, freqoff), 0, false},
+struct attribute s_VFDCmdFeed_attributes[] = {
+  {"refresh", "int", NULL, offsetof(struct VFDCmdFeed, refresh), 0, false},
+  {"address", "int", NULL, offsetof(struct VFDCmdFeed, address), 0, false},
+  {"cmdmux", "double", NULL, offsetof(struct VFDCmdFeed, cmdmux), 0, false},
+  {"cmdtype", "int", NULL, offsetof(struct VFDCmdFeed, cmdtype), 0, false},
+  {"cmdpoints", "int", NULL, offsetof(struct VFDCmdFeed, cmdpoints), 0, false},
+  {"cmdstart", "int", NULL, offsetof(struct VFDCmdFeed, cmdstart), 0, false},
+  {"cmdoff", "int", NULL, offsetof(struct VFDCmdFeed, cmdoff), 0, false},
+  {"freqmux", "double", NULL, offsetof(struct VFDCmdFeed, freqmux), 0, false},
+  {"freqtype", "int", NULL, offsetof(struct VFDCmdFeed, freqtype), 0, false},
+  {"freqpoints", "int", NULL, offsetof(struct VFDCmdFeed, freqpoints), 0, false},
+  {"freqstart", "int", NULL, offsetof(struct VFDCmdFeed, freqstart), 0, false},
+  {"freqoff", "int", NULL, offsetof(struct VFDCmdFeed, freqoff), 0, false},
   {NULL, NULL, NULL, 0, 0, false}
 };
 struct attribute s_VFD_attributes[] = {
@@ -235,6 +237,31 @@ struct attribute s_VFD_attributes[] = {
   {"rpmpoints", "int", NULL, offsetof(struct VFD, rpmpoints), 0, false},
   {"rmpstart", "int", NULL, offsetof(struct VFD, rmpstart), 0, false},
   {"rpmoff", "int", NULL, offsetof(struct VFD, rpmoff), 0, false},
+  {NULL, NULL, NULL, 0, 0, false}
+};
+struct attribute s_VFDFeed_attributes[] = {
+  {"refresh", "int", NULL, offsetof(struct VFDFeed, refresh), 0, false},
+  {"address", "int", NULL, offsetof(struct VFDFeed, address), 0, false},
+  {"currmux", "double", NULL, offsetof(struct VFDFeed, currmux), 0, false},
+  {"currtype", "int", NULL, offsetof(struct VFDFeed, currtype), 0, false},
+  {"currpoints", "int", NULL, offsetof(struct VFDFeed, currpoints), 0, false},
+  {"currstart", "int", NULL, offsetof(struct VFDFeed, currstart), 0, false},
+  {"curroff", "int", NULL, offsetof(struct VFDFeed, curroff), 0, false},
+  {"voltmux", "double", NULL, offsetof(struct VFDFeed, voltmux), 0, false},
+  {"volttype", "int", NULL, offsetof(struct VFDFeed, volttype), 0, false},
+  {"voltpoints", "int", NULL, offsetof(struct VFDFeed, voltpoints), 0, false},
+  {"voltstart", "int", NULL, offsetof(struct VFDFeed, voltstart), 0, false},
+  {"voltoff", "int", NULL, offsetof(struct VFDFeed, voltoff), 0, false},
+  {"pwrmux", "double", NULL, offsetof(struct VFDFeed, pwrmux), 0, false},
+  {"pwrtype", "int", NULL, offsetof(struct VFDFeed, pwrtype), 0, false},
+  {"pwrpoints", "int", NULL, offsetof(struct VFDFeed, pwrpoints), 0, false},
+  {"pwrstart", "int", NULL, offsetof(struct VFDFeed, pwrstart), 0, false},
+  {"pwroff", "int", NULL, offsetof(struct VFDFeed, pwroff), 0, false},
+  {"rpmmux", "double", NULL, offsetof(struct VFDFeed, rpmmux), 0, false},
+  {"rpmtype", "int", NULL, offsetof(struct VFDFeed, rpmtype), 0, false},
+  {"rpmpoints", "int", NULL, offsetof(struct VFDFeed, rpmpoints), 0, false},
+  {"rmpstart", "int", NULL, offsetof(struct VFDFeed, rmpstart), 0, false},
+  {"rpmoff", "int", NULL, offsetof(struct VFDFeed, rpmoff), 0, false},
   {NULL, NULL, NULL, 0, 0, false}
 };
 struct attribute s_energy_attributes[] = {
@@ -505,8 +532,9 @@ struct attribute s_sysset_attributes[] = {
 struct apihandler_data s_apihandler_feeder = {{"feeder", "data", false, 0, 0, 0UL}, s_feeder_attributes, sizeof(struct feeder), (void (*)(void *)) glue_get_feeder, (void (*)(void *)) glue_set_feeder};
 struct apihandler_data s_apihandler_Inverter = {{"Inverter", "data", false, 0, 0, 0UL}, s_Inverter_attributes, sizeof(struct Inverter), (void (*)(void *)) glue_get_Inverter, (void (*)(void *)) glue_set_Inverter};
 struct apihandler_data s_apihandler_VFDCmd = {{"VFDCmd", "data", false, 0, 0, 0UL}, s_VFDCmd_attributes, sizeof(struct VFDCmd), (void (*)(void *)) glue_get_VFDCmd, (void (*)(void *)) glue_set_VFDCmd};
-struct apihandler_data s_apihandler_VFDFeed = {{"VFDFeed", "data", false, 0, 0, 0UL}, s_VFDFeed_attributes, sizeof(struct VFDFeed), (void (*)(void *)) glue_get_VFDFeed, (void (*)(void *)) glue_set_VFDFeed};
+struct apihandler_data s_apihandler_VFDCmdFeed = {{"VFDCmdFeed", "data", false, 0, 0, 0UL}, s_VFDCmdFeed_attributes, sizeof(struct VFDCmdFeed), (void (*)(void *)) glue_get_VFDCmdFeed, (void (*)(void *)) glue_set_VFDCmdFeed};
 struct apihandler_data s_apihandler_VFD = {{"VFD", "data", false, 0, 0, 0UL}, s_VFD_attributes, sizeof(struct VFD), (void (*)(void *)) glue_get_VFD, (void (*)(void *)) glue_set_VFD};
+struct apihandler_data s_apihandler_VFDFeed = {{"VFDFeed", "data", false, 0, 0, 0UL}, s_VFDFeed_attributes, sizeof(struct VFDFeed), (void (*)(void *)) glue_get_VFDFeed, (void (*)(void *)) glue_set_VFDFeed};
 struct apihandler_data s_apihandler_energy = {{"energy", "data", false, 0, 0, 0UL}, s_energy_attributes, sizeof(struct energy), (void (*)(void *)) glue_get_energy, (void (*)(void *)) glue_set_energy};
 struct apihandler_data s_apihandler_panels = {{"panels", "data", false, 0, 0, 0UL}, s_panels_attributes, sizeof(struct panels), (void (*)(void *)) glue_get_panels, (void (*)(void *)) glue_set_panels};
 struct apihandler_data s_apihandler_sensors = {{"sensors", "data", false, 0, 0, 0UL}, s_sensors_attributes, sizeof(struct sensors), (void (*)(void *)) glue_get_sensors, (void (*)(void *)) glue_set_sensors};
@@ -526,8 +554,9 @@ static struct apihandler *s_apihandlers[] = {
   (struct apihandler *) &s_apihandler_feeder,
   (struct apihandler *) &s_apihandler_Inverter,
   (struct apihandler *) &s_apihandler_VFDCmd,
-  (struct apihandler *) &s_apihandler_VFDFeed,
+  (struct apihandler *) &s_apihandler_VFDCmdFeed,
   (struct apihandler *) &s_apihandler_VFD,
+  (struct apihandler *) &s_apihandler_VFDFeed,
   (struct apihandler *) &s_apihandler_energy,
   (struct apihandler *) &s_apihandler_panels,
   (struct apihandler *) &s_apihandler_sensors,

@@ -1,9 +1,9 @@
 #include "Valve.hpp"
 
 #include <cstring>
-#include "esp_log.h"
-
-static const char *TAG = "Valve";
+#include "includes.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 Valve::~Valve()
 {
@@ -12,14 +12,15 @@ Valve::~Valve()
     }
 }
 
-void Valve::init(gpio_num_t gpio1, gpio_num_t gpio2, const char *name, uint16_t timerSetting)
+void Valve::init(gpio_num_t gpio1, gpio_num_t gpio2, const char *name, uint16_t openDelayMs, uint16_t closeDelayMs)
 {
     strncpy(m_name, name, sizeof(m_name) - 1);
     m_name[sizeof(m_name) - 1] = '\0';
 
     open_gpio       = gpio1;
     close_gpio       = gpio2;
-    m_timerSetting = timerSetting;
+    m_openDelayMs = openDelayMs;
+    m_closeDelayMs = closeDelayMs;
     m_state        = ValveState::NONE;
     m_initialized  = true;
 
@@ -36,9 +37,11 @@ void Valve::init(gpio_num_t gpio1, gpio_num_t gpio2, const char *name, uint16_t 
     // start Valve in CLOSED state
     gpio_set_level(open_gpio, 1);
     gpio_set_level(close_gpio, 0);
+    vTaskDelay(pdMS_TO_TICKS(m_closeDelayMs));
+    m_state = ValveState::CLOSE;
+    MESP_LOGI(TAG, "Valve '%s' initialised - GPIO%d / GPIO%d, openDelay=%u closeDelay=%u",
+             m_name, open_gpio, close_gpio, m_openDelayMs, m_closeDelayMs);
 
-    ESP_LOGI(TAG, "Valve '%s' initialised — GPIO%d / GPIO%d, timer=%u",
-             m_name, open_gpio, close_gpio, m_timerSetting);
 }
 
 void Valve::deinit()
@@ -53,41 +56,45 @@ void Valve::deinit()
     m_state       = ValveState::NONE;
     m_initialized = false;
 
-    ESP_LOGI(TAG, "Valve '%s' de-initialised", m_name);
+    MESP_LOGI(TAG, "Valve '%s' de-initialised", m_name);
 }
 
 void Valve::setCurrSetting(uint16_t setting)
 {
     m_currSetting = setting;
-    ESP_LOGI(TAG, "Valve '%s' currSetting = %u", m_name, m_currSetting);
+    MESP_LOGI(TAG, "Valve '%s' currSetting = %u", m_name, m_currSetting);
 }
 
-void Valve::setTimer(uint16_t timerSetting)
+void Valve::setTimer(uint16_t openDelayMs, uint16_t closeDelayMs)
 {
-    m_timerSetting = timerSetting;
-    ESP_LOGI(TAG, "Valve '%s' timerSetting = %u", m_name, m_timerSetting);
+    m_openDelayMs = openDelayMs;
+    m_closeDelayMs = closeDelayMs;
+    MESP_LOGI(TAG, "Valve '%s' openDelay=%u closeDelay=%u", m_name, m_openDelayMs, m_closeDelayMs);
 }
 
 void Valve::open()
 {
     if (!m_initialized) {
-        ESP_LOGW(TAG, "Valve '%s' not initialised", m_name);
+        MESP_LOGW(TAG, "Valve '%s' not initialised", m_name);
         return;
     }
     gpio_set_level(open_gpio, 1);
     gpio_set_level(close_gpio, 0);
     m_state = ValveState::OPEN;
-    ESP_LOGI(TAG, "Valve '%s' OPEN", m_name);
+    MESP_LOGI(TAG, "Valve '%s' OPEN", m_name);
+    vTaskDelay(pdMS_TO_TICKS(m_openDelayMs));
+
 }
 
 void Valve::close()
 {
     if (!m_initialized) {
-        ESP_LOGW(TAG, "Valve '%s' not initialised", m_name);
+        MESP_LOGW(TAG, "Valve '%s' not initialised", m_name);
         return;
     }
     gpio_set_level(open_gpio, 0);
     gpio_set_level(close_gpio, 1);
     m_state = ValveState::CLOSE;
-    ESP_LOGI(TAG, "Valve '%s' CLOSED", m_name);
+    MESP_LOGI(TAG, "Valve '%s' CLOSED", m_name);
+    vTaskDelay(pdMS_TO_TICKS(m_closeDelayMs));
 }

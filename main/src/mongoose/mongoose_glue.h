@@ -117,6 +117,8 @@ void glue_update_state(void);
 // Firmware Glue
 
 struct feeder {
+  int feedopen;
+  int full;
   int numlines;
   int gramsliter;
   int lineclear;
@@ -153,7 +155,7 @@ struct VFDCmd {
 void glue_get_VFDCmd(struct VFDCmd *);
 void glue_set_VFDCmd(struct VFDCmd *);
 
-struct VFDFeed {
+struct VFDCmdFeed {
   int refresh;
   int address;
   double cmdmux;
@@ -167,8 +169,8 @@ struct VFDFeed {
   int freqstart;
   int freqoff;
 };
-void glue_get_VFDFeed(struct VFDFeed *);
-void glue_set_VFDFeed(struct VFDFeed *);
+void glue_get_VFDCmdFeed(struct VFDCmdFeed *);
+void glue_set_VFDCmdFeed(struct VFDCmdFeed *);
 
 struct VFD {
   int refresh;
@@ -196,6 +198,33 @@ struct VFD {
 };
 void glue_get_VFD(struct VFD *);
 void glue_set_VFD(struct VFD *);
+
+struct VFDFeed {
+  int refresh;
+  int address;
+  double currmux;
+  int currtype;
+  int currpoints;
+  int currstart;
+  int curroff;
+  double voltmux;
+  int volttype;
+  int voltpoints;
+  int voltstart;
+  int voltoff;
+  double pwrmux;
+  int pwrtype;
+  int pwrpoints;
+  int pwrstart;
+  int pwroff;
+  double rpmmux;
+  int rpmtype;
+  int rpmpoints;
+  int rmpstart;
+  int rpmoff;
+};
+void glue_get_VFDFeed(struct VFDFeed *);
+void glue_set_VFDFeed(struct VFDFeed *);
 
 struct energy {
   int bdisamphoy;

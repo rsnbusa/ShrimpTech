@@ -365,52 +365,92 @@ typedef struct medbkcup {
  * WiFi parameters, profiles, and Modbus device configurations.
  */
 typedef struct config {
-    time_t              bornDate;
-    uint32_t            bootcount, lastResetCode;
-    uint8_t             minutes, masternode, unitid;
-    uint32_t            downtime;      // Downtime accumulator
-    uint32_t            mqttSlots;     // Slot number
-    uint8_t             loglevel,modbuson;
-    uint8_t             meterconf, ptch;
-    uint32_t            lastRebootTime, meterconfdate, baset, cid, subnode, poolid;
-    char                mqttServer[100], mqttUser[50],mqttPass[50],thessid[40], thepass[20];
-    uint32_t            totalnodes;  // Exact number of nodes in this pool
-    uint16_t            conns;       // Time to wait before sending metrics in ms
-    uint16_t            collectimer;
-    char                kpass[20];
-    time_t              lastKnownDate;
-    int                 mqttcertlen;
-    char                mqttcert[2100];
-    uint8_t             mesh_wifi;
-    char                lastVersion[20];
-    bool                externDO, externDOMqtt;
-    uint16_t            mqttDiscoRetry,gpsSensor;
-    profile_t           profiles[MAXPROFILES];
-    feedprofile_t       feedprofiles[MAXPROFILES];
-    uint8_t             activeProfile, dayCycle;
-    time_t              dateProfile, dateDayCycle;
-    uint8_t             wifi_mode;           // 0=off, 1=activated for power loss cases
-    uint32_t            debug_flags, test_timer_div;
-    uint8_t             retain, work_day, temp_sensor, delay_mesh;
-    uint32_t            loginwait;
-    uint16_t            baud;
-    uart_port_t         port;
-    float               lat,longi;
-    time_t              gpsDateTime;
-    uint16_t            BMOTORKW,BMOTORVOLTS;       // blower motor specs
-    uint16_t            FMOTORKW,FMOTORVOLTS;       // feeder motor specs
-    uint16_t            blowerFlow,feederFlow;             // are blower and feeder schedules synced
-    bool                blowerFeedSync;             // are blower and feeder schedules synced
-    struct feeder       feederData;         // Feeder specific data structure
+    // Keep order stable: this struct is persisted in flash/NVS.
+    time_t bornDate;
+
+    uint32_t bootcount;
+    uint32_t lastResetCode;
+    // uint8_t minutes;
+    uint8_t masternode;
+    uint8_t unitid;
+    uint32_t downtime;     // Downtime accumulator
+    uint32_t mqttSlots;    // Slot number
+    uint8_t loglevel;
+    uint8_t modbuson;
+    uint8_t meterconf;
+    uint8_t ptch;
+
+    uint32_t lastRebootTime;
+    uint32_t meterconfdate;
+    uint32_t baset;
+    uint32_t cid;
+    uint32_t subnode;
+    uint32_t poolid;
+
+    char mqttServer[100];
+    char mqttUser[50];
+    char mqttPass[50];
+    char thessid[40];
+    char thepass[20];
+    uint32_t totalnodes;   // Exact number of nodes in this pool
+    uint16_t conns;        // Time to wait before sending metrics in ms
+    uint16_t collectimer;
+    char kpass[20];
+
+    time_t lastKnownDate;
+    int mqttcertlen;
+    char mqttcert[2100];
+    uint8_t mesh_wifi;
+    char lastVersion[20];
+    bool externDO;
+    bool externDOMqtt;
+    uint16_t mqttDiscoRetry;
+    uint16_t gpsSensor;
+
+    profile_t profiles[MAXPROFILES];
+    feedprofile_t feedprofiles[MAXPROFILES];
+    uint8_t activeProfile;
+    uint8_t dayCycle;
+    time_t dateProfile;
+    time_t dateDayCycle;
+    uint8_t wifi_mode;      // 0=off, 1=activated for power loss cases
+    uint32_t debug_flags;
+    uint32_t test_timer_div;
+    uint8_t retain;
+    uint8_t work_day;
+    uint8_t temp_sensor;
+    uint8_t delay_mesh;
+    uint32_t loginwait;
+    uint16_t baud;
+    uart_port_t port;
+
+    float lat;
+    float longi;
+    time_t gpsDateTime;
+
+    uint16_t BMOTORKW;      // blower motor specs
+    uint16_t BMOTORVOLTS;
+    uint16_t FMOTORKW;      // feeder motor specs
+    uint16_t FMOTORVOLTS;
+    uint16_t blowerFlow;
+    uint16_t feederFlow;
+    bool blowerFeedSync;    // blower and feeder schedules are synced
+
+    struct feeder feederData;      // Feeder specific data structure
     struct modbInverter modbus_inverter;
-    struct modbSensors  modbus_sensors;
-    struct modbBattery  modbus_battery;
-    struct modbPanels   modbus_panels;
-    struct VFD          modbus_vfd;
-    struct VFDCmd       modbus_vfdcmd;
-    struct DO           doParms;
-    struct Inverter     inverter;
-    uint32_t            sentinel;           // at the end to protect the whole structure in case any changes in between
+    struct modbSensors modbus_sensors;
+    struct modbBattery modbus_battery;
+    struct modbPanels modbus_panels;
+    // -- Blower VFD --
+    struct VFD    modbus_vfd;
+    struct VFDCmd modbus_vfdcmd;
+    // -- Feeder VFD --
+    struct VFD    modbus_vfdFeed;
+    struct VFDCmd modbus_vfdcmdFeed;
+    struct DO doParms;
+    struct Inverter inverter;
+
+    uint32_t sentinel;      // Must remain last to guard layout changes
 
 } config_flash;
 
