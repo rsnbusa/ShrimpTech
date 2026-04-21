@@ -18,6 +18,31 @@ char modb_names[][30]={
 //25
 char schStatus[][11]={"READY","BLOWERON","NEXTHOUR","BLOWEROFF","CROP","PARK"};
 
+void check_reset_reason(void) {
+    esp_reset_reason_t reason = esp_reset_reason();
+    
+    switch(reason) {
+        case ESP_RST_POWERON:
+            printf("Chip powered on\n");
+            break;
+        case ESP_RST_SW:
+            printf("Software restart\n");
+            break;
+        case ESP_RST_PANIC:
+            printf("Crash/panic occurred\n");
+            break;
+        case ESP_RST_TASK_WDT:
+            printf("Task watchdog triggered reset\n");
+            break;
+        case ESP_RST_BROWNOUT:
+            printf("Brownout detected - voltage issue\n");
+            break;
+        // Handle other cases...
+        default:
+            printf("Unknown reset reason: %d\n", reason);
+            break;
+    }
+}
 void show_timers()
 {
      uint_least64_t remainingTicksStart, remainingTicksEnd ;
@@ -106,7 +131,7 @@ void show_modbus()
            theConf.modbus_vfdcmd.freqpoints, theConf.modbus_vfdcmd.freqtype, theConf.modbus_vfdcmd.freqmux);
     printf("  └────────────────┴────────┴────────┴─────────┴──────┴───────┘\n\n");
 
-    // ===== VFD Monitor =====
+    // ===== VFD Monitor ===== 
     printf("  ┌─ %sVFD Monit (Addr: %3d | Refresh: %3dm ) %s──────────────────┐\n",BK_YELLOW, 
            theConf.modbus_vfd.address, theConf.modbus_vfd.refresh,RESETC);
     printf("  │ %-14s │ Offset │ Start  │ Points  │ Type │  Mux  │\n", "Name");
