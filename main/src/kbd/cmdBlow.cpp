@@ -91,13 +91,13 @@ int cmdBlow(int argc, char **argv)
         // write_to_flash();
         if(modbuss==0)
         { 
-            start_vfd(0);
+            start_vfd_blower(0);
             // vTaskSuspend(vfdHandle);
             MESP_LOGI(TAG,"VFD Modbus stop and  suspended");
         }
         else
         {
-            start_vfd(modbuss);
+            start_vfd_blower(modbuss);
             // vTaskResume(vfdHandle);
             MESP_LOGI(TAG,"VFD Modbus start and  resumed");
         }

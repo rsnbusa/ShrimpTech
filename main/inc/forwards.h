@@ -154,7 +154,8 @@ int cmdResetConf(int argc, char **argv);
 int cmdSecurity(int argc, char **argv);
 int cmdSkip(int argc, char **argv);
 int cmdZeroMeter(int argc, char **argv);
-void start_vfd(uint8_t que);
+void start_vfd_blower(uint8_t que);
+void start_vfd_feeder(uint8_t que);
 
 void gps_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
 

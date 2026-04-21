@@ -803,11 +803,13 @@ void show_first_feed_profile()
 void print_feeder()
 {
     printf("┌─────────────────────────────────────────────────────────────┐\n"); 
-    printf("│%s%s                FEEDER CONFIGURATION                          %s│\n",RESETC,BK_GREEN,RESETC);
+    printf("│%s%s                FEEDER CONFIGURATION                         %s│\n",RESETC,BK_GREEN,RESETC);
     printf("├─────────────────────────────────────────────────────────────┤\n");
-    printf("│ Number of Lines:       %-35d │\n", theConf.feederData.numlines);
-    printf("│ Grams per Liter:       %-35d │\n", theConf.feederData.gramsliter);
-    printf("│ Line Clear:            %-35d │\n", theConf.feederData.lineclear);
+    printf("│ Number of Lines:       %-35d  │\n", theConf.feederData.numlines);
+    printf("│ Grams per Liter:       %-35d  │\n", theConf.feederData.gramsliter);
+    printf("│ Line Clear:            %-35d  │\n", theConf.feederData.lineclear);
+    printf("│ Full Open/Close Time:  %-35d  │\n", theConf.feederData.full);
+    printf("│ Feeder Open Time:      %-35d  │\n", theConf.feederData.feedopen);
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
 }
 

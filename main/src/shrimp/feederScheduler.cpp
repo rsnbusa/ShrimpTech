@@ -94,7 +94,7 @@ static void feed_now(uint8_t weight)
 
     for (int x = 0; x < num_lines; x++) {
         line_valves[x].open();
-        // start_vfd(true);  // Dummy feeder VFD start call for now
+        // start_vfd_blower(true);  // Dummy feeder VFD start call for now
 
         if (line_clear_ms > 0) {
             vTaskDelay(pdMS_TO_TICKS(line_clear_ms));
@@ -111,7 +111,7 @@ static void feed_now(uint8_t weight)
         }
 
         feeder_valve.close();
-        // start_vfd(false);  // Dummy feeder VFD stop call for now
+        // start_vfd_blower(false);  // Dummy feeder VFD stop call for now
         line_valves[x].close();
         vTaskDelay(pdMS_TO_TICKS(1000));
     }

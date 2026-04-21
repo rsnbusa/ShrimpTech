@@ -193,7 +193,7 @@ modbus_sensor_type_t * setModbusSensor(char * sensor_name,int numberDescriptors,
             return theSensor;       //null or filled
 }
 
-void start_vfd(uint8_t que)
+void start_vfd_blower(uint8_t que)
 {
 
     if(que)
@@ -210,6 +210,26 @@ void start_vfd(uint8_t que)
     }
     vfdCmdData.cmd=que;
     
+
+}
+
+void start_vfd_feeder(uint8_t que)
+{
+
+    if(que)
+    {
+        vfdCmdDataFeeder.frequency=(uint16_t)(50 + (esp_random() % 401));
+        vfdCmdDataFeeder.cmd=1;
+        vTaskResume(vfdcmdHandle2);
+    }
+    else
+    {
+        vfdCmdDataFeeder.frequency=0;
+        vfdCmdDataFeeder.cmd=0;
+        vTaskResume(vfdcmdHandle2);
+    }
+    vfdCmdDataFeeder.cmd=que;
+
 
 }
 
@@ -5125,7 +5145,7 @@ void handle_past_schedule_in_progress(time_t endtime, time_t now, int ck
     ctx_timers[ck_h]->isLast=(ck_h == num_horarios - 1)? true : false;
     
     turn_blower_onOff(true);  // Ensure blower is on since Started ALREADY happened 
-    start_vfd(true);
+    start_vfd_blower(true);
 
     if ((theConf.debug_flags >> dSCH) & 1U) {
         format_log_time(endtime, time_str, 30);
@@ -5980,7 +6000,7 @@ void blower_start(void * pArg)
     }
     
     turn_blower_onOff(true);
-    start_vfd(true);
+    start_vfd_blower(true);
 
     // the schedule should change its status here to active, it also marks the profile,cycle and dazy for recovery in PF
     // theBlower.setScheduleStatus(POOLBLOWERON); // this is the status that will be set when the timer starts, 
@@ -6041,7 +6061,7 @@ void blower_end(void * pArg)
     }
     // elapsed[ulCount]=0;
     turn_blower_onOff(false);
-    start_vfd(false);
+    start_vfd_blower(false);
 
     if (start_timer_ctx->isLast)
     {
