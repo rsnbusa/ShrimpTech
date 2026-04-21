@@ -18,30 +18,80 @@ char modb_names[][30]={
 //25
 char schStatus[][11]={"READY","BLOWERON","NEXTHOUR","BLOWEROFF","CROP","PARK"};
 
+static const esp_reset_reason_t kResetReasonCodes[] = {
+    ESP_RST_UNKNOWN,
+    ESP_RST_POWERON,
+    ESP_RST_EXT,
+    ESP_RST_SW,
+    ESP_RST_PANIC,
+    ESP_RST_INT_WDT,
+    ESP_RST_TASK_WDT,
+    ESP_RST_WDT,
+    ESP_RST_DEEPSLEEP,
+    ESP_RST_BROWNOUT,
+    ESP_RST_SDIO,
+#ifdef ESP_RST_USB
+    ESP_RST_USB,
+#endif
+#ifdef ESP_RST_JTAG
+    ESP_RST_JTAG,
+#endif
+#ifdef ESP_RST_EFUSE
+    ESP_RST_EFUSE,
+#endif
+#ifdef ESP_RST_PWR_GLITCH
+    ESP_RST_PWR_GLITCH,
+#endif
+#ifdef ESP_RST_CPU_LOCKUP
+    ESP_RST_CPU_LOCKUP,
+#endif
+};
+
+static const char *kResetReasonStrings[] = {
+    "Unknown",
+    "Power on",
+    "External pin",
+    "Software",
+    "Panic",
+    "Interrupt watchdog",
+    "Task watchdog",
+    "Other watchdog",
+    "Deep sleep wake",
+    "Brownout",
+    "SDIO",
+#ifdef ESP_RST_USB
+    "USB",
+#endif
+#ifdef ESP_RST_JTAG
+    "JTAG",
+#endif
+#ifdef ESP_RST_EFUSE
+    "eFuse",
+#endif
+#ifdef ESP_RST_PWR_GLITCH
+    "Power glitch",
+#endif
+#ifdef ESP_RST_CPU_LOCKUP
+    "CPU lockup",
+#endif
+};
+
+static const char *reset_reason_to_string(esp_reset_reason_t reason)
+{
+    const size_t reason_count = sizeof(kResetReasonCodes) / sizeof(kResetReasonCodes[0]);
+    for (size_t i = 0; i < reason_count; i++) {
+        if (kResetReasonCodes[i] == reason) {
+            return kResetReasonStrings[i];
+        }
+    }
+
+    return "Unknown";
+}
+
 void check_reset_reason(void) {
     esp_reset_reason_t reason = esp_reset_reason();
-    
-    switch(reason) {
-        case ESP_RST_POWERON:
-            printf("Chip powered on\n");
-            break;
-        case ESP_RST_SW:
-            printf("Software restart\n");
-            break;
-        case ESP_RST_PANIC:
-            printf("Crash/panic occurred\n");
-            break;
-        case ESP_RST_TASK_WDT:
-            printf("Task watchdog triggered reset\n");
-            break;
-        case ESP_RST_BROWNOUT:
-            printf("Brownout detected - voltage issue\n");
-            break;
-        // Handle other cases...
-        default:
-            printf("Unknown reset reason: %d\n", reason);
-            break;
-    }
+
+    printf("Reset reason: %s (%d)\n", reset_reason_to_string(reason), reason);
 }
 void show_timers()
 {
@@ -326,20 +376,17 @@ void show_device_info(time_t bootdate, time_t guardDate)
     printf("│ %sBoot Count: %s                                                │\n",BK_GRAY,RESETC);
     printf("│   %-57d │\n", theConf.bootcount);
     printf("│ %sLast Reset & Reason:%s                                        │\n",BK_GRAY,RESETC);
-    printf("│   Reset: %-6d  Reason: %-34d │\n", theConf.lastResetCode, theConf.lastResetCode);
+        printf("│   Reset: %-6d  Reason: %-34s │\n", theConf.lastResetCode,
+            reset_reason_to_string((esp_reset_reason_t)theConf.lastResetCode));
     printf("│ %sLog Level & Down Time:%s                                      │\n",BK_GRAY,RESETC);
     printf("│   Level: %-6d  Down Time: %-28lu    │\n", theConf.loglevel, theConf.downtime);
     printf("│ %sLast Reboot:%s                                                │\n",BK_GRAY,RESETC);
     char reboot_str[60];
     strftime(reboot_str, sizeof(reboot_str), "  %Y-%m-%d %H:%M:%S", localtime((time_t*)&bootdate));
     printf("│ %-59s │\n", reboot_str);
-    printf("│ %sConfiguration Flags:%s                                        │\n",BK_GRAY,RESETC);
-    printf("│   Meter: %-6d  MQTT: %-6d  Send Meter: %-16d │\n", theConf.meterconf, mqttf, sendMeterf);
     printf("│ %sGuard Date:%s                                                 │\n",BK_GRAY,RESETC);
     strftime(reboot_str, sizeof(reboot_str), "  %Y-%m-%d %H:%M:%S", localtime(&guardDate));
     printf("│ %-59s │\n", reboot_str);
-    printf("│ %sDisplay & System Status:%s                                    │\n",BK_GRAY,RESETC);
-    printf("│   Display Active: %-42s│\n", gdispf?"Yes":"No");
     printf("│ %sVersion Information:%s                                        │\n",BK_GRAY,RESETC);
     printf("│   App: %-20s  IDF: %-24s  │\n", mip->version, mip->idf_ver);
     printf("│   Project: %-48s │\n", mip->project_name);
@@ -406,10 +453,6 @@ void show_production_config()
     if((theConf.debug_flags >> dRS485) & 1U) printf("RS485 ");
     if((theConf.debug_flags >> dDO) & 1U) printf("DO ");
     printf("│\n");
-//     if(theBlower.getScheduleStatus()==BLOWERON)
-//         printf("│ Cycle: %1d | Day: %3d | Timer Div: %3d Status %2d│\n", ck, ck_d, theConf.test_timer_div, theBlower.getScheduleStatus());
-//     else
-//         printf("│ Status: Waiting for Production Cycle start    %d│\n", theBlower.getScheduleStatus());
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
 }
 
@@ -527,24 +570,6 @@ void show_statistics(time_t now)
 }
 
 /**
- * @brief Display system configuration section
- * 
- * Shows expected nodes and connection settings.
- */
-void show_system_config()
-{
-//     printf("%s", GRAY);
-    printf("┌─────────────────────────────────────────────────────────────┐\n");
-    printf("│%s%s                 SYSTEM CONFIGURATION                        %s│\n",RESETC,BK_CYAN,RESETC);
-    printf("├─────────────────────────────────────────────────────────────┤\n");
-       //  printf("%s", RESETC);
-    printf("│ Expected Nodes: %-43lu │\n", theConf.totalnodes);
-    printf("│ Expected Connections: %-37lu │\n", theConf.conns);
-    printf("└─────────────────────────────────────────────────────────────┘\n\n");
-}
-
-
-/**
  * @brief Display blower/feeder motor specs and sync configuration
  *
  * Shows values requested by operations for quick verification:
@@ -555,7 +580,7 @@ void show_system_config()
 void show_blower_feeder_settings()
 {
     printf("┌─────────────────────────────────────────────────────────────┐\n");
-    printf("│%s%s         BLOWER / FEEDER MOTORS SETTINGS                     %s│\n", RESETC, BK_GREEN, RESETC);
+    printf("│%s%s         BLOWER & FEEDER MOTORS SETTINGS                     %s│\n", RESETC, BK_GREEN, RESETC);
     printf("├─────────────────────────────────────────────────────────────┤\n");
     printf("│ kWh:                   %-35u  │\n", theConf.BMOTORKW);
     printf("│ Volts:                 %-35u  │\n", theConf.BMOTORVOLTS);
@@ -865,8 +890,6 @@ int cmdConfig(int argc, char **argv)
        show_network_mesh(conf, bssid, mac_base, typ, my_mac, xRemainingTime);
     if (configArgs.all->count || configArgs.stats->count)         
        show_statistics(now);
-    if (configArgs.all->count || configArgs.system->count)         
-       show_system_config();
      if (configArgs.all->count || configArgs.system->count)
          show_blower_feeder_settings();
     if (configArgs.all->count || configArgs.blow->count)         

@@ -234,7 +234,7 @@ static int handle_production_start(const ProductionCommandFields *fields, char *
     {
         MESP_LOGE(MESH_TAG, "Production start aborted: blower/feeder cycle sync sanity check failed");
         return ESP_FAIL;
-    }/
+    }
 
     if (theConf.doParms.docontrol)
     {
