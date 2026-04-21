@@ -52,6 +52,41 @@ static bool ensure_schedule_task_ready(void)
     return true;
 }
 
+static bool validate_synced_profile_cycles(uint8_t profileIndex)
+{
+    const profile_t *blowerProfile = &theConf.profiles[profileIndex];
+    const feedprofile_t *feederProfile = &theConf.feedprofiles[profileIndex];
+
+    if (blowerProfile->numCycles != feederProfile->numCycles)
+    {
+        MESP_LOGE(MESH_TAG,
+                  "Sync sanity failed: profile %d blower cycles %d != feeder cycles %d",
+                  profileIndex,
+                  blowerProfile->numCycles,
+                  feederProfile->numCycles);
+        return false;
+    }
+
+    for (int i = 0; i < blowerProfile->numCycles; ++i)
+    {
+        const ciclo_t *blowerCycle = &blowerProfile->cycle[i];
+        const ciclo_t *feederCycle = &feederProfile->cycle[i];
+
+        if (blowerCycle->duration != feederCycle->duration)
+        {
+            MESP_LOGE(MESH_TAG,
+                      "Sync sanity failed: profile %d cycle %d blower duration %d != feeder duration %d",
+                      profileIndex,
+                      i,
+                      blowerCycle->duration,
+                      feederCycle->duration);
+            return false;
+        }
+    }
+
+    return true;
+}
+
 /* Broadcasts production control message to all mesh nodes. */
 void send_start_production(uint8_t profileIndex, uint8_t dayIndex, uint32_t muxTime, char* orderCommand)
 {
@@ -194,6 +229,12 @@ static int handle_production_start(const ProductionCommandFields *fields, char *
     if((theConf.debug_flags >> dXCMDS) & 1U)  
         MESP_LOGI(MESH_TAG, "%sCMd Prod Start %s", DBG_XCMDS, fields->orderCommand);
     writeLog(logBuffer);
+
+    if (theConf.blowerFeedSync && !validate_synced_profile_cycles(fields->profileIndex))
+    {
+        MESP_LOGE(MESH_TAG, "Production start aborted: blower/feeder cycle sync sanity check failed");
+        return ESP_FAIL;
+    }/
 
     if (theConf.doParms.docontrol)
     {

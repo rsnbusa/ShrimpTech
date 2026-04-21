@@ -127,7 +127,8 @@ int cmdDOEX(void *argument)
     apply_doex_data(&fields);
     log_doex_update(&fields);
 
-    MESP_LOGI(MESH_TAG,
+    if (((theConf.debug_flags >> dMQTT) & 1U))
+        MESP_LOGI(MESH_TAG,
               "DOEX DO:%.2f cnt:%d ret:%d PH:%.2f IR:%.2f SA:%.2f Wt:%.2f Interval:%d",
               fields.DOLevel, fields.DOCount, fields.DOretry,
               fields.PHLevel, fields.IRLevel, fields.SALevel,

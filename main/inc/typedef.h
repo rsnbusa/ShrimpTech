@@ -399,7 +399,9 @@ typedef struct config {
     time_t              gpsDateTime;
     uint16_t            BMOTORKW,BMOTORVOLTS;       // blower motor specs
     uint16_t            FMOTORKW,FMOTORVOLTS;       // feeder motor specs
+    uint16_t            blowerFlow,feederFlow;             // are blower and feeder schedules synced
     bool                blowerFeedSync;             // are blower and feeder schedules synced
+    struct feeder       feederData;         // Feeder specific data structure
     struct modbInverter modbus_inverter;
     struct modbSensors  modbus_sensors;
     struct modbBattery  modbus_battery;

@@ -430,6 +430,8 @@ void glue_get_settings(struct settings *);
 void glue_set_settings(struct settings *);
 
 struct system {
+  int fflow;
+  int bflow;
   double bkw;
   int bvolts;
   double fkw;

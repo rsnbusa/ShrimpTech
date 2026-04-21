@@ -71,8 +71,15 @@ static void feeder_timer_fire(void *pArg)
         return;
     }
 
-    MESP_LOGI(TAG, "%sFeeder timer fired C-%d D-%d H-%d Weight %d",
-             DBG_SCH, ctx->cycle, ctx->day, ctx->horario, ctx->weight);
+    time_t now = time(NULL);
+    char fired_at[32] = {0};
+    struct tm now_tm;
+    localtime_r(&now, &now_tm);
+    strftime(fired_at, sizeof(fired_at), "%Y-%m-%d %H:%M:%S", &now_tm);
+    
+    if ((theConf.debug_flags >> dSCH) & 1U) 
+        MESP_LOGI(TAG, "%sFeeder timer Start C-%d D-%d H-%d Weight %d At %s",
+             DBG_SCH, ctx->cycle, ctx->day, ctx->horario, ctx->weight, fired_at);
 
     if (ctx->isLastScheduled && feedDaySem) {
         xSemaphoreGive(feedDaySem);
@@ -109,6 +116,9 @@ static bool make_feeder_timers(uint8_t cycle, uint8_t day, int cuantos)
             return false;
         }
 
+        const horario_t *feedHorario = &theConf.feedprofiles[theConf.activeProfile]
+            .cycle[cycle].horarios[i];
+
         const esp_timer_create_args_t feed_timer = {
             .callback = &feeder_timer_fire,
             .arg = (void *)feeder_ctx_timers[i],
@@ -121,6 +131,12 @@ static bool make_feeder_timers(uint8_t cycle, uint8_t day, int cuantos)
             cleanup_feeder_timers(i + 1);
             return false;
         }
+    if ((theConf.debug_flags >> dSCH) & 1U) 
+        MESP_LOGI(TAG, "%sFeeder timer created id=%d start=%02d:%02d weight=%d",DBG_SCH,
+               i,
+               feedHorario->hourStart,
+               feedHorario->minutesStart,
+               feeder_ctx_timers[i]->weight);
     }
 
     return true;
@@ -147,8 +163,13 @@ static bool start_feeder_timer_for_horario(time_t midnight, time_t now, int hora
     ESP_ERROR_CHECK(esp_timer_start_once(feeder_timers[horario], start_delay));
 
     if ((theConf.debug_flags >> dSCH) & 1U) {
-        MESP_LOGI(TAG, "%sFeeder timer scheduled C-%d D-%d H-%d Weight %d Delay(us) %llu",
-                 DBG_SCH, ctx->cycle, ctx->day, horario, ctx->weight, start_delay);
+        char fire_time[32] = {0};
+        struct tm fire_tm;
+        localtime_r(&starttime, &fire_tm);
+        strftime(fire_time, sizeof(fire_time), "%Y-%m-%d %H:%M:%S", &fire_tm);
+
+        MESP_LOGI(TAG, "%sFeeder timer scheduled C-%d D-%d H-%d Weight %d Delay(us) %llu FireAt %s",
+                 DBG_SCH, ctx->cycle, ctx->day, horario, ctx->weight, start_delay, fire_time);
     }
     return true;
 }
@@ -213,6 +234,16 @@ static void start_feeder_schedule_timers(void *pArg)
                     xSemaphoreTake(feedDaySem, 0);
                     xSemaphoreTake(feedDaySem, portMAX_DELAY);
                 }
+
+                time_t done_now = time(NULL);
+                char done_at[32] = {0};
+                struct tm done_tm;
+                localtime_r(&done_now, &done_tm);
+                strftime(done_at, sizeof(done_at), "%Y-%m-%d %H:%M:%S", &done_tm);
+
+                if ((theConf.debug_flags >> dSCH) & 1U) 
+                    MESP_LOGI(TAG, "%sFeeder schedule completed all days for profile %d at %s...waiting for next day",
+                    DBG_SCH, theConf.activeProfile, done_at);
 
                 cleanup_feeder_timers(numHorarios);
 

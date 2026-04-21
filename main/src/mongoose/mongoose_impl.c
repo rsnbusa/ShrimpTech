@@ -445,6 +445,8 @@ struct attribute s_settings_attributes[] = {
   {NULL, NULL, NULL, 0, 0, false}
 };
 struct attribute s_system_attributes[] = {
+  {"fflow", "int", NULL, offsetof(struct system, fflow), 0, false},
+  {"bflow", "int", NULL, offsetof(struct system, bflow), 0, false},
   {"bkw", "double", NULL, offsetof(struct system, bkw), 0, false},
   {"bvolts", "int", NULL, offsetof(struct system, bvolts), 0, false},
   {"fkw", "double", NULL, offsetof(struct system, fkw), 0, false},
@@ -561,14 +563,6 @@ static struct apihandler *get_api_handler(struct mg_str name) {
 static struct apihandler *find_handler(struct mg_http_message *hm) {
   if (hm->uri.len < 6 || strncmp(hm->uri.buf, "/api/", 5) != 0) return NULL;
   return get_api_handler(mg_str_n(hm->uri.buf + 5, hm->uri.len - 5));
-}
-
-void mg_json_get_str2(struct mg_str json, const char *path, char *buf,
-                      size_t len) {
-  struct mg_str s = mg_json_get_tok(json, path);
-  if (s.len > 1 && s.buf[0] == '"') {
-    mg_json_unescape(mg_str_n(s.buf + 1, s.len - 2), buf, len);
-  }
 }
 
 void mongoose_set_http_handlers(const char *name, ...) {
@@ -835,7 +829,7 @@ static void populate_struct_from_json(struct mg_str json, char *tmp,
     } else if (strcmp(a->type, "double") == 0) {
       mg_json_get_num(json, jpath, (double *) (tmp + a->offset));
     } else if (strcmp(a->type, "string") == 0) {
-      mg_json_get_str2(json, jpath, tmp + a->offset, a->size);
+      mg_json_unescape(json, jpath, tmp + a->offset, a->size);
     }
   }
 }

@@ -15,6 +15,48 @@ static constexpr TickType_t POLL_DELAY_MS = 500;
 static constexpr uint8_t ERROR_FILL = 0xFF;
 static constexpr size_t ERROR_BUF_LEN = 20;
 
+const struct {
+    const char *name;
+    int start;
+} kRegisterStartMap[] = {
+    {"batSoc", 0},
+    {"batSOH", 1},
+    {"batChgAHToday", 2},
+    {"batDischgAHToday", 3},
+    {"batChgAHTotal", 4},
+    {"batDischgAHTotal", 5},
+    {"batCycleCount", 6},
+    {"chargeCurr", 7},
+    {"generateEnergyToday", 9},
+    {"usedEnergyToday", 11},
+    {"gLoadConsumLineTotal", 13},
+    {"batChgkWhToday", 15},
+    {"batDischgkWhToday", 17},
+    {"genLoadConsumToday", 19},
+    {"batBmsTemp", 21},
+    {"pv1Volts", 23},
+    {"pv2Volts", 25},
+    {"pv1Amp", 27},
+    {"pv2Amp", 29},
+    {"frequency", 31},
+    {"cmd", 32},
+    {"mcurrent", 33},
+    {"mvolts", 35},
+    {"mpower", 36},
+    {"mrpm", 38},
+    {"mstatus", 39},
+};
+
+static const char *get_register_name_by_start(int start)
+{
+    for (size_t i = 0; i < (sizeof(kRegisterStartMap) / sizeof(kRegisterStartMap[0])); ++i) {
+        if (kRegisterStartMap[i].start == start) {
+            return kRegisterStartMap[i].name;
+        }
+    }
+    return "unknown";
+}
+
 static void *g_master_handle = NULL;
 static bool g_master_started = false;
 
@@ -150,6 +192,7 @@ void rs485_task_manager(void *arg)
                     uint8_t* temp_data_ptr = (uint8_t*)mensaje.dataReceiver + param_descriptor->param_offset - 1;
                     assert(temp_data_ptr);
                     uint8_t type = 0;
+                    const char *op_name = "none";
                     // printf("RSQueue processing cid %d final ptr %p offset %d original pointer %p\n",cid,temp_data_ptr,
                             // param_descriptor->param_offset,
                             // mensaje.dataReceiver);
@@ -157,11 +200,13 @@ void rs485_task_manager(void *arg)
                         // this is the actual request from master to slave (stupid name for routine)
                         if (param_descriptor->access & PAR_PERMS_READ)
                         {
+                             op_name = "get";
                              err = mbc_master_get_parameter(g_master_handle, cid,
                                                             (uint8_t*)temp_data_ptr, &type);
                         }
                         else if (param_descriptor->access & PAR_PERMS_WRITE)
                         {
+                            op_name = "set";
                             err = mbc_master_set_parameter(g_master_handle, cid,
                                                             (uint8_t*)temp_data_ptr, &type);
                             // ESP_LOG_BUFFER_HEX("WRITE", (void*)temp_data_ptr, 10);
@@ -170,6 +215,16 @@ void rs485_task_manager(void *arg)
                             mensaje.errCode[cid] = ESP_OK;   // success
                         else 
                         {
+                            const char *reg_name = get_register_name_by_start(param_descriptor->mb_reg_start);
+                            ESP_LOGI(TAG,
+                                     "mbc_master_%s error=0x%x (%s) slave=%u start=%u reg=%s cid=%u",
+                                     op_name,
+                                     (int)err,
+                                     esp_err_to_name(err),
+                                     param_descriptor->mb_slave_addr,
+                                     param_descriptor->mb_reg_start,
+                                     reg_name,
+                                     param_descriptor->cid);
                             if ((theConf.debug_flags >> dRS485) & 1U) 
                             {
                                 MESP_LOGE(TAG, "FAIL Characteristic #%u (%s) Addr %x read fail, err = 0x%x (%s).",       //timeout here

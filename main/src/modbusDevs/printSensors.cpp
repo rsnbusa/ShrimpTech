@@ -28,20 +28,15 @@ void cb_vfd_cmd(void *vfdd, int *errors,char *color,int numerrs,int devAddr,Task
     (void)numerrs;
     (void)devAddr;
  
-    printf("VFD Cmd callback cmd %d\n",vfdCmdData.cmd);
+    if (((theConf.debug_flags >> dMODBUS) & 1U))
+        MESP_LOGI(TAG,"VFD Cmd callback cmd %s",vfdCmdData.cmd>0?"RESUME":"SUSPEND");
 
     if(theHandle!=NULL)
     {
         if(vfdCmdData.cmd>0 )
-        {
             vTaskResume(theHandle);
-            // vTaskResume(vfdHandle2);
-        }
         else
-        {
             vTaskSuspend(theHandle);
-            // vTaskSuspend(vfdHandle2);
-        }
     }
 
     // ! execution order here is important. First do the above and then suspend the task, WHICH includes this code. 

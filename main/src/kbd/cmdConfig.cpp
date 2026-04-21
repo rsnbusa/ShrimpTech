@@ -518,6 +518,7 @@ void show_system_config()
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
 }
 
+
 /**
  * @brief Display blower/feeder motor specs and sync configuration
  *
@@ -535,6 +536,8 @@ void show_blower_feeder_settings()
     printf("│ Volts:                 %-35u  │\n", theConf.BMOTORVOLTS);
     printf("│ kW:                    %-35u  │\n", theConf.FMOTORKW);
     printf("│ Volts:                 %-35u  │\n", theConf.FMOTORVOLTS);
+    printf("│ Blower Flow:           %-35u  │\n", theConf.blowerFlow);
+    printf("│ Feeder Flow:           %-35u  │\n", theConf.feederFlow);
     printf("│ Schedules in Sync:     %-35s  │\n", theConf.blowerFeedSync ? "Enabled" : "Disabled");
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
 }
@@ -708,6 +711,25 @@ void show_first_feed_profile()
     }
 
 /**
+ * @brief Display feeder system data and configuration
+ * 
+ * Shows current feeder settings including:
+ * - Number of feed lines
+ * - Grams per liter dosage rate
+ * - Line clear setting
+ */
+void print_feeder()
+{
+    printf("┌─────────────────────────────────────────────────────────────┐\n"); 
+    printf("│%s%s                FEEDER CONFIGURATION                          %s│\n",RESETC,BK_GREEN,RESETC);
+    printf("├─────────────────────────────────────────────────────────────┤\n");
+    printf("│ Number of Lines:       %-35d │\n", theConf.feederData.numlines);
+    printf("│ Grams per Liter:       %-35d │\n", theConf.feederData.gramsliter);
+    printf("│ Line Clear:            %-35d │\n", theConf.feederData.lineclear);
+    printf("└─────────────────────────────────────────────────────────────┘\n\n");
+}
+
+/**
  * @brief Display comprehensive system configuration (runs as FreeRTOS task)
  * 
  * This function displays complete system status and configuration including:
@@ -824,6 +846,8 @@ int cmdConfig(int argc, char **argv)
          show_blower_feeder_settings();
     if (configArgs.all->count || configArgs.blow->count)         
        print_blower("Blower", theBlower.getSolarSystem(), false);
+    if (configArgs.all->count || configArgs.blow->count)         
+       print_feeder();
     if (configArgs.all->count || configArgs.sch->count)         
        show_schedule_info();
     if (configArgs.all->count || configArgs.profile->count)         

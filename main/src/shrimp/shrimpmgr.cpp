@@ -2639,8 +2639,9 @@ void process_mqtt_command_item(cJSON *cmditem)
 
         if(broadcast->valueint !=255 and broadcast->valueint != theConf.unitid)
          return;  // Not for me
-   
-	MESP_LOGI(MESH_TAG, "%sExternal cmd [%s][%d]", DBG_XCMDS, order->valuestring, broadcast->valueint);
+
+    if (((theConf.debug_flags >> dMQTT) & 1U))
+	    MESP_LOGI(MESH_TAG, "%sExternal cmd [%s][%d]", DBG_XCMDS, order->valuestring, broadcast->valueint);
 	int cual = findCommand(order->valuestring);
 	
 	if (cual >= 0)
@@ -3374,8 +3375,8 @@ void init_hx711_device(void)
         MESP_LOGW(MESH_TAG, "HX711 initialized but not ready yet: %s", esp_err_to_name(err));
         return;
     }
-
-    MESP_LOGI(MESH_TAG, "HX711 initialized on DOUT=%d SCK=%d", HXDOUT, HXSCK);
+    if ((theConf.debug_flags >> dLOGIC) & 1U) 
+        MESP_LOGI(MESH_TAG, "HX711 initialized on DOUT=%d SCK=%d", HXDOUT, HXSCK);
 }
 
 static int32_t s_tare_offset = 0;
@@ -3402,9 +3403,9 @@ static int32_t hx711_read_average(int samples)
 
 static void hx711_do_tare(int samples)
 {
-    MESP_LOGI(MESH_TAG, "HX711 taring with %d samples...", samples);
+    // MESP_LOGI(MESH_TAG, "HX711 taring with %d samples...", samples);
     s_tare_offset = hx711_read_average(samples);
-    MESP_LOGI(MESH_TAG, "HX711 tare offset: %" PRId32, s_tare_offset);
+    // MESP_LOGI(MESH_TAG, "HX711 tare offset: %" PRId32, s_tare_offset);
 }
 
 /**
@@ -5046,7 +5047,7 @@ start_timer_ctx_t* create_timer_context(uint8_t cycle,  int horario, int cuantos
 {
     start_timer_ctx_t* ctx = (start_timer_ctx_t*)calloc(1, sizeof(start_timer_ctx_t));
     if (!ctx) {
-        MESP_LOGE(MESH_TAG, "No ram for start timer context");
+        MESP_LOGE(MESH_TAG, "No ram for blower start timer context");
         return NULL;
     }
     
@@ -5060,7 +5061,7 @@ start_timer_ctx_t* create_timer_context(uint8_t cycle,  int horario, int cuantos
     ctx->isLast = (horario == cuantos-1) ? true : false;
     
      if ((theConf.debug_flags >> dSCH) & 1U) {
-        MESP_LOGI(TAG, "%sCreated timer context for Cycle %d Day %d Hour %d Start %d Len %d PWM %d Last %s", 
+        MESP_LOGI(TAG, "%sBlower created timer context for Cycle %d Day %d Hour %d Start %d Len %d PWM %d Last %s", 
                  DBG_SCH, ctx->cycle, ctx->day, horario, ctx->tostart, ctx->horaslen, ctx->pwm, ctx->isLast ? "YES" : "NO");
     }   
     return ctx;
@@ -5070,7 +5071,7 @@ bool make_timers(int ck,int cuantos)
 {
     if (cuantos >= MAXHORARIOS  || cuantos <= 0) 
     {
-        MESP_LOGE(MESH_TAG, "Maximum number of timers will be reached, cannot create ");
+        MESP_LOGE(MESH_TAG, "Blower maximum number of timers will be reached, cannot create ");
         return ESP_FAIL;
     }
   
@@ -5079,7 +5080,7 @@ bool make_timers(int ck,int cuantos)
         ctx_timers[a] = create_timer_context(ck, a, cuantos);
         if (!ctx_timers[a] ) 
         {
-            MESP_LOGE(MESH_TAG, "Failed to create timer context for cycle %d hour %d", ck, a);  
+            MESP_LOGE(MESH_TAG, "Failed to create blower timer context for cycle %d hour %d", ck, a);  
             return ESP_FAIL;
         }
 
@@ -5099,7 +5100,7 @@ bool make_timers(int ck,int cuantos)
         esp_timer_create(&start_timer, &start_timers[a]);
         if (start_timers[a] == NULL) 
         {
-            MESP_LOGE(MESH_TAG, "Failed to create start timer for cycle %d hour %d", ck, a);
+            MESP_LOGE(MESH_TAG, "Failed to create blower start timer for cycle %d hour %d", ck, a);
             for (int b=0;b<a;b++)
                 free(ctx_timers[b]);
             return ESP_FAIL;   
@@ -5109,7 +5110,7 @@ bool make_timers(int ck,int cuantos)
 
         if (end_timers[a] == NULL) 
         {
-            MESP_LOGE(MESH_TAG, "Failed to create end timer for cycle %d hour %d", ck, a);
+            MESP_LOGE(MESH_TAG, "Failed to create blower end timer for cycle %d hour %d", ck, a);
             for (int b=0;b<a;b++)
                 free(ctx_timers[b]);       //  free all ctx up to this point
             return ESP_FAIL;   
@@ -5196,7 +5197,7 @@ bool create_future_timers(time_t starttime, time_t endtime, time_t now,
 
     if(starttime<=now || endtime<=now)  //sanity checks
     {
-        MESP_LOGE(MESH_TAG, "FATAL create_future_timers called with past times Start %llu Now %llu End %llu", starttime, now, endtime);
+        MESP_LOGE(MESH_TAG, "Blower FATAL create_future_timers called with past times Start %llu Now %llu End %llu", starttime, now, endtime);
         return false;
     }
 
@@ -5211,7 +5212,7 @@ bool create_future_timers(time_t starttime, time_t endtime, time_t now,
     if ((theConf.debug_flags >> dSCH) & 1U) {
         format_log_time(starttime,time_str,30);
         format_log_time(now,time_str2,30);
-        MESP_LOGI(TAG, "%s PoolId %d Unit %d Profile %d  Timer %d Start in %lld us [%s%s%s | %llu ] now [ %s%s%s | %llu ] Mux %ld", 
+        MESP_LOGI(TAG, "%sBlower  PoolId %d Unit %d Profile %d  Timer %d Start in %lld us [%s%s%s | %llu ] now [ %s%s%s | %llu ] Mux %ld", 
                  DBG_SCH, theConf.poolid, theConf.unitid, theConf.activeProfile,ctx_timers[lck_h]->timerNum, start_delay,GREEN, time_str,RESETC,starttime, CYAN,time_str2,RESETC,now,theConf.test_timer_div);
     }
     
@@ -5233,7 +5234,7 @@ bool create_future_timers(time_t starttime, time_t endtime, time_t now,
 
         format_log_time(endtime,time_str,30);
         format_log_time(now,time_str2,30);
-        MESP_LOGI(TAG, "%s PoolId %d Unit %d Profile %d  Timer %d Ending in %lld us [%s%s%s | %llu ] now [%s%s%s | %llu ] Mux %ld  %s", 
+        MESP_LOGI(TAG, "%sBlower  PoolId %d Unit %d Profile %d  Timer %d Ending in %lld us [%s%s%s | %llu ] now [%s%s%s | %llu ] Mux %ld  %s", 
                  DBG_SCH, theConf.poolid, theConf.unitid, theConf.activeProfile, ctx_timers[lck_h]->timerNum, end_delay, RED, time_str,RESETC,endtime, CYAN,time_str2,RESETC,now, theConf.test_timer_div, ctx_timers[lck_h]->isLast ? "Last" : "" );
                 //  DBG_SCH, countTimersEnd, delay_int, time_str, endtime, time_str2, now,theConf.test_timer_div, ctx->isLast ? "YES" : "NO" );
     }                                           
@@ -5243,7 +5244,7 @@ bool create_future_timers(time_t starttime, time_t endtime, time_t now,
 
     if(countTimersStart>=MAXHORARIOS || countTimersEnd>=MAXHORARIOS)
     {
-        MESP_LOGE(MESH_TAG, "FATAL too many timers Start %d End %d", countTimersStart,countTimersEnd);
+        MESP_LOGE(MESH_TAG, "Blower FATAL too many timers Start %d End %d", countTimersStart,countTimersEnd);
         return false;
     }
         
@@ -5271,7 +5272,7 @@ bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, time_t now
     time_t endtime=starttime+ horario.horarioLen;
      
     if ((theConf.debug_flags >> dSCH) & 1U) 
-        MESP_LOGI(TAG, "%sP-%d C-%d D-%d H-%d %d secs %d hours Start %lld End %lld Timer %d mid  %lld now %lld", DBG_SCH,  theConf.activeProfile,ck, ck_d, ck_h,
+        MESP_LOGI(TAG, "%sBlower P-%d C-%d D-%d H-%d %d secs %d hours Start %lld End %lld Timer %d mid  %lld now %lld", DBG_SCH,  theConf.activeProfile,ck, ck_d, ck_h,
              horario.horarioLen,horario.horarioLen /3600,starttime,endtime ,countTimersEnd,midn, now);
     
     // Schedule already started
@@ -5281,7 +5282,7 @@ bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, time_t now
         {
             format_log_time(starttime, time_str, 30);
             format_log_time(now, now_str, 30);
-            MESP_LOGW(TAG, "%sP-%d Start already happened %lld (%s%s%s) %lld (%s%s%s) Mux %d", DBG_SCH, theConf.activeProfile, starttime, GREEN,time_str,RESETC,now, RED,now_str,RESETC,
+            MESP_LOGW(TAG, "%sBlower P-%d Start already happened %lld (%s%s%s) %lld (%s%s%s) Mux %d", DBG_SCH, theConf.activeProfile, starttime, GREEN,time_str,RESETC,now, RED,now_str,RESETC,
                 theConf.test_timer_div);
         }
 
@@ -5291,7 +5292,7 @@ bool process_horario(uint8_t ck, uint8_t ck_d, int ck_h, time_t midn, time_t now
             {
                 format_log_time(endtime, time_str, 30);
                 format_log_time(now, now_str, 30);
-                    MESP_LOGW(TAG, "%sPool %d Unit %d P-%d End already happened. Skip this schedule %lld (%s%s%s) %lld (%s%s%s) Mux %d", 
+                    MESP_LOGW(TAG, "%sBlower Pool %d Unit %d P-%d End already happened. Skip this schedule %lld (%s%s%s) %lld (%s%s%s) Mux %d", 
                             DBG_SCH, theConf.poolid, theConf.unitid, theConf.activeProfile, endtime, RED,time_str,RESETC, now, CYAN, now_str,RESETC, theConf.test_timer_div);
             }
         } else  // we have the end timer active so process it
@@ -5337,7 +5338,7 @@ void cleanup_all_timers(int howmany)
     bzero(elapsed, sizeof(elapsed));
     
     if ((theConf.debug_flags >> dSCH) & 1U)
-        MESP_LOGI(TAG, "%sStart Deleted %d End Deleted %d", DBG_SCH, deletedStart,deletedEnd);
+        MESP_LOGI(TAG, "%sBlower Start Deleted %d End Deleted %d", DBG_SCH, deletedStart,deletedEnd);
     
     countTimersStart = countTimersEnd = 0;
 }
@@ -5377,7 +5378,7 @@ uint32_t handle_day_end(uint8_t workingday)
         time_t midnight = mktime(timeinfo);
         stop_all_timers(); // just in case, should be already stopped by day end handler
         wait_time= uint32_t(midnight-current);
-        MESP_LOGI(TAG,"%sHandle Day End no counters %s Current Day %d Wait Time %ld\n", DBG_SCH, time_str1, currentDay, wait_time);
+        MESP_LOGI(TAG,"%sBlower handle Day End no counters %s Current Day %d Wait Time %ld\n", DBG_SCH, time_str1, currentDay, wait_time);
         return wait_time;
     }
 
@@ -5393,7 +5394,7 @@ uint32_t handle_day_end(uint8_t workingday)
     if ((theConf.debug_flags >> dSCH) & 1U) 
     {
         format_log_time(current, time_str1, 30);
-        MESP_LOGI(TAG,"%sHandle Day End %s Current Day %d WorkDay %d\n",DBG_SCH,time_str1,currentDay,workingday);    
+        MESP_LOGI(TAG,"%sBlower handle Day End %s Current Day %d WorkDay %d\n",DBG_SCH,time_str1,currentDay,workingday);    
     }
 
     if(currentDay>workingday)
@@ -5413,12 +5414,12 @@ uint32_t handle_day_end(uint8_t workingday)
     // sanity check
     if(midnight<current)
     {
-        MESP_LOGE(TAG, "%sMidnight calculation error now %ld midn %ld", DBG_SCH, (long)current, (long)midnight);
+        MESP_LOGE(TAG, "%sBlower Midnight calculation error now %ld midn %ld", DBG_SCH, (long)current, (long)midnight);
         return 0;   
     }
     
     if(midnight-current<0)
-        MESP_LOGE(TAG,"Handle Day Negative wait %lld\n", (long long)(midnight-current));
+        MESP_LOGE(TAG,"Blower Handle Day Negative wait %lld\n", (long long)(midnight-current));
 
     wait_time= (uint32_t)(midnight - current);     //return time to wait in seconds for next day midnight 00:00:00
     
@@ -5426,7 +5427,7 @@ uint32_t handle_day_end(uint8_t workingday)
     {
         format_log_time(current, time_str1, 30);
         format_log_time(midnight, time_str2, 30);
-        MESP_LOGI(TAG, "%sSchedule Ahead Start Day %s Midnight %s Wait Time %ld", DBG_SCH, time_str1, time_str2,wait_time);
+        MESP_LOGI(TAG, "%sBlower Schedule Ahead Start Day %s Midnight %s Wait Time %ld", DBG_SCH, time_str1, time_str2,wait_time);
     }
     return wait_time;
 }
@@ -5448,7 +5449,7 @@ void send_start_day_host(uint8_t ck_d, char *msg, char * cualQueue)
     
     cJSON *root = cJSON_CreateObject();
     if (!root) {
-        MESP_LOGE(MESH_TAG, "No ram for start day message");
+        MESP_LOGE(MESH_TAG, "Blower No ram for start day message");
         return;
     }
     
@@ -5466,7 +5467,7 @@ void send_start_day_host(uint8_t ck_d, char *msg, char * cualQueue)
     cJSON_Delete(root);
     
     if (!json_msg) {
-        MESP_LOGE(MESH_TAG, "No ram for JSON print");
+        MESP_LOGE(MESH_TAG, "Blower No ram for JSON print");
         return;
     }
     
@@ -5484,7 +5485,7 @@ void send_start_day_host(uint8_t ck_d, char *msg, char * cualQueue)
     mensaje.lenMsg = strlen(json_msg);
     
     if (xQueueSend(mqttSender, &mensaje, 0) != pdPASS) {
-        MESP_LOGE(MESH_TAG, "Cannot queue start day message");
+        MESP_LOGE(MESH_TAG, "Blower Cannot queue start day message");
         free(json_msg);
         return;
     }
@@ -5492,7 +5493,7 @@ void send_start_day_host(uint8_t ck_d, char *msg, char * cualQueue)
     xEventGroupSetBits(wifi_event_group, SENDMQTT_BIT); // Send when possible
 
     if ((theConf.debug_flags >> dSCH) & 1U) {
-        MESP_LOGI(TAG, "Start day message queued: %s", json_msg);
+        MESP_LOGI(TAG, "Blower Start day message queued: %s", json_msg);
     }
 }
 
@@ -5539,7 +5540,7 @@ void start_schedule_timers(void * pArg)
         time_t midn = get_today_midnight();
 
         if ((theConf.debug_flags >> dSCH) & 1U)
-            MESP_LOGW(TAG, "%sSchedule start: Profile %d Cycle %d Start Day %d midn %lld now %lld %s", DBG_SCH,  
+            MESP_LOGW(TAG, "%sBlower Schedule start: Profile %d Cycle %d Start Day %d midn %lld now %lld %s", DBG_SCH,  
                 theConf.activeProfile,
                 cyclestart, 
                 daystart,
@@ -5571,7 +5572,7 @@ void start_schedule_timers(void * pArg)
                 if ((theConf.debug_flags >> dSCH) & 1U)
                 {
                     format_log_time(nows, time_str, 30);
-                    MESP_LOGI(TAG, "%sDay %d Time %s",DBG_SCH,ck_d,time_str);
+                    MESP_LOGI(TAG, "%sBlower Day %d Time %s",DBG_SCH,ck_d,time_str);
                 }
 
                 midn = get_today_midnight();
@@ -5586,7 +5587,7 @@ void start_schedule_timers(void * pArg)
                     }
                     if (!process_horario(ck, ck_d, ck_h, midn, nows))
                     {
-                        printf("Failed process horario\n");
+                        printf("Blower failed process horario\n");
                         goto restart_schedule; // Timer validation failed, restart
                     }
                 }
@@ -5599,7 +5600,7 @@ void start_schedule_timers(void * pArg)
                 uint32_t wait_next_day= handle_day_end(hoytimeinfo->tm_mday);        // the first hour of next day. boundry of end fo cycles later
                 uint32_t howmuch= (wait_next_day*1000/theConf.test_timer_div)+10000;    // in ms + margin
                 if ((theConf.debug_flags >> dSCH) & 1U)
-                    MESP_LOGI(TAG,"%sWill Wait %ld ms for next day midnight",DBG_SCH,howmuch);
+                    MESP_LOGI(TAG,"%sBlower will Wait %ld ms for next day midnight",DBG_SCH,howmuch);
 
                 countTimersStart = countTimersEnd = 0;      //reset counters
 
@@ -5609,7 +5610,7 @@ void start_schedule_timers(void * pArg)
                     // for simultions only erase in production
                     // set a new day with a start hours to move more fastly 
                     if ((theConf.debug_flags >> dSCH) & 1U)
-                        MESP_LOGI(TAG,"Simulation waiting 10000ms");
+                        MESP_LOGI(TAG,"Blower Simulation waiting 10000ms");
                     delay(10000); // in secs->ms and add 10 seconds to be sure we are in the next day
                     time_t midnn = time(NULL);
                     struct tm *timeinfo = localtime(&midnn);
@@ -5634,7 +5635,7 @@ void start_schedule_timers(void * pArg)
                 {
                     time_t nuevo=time(NULL);
                     format_log_time(nuevo, time_str, 30);
-                    MESP_LOGI(TAG, "%sNew Day %d %s", DBG_SCH, ck_d+1,time_str);
+                    MESP_LOGI(TAG, "%sBlower New Day %d %s", DBG_SCH, ck_d+1,time_str);
                 }
                 // log the day complete
                 char * buff=(char*)calloc(1,100);
@@ -5642,7 +5643,7 @@ void start_schedule_timers(void * pArg)
                 {
                     time_t nnow=(time(NULL));
                     uint32_t fueron=nnow-timedaystart;
-                    sprintf(buff,"Cycle %d Day %d %d Sessions complete. Took %ld secs",ck,ck_d,theConf.profiles[theConf.activeProfile].cycle[ck].numHorarios); 
+                    sprintf(buff,"Blower Cycle %d Day %d %d Sessions complete. Took %ld secs",ck,ck_d,theConf.profiles[theConf.activeProfile].cycle[ck].numHorarios); 
                     write_log("SCH",buff);   
                     free(buff); 
                 }   
@@ -5652,17 +5653,18 @@ void start_schedule_timers(void * pArg)
             cleanup_all_timers(theConf.profiles[theConf.activeProfile].cycle[ck].numHorarios);       // just in case, should be already cleaned by day end handler
             
             if ((theConf.debug_flags >> dSCH) & 1U)
-                MESP_LOGI(TAG, "%sNew Cycle %d", DBG_SCH, ck+1);
+                MESP_LOGI(TAG, "%sBlower New Cycle %d", DBG_SCH, ck+1);
         }
                 
         // All cycles complete
         if(bbuff)       
         {
-            sprintf(bbuff,"Production Cycle Ended Cycles %d Complete",theConf.profiles[theConf.activeProfile].numCycles);
+            sprintf(bbuff,"Blower Production Cycle Ended Cycles %d Complete",theConf.profiles[theConf.activeProfile].numCycles);
             write_log("SCH",bbuff); // set the schedule in blower to indicate we are in active schedule mode
             free(bbuff);
         }
-        MESP_LOGE(TAG, "Production cycle ended");
+        if ((theConf.debug_flags >> dSCH) & 1U) 
+            MESP_LOGE(TAG, "Blower Production cycle ended");
         if(framFlag) theBlower.setSchedule(0, 0, 0, 0, 0,0,0,POOLCROP);
         schedulef = false;
 
