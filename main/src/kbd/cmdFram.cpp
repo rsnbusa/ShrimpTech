@@ -86,8 +86,8 @@ int cmdFram(int argc, char **argv)
         {
             time_t ahora = theBlower.getStatsLastCountTS();
             printf("====== Node stats ======\n");
-            printf("Msgs In: %d Bytes In: %d\n", theBlower.getStatsMsgIn(), theBlower.getStatsBytesIn());
-            printf("Msgs Out: %d Bytes Out: %d\n", theBlower.getStatsMsgOut(), theBlower.getStatsBytesOut());
+            printf("Msgs In: %ld Bytes In: %ld\n", theBlower.getStatsMsgIn(), theBlower.getStatsBytesIn());
+            printf("Msgs Out: %ld Bytes Out: %ld\n", theBlower.getStatsMsgOut(), theBlower.getStatsBytesOut());
             printf("Nodes %d Blowers %d lastDate %s", theBlower.getStatsLastNodeCount(), theBlower.getStatsLastBlowerCount(), ctime(&ahora));
         }
     }

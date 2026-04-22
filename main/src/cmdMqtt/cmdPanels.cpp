@@ -9,7 +9,7 @@
  */
 
 extern void write_to_flash();
-extern void writeLog(char* que);
+extern void writeLog(const char* que);
 
 #define PANELS_LOG_BUFFER_SIZE 100
 
@@ -182,7 +182,7 @@ int cmdPanels(void *argument)
 "charge":{"mux":1,"type":1,"points":10,"start":80,"offset":0}}
 */
 
-    PanelsCommandFields fields = {0};
+    PanelsCommandFields fields = {};
     if(!validate_panels_command(panelsCommand, &fields))
         return ESP_FAIL;
 

@@ -3,7 +3,7 @@
 #include "globals.h"
 
 extern void write_to_flash();
-extern void writeLog(char* que);
+extern void writeLog(const char* que);
 
 #define INVERT_STATUS_LOG_BUFFER_SIZE 100
 
@@ -119,7 +119,7 @@ int cmdInvertStatus(void *argument)
 {"cmd":"InvertStatus","refresh":10,"address":1,"invstatusmux":1,"invstatustype":1,"invstatuspoints":10,"invstatusstart":0,"invstatusoff":0,"unitid":255}
      */
 
-    InvertStatusCommandFields fields = {0};
+    InvertStatusCommandFields fields = {};
     if(!validate_invert_status_command(invertStatusCommand, &fields))
         return ESP_FAIL;
 

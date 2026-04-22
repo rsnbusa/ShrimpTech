@@ -26,8 +26,8 @@ void gps_event_handler(void *event_handler_arg, esp_event_base_t event_base, int
 		if(gps->latitude<-90.0 || gps->latitude>90.0)
 			return;
 		if(gps->longitude<-180.0 || gps->longitude>180.0)
-			return; 
-			if(abs(gps->latitude)>0.01)
+			return;
+		if(abs(gps->latitude)>0.01)
 			{
 				// printf("GPS to Flash and die\n");
 				theConf.lat=gps->latitude;
@@ -59,5 +59,5 @@ void gps_event_handler(void *event_handler_arg, esp_event_base_t event_base, int
 int getGpsTime(void *argument)
 {
     // we have a uart to read gps data
-
+    return 0;
 }

@@ -10,7 +10,7 @@
  */
 
 extern void write_to_flash();
-extern void writeLog(char* que);
+extern void writeLog(const char* que);
 extern err_t make_profile(char * prof);
 
 int cmdProfile(void *argument)

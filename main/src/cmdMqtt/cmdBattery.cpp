@@ -9,7 +9,7 @@
  */
 
 extern void write_to_flash();
-extern void writeLog(char* que);
+extern void writeLog(const char* que);
 
 #define BATTERY_LOG_BUFFER_SIZE 100
 
@@ -168,7 +168,7 @@ int cmdBattery(void *argument)
 
 */
 
-    BatteryCommandFields fields = {0};
+    BatteryCommandFields fields = {};
     if(!validate_battery_command(batteryCommand, &fields))
         return ESP_FAIL;
 

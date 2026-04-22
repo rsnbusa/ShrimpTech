@@ -111,7 +111,7 @@ static bool recycleLogFile()
  *       by calling logFileInit() first
  * @warning Not thread-safe - caller must ensure synchronization
  */
-void writeLog(char *message)
+void writeLog(const char *message)
 {
     if(!message)
     {

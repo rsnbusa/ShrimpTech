@@ -4,10 +4,10 @@
 #include "includes.h" 
 #include "globals.h"
 
-extern void writeLog(char* que);
+extern void writeLog(const char* que);
 
 // Format command constants
-#define MESH_MESSAGE_BUFFER_SIZE 100
+#define MESH_MESSAGE_BUFFER_SIZE sizeof(meshunion_t)
 #define MESH_UNION_CMD_SIZE 4
 #define LOG_BUFFER_SIZE 100
 
@@ -83,7 +83,7 @@ static esp_err_t buildMeshMessageFormat(const char *jsonString, meshunion_t **me
     (*meshMessage)->cmd = MESH_INT_DATA_CJSON;
     
     // Copy JSON payload after the command field
-    void *payloadPtr = (void*)(*meshMessage) + MESH_UNION_CMD_SIZE;
+    void *payloadPtr = (uint8_t*)(*meshMessage) + MESH_UNION_CMD_SIZE;
     memcpy(payloadPtr, jsonString, strlen(jsonString));
     
     return ESP_OK;

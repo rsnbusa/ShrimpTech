@@ -10,7 +10,7 @@
  */
 
 extern void write_to_flash();
-extern void writeLog(char* que);
+extern void writeLog(const char* que);
 
 // MQTT command validation constants
 #define MQTT_SERVER_MIN_LENGTH 20
@@ -188,7 +188,7 @@ int cmdMQTT(void *argument)
         return ESP_FAIL;
     }
 
-    MqttCommandFields fields = {0};
+    MqttCommandFields fields = {};
     if(!validate_mqtt_command(mqttCommand, &fields))
         return ESP_FAIL;
 

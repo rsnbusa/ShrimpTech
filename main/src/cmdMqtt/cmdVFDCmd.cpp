@@ -9,7 +9,7 @@
  */
 
 extern void write_to_flash();
-extern void writeLog(char* que);
+extern void writeLog(const char* que);
 
 #define VFDCMD_LOG_BUFFER_SIZE 100
 
@@ -138,7 +138,7 @@ int cmdVFDCmd(void *argument)
 {"cmd":"VFDCmd","refresh":10,"address":1,"cmdmux":1.0,"cmdtype":1,"cmdpoints":10,"cmdstart":0,"cmdoff":0,"freqmux":1.0,"freqtype":1,"freqpoints":10,"freqstart":20,"freqoff":0}
 */
 
-    VFDCmdCommandFields fields = {0};
+    VFDCmdCommandFields fields = {};
     if(!validate_vfdcmd_command(vfdcmdCommand, &fields))
         return ESP_FAIL;
 

@@ -8,7 +8,7 @@
  * the configuration changes (billing packages, schedules, skip flags, etc.).
  */
 
-extern void writeLog(char* que);
+extern void writeLog(const char* que);
 
 // Update command constants
 #define UPDATE_LOG_BUFFER_SIZE 100
@@ -93,7 +93,7 @@ static int send_update_mesh_message(cJSON *updateCommand)
     }
     
     meshMessage->cmd = MESH_INT_DATA_CJSON;
-    void *payloadPtr = (void*)meshMessage + MESH_CMD_OFFSET;
+    void *payloadPtr = (uint8_t*)meshMessage + MESH_CMD_OFFSET;
     memcpy(payloadPtr, jsonMessage, messageLength);
     
     mesh_data_t data;

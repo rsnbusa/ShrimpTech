@@ -8,7 +8,7 @@
  * All reset operations persist changes to flash and trigger an ESP restart.
  */
 
-extern void writeLog(char* que);
+extern void writeLog(const char* que);
 extern void write_to_flash();
 extern int findFlag(char * cual);
 extern void erase_config();

@@ -96,7 +96,6 @@ void check_reset_reason(void) {
 void show_timers()
 {
      uint_least64_t remainingTicksStart, remainingTicksEnd ;
-    uint32_t startremaining, endremaining;;
 
     printf("%s\n",RESETC);
     printf("  ┌───────────────────────────────────────────────────────────────────────────────────┐\n");
@@ -118,7 +117,6 @@ void show_timers()
             if(esp_timer_is_active(end_timers[ctx_timers[a]->timerNum]))
                 esp_timer_get_expiry_time(end_timers[ctx_timers[a]->timerNum], &remainingTicksEnd);
             
-            char time_str[20];
             printf("  │   %-2d  │ %-5d │ %-5d │ %-5d │ %-6d │ %-7ld │ %-4s │ %-10lld │ %-10lld │\n", 
                     ctx_timers[a]->timerNum,
                     ctx_timers[a]->cycle,
@@ -346,8 +344,6 @@ void show_modbus()
  */
 void show_schedule_info()
 {
-        char date_buf[30];
-        struct tm timeinfo;
         wschedule_t wsched;
         uint64_t xEnd_pending=0,xStart_pending=0,currentTime=0;
         int hora;
@@ -402,13 +398,13 @@ void show_device_info(time_t bootdate, time_t guardDate)
     
 //     printf("%s", LYELLOW);
     printf("\n┌─────────────────────────────────────────────────────────────┐\n");
-    printf("│%s%s               DEVICE INFORMATION POOL %-3d UNIT %-02d           %s│\n",RESETC,BK_YELLOW,theConf.poolid, theConf.unitid,RESETC);
+    printf("│%s%s               DEVICE INFORMATION POOL %-3lu UNIT %-2u            %s│\n",RESETC,BK_YELLOW,(unsigned long)theConf.poolid, (unsigned int)theConf.unitid,RESETC);
     printf("├─────────────────────────────────────────────────────────────┤\n");
        //  printf("%s", RESETC);
     printf("│ %sBoot Count: %s                                                │\n",BK_GRAY,RESETC);
-    printf("│   %-57d │\n", theConf.bootcount);
+    printf("│   %-57lu │\n", (unsigned long)theConf.bootcount);
     printf("│ %sLast Reset & Reason:%s                                        │\n",BK_GRAY,RESETC);
-        printf("│   Reset: %-6d  Reason: %-34s │\n", theConf.lastResetCode,
+        printf("│   Reset: %-6lu  Reason: %-34s │\n", (unsigned long)theConf.lastResetCode,
             reset_reason_to_string((esp_reset_reason_t)theConf.lastResetCode));
     printf("│ %sLog Level & Down Time:%s                                      │\n",BK_GRAY,RESETC);
     printf("│   Level: %-6d  Down Time: %-28lu    │\n", theConf.loglevel, theConf.downtime);
@@ -425,7 +421,7 @@ void show_device_info(time_t bootdate, time_t guardDate)
     printf("│   Compiled: %s @ %-34s│\n", mip->date, mip->time);
     printf("│   Latest Sent: %-44s │\n", theConf.lastVersion);
     printf("│ %sNetwork Settings:%s                                           │\n",BK_GRAY,RESETC);
-    printf("│   Mesh Delay: %-10s  Login Wait: %-22d│\n", theConf.delay_mesh?"Yes":"No", theConf.loginwait);
+    printf("│   Mesh Delay: %-10s  Login Wait: %-22lu│\n", theConf.delay_mesh?"Yes":"No", (unsigned long)theConf.loginwait);
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
 
 
@@ -436,11 +432,11 @@ void show_device_info(time_t bootdate, time_t guardDate)
     printf("├─────────────────────────────────────────────────────────────┤\n");
        //  printf("%s", RESETC);
     if(theConf.wifi_mode==0)
-       printf("│ Network: %-2s |          | MQTT Time: %2d | MuxDiv Timer: %2d   │\n", 
-              "W ", theConf.collectimer, theConf.test_timer_div);
+    printf("│ Network: %-2s |          | MQTT Time: %2lu | MuxDiv Timer: %2lu   │\n", 
+        "W ", (unsigned long)theConf.collectimer, (unsigned long)theConf.test_timer_div);
     if(theConf.wifi_mode)   
-       printf("│ Network: %-2s | MeshW: %c | MQTT Time: %2d | MuxDiv Timer: %2d   │\n", 
-           "M ", theConf.mesh_wifi?'Y':'N', theConf.collectimer, theConf.test_timer_div);
+       printf("│ Network: %-2s | MeshW: %c | MQTT Time: %2lu | MuxDiv Timer: %2lu   │\n", 
+           "M ", theConf.mesh_wifi?'Y':'N', (unsigned long)theConf.collectimer, (unsigned long)theConf.test_timer_div);
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
 
     // ===== GPS INFORMATION =====
@@ -472,8 +468,8 @@ void show_production_config()
        //  printf("%s", RESETC);
 //     printf("│ Blower Mode: %-47d│\n", theConf.blower_mode);
 //     printf("│ Active Profile: %1d | Start Day: %-33d│\n", theConf.activeProfile, theConf.dayCycle);
-    printf("│ Is Master Node: %-29s│ TestDiv %5d│\n", theConf.masternode?"Yes":"No ", theConf.test_timer_div);
-    printf("│ Debug Flags (0x%X): ", theConf.debug_flags);
+    printf("│ Is Master Node: %-29s│ TestDiv %5lu│\n", theConf.masternode?"Yes":"No ", (unsigned long)theConf.test_timer_div);
+    printf("│ Debug Flags (0x%lX): ", (unsigned long)theConf.debug_flags);
     if((theConf.debug_flags >> dSCH) & 1U)   printf("Schedule ");
     if((theConf.debug_flags >> dMESH) & 1U)  printf("Mesh ");
     if((theConf.debug_flags >> dBLE) & 1U)   printf("Ble ");
@@ -524,7 +520,7 @@ void show_network_mesh(wifi_config_t conf, mesh_addr_t bssid, unsigned char *mac
     if(!meshf)
         return;
         
-    char *tipo[]={"Idle", "ROOT", "NODE", "LEAF", "STA"};
+    const char *tipo[]={"Idle", "ROOT", "NODE", "LEAF", "STA"};
     int routet;
         
     mesh_addr_t mmeshid;
@@ -535,8 +531,8 @@ void show_network_mesh(wifi_config_t conf, mesh_addr_t bssid, unsigned char *mac
     printf("│%s%s                 NETWORK & MESH CONFIGURATION                     %s│\n",RESETC,BK_YELLOW,RESETC);
     printf("├──────────────────────────────────────────────────────────────────┤\n");
        //  printf("%s", RESETC);
-    printf("│ %sMesh ID:%s " MACSTR "  SubNode: %2d | Pool: %3d | Unit: %2d   │\n", BK_GRAY,RESETC,
-           MAC2STR(MESH_ID), theConf.subnode, theConf.poolid, theConf.unitid);
+        printf("│ %sMesh ID:%s " MACSTR "  SubNode: %2lu | Pool: %3lu | Unit: %2u   │\n", BK_GRAY,RESETC,
+            MAC2STR(MESH_ID), (unsigned long)theConf.subnode, (unsigned long)theConf.poolid, (unsigned int)theConf.unitid);
     printf("│ STA Mode:  SSID: %-27s   Pass: %-10s  │\n", conf.sta.ssid, conf.sta.password);
     printf("│ %sFlash Config:%s  SSID: %-23s   Pass: %-10s  │\n", BK_GRAY,RESETC, theConf.thessid, theConf.thepass);
     printf("│ Parent BSSID: " MACSTR " %-32s │\n", MAC2STR(bssid.addr)," ");
@@ -544,7 +540,7 @@ void show_network_mesh(wifi_config_t conf, mesh_addr_t bssid, unsigned char *mac
     printf("│ Node Type: %-53s │\n", tipo[typ]);
     printf("│ %sMAC Address:%s " MACSTR " %-34s│\n",BK_GRAY,RESETC, MAC2STR(mac_base)," ");
     printf("│ Mesh ID: " MACSTR " %-37s │\n", MAC2STR(mmeshid.addr)," ");
-    printf("│ %sDevice State:%s %-50s │\n", BK_GRAY,RESETC,esp_mesh_is_device_active?"UP":"DOWN");
+    printf("│ %sDevice State:%s %-50s │\n", BK_GRAY,RESETC,esp_mesh_is_device_active()?"UP":"DOWN");
     printf("└──────────────────────────────────────────────────────────────────┘\n\n");
 
     // ===== MESH ROUTING TABLE =====
@@ -594,8 +590,8 @@ void show_statistics(time_t now)
     printf("│%s%s                    STATISTICS                               %s│\n",RESETC,BK_BLUE,RESETC);
     printf("├─────────────────────────────────────────────────────────────┤\n");
        //  printf("%s", RESETC);
-    printf("│ Bytes Out: %-16d │  Bytes In: %-18d │\n", theBlower.getStatsBytesOut(), theBlower.getStatsBytesIn());
-    printf("│ Messages In: %-14d │ Messages Out: %-15d │\n", theBlower.getStatsMsgIn(), theBlower.getStatsMsgOut());
+    printf("│ Bytes Out: %-16lu │  Bytes In: %-18lu │\n", (unsigned long)theBlower.getStatsBytesOut(), (unsigned long)theBlower.getStatsBytesIn());
+    printf("│ Messages In: %-14lu │ Messages Out: %-15lu │\n", (unsigned long)theBlower.getStatsMsgIn(), (unsigned long)theBlower.getStatsMsgOut());
     printf("│ STA Connections: %-10d │ STA Disconnections: %-9d │\n", theBlower.getStatsStaConns(), theBlower.getStatsStaDiscos());
     printf("│ Last Activity: %-44s │\n", time_str);
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
@@ -674,7 +670,7 @@ void show_first_profile()
         
         printf("  ┌─ %sCycle %1d%s ───────────────────────────────────────────────────┐\n", BK_GRAY, i, RESETC);
         printf("  │ Day:             %-42d │\n", cycle->day);
-        printf("  │ Duration:        %-42d │\n", cycle->duration);
+        printf("  │ Duration:        %-42lu │\n", (unsigned long)cycle->duration);
         printf("  │ Num Schedules:   %-42d │\n", cycle->numHorarios);
         printf("  └─────────────────────────────────────────────────────────────┘\n");
         
@@ -737,7 +733,7 @@ void show_first_feed_profile()
 
         printf("  ┌─ %sFeed Cycle %1d%s ──────────────────────────────────────────────┐\n", BK_GRAY, i, RESETC);
         printf("  │ Day:             %-42d │\n", cycle->day);
-        printf("  │ Duration:        %-42d │\n", cycle->duration);
+        printf("  │ Duration:        %-42lu │\n", (unsigned long)cycle->duration);
         printf("  │ Num Schedules:   %-42d │\n", cycle->numHorarios);
         printf("  └─────────────────────────────────────────────────────────────┘\n");
 
@@ -769,8 +765,6 @@ void show_first_feed_profile()
      */
     void show_DO()
     {
-        struct DO doParms;
-    
         printf("┌────────────────────────────────────────────────────────┐\n");
         printf("│%s%s       DISSOLVED OXYGEN (DO) SENSOR CONFIGURATION       %s│\n",RESETC,BK_CYAN,RESETC);
         printf("├────────────────────────────────────────────────────────┤\n");
@@ -892,7 +886,7 @@ int cmdConfig(int argc, char **argv)
     timeinfo.tm_min = min;
     timeinfo.tm_sec = secs; 
     time_t nexthour = mktime(&timeinfo);
-    int faltan = nexthour - now;
+    (void)nexthour;
 
     esp_mesh_get_parent_bssid(&bssid);
     const esp_app_desc_t *mip = esp_app_get_description();

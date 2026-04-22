@@ -105,15 +105,27 @@ int FramI2C::i2c_master_read_slave(uint16_t framAddress, uint8_t *readBuffer, si
     uint16_t addressPacket = addressLow * FRAM_ADDRESS_BYTE_MULTIPLIER + i2cWriteAddress;
 
     // MB85RC16 random read sequence: START, write address, RESTART, read data, STOP
-    i2c_operation_job_t operations[] = {
-        { .command = I2C_MASTER_CMD_START },
-        { .command = I2C_MASTER_CMD_WRITE, .write = { .ack_check = true, .data = (uint8_t*)&addressPacket, .total_bytes = 2 } },
-        { .command = I2C_MASTER_CMD_START },
-        { .command = I2C_MASTER_CMD_WRITE, .write = { .ack_check = true, .data = (uint8_t*)&i2cReadAddress, .total_bytes = 1 } },
-        { .command = I2C_MASTER_CMD_READ, .read = { .ack_value = I2C_ACK_VALUE, .data = readBuffer, .total_bytes = readSize - 1 } },
-        { .command = I2C_MASTER_CMD_READ, .read = { .ack_value = I2C_NACK_VALUE, .data = readBuffer + readSize - 1, .total_bytes = 1 } },
-        { .command = I2C_MASTER_CMD_STOP }
-    };
+    i2c_operation_job_t operations[7];
+    memset(operations, 0, sizeof(operations));
+    operations[0].command = I2C_MASTER_CMD_START;
+    operations[1].command = I2C_MASTER_CMD_WRITE;
+    operations[1].write.ack_check = true;
+    operations[1].write.data = (uint8_t*)&addressPacket;
+    operations[1].write.total_bytes = 2;
+    operations[2].command = I2C_MASTER_CMD_START;
+    operations[3].command = I2C_MASTER_CMD_WRITE;
+    operations[3].write.ack_check = true;
+    operations[3].write.data = (uint8_t*)&i2cReadAddress;
+    operations[3].write.total_bytes = 1;
+    operations[4].command = I2C_MASTER_CMD_READ;
+    operations[4].read.ack_value = I2C_ACK_VALUE;
+    operations[4].read.data = readBuffer;
+    operations[4].read.total_bytes = readSize - 1;
+    operations[5].command = I2C_MASTER_CMD_READ;
+    operations[5].read.ack_value = I2C_NACK_VALUE;
+    operations[5].read.data = readBuffer + readSize - 1;
+    operations[5].read.total_bytes = 1;
+    operations[6].command = I2C_MASTER_CMD_STOP;
 
     esp_err_t result = i2c_master_execute_defined_operations(
         idev_handle, 
@@ -159,11 +171,14 @@ esp_err_t FramI2C::i2c_master_write_slave(uint16_t framAddress, uint8_t *writeDa
     memcpy(&packetBuffer[2], writeData, writeSize);
 
     // MB85RC16 byte write sequence: START, write address + data, STOP
-    i2c_operation_job_t operations[] = {
-        { .command = I2C_MASTER_CMD_START },
-        { .command = I2C_MASTER_CMD_WRITE, .write = { .ack_check = true, .data = packetBuffer, .total_bytes = writeSize + 2 } },
-        { .command = I2C_MASTER_CMD_STOP }
-    };
+    i2c_operation_job_t operations[3];
+    memset(operations, 0, sizeof(operations));
+    operations[0].command = I2C_MASTER_CMD_START;
+    operations[1].command = I2C_MASTER_CMD_WRITE;
+    operations[1].write.ack_check = true;
+    operations[1].write.data = packetBuffer;
+    operations[1].write.total_bytes = writeSize + 2;
+    operations[2].command = I2C_MASTER_CMD_STOP;
 
     esp_err_t result = i2c_master_execute_defined_operations(
         idev_handle, 

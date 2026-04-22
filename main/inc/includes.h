@@ -31,12 +31,14 @@
 // ============================================================================
 // BLE/NIMBLE HEADERS (C++ compatible)
 // ============================================================================
+#if __has_include("esp_nimble_hci.h")
 #include "esp_nimble_hci.h"
 #include "host/ble_hs.h"
 #include "nimble/nimble_port.h"
 #include "nimble/nimble_port_freertos.h"
 #include "services/gap/ble_svc_gap.h"
 #include "services/gatt/ble_svc_gatt.h"
+#endif
 
 // ============================================================================
 // MODBUS

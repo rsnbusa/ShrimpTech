@@ -17,6 +17,7 @@ void showData(void * pArg)
 	lv_obj_t *label3 = lv_label_create(scr);
 	//get version
 	const esp_app_desc_t *mip=esp_app_get_description();
+	(void)mip;
 
 	lv_style_init(&style);
 	lv_style_set_text_font(&style, &lv_font_montserrat_14);

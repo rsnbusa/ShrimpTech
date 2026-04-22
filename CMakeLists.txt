@@ -8,5 +8,5 @@ idf_build_set_property(MINIMAL_BUILD ON)
 
 project(ShrimpFeedIoT)
 
-idf_build_set_property(COMPILE_OPTIONS "-Wno-missing-field-initializers -Wno-reorder" APPEND)
-idf_build_set_property(COMPILE_OPTIONS "-w" APPEND)
+# idf_build_set_property(COMPILE_OPTIONS "-Wno-missing-field-initializers -Wno-reorder" APPEND)
+# idf_build_set_property(COMPILE_OPTIONS "-w" APPEND)

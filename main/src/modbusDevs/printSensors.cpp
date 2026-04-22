@@ -21,7 +21,6 @@
 
 void cb_vfd_cmd(void *vfdd, int *errors,char *color,int numerrs,int devAddr,TaskHandle_t theHandle)
 {
-    bool hasErrors=false;
     (void)vfdd;
     (void)errors;
     (void)color;

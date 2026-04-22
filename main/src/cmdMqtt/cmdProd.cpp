@@ -9,7 +9,7 @@
  * Broadcasts changes to all mesh nodes and updates persistent configuration.
  */
 
-extern void writeLog(char *que);
+extern void writeLog(const char *que);
 extern void save_ota_version(char *version);
 extern void cleanup_all_timers(int howmany);
 
@@ -421,7 +421,7 @@ int cmdProd(void *argument)
         return ESP_FAIL;
     }
     
-    ProductionCommandFields fields = {0};
+    ProductionCommandFields fields = {};
     if(!validate_production_command(productionCommand, &fields))
         return ESP_FAIL;
     

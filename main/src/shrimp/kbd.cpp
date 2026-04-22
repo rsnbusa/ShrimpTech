@@ -188,119 +188,37 @@ void kbd(void *pArg)
   // ===================================================================
   // Register Command Structures
   // ===================================================================
+
+  auto init_console_cmd = [](esp_console_cmd_t &cmd,
+                             const char *command,
+                             const char *help,
+                             const char *hint,
+                             esp_console_cmd_func_t func,
+                             void *argtable) {
+      memset(&cmd, 0, sizeof(cmd));
+      cmd.command = command;
+      cmd.help = help;
+      cmd.hint = hint;
+      cmd.func = func;
+      cmd.argtable = argtable;
+      cmd.func_w_context = NULL;
+      cmd.context = NULL;
+  };
   
-  fram_cmd = {
-        .command = "fram",
-        .help = "Manage Fram",
-        .hint = NULL,
-        .func = &cmdFram,
-        .argtable = &framArg
-    };
-
-  debug_cmd = {
-        .command = "debug",
-        .help = "Debug flags",
-        .hint = NULL,
-        .func = &cmdDebug,
-        .argtable = &dbgArg
-    };
-
-  meter_cmd = {
-        .command = "meter",
-        .help = "Show Meter",
-        .hint = NULL,
-        .func = &cmdMeter,
-        .argtable = NULL
-    };
-
-  config_cmd = {
-        .command = "config",
-        .help = "Show Configuration",
-        .hint = NULL,
-        .func = &cmdConfig,
-        .argtable = &configArgs
-    };
-
-  erase_cmd = {
-        .command = "erase",
-        .help = "Erase Configuration",
-        .hint = NULL,
-        .func = &cmdErase,
-        .argtable = NULL
-    };
-
-  findunit_cmd = {
-        .command = "find",
-        .help = "Find Unit Blink",
-        .hint = NULL,
-        .func = &cmdFindUnit,
-        .argtable = NULL
-    };
-
-  meshreset_cmd = {
-        .command = "install",
-        .help = "Set all units to config mode",
-        .hint = NULL,
-        .func = &cmdMetersreset,
-        .argtable = NULL
-    };
-
-
-  loglevel_cmd = {
-        .command = "loglevel",
-        .help = "Set log level",
-        .hint = NULL,
-        .func = &cmdLogLevel,
-        .argtable = &loglevel
-    };
-
-    resetconf_cmd = {
-        .command = "resetconf",
-        .help = "Reset Conf flags",
-        .hint = NULL,
-        .func = &cmdResetConf,
-        .argtable = &resetlevel
-    };
-
-    blow_cmd = {
-        .command = "blow",
-        .help = "Manage Blower reading",
-        .hint = NULL,
-        .func = &cmdBlow,
-        .argtable = &blowArgs
-    };
-
-     security_cmd = {
-        .command = "login",
-        .help = "Login to system",
-        .hint = NULL,
-        .func = &cmdSecurity,
-        .argtable = &kbdsedcurity
-    };
-
-     app_cmd = {
-        .command = "app",
-        .help = "Set app SSID",
-        .hint = NULL,
-        .func = &cmdApp,
-        .argtable = &appSSID
-    };
-
-     node_cmd= {
-        .command = "node",
-        .help = "Set node Id",
-        .hint = NULL,
-        .func = &cmdNode,
-        .argtable = &appNode
-    };
-
-       log_cmd = {
-        .command = "log",
-        .help = "Log options",
-        .hint = NULL,
-        .func = &cmdLog,
-        .argtable = &logArgs
-    };
+  init_console_cmd(fram_cmd, "fram", "Manage Fram", NULL, &cmdFram, &framArg);
+  init_console_cmd(debug_cmd, "debug", "Debug flags", NULL, &cmdDebug, &dbgArg);
+  init_console_cmd(meter_cmd, "meter", "Show Meter", NULL, &cmdMeter, NULL);
+  init_console_cmd(config_cmd, "config", "Show Configuration", NULL, &cmdConfig, &configArgs);
+  init_console_cmd(erase_cmd, "erase", "Erase Configuration", NULL, &cmdErase, NULL);
+  init_console_cmd(findunit_cmd, "find", "Find Unit Blink", NULL, &cmdFindUnit, NULL);
+  init_console_cmd(meshreset_cmd, "install", "Set all units to config mode", NULL, &cmdMetersreset, NULL);
+  init_console_cmd(loglevel_cmd, "loglevel", "Set log level", NULL, &cmdLogLevel, &loglevel);
+  init_console_cmd(resetconf_cmd, "resetconf", "Reset Conf flags", NULL, &cmdResetConf, &resetlevel);
+  init_console_cmd(blow_cmd, "blow", "Manage Blower reading", NULL, &cmdBlow, &blowArgs);
+  init_console_cmd(security_cmd, "login", "Login to system", NULL, &cmdSecurity, &kbdsedcurity);
+  init_console_cmd(app_cmd, "app", "Set app SSID", NULL, &cmdApp, &appSSID);
+  init_console_cmd(node_cmd, "node", "Set node Id", NULL, &cmdNode, &appNode);
+  init_console_cmd(log_cmd, "log", "Log options", NULL, &cmdLog, &logArgs);
 
   // ===================================================================
   // Initialize Prompt and Register Commands

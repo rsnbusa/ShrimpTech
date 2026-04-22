@@ -3,7 +3,7 @@
 #include "globals.h"
 
 extern void write_to_flash();
-extern void writeLog(char* que);
+extern void writeLog(const char* que);
 
 #define PID_LOG_BUFFER_SIZE 120
 
@@ -116,7 +116,7 @@ int cmdPID(void *argument)
      * Expected JSON format:
      * {"cmd":"PID","sampletime":10,"nighonly":false,"docontrol":true,"KD":1.5,"KI":0.1,"KP":0.01,"setpoint":5.1,"unitid":1}
      */
-    PIDCommandFields fields = {0};
+    PIDCommandFields fields = {};
     if(!validate_pid_command(pidCommand, &fields))
         return ESP_FAIL;
 

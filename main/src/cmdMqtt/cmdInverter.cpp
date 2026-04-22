@@ -9,7 +9,7 @@
  */
 
 extern void write_to_flash();
-extern void writeLog(char* que);
+extern void writeLog(const char* que);
 
 #define INVERTER_LOG_BUFFER_SIZE 100
 
@@ -222,7 +222,7 @@ int cmdInverter(void *argument)
 
 */
 
-    InverterCommandFields fields = {0};
+    InverterCommandFields fields = {};
     if(!validate_inverter_command(inverterCommand, &fields))
         return ESP_FAIL;
 

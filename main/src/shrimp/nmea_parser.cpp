@@ -551,8 +551,9 @@ static esp_err_t gps_decode(esp_gps_t *esp_gps, size_t len)
 // #endif
 // #ifdef CONFIG_NMEA_STATEMENT_GSA
                 case STATEMENT_GSA:
-                if ((theConf.debug_flags >> dGPS) & 1U)
-                    printf("[GSA] %s",esp_gps->buffer);
+                    if ((theConf.debug_flags >> dGPS) & 1U) {
+                        printf("[GSA] %s",esp_gps->buffer);
+                    }
                     esp_gps->parsed_statement |= 1 << STATEMENT_GSA;
                     break;
 // #endif
@@ -738,14 +739,15 @@ nmea_parser_handle_t nmea_parser_init(const nmea_parser_config_t *config)
     esp_gps->uart_port = config->uart.uart_port;
     esp_gps->all_statements &= 0xFE;
     /* Install UART friver */
-    uart_config_t uart_config = {
-        .baud_rate = config->uart.baud_rate,
-        .data_bits = config->uart.data_bits,
-        .parity = config->uart.parity,
-        .stop_bits = config->uart.stop_bits,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_APB,
-    };
+    uart_config_t uart_config = {};
+    uart_config.baud_rate = (int)config->uart.baud_rate;
+    uart_config.data_bits = config->uart.data_bits;
+    uart_config.parity = config->uart.parity;
+    uart_config.stop_bits = config->uart.stop_bits;
+    uart_config.flow_ctrl = UART_HW_FLOWCTRL_DISABLE;
+    uart_config.rx_flow_ctrl_thresh = 0;
+    uart_config.source_clk = UART_SCLK_APB;
+    uart_config.flags.allow_pd = 0U;
     if (uart_driver_install(esp_gps->uart_port, CONFIG_NMEA_PARSER_RING_BUFFER_SIZE, 0,
                             config->uart.event_queue_size, &esp_gps->event_queue, 0) != ESP_OK) {
         MESP_LOGE(GPS_TAG, "install uart driver failed");
@@ -785,10 +787,12 @@ nmea_parser_handle_t nmea_parser_init(const nmea_parser_config_t *config)
     }
     uart_flush(esp_gps->uart_port);
     /* Create Event loop */
-    esp_event_loop_args_t loop_args = {
-        .queue_size = NMEA_EVENT_LOOP_QUEUE_SIZE,
-        .task_name = NULL
-    };
+    esp_event_loop_args_t loop_args = {};
+    loop_args.queue_size = NMEA_EVENT_LOOP_QUEUE_SIZE;
+    loop_args.task_name = NULL;
+    loop_args.task_priority = 0;
+    loop_args.task_stack_size = 0;
+    loop_args.task_core_id = tskNO_AFFINITY;
     if (esp_event_loop_create(&loop_args, &esp_gps->event_loop_hdl) != ESP_OK) {
         MESP_LOGE(GPS_TAG, "create event loop faild");
         uart_driver_delete(esp_gps->uart_port);

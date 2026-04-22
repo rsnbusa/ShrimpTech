@@ -12,7 +12,7 @@
  *  "IRLevel":850.00,"SALevel":35.00,"WaterTemp":28.00,"Interval":60}
  */
 
-extern void writeLog(char* que);
+extern void writeLog(const char* que);
 
 #define DOEX_LOG_BUFFER_SIZE 140
 
@@ -120,7 +120,7 @@ int cmdDOEX(void *argument)
         return ESP_FAIL;
     }
 
-    DOEXFields fields = {0};
+    DOEXFields fields = {};
     if (!validate_doex_command(doexCommand, &fields))
         return ESP_FAIL;
 

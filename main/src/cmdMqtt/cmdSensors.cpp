@@ -9,7 +9,7 @@
  */
 
 extern void write_to_flash();
-extern void writeLog(char* que);
+extern void writeLog(const char* que);
 
 #define SENSORS_LOG_BUFFER_SIZE 100
 
@@ -183,7 +183,7 @@ int cmdSensors(void *argument)
 "Humidity":{"address":20,"mux":1,"type":1,"points":10,"start":80,"offset":0}}]}
 */
 
-    SensorsCommandFields fields = {0};
+    SensorsCommandFields fields = {};
     if(!validate_sensors_command(sensorsCommand, &fields))
         return ESP_FAIL;
 

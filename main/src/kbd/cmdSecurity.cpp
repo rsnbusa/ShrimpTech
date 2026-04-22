@@ -57,7 +57,7 @@ void updateConsolePrompt()
     // Note: Direct offset manipulation (replBytes += 4) is unsafe and platform-dependent
     
     char* prompt = (char*)calloc(1, PROMPT_BUFFER_SIZE);
-    sprintf(prompt, "Meter%02d-%02d>", theConf.poolid, theConf.unitid);
+    sprintf(prompt, "Meter%02ld-%02d>", theConf.poolid, theConf.unitid);
     esp_console_setup_prompt(prompt, (esp_console_repl_com_t*)replBytes);
 }
 

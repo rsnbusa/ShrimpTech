@@ -175,11 +175,13 @@ static bool make_feeder_timers(uint8_t cycle, uint8_t day, int cuantos)
         const horario_t *feedHorario = &theConf.feedprofiles[theConf.activeProfile]
             .cycle[cycle].horarios[i];
 
-        const esp_timer_create_args_t feed_timer = {
-            .callback = &feeder_timer_fire,
-            .arg = (void *)feeder_ctx_timers[i],
-            .name = "TFEED"
-        };
+        esp_timer_create_args_t feed_timer;
+        memset(&feed_timer, 0, sizeof(feed_timer));
+        feed_timer.callback = &feeder_timer_fire;
+        feed_timer.arg = (void *)feeder_ctx_timers[i];
+        feed_timer.name = "TFEED";
+        feed_timer.dispatch_method = ESP_TIMER_TASK;
+        feed_timer.skip_unhandled_events = false;
 
         esp_timer_create(&feed_timer, &feeder_timers[i]);
         if (!feeder_timers[i]) {

@@ -9,7 +9,7 @@
  */
 
 extern void write_to_flash();
-extern void writeLog(char* que);
+extern void writeLog(const char* que);
 
 // Network command constants
 #define NETWORK_PASSWORD_MIN_LENGTH 8
@@ -152,7 +152,7 @@ int cmdNetw(void *argument)
      * {"cmd":"newt","f":"123456","ssid":"myssid","ssidpassw":"qweret","reboot":"Y/N"}
      */
 
-    NetworkCommandFields fields = {0};
+    NetworkCommandFields fields = {};
     if(!validate_network_command(networkCommand, &fields))
         return ESP_FAIL;
 

@@ -85,7 +85,7 @@ void time_keeper_task(void *pArg)
         setenv("TZ", LOCALTIME, 1);
         tzset();
         time_t lfo = theBlower.getReservedDate();   
-        struct tm *timeinfo = localtime(&lfo);
+            (void)localtime(&lfo);
         struct timeval tv = {
         .tv_sec = lfo,
         .tv_usec = 0
@@ -169,13 +169,14 @@ void ds18b20_task(void *pArg)
                 ESP_ERROR_CHECK(ds18b20_get_temperature(ds18b20s[i], &temperature));
                 if((theConf.debug_flags >> dTEMP) & 1U)
                     MESP_LOGI(TAG, "%s Temp[%d]: %.2fC%s", DBG_TEMP, i, temperature,RESETC);
-            }
         }      
     }
 }
 
+}
+
 modbus_sensor_type_t * setModbusSensor(char * sensor_name,int numberDescriptors, int numColumns
-            ,void *descriptors,char * colores,void * theData,int dataSize,printcb printer,bool rw)
+            ,void *descriptors,const char * colores,void * theData,int dataSize,printcb printer,bool rw)
 {
             modbus_sensor_type_t *theSensor=(modbus_sensor_type_t *)calloc(1,sizeof(modbus_sensor_type_t));
             if (theSensor)
@@ -245,44 +246,44 @@ void launch_sensors()
        return;
             // Battery Modbus Device
             modbus_sensor_type_t *battery=setModbusSensor((char*)"Battery",4,4,
-                (void*)&theConf.modbus_battery,DBG_BATTERY,(void*)&batteryData,sizeof(batteryData),&cb_battery_data,true);
+                (void*)&theConf.modbus_battery,(char*)DBG_BATTERY,(void*)&batteryData,sizeof(batteryData),&cb_battery_data,true);
 
             // Panels Modbus Device
             modbus_sensor_type_t *panels=setModbusSensor((char*)"Panels",5,4,
-                (void*)&theConf.modbus_panels,DBG_PANELS,(void*)&pvPanelData,sizeof(pvPanelData),&cb_panel_data,true);
+                (void*)&theConf.modbus_panels,(char*)DBG_PANELS,(void*)&pvPanelData,sizeof(pvPanelData),&cb_panel_data,true);
 
             // Energy Modbus Device
             modbus_sensor_type_t *energy=setModbusSensor((char*)"Energy",10,4,
-                (void*)&theConf.modbus_inverter,DBG_ENERGY,(void*)&energyData,sizeof(energyData),&cb_energy_data,true);
+                (void*)&theConf.modbus_inverter,(char*)DBG_ENERGY,(void*)&energyData,sizeof(energyData),&cb_energy_data,true);
 
             // Sensors Modbus Device
             modbus_sensor_type_t *sensorDev=setModbusSensor((char*)"Sensors",5,5,
-                (void*)&theConf.modbus_sensors,DBG_SENSORS,(void*)&sensorData,sizeof(sensorData),&cb_sensor_data,true);
+                (void*)&theConf.modbus_sensors,(char*)DBG_SENSORS,(void*)&sensorData,sizeof(sensorData),&cb_sensor_data,true);
 
 // VFD will manage BOTH blowers in one connection
 
             // VFD Monitor Modbus Device for the Blowers
             modbus_sensor_type_t *VFDDev=setModbusSensor((char*)"VFDData",4,4,
-                (void*)&theConf.modbus_vfd,DBG_VFD,(void*)&vfdData,sizeof(vfdData),&cb_vfd_data,true);
+                (void*)&theConf.modbus_vfd,(char*)DBG_VFD,(void*)&vfdData,sizeof(vfdData),&cb_vfd_data,true);
 
             // VFD Cmd Modbus Device for the Blowers
             modbus_sensor_type_t *vfdcmd=setModbusSensor((char*)"VFDCmd",2,4,
-                (void*)&theConf.modbus_vfdcmd,DBG_VFD,(void*)&vfdCmdData,sizeof(vfdCmdData),&cb_vfd_cmd,false);     
+                (void*)&theConf.modbus_vfdcmd,(char*)DBG_VFD,(void*)&vfdCmdData,sizeof(vfdCmdData),&cb_vfd_cmd,false);     
 
 // VFD for the Feeder
 
             // VFD Monitor Modbus Device for the Feeder
             modbus_sensor_type_t *VFDDev2=setModbusSensor((char*)"FeederVFDData",4,4,
-                (void*)&theConf.modbus_vfdFeed,DBG_VFD,(void*)&vfdDataFeeder,sizeof(vfdDataFeeder),&cb_vfd_data,true);
+                (void*)&theConf.modbus_vfdFeed,(char*)DBG_VFD,(void*)&vfdDataFeeder,sizeof(vfdDataFeeder),&cb_vfd_data,true);
 
             // VFD Cmd Modbus Device for the Feeder
             modbus_sensor_type_t *vfdcmd2=setModbusSensor((char*)"FeederVFDCmd",2,4,
-                (void*)&theConf.modbus_vfdcmdFeed,DBG_VFD,(void*)&vfdCmdDataFeeder,sizeof(vfdCmdDataFeeder),&cb_vfd_cmd,false);     
+                (void*)&theConf.modbus_vfdcmdFeed,(char*)DBG_VFD,(void*)&vfdCmdDataFeeder,sizeof(vfdCmdDataFeeder),&cb_vfd_cmd,false);     
 
 
             // Inverter Status Modbus Device
             modbus_sensor_type_t *invstatus=setModbusSensor((char*)"invstat",1,4,
-                (void*)&theConf.inverter,DBG_INVSTATUS,(void*)&inverterData,sizeof(inverterData),&cb_inverter_status,true);
+                (void*)&theConf.inverter,(char*)DBG_INVSTATUS,(void*)&inverterData,sizeof(inverterData),&cb_inverter_status,true);
 
 
             //start tasks for all modbus devices
@@ -353,14 +354,14 @@ void launch_sensors()
                 
 }
 
-void print_blower(char * title,solarSystem_t *msolar,bool dumphex)
+void print_blower(const char * title,solarSystem_t *msolar,bool dumphex)
 {
     if((theConf.debug_flags >> dBLOW) & 1U)  
     {
         printf("From %s\n",title);
         if(dumphex)
             ESP_LOG_BUFFER_HEX("SOL",msolar,sizeof(solarSystem_t));
-        printf("Charge Curr %d pv1V %.02f pv2V %.02f pv1Amp %.02f pv2Amp %.02f\n",msolar->pvPanel.chargeCurr,msolar->pvPanel.pv1Volts,msolar->pvPanel.pv2Volts,msolar->pvPanel.pv1Amp,msolar->pvPanel.pv2Amp); 
+        printf("Charge Curr %lu pv1V %.02f pv2V %.02f pv1Amp %.02f pv2Amp %.02f\n",(unsigned long)msolar->pvPanel.chargeCurr,msolar->pvPanel.pv1Volts,msolar->pvPanel.pv2Volts,msolar->pvPanel.pv1Amp,msolar->pvPanel.pv2Amp); 
         printf("Bat SOC %d SOH %d Cycles %d Temp %.02f \n",msolar->battery.batSOC,msolar->battery.batSOH,msolar->battery.batteryCycleCount,msolar->battery.batBmsTemp); 
         printf("Enery ChgAHToday %d DischAHToday %d ChgAHTotal %d DiscAHTotal %d GenToday %.02f UsedToday %.02f \
         LoadConsdumeTotal %.02f \
@@ -393,23 +394,10 @@ void show_lvgl(void *showLVGL)
             _lock_acquire(&lvgl_api_lock);
             delay(10);
             lv_style_init(&style);
-            switch(msg->bigf)
-            {
-                case 0:
-                    lv_style_set_text_font(&style, &lv_font_montserrat_14);
-                    break;
-                case 1:
-                    lv_style_set_text_font(&style, &lv_font_montserrat_14); 
-                    break;
-                case 2:
-                    // lv_style_set_text_font(&style, &lv_font_montserrat_14); 
-                    break;
-                case 3:
-                    lv_style_set_text_font(&style, &lv_font_montserrat_14); 
-                    break;
-                default:
-                    lv_style_set_text_font(&style, &lv_font_montserrat_14);
-            }
+            if (msg->bigf)
+                lv_style_set_text_font(&style, &lv_font_montserrat_14);
+            else
+                lv_style_set_text_font(&style, &lv_font_montserrat_14);
 
             lv_label_cut_text(label,0,20);
             lv_obj_add_style(label, &style, 0); 
@@ -530,7 +518,6 @@ int findInternalCmds(const char * cual)
  */
 int get_routing_table()
 {
-    portMUX_TYPE    xTimerLock = portMUX_INITIALIZER_UNLOCKED;
     int             err;
 
     //some checks
@@ -575,7 +562,6 @@ int get_routing_table()
  */
 int root_delete_routing_table()
 {
-    int err;
     if(xSemaphoreTake(tableSem, portMAX_DELAY))		
     {  
         for (int a=0;a<masterNode.existing_nodes;a++)
@@ -661,7 +647,7 @@ esp_err_t send_confirmation_message(char *mid, int lstate)
         return ESP_FAIL;
     }
 
-    mqttSender_t meshMsg = {0};
+    mqttSender_t meshMsg = {};
     meshMsg.msg    = intmsg;
     meshMsg.lenMsg = strlen(intmsg);
     meshMsg.queue  = NULL;
@@ -709,7 +695,7 @@ esp_err_t send_metrics_message(char *mid)
     cJSON_AddStringToObject(root, "cmd", internal_cmds[METRICRESP]);
     cJSON_AddStringToObject(root, "mid", mid);
 
-    char time_buf[20] = {0};
+    char time_buf[20] = {};
     time_t lastup = theBlower.getLastUpdate();
     struct tm tm_info;
     if (localtime_r(&lastup, &tm_info) && strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", &tm_info) > 0)
@@ -722,7 +708,7 @@ esp_err_t send_metrics_message(char *mid)
         return ESP_FAIL;
     }
 
-    mqttSender_t meshMsg = {0};
+    mqttSender_t meshMsg = {};
     meshMsg.msg    = intmsg;
     meshMsg.lenMsg = strlen(intmsg);
     meshMsg.queue  = discoQueue;
@@ -865,8 +851,8 @@ int check_my_metrics(char *cmd, char *mid)
 
 esp_err_t root_send_data_to_node(mesh_addr_t thismac)
 {
-    mesh_data_t  data       = {0};
-    mqttSender_t meshMsg    = {0};
+    mesh_data_t  data       = {};
+    mqttSender_t meshMsg    = {};
     time_t       now;
 
     time(&now);
@@ -915,7 +901,7 @@ esp_err_t root_send_data_to_node(mesh_addr_t thismac)
         return ESP_FAIL;
     }
 
-    void *p = (void*)intMessage + 4;
+    void *p = (uint8_t*)intMessage + 4;
     memcpy(p, &theConf.modbus_battery, big);        // copy the message itself, offset 4 for cmd uint32
     intMessage->cmd = MESH_INT_DATA_MODBUS;
 
@@ -952,7 +938,7 @@ int root_sendNodeACK(void *parg)
 
     strcpy(mensaje, "{\"cmd\":\"installconf\"}");
 
-    mqttSender_t meshMsg = {0};
+    mqttSender_t meshMsg = {};
     meshMsg.msg   = mensaje;
     meshMsg.lenMsg= strlen(mensaje);
     meshMsg.queue = NULL;
@@ -982,7 +968,7 @@ esp_err_t root_send_confirmation_central(char *msg, uint16_t size, char *cualQ)
 
     memcpy(confmsg, msg, size);
 
-    mqttSender_t mqttMsg = {0};
+    mqttSender_t mqttMsg = {};
     mqttMsg.queue  = cualQ;
     mqttMsg.msg    = confmsg;  // freed by mqtt sender
     mqttMsg.lenMsg = size;
@@ -1020,7 +1006,7 @@ esp_err_t root_send_confirmation_central_cb(char *msg, char *cualQ, mesh_addr_t 
     }
     memcpy(localcopy, from, sizeof(mesh_addr_t));
 
-    mqttSender_t mqttMsg = {0};
+    mqttSender_t mqttMsg = {};
     mqttMsg.queue  = cualQ;
     mqttMsg.msg    = msg;  // freed by mqtt sender
     mqttMsg.lenMsg = msg_len;
@@ -1216,7 +1202,7 @@ esp_err_t root_send_collected_nodes(uint32_t cuantos)        //root only
     }
 
     // Queue message for MQTT transmission
-    mqttSender_t mqttMsg = {0};
+    mqttSender_t mqttMsg = {};
     mqttMsg.queue  = metricQueue;
     mqttMsg.msg    = (char*)shmsg;  // freed by mqtt sender
     mqttMsg.lenMsg = sizeof(shrimpMsg_t);
@@ -1333,7 +1319,7 @@ void root_collect_meter_data(TimerHandle_t algo)
     strncpy(intMessage->parajson, payload, payload_len);
     intMessage->parajson[payload_len] = '\0';
 
-    mesh_data_t data = {0};
+    mesh_data_t data = {};
     data.data   = (uint8_t*)intMessage;
     data.size   = payload_len + 4;  // payload + cmd header
     data.proto  = MESH_PROTO_BIN;
@@ -1386,7 +1372,7 @@ void set_sta_cmd(char *cjText)      //message from Root giving stations ids and 
     setenv("TZ", LOCALTIME, 1);
     tzset();
 
-    struct timeval now = {0};
+    struct timeval now = {};
     now.tv_sec = cjtime->valueint;
     printf("set sta_cmd Setting settimeofday\n");
     settimeofday(&now, NULL);
@@ -1503,7 +1489,7 @@ esp_err_t send_datos_to_root()
     if (theConf.delay_mesh > 0)
         delay(theConf.delay_mesh * theConf.unitid * SENDMUX);  // trying to avoid congestion UNIT id *ms
 
-    mesh_data_t datas = {0};
+    mesh_data_t datas = {};
     datas.data  = (uint8_t*)myNode;
     datas.size  = sizeof(meshunion_t);
     datas.proto = MESH_PROTO_BIN;
@@ -2009,7 +1995,7 @@ void mesh_manager(mesh_addr_t *from, mesh_data_t *data)
 
 
 
-err_t write_log(char *LTAG, char *que)
+err_t write_log(const char *LTAG, const char *que)
 {
     char time_buf[32];
     time_t now = time(NULL);
@@ -2144,9 +2130,9 @@ void write_to_flash()
  */
 bool sntp_sync_with_fallback(timeval *localtime)
 {
-    sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, "pool.ntp.org");
-    sntp_init();
+    esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    esp_sntp_setservername(0, "pool.ntp.org");
+    esp_sntp_init();
 
     int retry = 0;
     while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && ++retry <= SNTPTRY)
@@ -2202,10 +2188,11 @@ void start_blower_if_ready(void)
             sprintf(aca,"Restarting Blower apparent PF Cycle %d Day %d",scheduleData->currentCycle,scheduleData->currentDay);
 
         // get last schedule
-            if ((theConf.debug_flags >> dSCH) & 1U)
+            if ((theConf.debug_flags >> dSCH) & 1U) {
                 MESP_LOGI(MESH_TAG, "%s%s", DBG_SCH,aca);
-                write_log("SYSTEM", aca);
-                free(aca);
+            }
+            write_log("SYSTEM", aca);
+            free(aca);
         }
          xSemaphoreGive(workTaskSem);
             feeder_scheduler_kick();
@@ -2344,8 +2331,6 @@ bool mqtt_reconnect_attempt(int *retry)
 
 void root_reconnectTask(void *pArg)
 {
-    esp_err_t err;
-    mqttSender_t mensaje;
     int retry = 0;
     
     xTimerStop(collectTimer, 0);
@@ -2443,7 +2428,7 @@ void handle_mqtt_data_event(esp_mqtt_event_handle_t event)
         return;
     }
     
-    char eltopic[60] = {0};
+    char eltopic[60] = {};
     if(event->topic_len <= 0 || event->topic_len >= (int)sizeof(eltopic))
     {
         MESP_LOGW(MESH_TAG, "Dropping MQTT message with invalid topic length: %d", event->topic_len);
@@ -2712,7 +2697,7 @@ void meshSendTask(void *pArg)
                     continue;
                 }
 
-                void *p = (void*)intMessage + 4;
+                void *p = (uint8_t*)intMessage + 4;
                 memcpy(p, meshMsg.msg, meshMsg.lenMsg);
                 intMessage->cmd = MESH_INT_DATA_CJSON;
                 
@@ -2810,7 +2795,7 @@ void setup_mqtt_config(void)
     memset(who, 0, sizeof(who));
     memset(&mqtt_cfg, 0, sizeof(mqtt_cfg));
     
-    snprintf(who, sizeof(who), "Meterserver%d-%d", theConf.poolid,theConf.unitid);
+    snprintf(who, sizeof(who), "Meterserver%lu-%u", (unsigned long)theConf.poolid,(unsigned int)theConf.unitid);
     
     mqtt_cfg.broker.address.uri = theConf.mqttServer;
     mqtt_cfg.credentials.client_id = who;
@@ -2872,7 +2857,7 @@ uint8_t last_mesh_layer = 0;
 
 void handle_child_connected(mesh_event_child_connected_t *child_connected)
 {
-    mesh_addr_t id = {0};
+    mesh_addr_t id = {};
     esp_mesh_get_id(&id);
     memcpy(&id.addr, &child_connected->mac, 6);
 
@@ -2917,7 +2902,7 @@ void handle_child_disconnected(mesh_event_child_disconnected_t *child_disconnect
 
 void handle_parent_connected(mesh_event_connected_t *connected)
 {
-    mesh_addr_t id = {0};
+    mesh_addr_t id = {};
     esp_mesh_get_id(&id);
 
     mesh_layer = connected->self_layer;
@@ -2962,7 +2947,7 @@ void mesh_event_handler(void *arg, esp_event_base_t event_base,
 {
     switch (event_id) {
     case MESH_EVENT_STARTED: {
-        mesh_addr_t id = {0};
+        mesh_addr_t id = {};
         esp_mesh_get_id(&id);
         // MESP_LOGI(MESH_TAG, "<MESH_EVENT_MESH_STARTED>ID:"MACSTR"", MAC2STR(id.addr));
         mesh_layer = esp_mesh_get_layer();
@@ -3073,7 +3058,7 @@ void send_internal_emergency(char * msg, uint32_t err)
     enqueue_mesh_emergency(msg, err);
 }
 
-void send_login_msg(char * title)
+void send_login_msg(const char * title)
 {
     mqttSender_t mqttMsg;
     memset(&mqttMsg, 0, sizeof(mqttMsg));
@@ -3258,11 +3243,11 @@ void init_global_state_flags(void)
  */
 void init_mqtt_queue_names(void)
 {
-    snprintf(cmdQueue, sizeof(cmdQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTCMD);
-    snprintf(metricQueue, sizeof(metricQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTINFO);
-    snprintf(alarmQueue, sizeof(alarmQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTALARM);
-    snprintf(controlQueue, sizeof(controlQueue), "%s/%d/%s", QUEUE, theConf.poolid, MQTTCONTROL);
-    snprintf(externDOQueue, sizeof(externDOQueue), "%s/%d/%d", "shrimpDO", theConf.poolid, theConf.unitid);
+    snprintf(cmdQueue, sizeof(cmdQueue), "%s/%lu/%s", QUEUE, (unsigned long)theConf.poolid, MQTTCMD);
+    snprintf(metricQueue, sizeof(metricQueue), "%s/%lu/%s", QUEUE, (unsigned long)theConf.poolid, MQTTINFO);
+    snprintf(alarmQueue, sizeof(alarmQueue), "%s/%lu/%s", QUEUE, (unsigned long)theConf.poolid, MQTTALARM);
+    snprintf(controlQueue, sizeof(controlQueue), "%s/%lu/%s", QUEUE, (unsigned long)theConf.poolid, MQTTCONTROL);
+    snprintf(externDOQueue, sizeof(externDOQueue), "%s/%lu/%u", "shrimpDO", (unsigned long)theConf.poolid, (unsigned int)theConf.unitid);
 }
 /**
  * @brief Initialize internal mesh command strings
@@ -4018,7 +4003,6 @@ void root_mqtt_sender(void *pArg)
         
         xEventGroupWaitBits(wifi_event_group, SENDMQTT_BIT, pdTRUE, pdFALSE, portMAX_DELAY);
         
-        uint32_t startMqtt = xmillis();
         if ((theConf.debug_flags >> dMQTT) & 1U) {
             MESP_LOGI(MESH_TAG, "%sMqttsender establish", DBG_MQTT);
         }
@@ -4077,7 +4061,7 @@ void send_emergency_and_restart(const char *context)
         return;
     }
     
-    sprintf(mensa, "%s failed Node %d", context, theConf.poolid);
+    sprintf(mensa, "%s failed Node %lu", context, (unsigned long)theConf.poolid);
     emergencyMsg.msg = mensa;
     emergencyMsg.lenMsg = strlen(mensa);
     
@@ -4624,7 +4608,7 @@ esp_err_t wifi_connect_external_ap(void)
     wifi_config_t ap_config = {};
     memset(&ap_config, 0, sizeof(wifi_config_t));
     char thename[20];
-    sprintf(thename,"%s-p-%03d-u-%02d","shrimp",theConf.poolid,theConf.unitid);
+    sprintf(thename,"%s-p-%03lu-u-%02u","shrimp",(unsigned long)theConf.poolid,(unsigned int)theConf.unitid);
     strncpy((char*)ap_config.ap.ssid, thename,strlen(thename));
     strncpy((char*)ap_config.ap.password, "csttpstt", sizeof(ap_config.ap.password) - 1);
     ap_config.ap.ssid_len = strlen(thename);
@@ -4789,7 +4773,7 @@ void setup_mesh_config(mesh_cfg_t *cfg, const char *ssid, const char *password)
         return;
     }
     
-    *cfg = MESH_INIT_CONFIG_DEFAULT();
+    memset(cfg, 0, sizeof(*cfg));
     memcpy((uint8_t *)&cfg->mesh_id, MESH_ID, 6);
     
     cfg->channel = 0;  // Required: all nodes must use same channel
@@ -4917,7 +4901,7 @@ time_t get_today_midnight() {
  */
 bool is_profile_config_valid(void)
 {
-    if (theConf.activeProfile < 0 || theConf.dayCycle < 0 || theConf.activeProfile >= MAXPROFILES) {
+    if (theConf.activeProfile >= MAXPROFILES) {
         MESP_LOGE(TAG, "Invalid Profile %d or Day Start %d", theConf.activeProfile, theConf.dayCycle);
         return false;
     }
@@ -5090,18 +5074,21 @@ bool make_timers(int ck,int cuantos)
             return ESP_FAIL;
         }
 
-       const  esp_timer_create_args_t start_timer = 
-       {
-            .callback = &blower_start,
-            .arg = (void*) ctx_timers[a],
-            .name = "TS"
-       };
-      const esp_timer_create_args_t end_timer= 
-      {
-            .callback = &blower_end,
-            .arg = (void*) ctx_timers[a],
-            .name = "TEND"
-        };
+      esp_timer_create_args_t start_timer;
+      memset(&start_timer, 0, sizeof(start_timer));
+      start_timer.callback = &blower_start;
+      start_timer.arg = (void*) ctx_timers[a];
+      start_timer.name = "TS";
+      start_timer.dispatch_method = ESP_TIMER_TASK;
+      start_timer.skip_unhandled_events = false;
+
+     esp_timer_create_args_t end_timer;
+     memset(&end_timer, 0, sizeof(end_timer));
+     end_timer.callback = &blower_end;
+     end_timer.arg = (void*) ctx_timers[a];
+     end_timer.name = "TEND";
+     end_timer.dispatch_method = ESP_TIMER_TASK;
+     end_timer.skip_unhandled_events = false;
 
         esp_timer_create(&start_timer, &start_timers[a]);
         if (start_timers[a] == NULL) 
@@ -5218,8 +5205,8 @@ bool create_future_timers(time_t starttime, time_t endtime, time_t now,
     if ((theConf.debug_flags >> dSCH) & 1U) {
         format_log_time(starttime,time_str,30);
         format_log_time(now,time_str2,30);
-        MESP_LOGI(TAG, "%sBlower  PoolId %d Unit %d Profile %d  Timer %d Start in %lld us [%s%s%s | %llu ] now [ %s%s%s | %llu ] Mux %ld", 
-                 DBG_SCH, theConf.poolid, theConf.unitid, theConf.activeProfile,ctx_timers[lck_h]->timerNum, start_delay,GREEN, time_str,RESETC,starttime, CYAN,time_str2,RESETC,now,theConf.test_timer_div);
+        MESP_LOGI(TAG, "%sBlower  PoolId %lu Unit %u Profile %d  Timer %d Start in %lld us [%s%s%s | %llu ] now [ %s%s%s | %llu ] Mux %ld", 
+             DBG_SCH, (unsigned long)theConf.poolid, (unsigned int)theConf.unitid, theConf.activeProfile,ctx_timers[lck_h]->timerNum, start_delay,GREEN, time_str,RESETC,starttime, CYAN,time_str2,RESETC,now,theConf.test_timer_div);
     }
     
     // set the correct timing here
@@ -5240,8 +5227,8 @@ bool create_future_timers(time_t starttime, time_t endtime, time_t now,
 
         format_log_time(endtime,time_str,30);
         format_log_time(now,time_str2,30);
-        MESP_LOGI(TAG, "%sBlower  PoolId %d Unit %d Profile %d  Timer %d Ending in %lld us [%s%s%s | %llu ] now [%s%s%s | %llu ] Mux %ld  %s", 
-                 DBG_SCH, theConf.poolid, theConf.unitid, theConf.activeProfile, ctx_timers[lck_h]->timerNum, end_delay, RED, time_str,RESETC,endtime, CYAN,time_str2,RESETC,now, theConf.test_timer_div, ctx_timers[lck_h]->isLast ? "Last" : "" );
+        MESP_LOGI(TAG, "%sBlower  PoolId %lu Unit %u Profile %d  Timer %d Ending in %lld us [%s%s%s | %llu ] now [%s%s%s | %llu ] Mux %ld  %s", 
+             DBG_SCH, (unsigned long)theConf.poolid, (unsigned int)theConf.unitid, theConf.activeProfile, ctx_timers[lck_h]->timerNum, end_delay, RED, time_str,RESETC,endtime, CYAN,time_str2,RESETC,now, theConf.test_timer_div, ctx_timers[lck_h]->isLast ? "Last" : "" );
                 //  DBG_SCH, countTimersEnd, delay_int, time_str, endtime, time_str2, now,theConf.test_timer_div, ctx->isLast ? "YES" : "NO" );
     }                                           
 
@@ -5447,7 +5434,7 @@ uint32_t handle_day_end(uint8_t workingday)
  * 
  * @param ck_d Current day counter within cycle
  */
-void send_start_day_host(uint8_t ck_d, char *msg, char * cualQueue)
+void send_start_day_host(uint8_t ck_d, const char *msg, char * cualQueue)
 {
     time_t now;
     time(&now);
@@ -5517,7 +5504,7 @@ void start_schedule_timers(void * pArg)
     time_t nows,timedaystart;
     time(&nows);
     uint8_t cyclestart, daystart;
-    char  time_str[30],mid_str[30];
+    char  time_str[30];
     char * bbuff=(char*)calloc(1,100);
 
     while (true)
@@ -5545,7 +5532,7 @@ void start_schedule_timers(void * pArg)
         schedulef = true; // really
         time_t midn = get_today_midnight();
 
-        if ((theConf.debug_flags >> dSCH) & 1U)
+        if ((theConf.debug_flags >> dSCH) & 1U) {
             MESP_LOGW(TAG, "%sBlower Schedule start: Profile %d Cycle %d Start Day %d midn %lld now %lld %s", DBG_SCH,  
                 theConf.activeProfile,
                 cyclestart, 
@@ -5553,10 +5540,10 @@ void start_schedule_timers(void * pArg)
                 midn,
                 nows,
                 time_str);
-        
+        }
 
-            time_t first_cycle_day=time(NULL);
-            struct tm *first_timeinfo = localtime(&first_cycle_day);
+        time_t first_cycle_day = time(NULL);
+        (void)first_cycle_day;
 
         // Process all cycles
         for (int ck = cyclestart; ck < theConf.profiles[theConf.activeProfile].numCycles; ck++)
@@ -5649,7 +5636,7 @@ void start_schedule_timers(void * pArg)
                 {
                     time_t nnow=(time(NULL));
                     uint32_t fueron=nnow-timedaystart;
-                    sprintf(buff,"Blower Cycle %d Day %d %d Sessions complete. Took %ld secs",ck,ck_d,theConf.profiles[theConf.activeProfile].cycle[ck].numHorarios); 
+                    sprintf(buff,"Blower Cycle %d Day %d %d Sessions complete. Took %lu secs",ck,ck_d,theConf.profiles[theConf.activeProfile].cycle[ck].numHorarios,(unsigned long)fueron); 
                     write_log("SCH",buff);   
                     free(buff); 
                 }   
@@ -5994,9 +5981,10 @@ void blower_start(void * pArg)
 
     if(energy_amps>currentamps)
     {
-        if ((theConf.debug_flags >> dSCH) & 1U) 
+        if ((theConf.debug_flags >> dSCH) & 1U) {
             MESP_LOGW(TAG, "%sSchedule Start Check Energy NOT OK amps Availble %d needed %d",DBG_SCH,currentamps,energy_amps); 
-            send_start_day_host(start_timer_ctx->day, "Schedule Start Check Energy NOT OK", alarmQueue);
+        }
+        send_start_day_host(start_timer_ctx->day, "Schedule Start Check Energy NOT OK", alarmQueue);
     }
     
     turn_blower_onOff(true);
@@ -6077,8 +6065,6 @@ void blower_end(void * pArg)
 
 void app_main(void)
 {
-    esp_err_t ret;
-
     // inititalize a lot of stuff
     init_process(); 
     app_spiffs_log();
@@ -6123,7 +6109,7 @@ void app_main(void)
     if(msg)
     {   
         const esp_app_desc_t *mip=esp_app_get_description();
-        sprintf(msg,"Booting Node %d Count %d Version %s Reason %d",theConf.poolid,theConf.bootcount,mip->version,theConf.lastResetCode);
+        sprintf(msg,"Booting Node %lu Count %lu Version %s Reason %lu",(unsigned long)theConf.poolid,(unsigned long)theConf.bootcount,mip->version,(unsigned long)theConf.lastResetCode);
         MESP_LOGW(TAG, "%s", msg);
         writeLog(msg);
         free(msg);
@@ -6204,7 +6190,7 @@ if(theConf.gpsSensor)
 {
     nmea_parser_config_t config = NMEA_PARSER_CONFIG_DEFAULT();
     nmea_parser_handle_t nmea_hdl = nmea_parser_init(&config);
-    int err=nmea_parser_add_handler(nmea_hdl, gps_event_handler, NULL);
+    (void)nmea_parser_add_handler(nmea_hdl, gps_event_handler, NULL);
 }
 
 MESP_LOGI(MESH_TAG,"APP Free Heap %d",esp_get_free_heap_size());

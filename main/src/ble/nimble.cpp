@@ -29,32 +29,16 @@ void ble_app_advertise(void);
 
 // Static characteristic definitions to ensure lifetime
 static struct ble_gatt_chr_def serial_service_characteristics[] = {
-  {
-    .uuid = uuid_profile,
-    .access_cb = device_profile,
-    .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE,
-  },
-  {
-    .uuid = uuid_day,
-    .access_cb = device_day,
-    .flags =  BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE,
-  },
-  {
-    .uuid = uuid_start,
-    .access_cb = device_start,
-    .flags = BLE_GATT_CHR_F_WRITE,
-  },
-  { 0 } // End of characteristics list
+    { uuid_profile, device_profile, NULL, NULL, BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE, 0, NULL, NULL },
+    { uuid_day, device_day, NULL, NULL, BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE, 0, NULL, NULL },
+    { uuid_start, device_start, NULL, NULL, BLE_GATT_CHR_F_WRITE, 0, NULL, NULL },
+    { NULL, NULL, NULL, NULL, 0, 0, NULL, NULL } // End of characteristics list
 };
 
 // Define static BLE GATT service array
  struct ble_gatt_svc_def serial_service[] = {
-  {
-    .type = BLE_GATT_SVC_TYPE_PRIMARY,
-    .uuid = uuid_ss,
-    .characteristics =serial_service_characteristics // Use the static characteristics array
-  },
-  { 0 } // End of service list
+    { BLE_GATT_SVC_TYPE_PRIMARY, uuid_ss, NULL, serial_service_characteristics },
+    { 0, NULL, NULL, NULL } // End of service list
 };
 
 
@@ -93,7 +77,6 @@ void ble_app_advertise(void);
             return BLE_ATT_ERR_UNLIKELY;
     }
     free(buf);
-    memset(data, 0, strlen(data));
 
     return 0;
 }
@@ -131,7 +114,6 @@ void ble_app_advertise(void);
             return BLE_ATT_ERR_UNLIKELY;
     }
     free(buf);
-    memset(data, 0, strlen(data));
 
     return 0;
 }
@@ -148,7 +130,7 @@ char *data;
             data = (char *)ctxt->om->om_data;
             data[ctxt->om->om_len]=0;
             theConf.test_timer_div=atoi(data);
-            printf("Start Cycle Profile # %d Day Start %d Divisors %d\n",theConf.activeProfile,theConf.dayCycle,theConf.test_timer_div);
+            printf("Start Cycle Profile # %d Day Start %d Divisors %lu\n",theConf.activeProfile,theConf.dayCycle,(unsigned long)theConf.test_timer_div);
             // theConf.blower_mode=1;
             // theConf.bleboot=MESH_MODE;      // mesh mode
             write_to_flash();
@@ -157,9 +139,6 @@ char *data;
         default:
             return BLE_ATT_ERR_UNLIKELY;
     }
-
-    memset(data, 0, strlen(data));
-
     return 0;
 }
 
@@ -232,7 +211,7 @@ void connect_ble(void)
 {
     nimble_port_init();                        // 3 - Initialize the host stack
     char *algo=(char*)malloc(20);               
-    sprintf(algo,"SHRIMP-%d-%d",theConf.poolid,theConf.unitid);
+    sprintf(algo,"SHRIMP-%lu-%d",(unsigned long)theConf.poolid,theConf.unitid);
     ble_svc_gap_device_name_set(algo);          // 4 - Initialize NimBLE configuration - server name
     ble_svc_gap_init();                        // 4 - Initialize NimBLE configuration - gap service
     ble_svc_gatt_init();                       // 4 - Initialize NimBLE configuration - gatt service

@@ -9,7 +9,7 @@
  */
 
 extern void write_to_flash();
-extern void writeLog(char* que);
+extern void writeLog(const char* que);
 
 #define VFDMON_LOG_BUFFER_SIZE 100
 
@@ -184,7 +184,7 @@ int cmdVFDMon(void *argument)
 {"cmd":"VFDMon","refresh":10,"address":1,"currmux":1.0,"currtype":1,"currpoints":10,"currstart":0,"curroff":0,"voltmux":1.0,"volttype":1,"voltpoints":10,"voltstart":20,"voltoff":0,"pwrmux":1.0,"pwrtype":1,"pwrpoints":10,"pwrstart":40,"pwroff":0,"rpmmux":1.0,"rpmtype":1,"rpmpoints":10,"rmpstart":60,"rpmoff":0}
 */
 
-    VFDMonCommandFields fields = {0};
+    VFDMonCommandFields fields = {};
     if(!validate_vfdmon_command(vfdmonCommand, &fields))
         return ESP_FAIL;
 

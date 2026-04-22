@@ -84,7 +84,7 @@ extern uint64_t s_action_timeout_reboot;  	// Reboot button
 extern void write_to_flash();
 extern void show_first_feed_profile(void);  // Forward declaration from cmdConfig.cpp
 extern char levels[6][10];			// log levels external in cmdConfig.cpp
-static bool restartf=false,restart_profile=false;;
+static bool restartf = false;
 extern 	int findLevel(char * cual);
 
 /**
@@ -271,7 +271,7 @@ void my_get_settings(struct settings *data) {
 	// Check if settings should be disabled based on configuration state
 	s_settings.disable_val = should_disable_settings();
 	// Set challenge initial value
-	snprintf(s_settings.mac_val, sizeof(s_settings.mac_val), "%d", theConf.cid);
+	snprintf(s_settings.mac_val, sizeof(s_settings.mac_val), "%lu", (unsigned long)theConf.cid);
 	
 	// Handle restart scenario
 	if (restartf)
@@ -416,7 +416,7 @@ void my_get_system(struct system *data)
 	s_system.bflow=theConf.blowerFlow;
 	s_system.fflow=theConf.feederFlow;
 	const esp_app_desc_t *mip = esp_app_get_description();
-	if (mip && mip->version)
+	if (mip)
 	{
 		SAFE_STRCPY(s_system.version_val, mip->version, sizeof(s_system.version_val));
 	}
@@ -549,13 +549,17 @@ void show_profiles()
 		printf("\tNumber of Cycles is %d\n",theConf.profiles[a].numCycles);
 		for (int c=0;c<theConf.profiles[a].numCycles;c++)
 		{
-			printf(" \t\t---- Cycle[%d] Day %d Duration %d Hours %d\n",c,theConf.profiles[a].cycle[c].day,
-					theConf.profiles[a].cycle[c].duration,theConf.profiles[a].cycle[c].numHorarios);
+			printf(" \t\t---- Cycle[%d] Day %d Duration %lu Hours %lu\n", c,
+				theConf.profiles[a].cycle[c].day,
+				(unsigned long)theConf.profiles[a].cycle[c].duration,
+				(unsigned long)theConf.profiles[a].cycle[c].numHorarios);
 		
 			for (int h=0;h<theConf.profiles[a].cycle[c].numHorarios;h++)
 			{
-				printf("\t\t\t• Horario[%d] Start %d Duration %d PWD %d\n",h,theConf.profiles[a].cycle[c].horarios[h].hourStart,
-					theConf.profiles[a].cycle[c].horarios[h].horarioLen,theConf.profiles[a].cycle[c].horarios[h].pwmDuty);
+				printf("\t\t\t• Horario[%d] Start %lu Duration %lu PWD %lu\n", h,
+					(unsigned long)theConf.profiles[a].cycle[c].horarios[h].hourStart,
+					(unsigned long)theConf.profiles[a].cycle[c].horarios[h].horarioLen,
+					(unsigned long)theConf.profiles[a].cycle[c].horarios[h].pwmDuty);
 			}
 		printf("\n\n");
 		}
@@ -570,7 +574,8 @@ void show_profiles()
  */
 static err_t parse_profile_metadata(cJSON *pitem, int profile_index)
 {
-	struct tm tm = {0};
+	struct tm tm;
+	memset(&tm, 0, sizeof(tm));
 	cJSON *metad;
 	
 	if (!pitem)
@@ -1024,7 +1029,7 @@ void my_get_modbBattery(struct modbBattery *data) // return limits saved in theb
 void my_set_Inverter(struct Inverter *data) // save limits from web to theblower
 {
 	theConf.inverter=*data;
-	printf("Inverter Status Refresh %d Address %d Offset %d Start %d Points %d Type %d Mux %d\n",
+	printf("Inverter Status Refresh %d Address %d Offset %d Start %d Points %d Type %d Mux %f\n",
 		data->refresh,data->address,data->offset,data->start,data->points,data->type,data->mux);
 	write_to_flash();
 }

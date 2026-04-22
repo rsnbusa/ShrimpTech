@@ -126,7 +126,7 @@ typedef enum {
     wCHALL
 } wstate_t;
 
-enum {
+typedef enum {
     dSCH,
     dMESH,
     dBLE,

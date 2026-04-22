@@ -42,11 +42,11 @@ void showData(void *pArg);
 
 void check_dups(cJSON *elArr, int nodeid);
 void delete_dup_buffers();
-void print_blower(char *title, solarSystem_t *msolar, bool dumphex);
+void print_blower(const char *title, solarSystem_t *msolar, bool dumphex);
 err_t root_mesh_broadcast_msg(char *msg);
 meshunion_t *sendData(bool forced);
 void send_duplicate_msg();
-void send_login_msg(char *title);
+void send_login_msg(const char *title);
 
 // ============================================================================
 // MQTT FUNCTIONS
@@ -55,8 +55,8 @@ void send_login_msg(char *title);
 void mqttMgr(void *pArg);
 void root_mqtt_sender(void *pArg);
 esp_err_t root_send_confirmation_central(char *msg, uint16_t size, char *cualQ);
-static void root_mqtt_app_start();
-static esp_mqtt_client_handle_t root_setupMqtt();
+void root_mqtt_app_start();
+esp_mqtt_client_handle_t root_setupMqtt(void);
 
 // ============================================================================
 // TASK FUNCTIONS
@@ -89,7 +89,7 @@ void cb_inverter_status(void *vfdd,  int *errors,char *color,int numerrs,int dev
 // ============================================================================
 
 void erase_config();
-static void pcnt_init(int *unit);
+void pcnt_init(int *unit);
 void save_inst_msg(char *mid, int bpk, int kwhstart, char *who);
 void send_911_call(char *theEmergency, char *section);
 void write_to_flash();
@@ -100,7 +100,7 @@ void write_to_flash();
 
 void logFileInit();
 err_t read_log(int nlines);
-void writeLog(char *que);
+void writeLog(const char *que);
 
 // ============================================================================
 // CONSOLE COMMAND FUNCTIONS (Pointer-based)

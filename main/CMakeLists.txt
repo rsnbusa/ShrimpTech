@@ -93,9 +93,7 @@ set(UTILS_SOURCES
     src/utilities/led_utils.cpp
     )
 #BLE Sources
-set(BLE_SOURCES
-    src/ble/nimble.cpp
-)
+set(BLE_SOURCES)
 
 # Combine all source files
 set(src

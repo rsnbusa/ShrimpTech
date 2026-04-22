@@ -8,11 +8,11 @@
  * validate and respond with its metrics data.
  */
 
-extern void writeLog(char* que);
+extern void writeLog(const char* que);
 
 // SendMetrics command constants
 #define METRICS_LOG_BUFFER_SIZE 100
-#define METRICS_MESSAGE_SIZE 100
+#define METRICS_MESSAGE_SIZE sizeof(meshunion_t)
 #define MESH_CMD_OFFSET 4
 
 /* Validates the metrics command JSON payload and extracts meter ID. */
@@ -81,7 +81,7 @@ static int send_metrics_mesh_message(cJSON *metricsCommand)
     }
     
     meshMessage->cmd = MESH_INT_DATA_CJSON;
-    void *payloadPtr = (void*)meshMessage + MESH_CMD_OFFSET;
+    void *payloadPtr = (uint8_t*)meshMessage + MESH_CMD_OFFSET;
     memcpy(payloadPtr, jsonMessage, messageLength);
     
     mesh_data_t data;
