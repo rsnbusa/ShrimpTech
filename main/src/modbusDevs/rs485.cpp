@@ -60,6 +60,74 @@ static const char *get_register_name_by_start(int start)
 static void *g_master_handle = NULL;
 static bool g_master_started = false;
 
+static void log_modbus_rx_hex(const mb_parameter_descriptor_t *param_descriptor, const uint8_t *data)
+{
+    if (param_descriptor == NULL || data == NULL || param_descriptor->param_size == 0) {
+        return;
+    }
+
+    MESP_LOGI(TAG,
+              "RX slave=%u start=%u reg=%s cid=%u bytes=%u",
+              param_descriptor->mb_slave_addr,
+              param_descriptor->mb_reg_start,
+              get_register_name_by_start(param_descriptor->mb_reg_start),
+              param_descriptor->cid,
+              (unsigned)param_descriptor->param_size);
+
+    constexpr size_t kHexLineBytes = 16;
+    const size_t total_bytes = (size_t)param_descriptor->param_size;
+    for (size_t offset = 0; offset < total_bytes; offset += kHexLineBytes) {
+        const size_t line_bytes = (total_bytes - offset > kHexLineBytes) ?
+                                   kHexLineBytes : (total_bytes - offset);
+        char hex_line[(kHexLineBytes * 3) + 1] = {0};
+        size_t pos = 0;
+
+        for (size_t i = 0; i < line_bytes; ++i) {
+            pos += (size_t)snprintf(&hex_line[pos],
+                                    sizeof(hex_line) - pos,
+                                    "%02X ",
+                                    data[offset + i]);
+        }
+
+        if (pos > 0) {
+            hex_line[pos - 1] = '\0';
+        }
+
+        MESP_LOGI(TAG, "RX[%u]: %s", (unsigned)offset, hex_line);
+    }
+}
+
+static void log_modbus_tx_hex(const mb_parameter_descriptor_t *param_descriptor, const uint8_t *data)
+{
+    if (param_descriptor == NULL || data == NULL || param_descriptor->param_size == 0) {
+        return;
+    }
+
+    MESP_LOGI(TAG, "TX data bytes=%u", (unsigned)param_descriptor->param_size);
+
+    constexpr size_t kHexLineBytes = 16;
+    const size_t total_bytes = (size_t)param_descriptor->param_size;
+    for (size_t offset = 0; offset < total_bytes; offset += kHexLineBytes) {
+        const size_t line_bytes = (total_bytes - offset > kHexLineBytes) ?
+                                   kHexLineBytes : (total_bytes - offset);
+        char hex_line[(kHexLineBytes * 3) + 1] = {0};
+        size_t pos = 0;
+
+        for (size_t i = 0; i < line_bytes; ++i) {
+            pos += (size_t)snprintf(&hex_line[pos],
+                                    sizeof(hex_line) - pos,
+                                    "%02X ",
+                                    data[offset + i]);
+        }
+
+        if (pos > 0) {
+            hex_line[pos - 1] = '\0';
+        }
+
+        MESP_LOGI(TAG, "TX[%u]: %s", (unsigned)offset, hex_line);
+    }
+}
+
 
 // Modbus master initialization
 static esp_err_t master_init(void)
@@ -203,16 +271,34 @@ void rs485_task_manager(void *arg)
                              op_name = "get";
                              err = mbc_master_get_parameter(g_master_handle, cid,
                                                             (uint8_t*)temp_data_ptr, &type);
+                            if (((theConf.debug_flags >> dRS485) & 1U) ||
+                                ((theConf.debug_flags >> dMODBUS) & 1U))
+                            {
+                                log_modbus_tx_hex(param_descriptor, temp_data_ptr);
+                            }
                         }
                         else if (param_descriptor->access & PAR_PERMS_WRITE)
                         {
                             op_name = "set";
+                            if (((theConf.debug_flags >> dRS485) & 1U) ||
+                                ((theConf.debug_flags >> dMODBUS) & 1U))
+                            {
+                                log_modbus_tx_hex(param_descriptor, temp_data_ptr);
+                            }
                             err = mbc_master_set_parameter(g_master_handle, cid,
                                                             (uint8_t*)temp_data_ptr, &type);
                             // ESP_LOG_BUFFER_HEX("WRITE", (void*)temp_data_ptr, 10);
                         }
                         if (err == ESP_OK) 
+                        {
                             mensaje.errCode[cid] = ESP_OK;   // success
+                            if ((((theConf.debug_flags >> dRS485) & 1U) ||
+                                 ((theConf.debug_flags >> dMODBUS) & 1U)) &&
+                                (param_descriptor->access & PAR_PERMS_READ))
+                            {
+                                log_modbus_rx_hex(param_descriptor, temp_data_ptr);
+                            }
+                        }
                         else 
                         {
                             const char *reg_name = get_register_name_by_start(param_descriptor->mb_reg_start);

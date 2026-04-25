@@ -39,7 +39,7 @@ void Valve::init(gpio_num_t gpio1, gpio_num_t gpio2, const char *name, uint16_t 
     gpio_set_level(close_gpio, 0);
     vTaskDelay(pdMS_TO_TICKS(m_closeDelayMs));
     m_state = ValveState::CLOSE;
-    MESP_LOGI(TAG, "Valve '%s' initialised - GPIO%d / GPIO%d, openDelay=%u closeDelay=%u...closign please wait",
+    MESP_LOGI(TAG, "Valve '%s' initialised - GPIO%d / GPIO%d, openDelay=%u closeDelay=%u...closing please wait",
              m_name, open_gpio, close_gpio, m_openDelayMs, m_closeDelayMs);
 
 }

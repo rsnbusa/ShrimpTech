@@ -1,0 +1,266 @@
+{
+  "exportedAt": "2026-04-22T21:56:05.433Z",
+  "cmdarr": [
+    {
+      "cmd": "Sensors",
+      "General": {
+        "refresh": 10
+      },
+      "DO": {
+        "offset": -1,
+        "start": 8192,
+        "points": 6,
+        "type": 6,
+        "mux": 1,
+        "address": 16
+      },
+      "PH": {
+        "offset": -1,
+        "start": 20,
+        "points": 10,
+        "type": 1,
+        "mux": 1,
+        "address": 17
+      },
+      "WaterTemp": {
+        "offset": -1,
+        "start": 40,
+        "points": 10,
+        "type": 1,
+        "mux": 1,
+        "address": 18
+      },
+      "Ambient": {
+        "offset": -1,
+        "start": 60,
+        "points": 10,
+        "type": 1,
+        "mux": 1,
+        "address": 19
+      },
+      "Humidity": {
+        "offset": -1,
+        "start": 80,
+        "points": 10,
+        "type": 1,
+        "mux": 1,
+        "address": 20
+      },
+      "unitid": 255
+    },
+    {
+      "cmd": "Panels",
+      "General": {
+        "InverterAddress": 100,
+        "refresh": 10
+      },
+      "charge": {
+        "offset": 0,
+        "start": 7,
+        "points": 2,
+        "type": 2,
+        "mux": 1
+      },
+      "pv1volts": {
+        "offset": 4,
+        "start": 23,
+        "points": 2,
+        "type": 3,
+        "mux": 1
+      },
+      "pv2volts": {
+        "offset": 8,
+        "start": 25,
+        "points": 2,
+        "type": 3,
+        "mux": 1
+      },
+      "pv1amps": {
+        "offset": 12,
+        "start": 27,
+        "points": 2,
+        "type": 3,
+        "mux": 1
+      },
+      "pv2amps": {
+        "offset": 16,
+        "start": 29,
+        "points": 2,
+        "type": 3,
+        "mux": 1
+      },
+      "unitid": 255
+    },
+    {
+      "cmd": "Inverter",
+      "General": {
+        "InverterAddress": 100,
+        "refresh": 10
+      },
+      "BatChHoy": {
+        "offset": 20,
+        "start": 2,
+        "points": 2,
+        "type": 3,
+        "mux": 1
+      },
+      "BatDscHoy": {
+        "offset": 24,
+        "start": 3,
+        "points": 2,
+        "type": 3,
+        "mux": 1
+      },
+      "BatChgTotal": {
+        "offset": 20,
+        "start": 2,
+        "points": 2,
+        "type": 3,
+        "mux": 1
+      },
+      "BatDscTotal": {
+        "offset": 16,
+        "start": 13,
+        "points": 2,
+        "type": 3,
+        "mux": 1
+      },
+      "GenkWhHoy": {
+        "offset": 12,
+        "start": 11,
+        "points": 2,
+        "type": 3,
+        "mux": 1
+      },
+      "UsedkwhHoy": {
+        "offset": 8,
+        "start": 9,
+        "points": 2,
+        "type": 3,
+        "mux": 1
+      },
+      "LoadUsedTotal": {
+        "offset": 6,
+        "start": 5,
+        "points": 1,
+        "type": 1,
+        "mux": 1
+      },
+      "BatChHoyAmps": {
+        "offset": 4,
+        "start": 4,
+        "points": 1,
+        "type": 1,
+        "mux": 1
+      },
+      "BatDscHoyAmps": {
+        "offset": 2,
+        "start": 17,
+        "points": 1,
+        "type": 1,
+        "mux": 1
+      },
+      "unitid": 255
+    },
+    {
+      "cmd": "Battery",
+      "General": {
+        "InverterAddress": 100,
+        "refresh": 10
+      },
+      "SOC": {
+        "offset": 0,
+        "start": 0,
+        "points": 1,
+        "type": 1,
+        "mux": 1
+      },
+      "SOH": {
+        "offset": 2,
+        "start": 1,
+        "points": 1,
+        "type": 1,
+        "mux": 1
+      },
+      "Cycles": {
+        "offset": 4,
+        "start": 6,
+        "points": 1,
+        "type": 1,
+        "mux": 1
+      },
+      "batTemp": {
+        "offset": 6,
+        "start": 21,
+        "points": 2,
+        "type": 3,
+        "mux": 1
+      },
+      "unitid": 255
+    },
+    {
+      "cmd": "VFDCmd",
+      "refresh": 10,
+      "address": 100,
+      "cmdmux": 0,
+      "cmdtype": 1,
+      "cmdpoints": 1,
+      "cmdstart": 32,
+      "cmdoff": 2,
+      "freqmux": 0,
+      "freqtype": 1,
+      "freqpoints": 1,
+      "freqstart": 31,
+      "freqoff": 0,
+      "unitid": 255
+    },
+    {
+      "cmd": "VFDMon",
+      "refresh": 10,
+      "address": 100,
+      "currmux": 1,
+      "currtype": 3,
+      "currpoints": 2,
+      "currstart": 33,
+      "curroff": 0,
+      "voltmux": 1,
+      "volttype": 1,
+      "voltpoints": 1,
+      "voltstart": 35,
+      "voltoff": 4,
+      "pwrmux": 1,
+      "pwrtype": 3,
+      "pwrpoints": 2,
+      "pwrstart": 36,
+      "pwroff": 6,
+      "rpmmux": 1,
+      "rpmtype": 1,
+      "rpmpoints": 1,
+      "rmpstart": 38,
+      "rpmoff": 10,
+      "unitid": 255
+    },
+    {
+      "cmd": "PID",
+      "sampletime": 10,
+      "nighonly": false,
+      "docontrol": true,
+      "KD": 1.5,
+      "KI": 0.1,
+      "KP": 0.01,
+      "setpoint": 5.1,
+      "unitid": 255
+    },
+    {
+      "cmd": "InvertStatus",
+      "refresh": 1,
+      "address": 100,
+      "invstatusmux": 1,
+      "invstatustype": 1,
+      "invstatuspoints": 1,
+      "invstatusstart": 39,
+      "invstatusoff": 0,
+      "unitid": 255
+    }
+  ]
+}

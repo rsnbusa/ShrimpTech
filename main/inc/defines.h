@@ -1,7 +1,8 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 // #include "hal/hal-Sch-Shrimpo-Feeder-TVL.h"
-#include "hal/hal-SCH-ShrimpPcb.h"
+// #include "hal/hal-SCH-ShrimpPcb.h"
+#include "hal/hal-Shrimp-602-2L-1MB-TVL-V2.h" // new pcb version for only Blower controller
 extern void my_log(const char * color,const char* tag, const char* format, ...);
 #define MESP_LOGI(tag, format, ...) my_log(GRAY,tag, format, ##__VA_ARGS__)
 #define MESP_LOGW(tag, format, ...) my_log(BK_YELLOW,tag, format, ##__VA_ARGS__)

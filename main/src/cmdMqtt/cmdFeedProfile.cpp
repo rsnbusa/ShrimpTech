@@ -12,6 +12,45 @@ extern void write_to_flash();
 extern void writeLog(const char* que);
 extern err_t make_profile(char * prof);
 
+static void apply_feeder_runtime_config(cJSON *feederNode)
+{
+    cJSON *field = NULL;
+
+    field = cJSON_GetObjectItem(feederNode, "time_opne_close_ms");
+    if(!field)
+    {
+        field = cJSON_GetObjectItem(feederNode, "time_open_close_ms");
+    }
+    if(cJSON_IsNumber(field))
+    {
+        theConf.feederData.full = field->valueint;
+    }
+
+    field = cJSON_GetObjectItem(feederNode, "clear_line_time_sec");
+    if(cJSON_IsNumber(field))
+    {
+        theConf.feederData.lineclear = field->valueint;
+    }
+
+    field = cJSON_GetObjectItem(feederNode, "dispenser_g_per_liter");
+    if(cJSON_IsNumber(field))
+    {
+        theConf.feederData.gramsliter = field->valueint;
+    }
+
+    field = cJSON_GetObjectItem(feederNode, "number_of_lines");
+    if(cJSON_IsNumber(field))
+    {
+        theConf.feederData.numlines = field->valueint;
+    }
+
+    field = cJSON_GetObjectItem(feederNode, "feeder_flow_lpm");
+    if(cJSON_IsNumber(field) && field->valueint >= 0)
+    {
+        theConf.feederFlow = (uint16_t)field->valueint;
+    }
+}
+
 int cmdFeedProfile(void *argument)
 {
     MESP_LOGW(MESH_TAG, "Cmd FeedProfile received!!!");
@@ -33,6 +72,8 @@ int cmdFeedProfile(void *argument)
         MESP_LOGE(MESH_TAG, "Feed profile schedule missing required fields");
         return ESP_FAIL;
     }
+
+    apply_feeder_runtime_config(scheduleNode);
 
     char *profileStr = cJSON_PrintUnformatted(scheduleNode);
     if (!profileStr)

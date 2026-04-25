@@ -79,7 +79,8 @@ static void feed_now(uint8_t weight)
 
     const uint32_t denominator = (uint32_t)grams_per_liter * (uint32_t)feeder_flow * (uint32_t)num_lines_cfg;
     const uint32_t dispense_ms = ((uint32_t)weight * 1000U * 60U) / denominator*1000U;  // Convert to ms
-    const uint32_t line_clear_ms = (uint32_t)theConf.feederData.lineclear * 60000U;  // minutes to ms
+    const uint32_t line_clear_ms = (uint32_t)theConf.feederData.lineclear * 10000U;  // minutes to ms
+    // const uint32_t line_clear_ms = (uint32_t)theConf.feederData.lineclear * 60000U;  // minutes to ms
     const int num_lines = (num_lines_cfg > 4) ? 4 : num_lines_cfg;
 
     if ((theConf.debug_flags >> dSCH) & 1U) {
@@ -97,6 +98,7 @@ static void feed_now(uint8_t weight)
         // start_vfd_blower(true);  // Dummy feeder VFD start call for now
 
         if (line_clear_ms > 0) {
+            MESP_LOGI(TAG,"Clear the line %lu\n",(unsigned long)line_clear_ms);
             vTaskDelay(pdMS_TO_TICKS(line_clear_ms));
         }
 

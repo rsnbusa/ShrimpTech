@@ -6,31 +6,31 @@
       "schedule": {
         "profiles": [
           {
-            "name": "",
+            "name": "ShortTarde",
             "version": "1.0",
-            "issued": "",
-            "expires": "",
+            "issued": "2026-03-22",
+            "expires": "2027-02-26",
             "ciclos": [
               {
                 "startday": 1,
                 "dias": 10,
                 "horario": [
                   {
-                    "h_start_hour": 13,
-                    "h_start_mins": 0,
-                    "h_secs": 600,
+                    "h_start_hour": 15,
+                    "h_start_mins": 5,
+                    "h_secs": 120,
                     "pwm_duty": 100
                   },
                   {
-                    "h_start_hour": 13,
-                    "h_start_mins": 2,
-                    "h_secs": 600,
+                    "h_start_hour": 15,
+                    "h_start_mins": 8,
+                    "h_secs": 120,
                     "pwm_duty": 100
                   },
                   {
-                    "h_start_hour": 13,
-                    "h_start_mins": 4,
-                    "h_secs": 600,
+                    "h_start_hour": 15,
+                    "h_start_mins": 11,
+                    "h_secs": 120,
                     "pwm_duty": 100
                   }
                 ]
@@ -40,21 +40,21 @@
                 "dias": 10,
                 "horario": [
                   {
-                    "h_start_hour": 13,
+                    "h_start_hour": 9,
                     "h_start_mins": 0,
-                    "h_secs": 600,
+                    "h_secs": 120,
                     "pwm_duty": 100
                   },
                   {
-                    "h_start_hour": 13,
+                    "h_start_hour": 9,
                     "h_start_mins": 2,
-                    "h_secs": 600,
+                    "h_secs": 120,
                     "pwm_duty": 100
                   },
                   {
-                    "h_start_hour": 13,
+                    "h_start_hour": 9,
                     "h_start_mins": 4,
-                    "h_secs": 600,
+                    "h_secs": 116,
                     "pwm_duty": 100
                   }
                 ]
@@ -66,19 +66,19 @@
                   {
                     "h_start_hour": 13,
                     "h_start_mins": 0,
-                    "h_secs": 600,
+                    "h_secs": 120,
                     "pwm_duty": 100
                   },
                   {
                     "h_start_hour": 13,
                     "h_start_mins": 2,
-                    "h_secs": 600,
+                    "h_secs": 120,
                     "pwm_duty": 100
                   },
                   {
                     "h_start_hour": 13,
                     "h_start_mins": 4,
-                    "h_secs": 600,
+                    "h_secs": 117,
                     "pwm_duty": 100
                   }
                 ]
@@ -90,19 +90,19 @@
                   {
                     "h_start_hour": 13,
                     "h_start_mins": 0,
-                    "h_secs": 600,
+                    "h_secs": 120,
                     "pwm_duty": 100
                   },
                   {
                     "h_start_hour": 13,
                     "h_start_mins": 2,
-                    "h_secs": 600,
+                    "h_secs": 120,
                     "pwm_duty": 100
                   },
                   {
                     "h_start_hour": 13,
                     "h_start_mins": 4,
-                    "h_secs": 600,
+                    "h_secs": 120,
                     "pwm_duty": 100
                   }
                 ]
