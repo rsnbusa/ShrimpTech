@@ -138,7 +138,8 @@ typedef enum {
     dRS485,
     dDO,
     dTEMP,
-    dGPS
+    dGPS,
+    dMTXRX
 } debug_flags_t;
 
 // ============================================================================
@@ -224,6 +225,7 @@ typedef struct dbg {
     struct arg_str *DO;        // Dissolved Oxygen debugging
     struct arg_str *temp;      // Temperature debugging
     struct arg_str *gps;       // GPS debugging
+    struct arg_str *mtxrx;     // Modbus TX/RX raw dump
     struct arg_str *all;       // All commands on/off
     struct arg_end *end;
 } dbg_t;

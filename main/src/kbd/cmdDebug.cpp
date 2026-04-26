@@ -73,7 +73,7 @@ static void set_debug_flag(const char* value, int bit_position)
  */
 int cmdDebug(int argc, char **argv)
 {
-    char debug_names[][10]={"schedule","mesh","ble","mqtt","xcmds","blow","logic","modbus","rs485","DO","temp","GPS"};
+    char debug_names[][10]={"schedule","mesh","ble","mqtt","xcmds","blow","logic","modbus","rs485","DO","temp","GPS","mtxrx"};
     int nerrors = arg_parse(argc, argv, (void **)&dbgArg);
     if (nerrors != 0) {
         arg_print_errors(stderr, dbgArg.end, argv[0]);
@@ -115,6 +115,9 @@ int cmdDebug(int argc, char **argv)
         
     if (dbgArg.gps->count)
         set_debug_flag(dbgArg.gps->sval[0], dGPS);
+
+    if (dbgArg.mtxrx->count)
+        set_debug_flag(dbgArg.mtxrx->sval[0], dMTXRX);
 
     if (dbgArg.all->count) 
     {

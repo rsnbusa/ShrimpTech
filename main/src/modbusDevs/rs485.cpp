@@ -271,17 +271,11 @@ void rs485_task_manager(void *arg)
                              op_name = "get";
                              err = mbc_master_get_parameter(g_master_handle, cid,
                                                             (uint8_t*)temp_data_ptr, &type);
-                            if (((theConf.debug_flags >> dRS485) & 1U) ||
-                                ((theConf.debug_flags >> dMODBUS) & 1U))
-                            {
-                                log_modbus_tx_hex(param_descriptor, temp_data_ptr);
-                            }
                         }
                         else if (param_descriptor->access & PAR_PERMS_WRITE)
                         {
                             op_name = "set";
-                            if (((theConf.debug_flags >> dRS485) & 1U) ||
-                                ((theConf.debug_flags >> dMODBUS) & 1U))
+                            if ((theConf.debug_flags >> dMTXRX) & 1U)
                             {
                                 log_modbus_tx_hex(param_descriptor, temp_data_ptr);
                             }
@@ -292,8 +286,7 @@ void rs485_task_manager(void *arg)
                         if (err == ESP_OK) 
                         {
                             mensaje.errCode[cid] = ESP_OK;   // success
-                            if ((((theConf.debug_flags >> dRS485) & 1U) ||
-                                 ((theConf.debug_flags >> dMODBUS) & 1U)) &&
+                            if (((theConf.debug_flags >> dMTXRX) & 1U) &&
                                 (param_descriptor->access & PAR_PERMS_READ))
                             {
                                 log_modbus_rx_hex(param_descriptor, temp_data_ptr);
