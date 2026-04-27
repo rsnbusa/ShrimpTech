@@ -3160,7 +3160,9 @@ void init_nvs_flash(void)
 void load_and_validate_config(void)
 {
     read_flash();
-    
+    MESP_LOGI(MESH_TAG, "NVS load: feederData numlines=%d gramsliter=%d feederFlow=%u",
+              theConf.feederData.numlines, theConf.feederData.gramsliter, theConf.feederFlow);
+
     if (theConf.sentinel != SENTINEL) {
         MESP_LOGI(MESH_TAG, "Invalid centinel check. Erasing config...");
         erase_config();

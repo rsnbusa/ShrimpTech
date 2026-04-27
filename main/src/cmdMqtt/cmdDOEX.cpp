@@ -9,12 +9,13 @@
  *
  * Expected JSON format:
  * {"cmd":"DOEX","DOLevel":6.50,"DOCount":10,"DOretry":0,"PHLevel":7.20,
- *  "IRLevel":850.00,"SALevel":35.00,"WaterTemp":28.00,"Interval":60}
+ *  "IRLevel":850.00,"SALevel":35.00,"WaterTemp":28.00,"Interval":60,
+ *  "SOC":85,"BatVolts":12.60}
  */
 
 extern void writeLog(const char* que);
 
-#define DOEX_LOG_BUFFER_SIZE 140
+#define DOEX_LOG_BUFFER_SIZE 180
 
 typedef struct
 {
@@ -26,6 +27,8 @@ typedef struct
     double SALevel;
     double WaterTemp;
     int    Interval;
+    double SOC;
+    double BatVolts;
 } DOEXFields;
 
 static bool validate_doex_command(cJSON *cmd, DOEXFields *out)
@@ -52,9 +55,12 @@ static bool validate_doex_command(cJSON *cmd, DOEXFields *out)
     cJSON *saLevelNode  = cJSON_GetObjectItem(cmd, "SALevel");
     cJSON *wTempNode    = cJSON_GetObjectItem(cmd, "WaterTemp");
     cJSON *intervalNode = cJSON_GetObjectItem(cmd, "Interval");
+    cJSON *socNode      = cJSON_GetObjectItem(cmd, "SOC");
+    cJSON *batVoltsNode = cJSON_GetObjectItem(cmd, "batVolts");
 
     if (!doLevelNode || !doCountNode || !doRetryNode || !phLevelNode ||
-        !irLevelNode || !saLevelNode || !wTempNode   || !intervalNode || !poolid || !unitid)
+        !irLevelNode || !saLevelNode || !wTempNode   || !intervalNode ||
+        !socNode     || !batVoltsNode || !poolid || !unitid)
     {
         MESP_LOGE(MESH_TAG, "DOEX: missing required fields");
         return false;
@@ -64,6 +70,7 @@ static bool validate_doex_command(cJSON *cmd, DOEXFields *out)
         !cJSON_IsNumber(doRetryNode) || !cJSON_IsNumber(phLevelNode) ||
         !cJSON_IsNumber(irLevelNode) || !cJSON_IsNumber(saLevelNode) ||
         !cJSON_IsNumber(wTempNode)   || !cJSON_IsNumber(intervalNode) ||
+        !cJSON_IsNumber(socNode)     || !cJSON_IsNumber(batVoltsNode) ||
         !cJSON_IsNumber(poolid) || !cJSON_IsNumber(unitid))
     {
         MESP_LOGE(MESH_TAG, "DOEX: invalid field types");
@@ -85,6 +92,8 @@ static bool validate_doex_command(cJSON *cmd, DOEXFields *out)
     out->SALevel  = saLevelNode->valuedouble;
     out->WaterTemp = wTempNode->valuedouble;
     out->Interval  = intervalNode->valueint;
+    out->SOC       = socNode->valuedouble;
+    out->BatVolts  = batVoltsNode->valuedouble;
     return true;
 }
 
@@ -100,10 +109,10 @@ static void log_doex_update(const DOEXFields *f)
     if (buf)
     {
         snprintf(buf, DOEX_LOG_BUFFER_SIZE,
-                 "DOEX DO:%.2f cnt:%d ret:%d PH:%.2f IR:%.2f SA:%.2f Wt:%.2f iv:%d",
+                 "DOEX DO:%.2f cnt:%d ret:%d PH:%.2f IR:%.2f SA:%.2f Wt:%.2f iv:%d SOC:%.1f Bat:%.2f",
                  f->DOLevel, f->DOCount, f->DOretry,
                  f->PHLevel, f->IRLevel, f->SALevel,
-                 f->WaterTemp, f->Interval);
+                 f->WaterTemp, f->Interval, f->SOC, f->BatVolts);
         writeLog(buf);
         free(buf);
     }
@@ -129,10 +138,10 @@ int cmdDOEX(void *argument)
 
     if (((theConf.debug_flags >> dMQTT) & 1U))
         MESP_LOGI(MESH_TAG,
-              "DOEX DO:%.2f cnt:%d ret:%d PH:%.2f IR:%.2f SA:%.2f Wt:%.2f Interval:%d",
+              "DOEX DO:%.2f cnt:%d ret:%d PH:%.2f IR:%.2f SA:%.2f Wt:%.2f Interval:%d SOC:%.1f Bat:%.2f",
               fields.DOLevel, fields.DOCount, fields.DOretry,
               fields.PHLevel, fields.IRLevel, fields.SALevel,
-              fields.WaterTemp, fields.Interval);
+              fields.WaterTemp, fields.Interval, fields.SOC, fields.BatVolts);
 
     return ESP_OK;
 }

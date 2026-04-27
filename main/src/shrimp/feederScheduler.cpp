@@ -8,6 +8,10 @@ typedef struct {
     uint8_t day;
     uint8_t horario;
     uint8_t weight;
+    uint8_t num_lines_cfg;
+    uint16_t grams_per_liter;
+    uint16_t feeder_flow;
+    uint32_t line_clear_ms;
     bool isLastScheduled;
 } feeder_timer_ctx_t;
 
@@ -16,6 +20,50 @@ static SemaphoreHandle_t feedDaySem = NULL;
 static TaskHandle_t feedScheduleHandle = NULL;
 static esp_timer_handle_t feeder_timers[MAXHORARIOS];
 static feeder_timer_ctx_t *feeder_ctx_timers[MAXHORARIOS];
+
+static void dump_active_feed_profile(void)
+{
+    if (theConf.activeProfile >= MAXPROFILES) {
+        MESP_LOGW(TAG, "feedprofile dump skipped: activeProfile out of range (%u)",
+                  (unsigned int)theConf.activeProfile);
+        return;
+    }
+
+    const feedprofile_t *p = &theConf.feedprofiles[theConf.activeProfile];
+    MESP_LOGI(TAG,
+              "feedprofile dump: activeProfile=%u name=%s version=%s numCycles=%u dayCycle=%u feeder numlines=%d gramsliter=%d feederFlow=%u lineclear=%d",
+              (unsigned int)theConf.activeProfile,
+              p->name,
+              p->version,
+              (unsigned int)p->numCycles,
+              (unsigned int)theConf.dayCycle,
+              theConf.feederData.numlines,
+              theConf.feederData.gramsliter,
+              (unsigned int)theConf.feederFlow,
+              theConf.feederData.lineclear);
+
+    for (uint8_t c = 0; c < p->numCycles && c < MAXCICLOS; c++) {
+        const ciclo_t *cycle = &p->cycle[c];
+        MESP_LOGI(TAG,
+                  "feedprofile cycle[%u]: day=%u duration=%lu numHorarios=%u",
+                  (unsigned int)c,
+                  (unsigned int)cycle->day,
+                  (unsigned long)cycle->duration,
+                  (unsigned int)cycle->numHorarios);
+
+        for (uint8_t h = 0; h < cycle->numHorarios && h < MAXHORARIOS; h++) {
+            const horario_t *hr = &cycle->horarios[h];
+            MESP_LOGI(TAG,
+                      "feedprofile cycle[%u].horario[%u]: %02u:%02u weight=%u horarioLen=%lu",
+                      (unsigned int)c,
+                      (unsigned int)h,
+                      (unsigned int)hr->hourStart,
+                      (unsigned int)hr->minutesStart,
+                      (unsigned int)hr->weight,
+                      (unsigned long)hr->horarioLen);
+        }
+    }
+}
 
 static time_t feeder_get_today_midnight(void)
 {
@@ -64,11 +112,18 @@ static void cleanup_feeder_timers(int howmany)
     }
 }
 
-static void feed_now(uint8_t weight)
+static void feed_now(const feeder_timer_ctx_t *ctx)
 {
-    const int num_lines_cfg = theConf.feederData.numlines;
-    const int grams_per_liter = theConf.feederData.gramsliter;
-    const int feeder_flow = theConf.feederFlow;
+    if (!ctx) {
+        MESP_LOGW(TAG, "feed_now skipped: null context");
+        return;
+    }
+
+    const int num_lines_cfg = (int)ctx->num_lines_cfg;
+    const int grams_per_liter = (int)ctx->grams_per_liter;
+    const int feeder_flow = (int)ctx->feeder_flow;
+    const uint8_t weight = ctx->weight;
+    const uint32_t line_clear_ms = ctx->line_clear_ms;
 
     if (num_lines_cfg <= 0 || grams_per_liter <= 0 || feeder_flow <= 0) {
         MESP_LOGW(TAG,
@@ -79,8 +134,6 @@ static void feed_now(uint8_t weight)
 
     const uint32_t denominator = (uint32_t)grams_per_liter * (uint32_t)feeder_flow * (uint32_t)num_lines_cfg;
     const uint32_t dispense_ms = ((uint32_t)weight * 1000U * 60U) / denominator*1000U;  // Convert to ms
-    const uint32_t line_clear_ms = (uint32_t)theConf.feederData.lineclear * 10000U;  // minutes to ms
-    // const uint32_t line_clear_ms = (uint32_t)theConf.feederData.lineclear * 60000U;  // minutes to ms
     const int num_lines = (num_lines_cfg > 4) ? 4 : num_lines_cfg;
 
     if ((theConf.debug_flags >> dSCH) & 1U) {
@@ -98,7 +151,7 @@ static void feed_now(uint8_t weight)
         // start_vfd_blower(true);  // Dummy feeder VFD start call for now
 
         if (line_clear_ms > 0) {
-            MESP_LOGI(TAG,"Clear the line %lu\n",(unsigned long)line_clear_ms);
+            MESP_LOGI(TAG,"Clear the line %lu",(unsigned long)line_clear_ms);
             vTaskDelay(pdMS_TO_TICKS(line_clear_ms));
         }
 
@@ -115,6 +168,7 @@ static void feed_now(uint8_t weight)
         feeder_valve.close();
         // start_vfd_blower(false);  // Dummy feeder VFD stop call for now
         line_valves[x].close();
+        printf("\n");
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
     MESP_LOGI(TAG, "%sfeed_now completed weight=%u dispenseMs=%lu lineClearMs=%lu lines=%dn starting weight=%.2f ending weight=%.2f",
@@ -138,7 +192,7 @@ static void feeder_timer_fire(void *pArg)
         MESP_LOGI(TAG, "%sFeeder timer Start C-%d D-%d H-%d Weight %d At %s",
              DBG_SCH, ctx->cycle, ctx->day, ctx->horario, ctx->weight, fired_at);
 
-    feed_now(ctx->weight);
+    feed_now(ctx);
     if (ctx->isLastScheduled && feedDaySem) {
         xSemaphoreGive(feedDaySem);
     }
@@ -156,7 +210,12 @@ static feeder_timer_ctx_t *create_feeder_timer_context(uint8_t cycle, uint8_t da
     ctx->day = day;
     ctx->horario = (uint8_t)horario;
     ctx->weight = theConf.feedprofiles[theConf.activeProfile].cycle[cycle].horarios[horario].weight;
+    ctx->num_lines_cfg = (uint8_t)theConf.feederData.numlines;
+    ctx->grams_per_liter = (uint16_t)theConf.feederData.gramsliter;
+    ctx->feeder_flow = theConf.feederFlow;
+    ctx->line_clear_ms = (uint32_t)theConf.feederData.lineclear * 1000U;
     ctx->isLastScheduled = false;
+
     return ctx;
 }
 
@@ -168,6 +227,8 @@ static bool make_feeder_timers(uint8_t cycle, uint8_t day, int cuantos)
     }
 
     for (int i = 0; i < cuantos; i++) {
+
+        
         feeder_ctx_timers[i] = create_feeder_timer_context(cycle, day, i);
         if (!feeder_ctx_timers[i]) {
             cleanup_feeder_timers(i);
@@ -228,8 +289,8 @@ static bool start_feeder_timer_for_horario(time_t midnight, time_t now, int hora
         localtime_r(&starttime, &fire_tm);
         strftime(fire_time, sizeof(fire_time), "%Y-%m-%d %H:%M:%S", &fire_tm);
 
-        MESP_LOGI(TAG, "%sFeeder timer scheduled C-%d D-%d H-%d Weight %d Delay(us) %llu FireAt %s",
-                 DBG_SCH, ctx->cycle, ctx->day, horario, ctx->weight, start_delay, fire_time);
+        // MESP_LOGI(TAG, "%sFeeder timer scheduled C-%d D-%d H-%d Weight %d Delay(us) %llu FireAt %s",
+        //          DBG_SCH, ctx->cycle, ctx->day, horario, ctx->weight, start_delay, fire_time);
     }
     return true;
 }

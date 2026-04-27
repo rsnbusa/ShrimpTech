@@ -16,20 +16,20 @@
                 "dias": 10,
                 "horario": [
                   {
-                    "h_start_hour": 15,
-                    "h_start_mins": 5,
+                    "h_start_hour": 16,
+                    "h_start_mins": 45,
                     "h_secs": 120,
                     "pwm_duty": 100
                   },
                   {
-                    "h_start_hour": 15,
-                    "h_start_mins": 8,
+                    "h_start_hour": 16,
+                    "h_start_mins": 48,
                     "h_secs": 120,
                     "pwm_duty": 100
                   },
                   {
-                    "h_start_hour": 15,
-                    "h_start_mins": 11,
+                    "h_start_hour": 16,
+                    "h_start_mins": 51,
                     "h_secs": 120,
                     "pwm_duty": 100
                   }

@@ -1,0 +1,145 @@
+{
+  "cmdarr": [
+    {
+      "cmd": "feeder",
+      "unitid": 2,
+      "feeder": {
+        "profiles": [
+          {
+            "name": "ShortFeed ",
+            "version": "1.0",
+            "issued": "2026-03-20",
+            "expires": "2027-04-20",
+            "line_open_close_ms": 5000,
+            "clear_line_time_sec": 90,
+            "feeder_flow_lpm": 80,
+            "dispenser_g_per_liter": 100,
+            "number_of_lines": 4,
+            "ciclos": [
+              {
+                "startday": 1,
+                "dias": 10,
+                "horario": [
+                  {
+                    "h_start_hour": 17,
+                    "h_start_mins": 35,
+                    "h_secs": 2,
+                    "weight": 1
+                  },
+                  {
+                    "h_start_hour": 17,
+                    "h_start_mins": 43,
+                    "h_secs": 2,
+                    "weight": 1
+                  },
+                  {
+                    "h_start_hour": 17,
+                    "h_start_mins": 51,
+                    "h_secs": 2,
+                    "weight": 1
+                  },
+                  {
+                    "h_start_hour": 17,
+                    "h_start_mins": 59,
+                    "h_secs": 2,
+                    "weight": 1
+                  }
+                ]
+              },
+              {
+                "startday": 11,
+                "dias": 10,
+                "horario": [
+                  {
+                    "h_start_hour": 18,
+                    "h_start_mins": 0,
+                    "h_secs": 19,
+                    "weight": 10
+                  },
+                  {
+                    "h_start_hour": 19,
+                    "h_start_mins": 0,
+                    "h_secs": 19,
+                    "weight": 10
+                  },
+                  {
+                    "h_start_hour": 20,
+                    "h_start_mins": 0,
+                    "h_secs": 19,
+                    "weight": 10
+                  },
+                  {
+                    "h_start_hour": 21,
+                    "h_start_mins": 0,
+                    "h_secs": 19,
+                    "weight": 10
+                  }
+                ]
+              },
+              {
+                "startday": 21,
+                "dias": 20,
+                "horario": [
+                  {
+                    "h_start_hour": 18,
+                    "h_start_mins": 0,
+                    "h_secs": 19,
+                    "weight": 10
+                  },
+                  {
+                    "h_start_hour": 19,
+                    "h_start_mins": 0,
+                    "h_secs": 19,
+                    "weight": 10
+                  },
+                  {
+                    "h_start_hour": 20,
+                    "h_start_mins": 0,
+                    "h_secs": 19,
+                    "weight": 10
+                  },
+                  {
+                    "h_start_hour": 21,
+                    "h_start_mins": 0,
+                    "h_secs": 19,
+                    "weight": 10
+                  }
+                ]
+              },
+              {
+                "startday": 41,
+                "dias": 44,
+                "horario": [
+                  {
+                    "h_start_hour": 18,
+                    "h_start_mins": 0,
+                    "h_secs": 19,
+                    "weight": 10
+                  },
+                  {
+                    "h_start_hour": 19,
+                    "h_start_mins": 0,
+                    "h_secs": 19,
+                    "weight": 10
+                  },
+                  {
+                    "h_start_hour": 20,
+                    "h_start_mins": 0,
+                    "h_secs": 19,
+                    "weight": 10
+                  },
+                  {
+                    "h_start_hour": 21,
+                    "h_start_mins": 0,
+                    "h_secs": 19,
+                    "weight": 10
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
