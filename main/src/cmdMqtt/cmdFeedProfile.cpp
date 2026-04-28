@@ -69,25 +69,10 @@ static void apply_feeder_runtime_config(cJSON *feederNode, const char *source)
 
     cJSON *field = NULL;
 
-    field = get_number_field(feederNode, "time_opne_close_ms", "time_open_close_ms", "full_open_close_ms");
+    field = get_number_field(feederNode, "time_open_close_ms", "full_open_close_ms", NULL);
     if (field)
     {
         theConf.feederData.full = field->valueint;
-    }
-
-    // Treat all clear-line keys as seconds (legacy key names may still include "min").
-    field = get_number_field(feederNode, "lineclear", "clear_line_time_min", "line_clear_min");
-    if (field && field->valueint >= 0)
-    {
-        theConf.feederData.lineclear = field->valueint;
-    }
-    else
-    {
-        field = get_number_field(feederNode, "clear_line_time_sec", "line_clear_sec", NULL);
-        if (field && field->valueint >= 0)
-        {
-            theConf.feederData.lineclear = field->valueint;
-        }
     }
 
     field = get_number_field(feederNode, "dispenser_g_per_liter", "gramsliter", "grams_per_liter");
