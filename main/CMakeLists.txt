@@ -34,6 +34,8 @@ set(CMD_SOURCES
     src/cmdMqtt/cmdInverter.cpp
     src/cmdMqtt/cmdVFDCmd.cpp
     src/cmdMqtt/cmdVFDMon.cpp
+    src/cmdMqtt/cmdFeedVFDCmd.cpp
+    src/cmdMqtt/cmdFeedVFDMon.cpp
     src/cmdMqtt/cmdInvertStatus.cpp
     src/cmdMqtt/cmdProfile.cpp
     src/cmdMqtt/cmdFeedProfile.cpp

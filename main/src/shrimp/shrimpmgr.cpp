@@ -3316,6 +3316,8 @@ void register_external_mqtt_commands(void)
     set_cmd("InvertStatus", "INVS", cmdInvertStatus);
     set_cmd("VFDCmd", "VFDC", cmdVFDCmd);
     set_cmd("VFDMon", "VFDM", cmdVFDMon);
+    set_cmd("FeedVFD", "FVDC", cmdFeedVFDCmd);
+    set_cmd("FeedVFDMon", "FVDM", cmdFeedVFDMon);
     set_cmd("profile", "PROF", cmdProfile);
     set_cmd("feeder", "FDPR", cmdFeedProfile);
     set_cmd("PID", "PID", cmdPID);

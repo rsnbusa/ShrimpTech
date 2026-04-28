@@ -126,6 +126,8 @@ int cmdProfile(void *argument);
 int cmdFeedProfile(void *argument);
 int cmdVFDCmd(void *argument);
 int cmdVFDMon(void *argument);
+int cmdFeedVFDCmd(void *argument);
+int cmdFeedVFDMon(void *argument);
 int cmdPID(void *argument);
 int cmdDOEX(void *argument);
 
