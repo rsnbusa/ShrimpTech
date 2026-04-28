@@ -166,14 +166,6 @@ struct custom_api_handler {
 };
 static struct custom_api_handler *s_custom_handlers;
 
-struct attribute s_feeder_attributes[] = {
-  {"feedopen", "int", NULL, offsetof(struct feeder, feedopen), 0, false},
-  {"full", "int", NULL, offsetof(struct feeder, full), 0, false},
-  {"numlines", "int", NULL, offsetof(struct feeder, numlines), 0, false},
-  {"gramsliter", "int", NULL, offsetof(struct feeder, gramsliter), 0, false},
-  {"lineclear", "int", NULL, offsetof(struct feeder, lineclear), 0, false},
-  {NULL, NULL, NULL, 0, 0, false}
-};
 struct attribute s_Inverter_attributes[] = {
   {"refresh", "int", NULL, offsetof(struct Inverter, refresh), 0, false},
   {"address", "int", NULL, offsetof(struct Inverter, address), 0, false},
@@ -529,7 +521,6 @@ struct attribute s_sysset_attributes[] = {
   {NULL, NULL, NULL, 0, 0, false}
 };
 
-struct apihandler_data s_apihandler_feeder = {{"feeder", "data", false, 0, 0, 0UL}, s_feeder_attributes, sizeof(struct feeder), (void (*)(void *)) glue_get_feeder, (void (*)(void *)) glue_set_feeder};
 struct apihandler_data s_apihandler_Inverter = {{"Inverter", "data", false, 0, 0, 0UL}, s_Inverter_attributes, sizeof(struct Inverter), (void (*)(void *)) glue_get_Inverter, (void (*)(void *)) glue_set_Inverter};
 struct apihandler_data s_apihandler_VFDCmd = {{"VFDCmd", "data", false, 0, 0, 0UL}, s_VFDCmd_attributes, sizeof(struct VFDCmd), (void (*)(void *)) glue_get_VFDCmd, (void (*)(void *)) glue_set_VFDCmd};
 struct apihandler_data s_apihandler_VFDCmdFeed = {{"VFDCmdFeed", "data", false, 0, 0, 0UL}, s_VFDCmdFeed_attributes, sizeof(struct VFDCmdFeed), (void (*)(void *)) glue_get_VFDCmdFeed, (void (*)(void *)) glue_set_VFDCmdFeed};
@@ -551,7 +542,6 @@ struct apihandler_data s_apihandler_system = {{"system", "data", false, 0, 0, 0U
 struct apihandler_data s_apihandler_sysset = {{"sysset", "data", false, 0, 0, 0UL}, s_sysset_attributes, sizeof(struct sysset), (void (*)(void *)) glue_get_sysset, (void (*)(void *)) glue_set_sysset};
 
 static struct apihandler *s_apihandlers[] = {
-  (struct apihandler *) &s_apihandler_feeder,
   (struct apihandler *) &s_apihandler_Inverter,
   (struct apihandler *) &s_apihandler_VFDCmd,
   (struct apihandler *) &s_apihandler_VFDCmdFeed,
@@ -1536,8 +1526,11 @@ void mongoose_enable_ota_url_checks(struct mongoose_ota_settings *settings) {
   s_ota_settings = *settings;
 }
 
-static void check_firmware_version_url(void) {
-  // Implement OTA via URL check
+static void check_firmware_metadata_url(void) {
+#if MG_OTA != MG_OTA_NONE
+  mg_ota_url_check(&g_mgr, s_ota_settings.current_version,
+    s_ota_settings.metadata_url, s_ota_settings.fn);
+#endif
 }
 
 void mongoose_poll(void) {
@@ -1546,7 +1539,7 @@ void mongoose_poll(void) {
   if (s_ota_settings.interval_seconds > 0 &&
       mg_timer_expired(&s_ota_timer, s_ota_settings.interval_seconds * 1000,
                        mg_now())) {
-    check_firmware_version_url();
+    check_firmware_metadata_url();
   }
 #if WIZARD_ENABLE_WEBSOCKET
   send_websocket_data();

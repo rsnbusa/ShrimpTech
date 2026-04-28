@@ -11,7 +11,6 @@ typedef struct {
     uint8_t num_lines_cfg;
     uint16_t grams_per_liter;
     uint16_t feeder_flow;
-    uint32_t line_clear_ms;
     bool isLastScheduled;
 } feeder_timer_ctx_t;
 
@@ -23,6 +22,7 @@ static feeder_timer_ctx_t *feeder_ctx_timers[MAXHORARIOS];
 
 static void dump_active_feed_profile(void)
 {
+    return;
     if (theConf.activeProfile >= MAXPROFILES) {
         MESP_LOGW(TAG, "feedprofile dump skipped: activeProfile out of range (%u)",
                   (unsigned int)theConf.activeProfile);
@@ -31,7 +31,7 @@ static void dump_active_feed_profile(void)
 
     const feedprofile_t *p = &theConf.feedprofiles[theConf.activeProfile];
     MESP_LOGI(TAG,
-              "feedprofile dump: activeProfile=%u name=%s version=%s numCycles=%u dayCycle=%u feeder numlines=%d gramsliter=%d feederFlow=%u lineclear=%d",
+              "feedprofile dump: activeProfile=%u name=%s version=%s numCycles=%u dayCycle=%u feeder numlines=%d gramsliter=%d feederFlow=%u",
               (unsigned int)theConf.activeProfile,
               p->name,
               p->version,
@@ -39,8 +39,16 @@ static void dump_active_feed_profile(void)
               (unsigned int)theConf.dayCycle,
               theConf.feederData.numlines,
               theConf.feederData.gramsliter,
-              (unsigned int)theConf.feederFlow,
-              theConf.feederData.lineclear);
+              (unsigned int)theConf.feederFlow);
+
+    for (int line = 0; line < theConf.feederData.numlines && line < 6; line++) {
+        MESP_LOGI(TAG,
+                  "feedprofile line[%d]: number=%d length_m=%d l_c_t=%d",
+                  line,
+                  theConf.feederData.lines[line].linenum,
+                  theConf.feederData.lines[line].length_m,
+                  theConf.feederData.lines[line].l_c_t);
+    }
 
     for (uint8_t c = 0; c < p->numCycles && c < MAXCICLOS; c++) {
         const ciclo_t *cycle = &p->cycle[c];
@@ -123,7 +131,6 @@ static void feed_now(const feeder_timer_ctx_t *ctx)
     const int grams_per_liter = (int)ctx->grams_per_liter;
     const int feeder_flow = (int)ctx->feeder_flow;
     const uint8_t weight = ctx->weight;
-    const uint32_t line_clear_ms = ctx->line_clear_ms;
 
     if (num_lines_cfg <= 0 || grams_per_liter <= 0 || feeder_flow <= 0) {
         MESP_LOGW(TAG,
@@ -138,25 +145,22 @@ static void feed_now(const feeder_timer_ctx_t *ctx)
 
     if ((theConf.debug_flags >> dSCH) & 1U) {
         MESP_LOGI(TAG,
-                 "%sfeed_now start weight=%u dispenseMs=%lu lineClearMs=%lu lines=%d",
-                 DBG_SCH, weight, (unsigned long)dispense_ms, (unsigned long)line_clear_ms, num_lines);
+                 "%sfeed_now start weight=%u dispenseMs=%lu lines=%d",
+                 DBG_SCH, weight, (unsigned long)dispense_ms, num_lines);
     }
 
     // get current wight of the Hopper
     float hopper_weight_start = hxweight;
     float hooper_weight_end=0.0f;
-
+// cycle is Open Valve, Start Pump, Open Feeder (feeding), Close Feeder, Clear Line, Close Valve, Shut down Pump
     for (int x = 0; x < num_lines; x++) {
+        const uint32_t line_clear_ms = (uint32_t)theConf.feederData.lines[x].l_c_t * 100U;
+
         line_valves[x].open();
+        MESP_LOGW(TAG, "%sStarting Pump", DBG_SCH);
+
         // start_vfd_blower(true);  // Dummy feeder VFD start call for now
-
-        if (line_clear_ms > 0) {
-            MESP_LOGI(TAG,"Clear the line %lu",(unsigned long)line_clear_ms);
-            vTaskDelay(pdMS_TO_TICKS(line_clear_ms));
-        }
-
         feeder_valve.open();
-
         if (dispense_ms > 0) {
             vTaskDelay(pdMS_TO_TICKS(dispense_ms));
         }
@@ -164,15 +168,21 @@ static void feed_now(const feeder_timer_ctx_t *ctx)
             MESP_LOGW(TAG, "%sfeed_now calculated dispense_ms is 0, skipping delay", DBG_SCH);
             vTaskDelay(pdMS_TO_TICKS(3000));  // Default to 3 seconds if calculation is invalid
         }
-
         feeder_valve.close();
+
+        if (line_clear_ms > 0) {
+            MESP_LOGI(TAG, "Clear line %d for %lu ms", x, (unsigned long)line_clear_ms);
+            vTaskDelay(pdMS_TO_TICKS(line_clear_ms));
+        }
+        MESP_LOGW(TAG, "%sStopping Pump", DBG_SCH);
+
         // start_vfd_blower(false);  // Dummy feeder VFD stop call for now
         line_valves[x].close();
         printf("\n");
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
-    MESP_LOGI(TAG, "%sfeed_now completed weight=%u dispenseMs=%lu lineClearMs=%lu lines=%dn starting weight=%.2f ending weight=%.2f",
-             DBG_SCH, weight, (unsigned long)dispense_ms, (unsigned long)line_clear_ms, num_lines, hopper_weight_start, hooper_weight_end);
+    MESP_LOGI(TAG, "%sfeed_now completed weight=%u dispenseMs=%lu lines=%dn starting weight=%.2f ending weight=%.2f",
+             DBG_SCH, weight, (unsigned long)dispense_ms, num_lines, hopper_weight_start, hooper_weight_end);
 }
 
 static void feeder_timer_fire(void *pArg)
@@ -213,7 +223,6 @@ static feeder_timer_ctx_t *create_feeder_timer_context(uint8_t cycle, uint8_t da
     ctx->num_lines_cfg = (uint8_t)theConf.feederData.numlines;
     ctx->grams_per_liter = (uint16_t)theConf.feederData.gramsliter;
     ctx->feeder_flow = theConf.feederFlow;
-    ctx->line_clear_ms = (uint32_t)theConf.feederData.lineclear * 1000U;
     ctx->isLastScheduled = false;
 
     return ctx;
@@ -319,6 +328,10 @@ static void start_feeder_schedule_timers(void *pArg)
         if (activeFeedProfile->numCycles == 0) {
             MESP_LOGW(TAG, "No feed cycles configured in active feeder profile %d", theConf.activeProfile);
             continue;
+        }
+
+        if ((theConf.debug_flags >> dSCH) & 1U) {
+            dump_active_feed_profile();
         }
 
         uint8_t cycleStart = 0;

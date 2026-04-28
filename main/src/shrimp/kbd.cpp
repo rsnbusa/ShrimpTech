@@ -32,7 +32,7 @@
 #define DEBUG_MAX_ARGUMENTS         8
 #define SECURITY_MAX_ARGUMENTS      3
 #define LOG_MAX_ARGUMENTS           2
-#define CONFIG_MAX_ARGUMENTS        11
+#define CONFIG_MAX_ARGUMENTS        12
 
 // ===================================================================
 // Helper Functions
@@ -137,6 +137,7 @@ void kbd(void *pArg)
   configArgs.meshnet  = arg_lit0(NULL, "mesh",      "Show Mesh & Network ");
   configArgs.mqtt     = arg_lit0(NULL, "mqtt",      "Show MQTT  ");
   configArgs.profile  = arg_lit0(NULL, "profile",   "Show Profile configuration");
+    configArgs.feedprofile = arg_lit0(NULL, "feedprofile", "Show feeder profile configuration");
   configArgs.blow     = arg_lit0(NULL, "blow",      "Show Blower ");
   configArgs.modbus   = arg_lit0(NULL, "modbus",    "Show modbus ");
   configArgs.prod     = arg_lit0(NULL, "produc",    "Show Porduction ");

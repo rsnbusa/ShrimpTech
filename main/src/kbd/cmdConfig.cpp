@@ -796,14 +796,25 @@ void show_first_feed_profile()
  */
 void print_feeder()
 {
+    const int max_lines = (int)(sizeof(theConf.feederData.lines) / sizeof(theConf.feederData.lines[0]));
+
     printf("┌─────────────────────────────────────────────────────────────┐\n"); 
     printf("│%s%s                FEEDER CONFIGURATION                         %s│\n",RESETC,BK_GREEN,RESETC);
     printf("├─────────────────────────────────────────────────────────────┤\n");
     printf("│ Number of Lines:       %-35d  │\n", theConf.feederData.numlines);
     printf("│ Grams per Liter:       %-35d  │\n", theConf.feederData.gramsliter);
-    printf("│ Line Clear:            %-35d  │\n", theConf.feederData.lineclear);
     printf("│ Full Open/Close Time:  %-35d  │\n", theConf.feederData.full);
     printf("│ Feeder Open Time:      %-35d  │\n", theConf.feederData.feedopen);
+    printf("│ Feeder Close Time:     %-35d  │\n", theConf.feederData.full);
+    printf("├─────────────────────────────────────────────────────────────┤\n");
+    printf("│ All Lines (index/line/length_m/l_c_t):                      │\n");
+    for (int i = 0; i < max_lines; i++) {
+        printf("│   [%d] line=%-2d len=%-3d clear=%-3d                             │\n",
+               i,
+               theConf.feederData.lines[i].linenum,
+               theConf.feederData.lines[i].length_m,
+               theConf.feederData.lines[i].l_c_t);
+    }
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
 }
 
@@ -926,11 +937,10 @@ int cmdConfig(int argc, char **argv)
        print_feeder();
     if (configArgs.all->count || configArgs.sch->count)         
        show_schedule_info();
-    if (configArgs.all->count || configArgs.profile->count)         
-        {
-            show_first_profile();
-            show_first_feed_profile();
-        }
+    if (configArgs.all->count || configArgs.profile->count)
+        show_first_profile();
+    if (configArgs.all->count || configArgs.feedprofile->count)
+        show_first_feed_profile();
     if (configArgs.all->count || configArgs.modbus->count)         
            show_modbus();
     if (configArgs.all->count || configArgs.DO->count)         

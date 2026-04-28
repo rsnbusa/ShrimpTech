@@ -6,6 +6,19 @@
 
 // Mongoose send double for floats so we will typedef it back to float
 
+typedef struct lines_st {
+    int linenum;
+    int length_m; 
+    int l_c_t;
+} line_t;
+
+typedef struct feeder_st {
+    int feedopen;
+    int full;
+    int numlines;
+    int gramsliter;
+    line_t lines[6];
+} feeder_t;
 // ============================================================================
 // MODBUS TYPES
 // ============================================================================
@@ -235,6 +248,7 @@ typedef struct cfg {
     struct arg_lit *meshnet;    // Mesh related x
     struct arg_lit *mqtt;       // MQTT related x
     struct arg_lit *profile;    // Profile data x
+    struct arg_lit *feedprofile;// Feeder profile data x
     struct arg_lit *blow;       // Blower data x
     struct arg_lit *modbus;     // modbus data x
     struct arg_lit *prod  ;     // production data x
@@ -438,7 +452,7 @@ typedef struct config {
     uint16_t feederFlow;
     bool blowerFeedSync;    // blower and feeder schedules are synced
 
-    struct feeder feederData;      // Feeder specific data structure
+    feeder_t    feederData;      // Feeder specific data structure
     struct modbInverter modbus_inverter;
     struct modbSensors modbus_sensors;
     struct modbBattery modbus_battery;

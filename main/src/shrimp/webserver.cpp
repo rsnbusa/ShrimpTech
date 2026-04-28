@@ -1064,26 +1064,6 @@ void my_set_modbPanels(struct modbPanels *data) // save limits from web to thebl
 }
 
 /**
- * @brief Get current feeder configuration
- * @param data Pointer to feeder structure to populate
- */
-void my_get_feeder(struct feeder *data) // return limits saved in theblower
-{
-
-	*data=theConf.feederData;
-}
-
-/**
- * @brief Set feeder configuration
- * @param data Pointer to feeder structure with new settings
- */
-void my_set_feeder(struct feeder *data) // save limits from web to theblower
-{
-	theConf.feederData=*data;
-	write_to_flash();
-}
-
-/**
  * @brief Initialize SPIFFS filesystem for profile storage
  * 
  * Initializes the SPIFFS partition for storing profile configurations.
@@ -1224,7 +1204,6 @@ void start_webserver(void *pArg)
   	mongoose_set_http_handlers("VFDCmdFeed", my_get_VFDCmdFeed ,my_set_VFDCmdFeed);				
   	mongoose_set_http_handlers("DO", my_get_DO ,my_set_DO);				
   	mongoose_set_http_handlers("Inverter", my_get_Inverter ,my_set_Inverter);				
-  	mongoose_set_http_handlers("feeder", my_get_feeder ,my_set_feeder);				
   	mongoose_set_http_handlers("reboot", my_check_reboot ,my_start_reboot);		
 
 	//web timeout if not done in 2 minutes restart
