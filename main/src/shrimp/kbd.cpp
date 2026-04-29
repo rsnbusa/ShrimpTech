@@ -2,7 +2,7 @@
  * @file kbd.cpp
  * @brief Console/keyboard interface task for ESP32 debugging and configuration
  * 
- * This module implements an interactive UART-based console using ESP-IDF's REPL
+ * This module implements an interactive USB CDC console using ESP-IDF's REPL
  * (Read-Eval-Print Loop) component. Provides command-line access to system
  * configuration, debugging, and diagnostics.
  * 
@@ -93,7 +93,7 @@ void kbd(void *pArg)
   repl = NULL;
   repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
   repl_config.prompt = (char*)"Login>";
-  esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
+  esp_console_dev_usb_cdc_config_t hw_config = ESP_CONSOLE_DEV_CDC_CONFIG_DEFAULT();
 
   // ===================================================================
   // Define Command Arguments - FRAM Management
@@ -265,7 +265,7 @@ void kbd(void *pArg)
     }
     
   // Start REPL console
-  ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &repl));
+  ESP_ERROR_CHECK(esp_console_new_repl_usb_cdc(&hw_config, &repl_config, &repl));
   ESP_ERROR_CHECK(esp_console_start_repl(repl));
   
   // Cleanup allocated resources
