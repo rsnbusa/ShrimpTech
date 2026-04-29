@@ -133,6 +133,61 @@ static void dump_recovery_data(const recovery_t *rd)
              DBG_SCH, rd->cycle, rd->day, rd->hour, rd->line,state_name(rd->state), rec_ts_str);
 }
 
+typedef struct {
+    bool needs_recovery;
+    int closest_horario_idx;
+} feeder_recovery_plan_t;
+
+static feeder_recovery_plan_t feeder_build_recovery_plan(const recovery_t *rd, const profile_t *profile)
+{
+    feeder_recovery_plan_t plan = { false, -1 };
+    if (!rd || !profile) {
+        return plan;
+    }
+
+    // No recovery when there is no saved state timestamp.
+    if (rd->stateTS == 0) {
+        return plan;
+    }
+
+    // No recovery when the saved timestamp is from a previous day.
+    const time_t today_midnight = feeder_get_today_midnight();
+    if (rd->stateTS < today_midnight) {
+        return plan;
+    }
+
+    if (rd->cycle < 0 || rd->cycle >= profile->numCycles) {
+        return plan;
+    }
+
+    const ciclo_t *cycle = &profile->cycle[rd->cycle];
+    if (cycle->numHorarios <= 0) {
+        return plan;
+    }
+
+    struct tm rec_tm;
+    localtime_r(&rd->stateTS, &rec_tm);
+    const int rec_minutes = (rec_tm.tm_hour * 60) + rec_tm.tm_min;
+
+    int best_idx = -1;
+    int best_minutes = -1;
+    for (int h = 0; h < cycle->numHorarios && h < MAXHORARIOS; h++) {
+        const horario_t *hr = &cycle->horarios[h];
+        const int schedule_minutes = ((int)hr->hourStart * 60) + (int)hr->minutesStart;
+        if (schedule_minutes < rec_minutes && schedule_minutes > best_minutes) {
+            best_minutes = schedule_minutes;
+            best_idx = h;
+        }
+    }
+
+    if (best_idx >= 0) {
+        plan.needs_recovery = true;
+        plan.closest_horario_idx = best_idx;
+    }
+
+    return plan;
+}
+
 static void cleanup_feeder_timers(int howmany)
 {
     for (int i = 0; i < howmany; i++) {
@@ -406,6 +461,15 @@ static void start_feeder_schedule_timers(void *pArg)
         if (activeFeedProfile->numCycles == 0) {
             MESP_LOGW(TAG, "No feed cycles configured in active feeder profile %d", theConf.activeProfile);
             continue;
+        }
+
+        const feeder_recovery_plan_t recovery_plan = feeder_build_recovery_plan(&recoveryData, activeFeedProfile);
+        if (recovery_plan.needs_recovery && ((theConf.debug_flags >> dSCH) & 1U)) {
+            MESP_LOGI(TAG, "%sRecovery candidate: cycle=%d day=%d closest_horario=%d",
+                      DBG_SCH, recoveryData.cycle, recoveryData.day, recovery_plan.closest_horario_idx);
+        }
+        else if ((theConf.debug_flags >> dSCH) & 1U) {
+            MESP_LOGI(TAG, "%sNo recovery needed for today", DBG_SCH);
         }
 
         if ((theConf.debug_flags >> dSCH) & 1U) {
