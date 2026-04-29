@@ -245,7 +245,7 @@ typedef struct {
     solarSystem_t solarSystem;
 } solarDef_t;
 
-enum state_t{OPENVALVE,STARTPUMP,FEEDERVALVEOPEN,FEEDERVALVECLOSE,CLEARLINE,STOPPUMP,CLOSEVALE,IDLE};
+enum state_t{IDLE,OPENVALVE,STARTPUMP,FEEDERVALVEOPEN,FEEDERVALVECLOSE,CLEARLINE,STOPPUMP,CLOSEVALVE,NEXTLINE};
 typedef struct rec_st { 
     int cycle;
     int day; 

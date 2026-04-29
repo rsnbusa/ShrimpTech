@@ -105,6 +105,34 @@ static void feeder_find_cycle_day(const profile_t *profile, uint8_t *cycleOut, u
     *dayOut = 0;
 }
 
+static const char *state_name(state_t s)
+{
+    switch(s)
+    {
+        case IDLE:            return "IDLE";
+        case OPENVALVE:       return "OPENVALVE";
+        case STARTPUMP:       return "STARTPUMP";
+        case FEEDERVALVEOPEN: return "FEEDERVALVEOPEN";
+        case FEEDERVALVECLOSE:return "FEEDERVALVECLOSE";
+        case CLEARLINE:       return "CLEARLINE";
+        case STOPPUMP:        return "STOPPUMP";
+        case CLOSEVALVE:      return "CLOSEVALVE";
+        case NEXTLINE:        return "NEXTLINE";
+        default:              return "UNKNOWN";
+    }
+}
+
+static void dump_recovery_data(const recovery_t *rd)
+{
+    if (!rd) return;
+    char rec_ts_str[32] = {0};
+    struct tm rec_tm;
+    localtime_r(&rd->stateTS, &rec_tm);
+    strftime(rec_ts_str, sizeof(rec_ts_str), "%Y-%m-%d %H:%M:%S", &rec_tm);
+    MESP_LOGI(TAG, "%sFeeder Scheduler Recovery State: C-%d D-%d H-%d Line %d State %s TS %s",
+             DBG_SCH, rd->cycle, rd->day, rd->hour, rd->line,state_name(rd->state), rec_ts_str);
+}
+
 static void cleanup_feeder_timers(int howmany)
 {
     for (int i = 0; i < howmany; i++) {
@@ -156,11 +184,25 @@ static void feed_now(const feeder_timer_ctx_t *ctx)
     for (int x = 0; x < num_lines; x++) {
         const uint32_t line_clear_ms = (uint32_t)theConf.feederData.lines[x].l_c_t * 100U;
 
+        recoveryData.line=x;
+        recoveryData.state=OPENVALVE; 
+        time(&recoveryData.stateTS);
+        theBlower.saveRecovery(&recoveryData);
         line_valves[x].open();
+
         MESP_LOGW(TAG, "%sStarting Pump", DBG_SCH);
 
+        recoveryData.state=STARTPUMP; 
+        time(&recoveryData.stateTS);
+        theBlower.saveRecovery(&recoveryData);
         // start_vfd_blower(true);  // Dummy feeder VFD start call for now
+
+
+        recoveryData.state=FEEDERVALVEOPEN; 
+        time(&recoveryData.stateTS);
+        theBlower.saveRecovery(&recoveryData);
         feeder_valve.open();
+
         if (dispense_ms > 0) {
             vTaskDelay(pdMS_TO_TICKS(dispense_ms));
         }
@@ -168,7 +210,15 @@ static void feed_now(const feeder_timer_ctx_t *ctx)
             MESP_LOGW(TAG, "%sfeed_now calculated dispense_ms is 0, skipping delay", DBG_SCH);
             vTaskDelay(pdMS_TO_TICKS(3000));  // Default to 3 seconds if calculation is invalid
         }
+
+        recoveryData.state=FEEDERVALVECLOSE; 
+        time(&recoveryData.stateTS);
+        theBlower.saveRecovery(&recoveryData);
         feeder_valve.close();
+
+        recoveryData.state=CLEARLINE; 
+        time(&recoveryData.stateTS);
+        theBlower.saveRecovery(&recoveryData);
 
         if (line_clear_ms > 0) {
             MESP_LOGI(TAG, "Clear line %d for %lu ms", x, (unsigned long)line_clear_ms);
@@ -176,13 +226,28 @@ static void feed_now(const feeder_timer_ctx_t *ctx)
         }
         MESP_LOGW(TAG, "%sStopping Pump", DBG_SCH);
 
+        recoveryData.state=STOPPUMP; 
+        time(&recoveryData.stateTS);
+        theBlower.saveRecovery(&recoveryData);
         // start_vfd_blower(false);  // Dummy feeder VFD stop call for now
+
+        recoveryData.state=CLOSEVALVE; 
+        time(&recoveryData.stateTS);
+        theBlower.saveRecovery(&recoveryData);
         line_valves[x].close();
+
+        recoveryData.state=NEXTLINE; 
+        time(&recoveryData.stateTS);    
+        theBlower.saveRecovery(&recoveryData);
+    }
         printf("\n");
         vTaskDelay(pdMS_TO_TICKS(1000));
-    }
+
     MESP_LOGI(TAG, "%sfeed_now completed weight=%u dispenseMs=%lu lines=%dn starting weight=%.2f ending weight=%.2f",
              DBG_SCH, weight, (unsigned long)dispense_ms, num_lines, hopper_weight_start, hooper_weight_end);
+
+    bzero(&recoveryData, sizeof(recoveryData));    
+    theBlower.saveRecovery(&recoveryData);
 }
 
 static void feeder_timer_fire(void *pArg)
@@ -201,6 +266,14 @@ static void feeder_timer_fire(void *pArg)
     if ((theConf.debug_flags >> dSCH) & 1U) 
         MESP_LOGI(TAG, "%sFeeder timer Start C-%d D-%d H-%d Weight %d At %s",
              DBG_SCH, ctx->cycle, ctx->day, ctx->horario, ctx->weight, fired_at);
+
+    recoveryData.cycle=ctx->cycle;
+    recoveryData.day=ctx->day;
+    recoveryData.hour=ctx->horario;
+    recoveryData.state=IDLE; 
+    recoveryData.line=0; 
+    time(&recoveryData.stateTS);
+    theBlower.saveRecovery(&recoveryData);  // save recovery record before starting feed operation
 
     feed_now(ctx);
     if (ctx->isLastScheduled && feedDaySem) {
@@ -309,6 +382,11 @@ static void start_feeder_schedule_timers(void *pArg)
     (void)pArg;
 
     while (true) {
+        // check recovery data
+        theBlower.readRecovery(&recoveryData);
+        dump_recovery_data(&recoveryData);
+        // call check recoverry procedure if needed
+
         if (!feedWorkTaskSem || !feedDaySem) {
             vTaskDelay(pdMS_TO_TICKS(1000));
             continue;
