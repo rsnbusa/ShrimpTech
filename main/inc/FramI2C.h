@@ -44,6 +44,8 @@ public:
     int format(uint8_t *fillBuffer, uint32_t chunkSize, bool verifyAll);
     int write_Blower(uint8_t *data, uint16_t length);
     int read_Blower(uint8_t *buffer, uint16_t length);
+    int write_recovery(uint16_t offset,uint8_t *data, uint16_t length);
+    int read_recovery(uint16_t offset,uint8_t *buffer, uint16_t length);
     
     // Low-level I2C operations (public for advanced use)
     int i2c_master_read_slave(uint16_t framAddress, uint8_t *readBuffer, size_t readSize);

@@ -362,4 +362,6 @@ EXTERN Valve line_valves[4],feeder_valve;
 EXTERN Pump hopper;
 
 EXTERN float hxweight;
+
+EXTERN recovery_t recoveryData;     // for feeder recovery from crash or power loss, stored in FRAM at address sizeof(thConfig)
 #endif // MAIN_GLOBALS_H

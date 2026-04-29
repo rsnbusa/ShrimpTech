@@ -207,24 +207,6 @@ int FramI2C::readMany(uint16_t framAddress, uint8_t *buffer, uint16_t count)
     return i2c_master_read_slave(framAddress, buffer, count);
 }
 
-void FramI2C::getDeviceID(uint16_t *manufacturerID, uint16_t *productID, uint8_t *densityCode)
-{
-    uint8_t deviceData[3] = {0};
-
-    // TODO: Implement device ID read using new I2C driver API
-    // Reference: MB85RC256V datasheet p.10
-    // http://www.fujitsu.com/downloads/MICRO/fsa/pdf/products/memory/fram/MB85RC256V-DS501-00017-3v0-E.pdf
-    
-    if(manufacturerID)
-        *manufacturerID = (deviceData[0] << 8) + ((deviceData[1] & 0xF0) >> 4);
-    
-    if(productID)
-        *productID = ((deviceData[1] & 0x0F) << 8) + deviceData[2];
-    
-    if(densityCode)
-        *densityCode = deviceData[1] & 0x0F;
-}
-
 /**
  * @brief Erases FRAM memory by writing zeros to all addresses
  * 
@@ -365,5 +347,47 @@ int FramI2C::read_Blower(uint8_t* blowerData, uint16_t dataSize)
 
     const uint32_t BLOWER_BASE_ADDRESS = 0;
     return read_bytes(BLOWER_BASE_ADDRESS, blowerData, dataSize);
+}
+/**
+ * @brief Writes recovery data
+ * 
+ * @param recoveryData Pointer to recovery data structure
+ * @param dataSize Size of recovery data in bytes
+ * @return ESP_OK on success, error code otherwise
+ */
+int FramI2C::write_recovery(uint16_t offset,uint8_t *recoveryData, uint16_t dataSize)
+{
+    if(!recoveryData)
+    {
+        MESP_LOGE("FRAM", "Invalid recovery data pointer");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    const uint32_t RECOVERY_BASE_ADDRESS = offset;
+    int result = write_bytes(RECOVERY_BASE_ADDRESS, recoveryData, dataSize);
+    
+    if(result != ESP_OK)
+        MESP_LOGE("FRAM", "Failed to write recovery data: 0x%x", result);
+
+    return result;
+}
+
+/**
+ * @brief Reads recovery data from FRAM at base address 0
+ * 
+ * @param recoveryData Pointer to destination buffer for recovery data
+ * @param dataSize Size of data to read in bytes
+ * @return ESP_OK on success, error code otherwise
+ */
+int FramI2C::read_recovery(uint16_t offset,uint8_t* recoveryData, uint16_t dataSize)
+{
+    if(!recoveryData)
+    {
+        MESP_LOGE("FRAM", "Invalid recovery data pointer");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    const uint32_t RECOVERY_BASE_ADDRESS = offset;
+    return read_bytes(RECOVERY_BASE_ADDRESS, recoveryData, dataSize);
 }
 

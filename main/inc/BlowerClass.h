@@ -245,6 +245,16 @@ typedef struct {
     solarSystem_t solarSystem;
 } solarDef_t;
 
+enum state_t{OPENVALVE,STARTPUMP,FEEDERVALVEOPEN,FEEDERVALVECLOSE,CLEARLINE,STOPPUMP,CLOSEVALE,IDLE};
+typedef struct rec_st { 
+    int cycle;
+    int day; 
+    int hour; 
+    int line;  
+    time_t stateTS; 
+    state_t state;
+}recovery_t;
+
 // ============================================================================
 // Main Solar System Manager Class
 // ============================================================================
@@ -742,7 +752,13 @@ public:
      * @param count Number of bytes sent
      */
     void setStatsBytesOut(uint32_t count);
-
+    /**
+     * @brief Add to outgoing bytes counter
+     * @param count Number of bytes sent
+     */
+    void saveRecovery(recovery_t *recoveryData);
+    void readRecovery(recovery_t *recoveryData);
+    
 private:
     // ========================================================================
     // Private Member Variables
@@ -753,7 +769,7 @@ private:
     SemaphoreHandle_t   framSem;        ///< Semaphore for thread-safe FRAM access
     bool                framFlag;       ///< FRAM initialization status (true = ready)
     uint32_t            blowerSize;     ///< Size of framConfig structure in bytes
-    
+    recovery_t          recoveryData;   ///< Recovery data structure for blower state
     // Prevent copying and assignment (this class manages hardware resources)
     BlowerClass(const BlowerClass&) = delete;
     BlowerClass& operator=(const BlowerClass&) = delete;

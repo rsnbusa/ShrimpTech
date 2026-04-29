@@ -506,3 +506,34 @@ uint16_t BlowerClass::getScheduleStatus() const
 {
     return framConfig.solarSystem.wschedule.status;
 }
+
+void BlowerClass::saveRecovery(recovery_t *recoveryData)
+{
+    if (!recoveryData) {
+        MESP_LOGE(MESH_TAG, "saveRecovery: null pointer argument");
+        return;
+    }
+    memcpy(&recoveryData,recoveryData,sizeof(recovery_t));
+    framWrites();
+    if (xSemaphoreTake(framSem, portMAX_DELAY / portTICK_PERIOD_MS))
+    {
+        // Update timestamp every time we save to FRAM
+        framConfig.lastUpdate = time(NULL);
+        fram.write_recovery(sizeof(framConfig),(uint8_t*)recoveryData, sizeof(recovery_t));
+        xSemaphoreGive(framSem);
+    }
+    else
+    {
+        MESP_LOGE(MESH_TAG, "SaveRecovery: failed to acquire semaphore");
+    }
+}
+
+void BlowerClass::readRecovery(recovery_t *recoveryDatain)
+{
+    if (!recoveryDatain) {
+        MESP_LOGE(MESH_TAG, "readRecovery: null pointer argument");
+        return;
+    }
+    fram.read_recovery(sizeof(framConfig),(uint8_t*)&recoveryData, sizeof(recovery_t));
+    memcpy(recoveryDatain, &recoveryData, sizeof(recovery_t));
+}
