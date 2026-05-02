@@ -122,6 +122,7 @@ void cb_vfd_data(void *vfdd, int *errors,char *color,int numerrs,int devAddr,Tas
 void cb_sensor_data(void *sensors, int *errors,char *color,int numerrs,int devAddr,TaskHandle_t theHandle)
 {
     bool hasErrors=false;
+    const bool externalDOActive = theConf.externDO || ((time(NULL) - lastDoExUpdate) <= 120);
  
     // check errors before printing
     for (int a=0;a<numerrs;a++)
@@ -131,14 +132,15 @@ void cb_sensor_data(void *sensors, int *errors,char *color,int numerrs,int devAd
             if (((theConf.debug_flags >> dMODBUS) & 1U))
                 MESP_LOGE(TAG,"%s[%3d] Sensor Error CID %d=0x%x %s ",color,devAddr,a,errors[a],esp_err_to_name(errors[a]));
             hasErrors=true;
-            // bzero(sensors,sizeof(sensor_t));
-            if(framFlag)
-                theBlower.setSensors( 0.0,  0,0.0,0.0, 0.0);
         }
     }
 
     if (hasErrors)
     {
+        // In external DO mode, keep last external values instead of zeroing all sensors.
+        if(framFlag && !externalDOActive)
+            theBlower.setSensors(0.0, 0.0, 0.0, 0.0, 0.0);
+
         globalErrors|= (1U << SENSOR_ERROR_BIT); // set sensor error bit
         if (((theConf.debug_flags >> dMODBUS) & 1U))
             printf("\n");
@@ -150,6 +152,21 @@ void cb_sensor_data(void *sensors, int *errors,char *color,int numerrs,int devAd
     sensor_t *data = (sensor_t*)sensors;
 
     globalErrors &= ~(1U << SENSOR_LIMIT_ERROR_BIT); // clear the limit error bit
+
+    // Persist latest sensor values even when debug logging is disabled.
+    if(framFlag)
+    {
+        if(externalDOActive)
+        {
+            float doValue = 0.0f, phValue = 0.0f, wTemp = 0.0f, aTemp = 0.0f, aHum = 0.0f;
+            theBlower.getSensors(&doValue, &phValue, &wTemp, &aTemp, &aHum);
+            theBlower.setSensors(doValue, phValue, data->WTemp, temperature, 0);
+        }
+        else
+        {
+            theBlower.setSensors(data->DO, 0, data->WTemp, temperature, 0);
+        }
+    }
         
     if (!((theConf.debug_flags >> dMODBUS) & 1U))
         return;
@@ -159,10 +176,6 @@ void cb_sensor_data(void *sensors, int *errors,char *color,int numerrs,int devAd
              data->WTemp,
              data->percentDO * 100.0,
              data->DO);
-    // save data to frame blower sensors
-    if(framFlag)
-        theBlower.setSensors( data->DO,  0,data->WTemp,
-                        temperature, 0);
 }
 
 // ============================================================================

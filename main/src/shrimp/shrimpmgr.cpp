@@ -128,7 +128,6 @@ void ds18b20_task(void *pArg)
     // create 1-wire device iterator, which is used for device search
     ESP_ERROR_CHECK(onewire_new_device_iter(bus, &iter));
     do {
-        printf("Search\n");
         search_result = onewire_device_iter_get_next(iter, &next_onewire_device);
         if (search_result == ESP_OK) { // found a new device, let's check if we can upgrade it to a DS18B20
             ds18b20_config_t ds_cfg = {};
@@ -893,7 +892,7 @@ esp_err_t root_send_data_to_node(mesh_addr_t thismac)
               sizeof(theConf.modbus_panels) +
               sizeof(theConf.modbus_inverter) +
               sizeof(theConf.modbus_sensors);
-    printf("Big Modbus data to send %d\n", big);
+    // printf("Big Modbus data to send %d\n", big);
     
     meshunion_t *intMessage = (meshunion_t*)calloc(1, big + 4);     // allocate payload + cmd header
     if (!intMessage) {
@@ -1418,7 +1417,7 @@ void wifi_send_meter_data(TimerHandle_t algo)
 
      if(framFlag) theBlower.setReservedDate(time(NULL));
     // copy theBlower solar data into shrimp message to send to MAIN HOST via MQTT HQ
-    solarSystem_t *tempSolar = framFlag ? theBlower.getSolarSystem() : NULL;
+    solarSystem_t *tempSolar = theBlower.getSolarSystem();
     if(tempSolar) memcpy(&shmsg->poolAvgMetrics, tempSolar, sizeof(solarSystem_t));
     else memset(&shmsg->poolAvgMetrics, 0, sizeof(solarSystem_t));
     // update the current schedule data that is lost during averaging
@@ -1455,12 +1454,10 @@ void wifi_send_meter_data(TimerHandle_t algo)
     //         shmsg->poolAvgMetrics.energy.generateEnergyToday, shmsg->poolAvgMetrics.energy.usedEnergyToday,
     //         shmsg->poolAvgMetrics.energy.gLoadConsumLineTotal, shmsg->poolAvgMetrics.energy.batChgkWhToday,
     //         shmsg->poolAvgMetrics.energy.batDischgkWhToday, shmsg->poolAvgMetrics.energy.genLoadConsumToday);
-    //     printf("Sensors: WTemp %.02f percentDO %.02f DO %.02f PH %.02f ATemp %.02f AHum %.02f\n",
-    //         shmsg->poolAvgMetrics.sensors.WTemp, shmsg->poolAvgMetrics.sensors.percentDO,
-    //         shmsg->poolAvgMetrics.sensors.DO, shmsg->poolAvgMetrics.sensors.PH,
-    //         shmsg->poolAvgMetrics.sensors.ATemp, shmsg->poolAvgMetrics.sensors.AHum);
-    //     printf("Schedule: profile %u cycle %u day %u horario %u startHr %u endHr %u pwmDuty %u status %u\n",
-    //         shmsg->poolAvgMetrics.wschedule.currentProfile, shmsg->poolAvgMetrics.wschedule.currentCycle,
+        // printf("Sensors: WTemp %.02f percentDO %.02f DO %.02f PH %.02f ATemp %.02f AHum %.02f\n",
+        //     shmsg->poolAvgMetrics.sensors.WTemp, shmsg->poolAvgMetrics.sensors.percentDO,
+        //     shmsg->poolAvgMetrics.sensors.DO, shmsg->poolAvgMetrics.sensors.PH,
+        //     shmsg->poolAvgMetrics.sensors.ATemp, shmsg->poolAvgMetrics.sensors.AHum); 
     //         shmsg->poolAvgMetrics.wschedule.currentDay, shmsg->poolAvgMetrics.wschedule.currentHorario,
     //         shmsg->poolAvgMetrics.wschedule.currentStartHour, shmsg->poolAvgMetrics.wschedule.currentEndHour,
     //         shmsg->poolAvgMetrics.wschedule.currentPwmDuty, shmsg->poolAvgMetrics.wschedule.status);
@@ -2622,13 +2619,17 @@ void process_mqtt_command_item(cJSON *cmditem)
 	}
 
 	cJSON *broadcast = cJSON_GetObjectItem(cmditem, "unitid");
-	if (!broadcast)
-	{
-		MESP_LOGE(MESH_TAG, "No unitid received in command item");
-		return;
-	}
+    if (!broadcast)
+    {
+        // External DO senders may target this unit by topic and omit unitid in payload.
+        if(!(theConf.externDO && strcmp(order->valuestring, "DOEX") == 0))
+        {
+            MESP_LOGE(MESH_TAG, "No unitid received in command item");
+            return;
+        }
+    }
 
-        if(broadcast->valueint !=255 and broadcast->valueint != theConf.unitid)
+        if(broadcast && broadcast->valueint !=255 and broadcast->valueint != theConf.unitid)
          return;  // Not for me
 
     if (((theConf.debug_flags >> dMQTT) & 1U))
@@ -2657,10 +2658,18 @@ void process_mqtt_command_item(cJSON *cmditem)
 void process_mqtt_command_array(cJSON *elcmd)
 {
 	cJSON *monton = cJSON_GetObjectItem(elcmd, "cmdarr");
-	if (!monton)
+    if (!monton)
 	{
-		MESP_LOGE(MESH_TAG, "No cmdarr received");
-		return;
+        // Accept single-command objects (without cmdarr wrapper) for external publishers.
+        cJSON *singleCmd = cJSON_GetObjectItem(elcmd, "cmd");
+        if(singleCmd)
+        {
+            process_mqtt_command_item(elcmd);
+            return;
+        }
+
+        MESP_LOGE(MESH_TAG, "No cmdarr received");
+        return;
 	}
 
 	int son = cJSON_GetArraySize(monton);

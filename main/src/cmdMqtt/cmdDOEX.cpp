@@ -57,6 +57,8 @@ static bool validate_doex_command(cJSON *cmd, DOEXFields *out)
     cJSON *intervalNode = cJSON_GetObjectItem(cmd, "Interval");
     cJSON *socNode      = cJSON_GetObjectItem(cmd, "SOC");
     cJSON *batVoltsNode = cJSON_GetObjectItem(cmd, "batVolts");
+    if (!batVoltsNode)
+        batVoltsNode = cJSON_GetObjectItem(cmd, "BatVolts");
 
     if (!doLevelNode || !doCountNode || !doRetryNode || !phLevelNode ||
         !irLevelNode || !saLevelNode || !wTempNode   || !intervalNode ||
@@ -101,6 +103,21 @@ static void apply_doex_data(const DOEXFields *f)
 {
     theBlower.setSensors((float)f->DOLevel, (float)f->PHLevel,
                          (float)f->WaterTemp, temperature, 0);
+    lastDoExUpdate = time(NULL);
+
+    uint8_t batSoc = 0;
+    uint8_t batSOH = 0;
+    uint16_t batteryCycleCount = 0;
+    float batBmsTemp = 0.0f;
+    theBlower.getBattery(&batSoc, &batSOH, &batteryCycleCount, &batBmsTemp);
+
+    int socRounded = (int)(f->SOC + 0.5);
+    if (socRounded < 0)
+        socRounded = 0;
+    else if (socRounded > 100)
+        socRounded = 100;
+
+    theBlower.setBattery((uint8_t)socRounded, batSOH, batteryCycleCount, batBmsTemp);
 }
 
 static void log_doex_update(const DOEXFields *f)
@@ -142,6 +159,6 @@ int cmdDOEX(void *argument)
               fields.DOLevel, fields.DOCount, fields.DOretry,
               fields.PHLevel, fields.IRLevel, fields.SALevel,
               fields.WaterTemp, fields.Interval, fields.SOC, fields.BatVolts);
-
+            
     return ESP_OK;
 }

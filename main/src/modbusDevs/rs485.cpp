@@ -138,6 +138,7 @@ static esp_err_t master_init(void)
 
     esp_log_level_set("mb_object.master", ESP_LOG_NONE);
     esp_log_level_set("mbc_serial.master", ESP_LOG_NONE);
+    esp_log_level_set("MB_CONTROLLER_MASTER", ESP_LOG_NONE);
 
     // Initialize and start Modbus controller
     mb_communication_info_t comm = {};
