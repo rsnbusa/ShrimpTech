@@ -479,6 +479,100 @@ static bool start_feeder_timer_for_horario(time_t midnight, time_t now, int hora
     return true;
 }
 
+static void feeder_finish_session(const profile_t *profile, int recovered_line,
+                                  int recovered_cycle, int recovered_horario)
+{
+    const int num_lines_cfg = theConf.feederData.numlines;
+    const int num_lines     = (num_lines_cfg > 4) ? 4 : num_lines_cfg;
+    const int first_line    = recovered_line + 1;
+
+    if (first_line >= num_lines) {
+        MESP_LOGI(TAG, "%sfinish_session: no remaining lines to feed after line %d", DBG_SCH, recovered_line);
+        return;
+    }
+
+    if (recovered_cycle < 0 || recovered_cycle >= (int)profile->numCycles ||
+        recovered_horario < 0 ||
+        recovered_horario >= (int)profile->cycle[recovered_cycle].numHorarios) {
+        MESP_LOGW(TAG, "%sfinish_session: invalid cycle/horario context, skipping", DBG_SCH);
+        return;
+    }
+
+    const int     grams_per_liter = theConf.feederData.gramsliter;
+    const int     feeder_flow     = (int)theConf.feederFlow;
+    const uint8_t weight          = profile->cycle[recovered_cycle]
+                                        .horarios[recovered_horario].weight;
+
+    if (num_lines_cfg <= 0 || grams_per_liter <= 0 || feeder_flow <= 0) {
+        MESP_LOGW(TAG, "%sfinish_session: invalid feeder config, skipping", DBG_SCH);
+        return;
+    }
+
+    const uint32_t denom       = (uint32_t)grams_per_liter * (uint32_t)feeder_flow * (uint32_t)num_lines_cfg;
+    const uint32_t dispense_ms = ((uint32_t)weight * 1000U * 60U) / denom * 1000U;
+
+    MESP_LOGI(TAG, "%sfinish_session: feeding lines %d..%d weight=%u dispense=%lu ms",
+              DBG_SCH, first_line, num_lines - 1, weight, (unsigned long)dispense_ms);
+
+    for (int x = first_line; x < num_lines; x++) {
+        const uint32_t line_clear_ms = (uint32_t)theConf.feederData.lines[x].l_c_t * 100U;
+
+        recoveryData.line  = x;
+        recoveryData.state = OPENVALVE;
+        time(&recoveryData.stateTS);
+        theBlower.saveRecovery(&recoveryData);
+        line_valves[x].open();
+
+        recoveryData.state = STARTPUMP;
+        time(&recoveryData.stateTS);
+        theBlower.saveRecovery(&recoveryData);
+
+        recoveryData.state = FEEDERVALVEOPEN;
+        time(&recoveryData.stateTS);
+        theBlower.saveRecovery(&recoveryData);
+        feeder_valve.open();
+
+        if (dispense_ms > 0) {
+            vTaskDelay(pdMS_TO_TICKS(dispense_ms));
+        } else {
+            MESP_LOGW(TAG, "%sfinish_session: dispense_ms=0, using default 3s", DBG_SCH);
+            vTaskDelay(pdMS_TO_TICKS(3000));
+        }
+
+        recoveryData.state = FEEDERVALVECLOSE;
+        time(&recoveryData.stateTS);
+        theBlower.saveRecovery(&recoveryData);
+        feeder_valve.close();
+
+        recoveryData.state = CLEARLINE;
+        time(&recoveryData.stateTS);
+        theBlower.saveRecovery(&recoveryData);
+        if (line_clear_ms > 0) {
+            MESP_LOGI(TAG, "%sfinish_session: clear line %d for %lu ms", DBG_SCH, x, (unsigned long)line_clear_ms);
+            vTaskDelay(pdMS_TO_TICKS(line_clear_ms));
+        }
+
+        recoveryData.state = STOPPUMP;
+        time(&recoveryData.stateTS);
+        theBlower.saveRecovery(&recoveryData);
+
+        recoveryData.state = CLOSEVALVE;
+        time(&recoveryData.stateTS);
+        theBlower.saveRecovery(&recoveryData);
+        line_valves[x].close();
+
+        recoveryData.state = NEXTLINE;
+        time(&recoveryData.stateTS);
+        theBlower.saveRecovery(&recoveryData);
+
+        MESP_LOGI(TAG, "%sfinish_session: line %d done", DBG_SCH, x);
+    }
+
+    bzero(&recoveryData, sizeof(recoveryData));
+    theBlower.saveRecovery(&recoveryData);
+    MESP_LOGI(TAG, "%sfinish_session: all remaining lines completed", DBG_SCH);
+}
+
 static void feeder_log_remaining_line_time(const profile_t *profile, int recovered_line,
                                                int recovered_cycle, int recovered_horario)
 {
@@ -558,6 +652,16 @@ static void feeder_log_remaining_line_time(const profile_t *profile, int recover
                   (long long)secs_until,
                   (long long)margin_ms,
                   margin_ms >= 0 ? "OK" : "OVERRUN");
+
+        // If margin is at least 2x the remaining feed time, it is safe to finish the session now.
+        if (margin_ms >= (int64_t)total_remaining_ms * 2LL) {
+            MESP_LOGI(TAG, "%sMargin sufficient (margin=%lld ms >= 2x %lu ms) — finishing session",
+                      DBG_SCH, (long long)margin_ms, (unsigned long)total_remaining_ms);
+            feeder_finish_session(profile, recovered_line, recovered_cycle, recovered_horario);
+        } else {
+            MESP_LOGW(TAG, "%sMargin insufficient (margin=%lld ms < 2x %lu ms) — session NOT finished",
+                      DBG_SCH, (long long)margin_ms, (unsigned long)total_remaining_ms);
+        }
     } else {
         MESP_LOGI(TAG, "%sNo next horario after horario[%d] in this cycle", DBG_SCH, recovered_horario);
     }
