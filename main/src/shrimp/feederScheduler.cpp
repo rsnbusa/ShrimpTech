@@ -617,7 +617,11 @@ static void feeder_log_remaining_line_time(const profile_t *profile, int recover
                       DBG_SCH, (long long)secs_until_ms, (unsigned long)total_remaining_ms);
         }
     } else {
-        MESP_LOGI(TAG, "%sNo next horario after horario[%d] in this cycle", DBG_SCH, recovered_horario);
+        MESP_LOGI(TAG,
+                  "%sNo next horario after horario[%d] in this cycle — finishing remaining lines now",
+                  DBG_SCH,
+                  recovered_horario);
+        feeder_finish_session(profile, recovered_line, recovered_cycle, recovered_horario);
     }
 }
 
