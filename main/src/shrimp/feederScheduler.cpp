@@ -479,6 +479,90 @@ static bool start_feeder_timer_for_horario(time_t midnight, time_t now, int hora
     return true;
 }
 
+static void feeder_log_remaining_line_time(const profile_t *profile, int recovered_line,
+                                               int recovered_cycle, int recovered_horario)
+{
+    const int num_lines_cfg   = theConf.feederData.numlines;
+    const int num_lines       = (num_lines_cfg > 4) ? 4 : num_lines_cfg;
+    const int remaining_lines = num_lines - (recovered_line + 1);
+
+    if (remaining_lines <= 0 ||
+        recovered_horario < 0 ||
+        recovered_cycle < 0 || recovered_cycle >= (int)profile->numCycles) {
+        MESP_LOGI(TAG, "%sRecovery: no remaining lines after line %d", DBG_SCH, recovered_line);
+        return;
+    }
+
+    const int     grams_per_liter = theConf.feederData.gramsliter;
+    const int     feeder_flow     = (int)theConf.feederFlow;
+    const uint8_t weight          = profile->cycle[recovered_cycle]
+                                        .horarios[recovered_horario].weight;
+
+    uint32_t dispense_ms = 0;
+    if (num_lines_cfg > 0 && grams_per_liter > 0 && feeder_flow > 0) {
+        const uint32_t denom = (uint32_t)grams_per_liter *
+                               (uint32_t)feeder_flow *
+                               (uint32_t)num_lines_cfg;
+        dispense_ms = ((uint32_t)weight * 1000U * 60U) / denom * 1000U;
+    }
+
+    const uint32_t fv_open_ms  = (uint32_t)theConf.feederData.full;   // same travel time as close
+    const uint32_t fv_close_ms = (uint32_t)feeder_valve.getCloseDelay();
+
+    uint32_t total_remaining_ms = 0;
+    for (int rl = recovered_line + 1; rl < num_lines; rl++) {
+        const uint32_t lc_ms       = (rl < num_lines_cfg)
+            ? (uint32_t)theConf.feederData.lines[rl].l_c_t * 100U : 0U;
+        const uint32_t lv_open_ms  = (rl < 4) ? (uint32_t)line_valves[rl].getOpenDelay()  : 0U;
+        const uint32_t lv_close_ms = (rl < 4) ? (uint32_t)line_valves[rl].getCloseDelay() : 0U;
+        const uint32_t line_total  = lv_open_ms + fv_open_ms + dispense_ms + fv_close_ms + lc_ms + lv_close_ms;
+        total_remaining_ms += line_total;
+        MESP_LOGI(TAG,
+                  "%s  line[%d]: lv_open=%lu fv_open=%lu dispense=%lu fv_close=%lu lc=%lu lv_close=%lu => %lu ms",
+                  DBG_SCH, rl,
+                  (unsigned long)lv_open_ms, (unsigned long)fv_open_ms,
+                  (unsigned long)dispense_ms,
+                  (unsigned long)fv_close_ms, (unsigned long)lc_ms,
+                  (unsigned long)lv_close_ms, (unsigned long)line_total);
+    }
+
+    MESP_LOGI(TAG,
+              "%sRecovery: %d remaining line(s) after line %d — est. %lu ms (%lu s) "
+              "[dispense=%lu fv_open=%lu fv_close=%lu ms/line]",
+              DBG_SCH, remaining_lines, recovered_line,
+              (unsigned long)total_remaining_ms,
+              (unsigned long)(total_remaining_ms / 1000U),
+              (unsigned long)dispense_ms,
+              (unsigned long)fv_open_ms,
+              (unsigned long)fv_close_ms);
+
+    // Find next horario after the recovered one and log time until it fires.
+    const ciclo_t *cycle      = &profile->cycle[recovered_cycle];
+    const int      next_h_idx = recovered_horario + 1;
+    if (next_h_idx < cycle->numHorarios && next_h_idx < MAXHORARIOS) {
+        const horario_t *next_hr   = &cycle->horarios[next_h_idx];
+        const time_t     midnight  = feeder_get_today_midnight();
+        const time_t     now       = time(NULL);
+        const time_t     next_fire = midnight +
+                                     ((time_t)next_hr->hourStart * 3600) +
+                                     ((time_t)next_hr->minutesStart * 60);
+        const int64_t secs_until = (int64_t)next_fire - (int64_t)now;
+        const int64_t margin_ms  = (secs_until * 1000LL) - (int64_t)total_remaining_ms;
+        char next_fire_str[32] = {0};
+        struct tm next_tm;
+        localtime_r(&next_fire, &next_tm);
+        strftime(next_fire_str, sizeof(next_fire_str), "%H:%M:%S", &next_tm);
+        MESP_LOGI(TAG,
+                  "%sNext horario[%d] at %s — %lld s away, margin after feed completes: %lld ms (%s)",
+                  DBG_SCH, next_h_idx, next_fire_str,
+                  (long long)secs_until,
+                  (long long)margin_ms,
+                  margin_ms >= 0 ? "OK" : "OVERRUN");
+    } else {
+        MESP_LOGI(TAG, "%sNo next horario after horario[%d] in this cycle", DBG_SCH, recovered_horario);
+    }
+}
+
 static void clear_line(int linenum)
 {
     // we must clear the line of food to avoid that in case of recovery we will try to feed again the same line with the remaining food, so we will clear the line and reset the recovery state to IDLE, so if recovery is needed again it will be for the next scheduled feed
@@ -537,9 +621,14 @@ static void start_feeder_schedule_timers(void *pArg)
             MESP_LOGI(TAG, "%sRecovery candidate: cycle=%d day=%d closest_horario=%d line=%d state=%s",
                       DBG_SCH, recoveryData.cycle, recoveryData.day, recovery_plan.closest_horario_idx,
                       recoveryData.line, state_name(recoveryData.state));
-            clear_line(recoveryData.line);  // it will clear the line of food and reset the recovery state to IDLE, so if recovery is needed again it will be for the next scheduled feed
-             // start feeding immediately for the closest horario to recovery record
 
+            // Save context before clear_line zeroes recoveryData.
+            const int recovered_line    = recoveryData.line;
+            const int recovered_cycle   = recoveryData.cycle;
+            const int recovered_horario = recovery_plan.closest_horario_idx;
+
+            clear_line(recovered_line);
+            feeder_log_remaining_line_time(activeFeedProfile, recovered_line, recovered_cycle, recovered_horario);
         }
         else if ((theConf.debug_flags >> dSCH) & 1U) {
             MESP_LOGI(TAG, "%sNo recovery needed for today", DBG_SCH);
