@@ -3605,14 +3605,14 @@ void init_DO_Defaults(void)
 }
 
 
-void init_valves(void *pArg)
+void init_valves()
 {
     line_valves[0].init((gpio_num_t)VAL0OPEN, (gpio_num_t)VAL0CLOSE, "Valve0", theConf.feederData.full, theConf.feederData.full);
     line_valves[1].init((gpio_num_t)VAL1OPEN, (gpio_num_t)VAL1CLOSE, "Valve1", theConf.feederData.full, theConf.feederData.full);
     line_valves[2].init((gpio_num_t)VAL2OPEN, (gpio_num_t)VAL2CLOSE, "Valve2", theConf.feederData.full, theConf.feederData.full);
     line_valves[3].init((gpio_num_t)VAL3OPEN, (gpio_num_t)VAL3CLOSE, "Valve3", theConf.feederData.full, theConf.feederData.full);
     feeder_valve.init((gpio_num_t)FEEDEROPEN, (gpio_num_t)FEEDERCLOSE, "FeederValve", theConf.feederData.feedopen, theConf.feederData.full);
-    vTaskDelete(NULL);
+    // vTaskDelete(NULL);
 }
 
 /**
@@ -3646,7 +3646,8 @@ void init_process(void)
     init_system_timers();
     init_logging_system();
     init_event_groups();
-    xTaskCreate(&init_valves, "webs", 1024 * 4, NULL, 5, NULL);     // make it a task since it will wait for the valves to initialize and we don't want to block init_process
+    init_valves();
+    // xTaskCreate(&init_valves, "webs", 1024 * 4, NULL, 5, NULL);     // make it a task since it will wait for the valves to initialize and we don't want to block init_process
     MESP_LOGI(MESH_TAG, "System initialization complete");
 }
 

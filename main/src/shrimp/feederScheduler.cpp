@@ -138,45 +138,86 @@ typedef struct {
     int closest_horario_idx;
 } feeder_recovery_plan_t;
 
+static bool feeder_state_requires_recovery(state_t state)
+{
+    switch (state) {
+        case OPENVALVE:
+        case STARTPUMP:
+        case FEEDERVALVEOPEN:
+        case FEEDERVALVECLOSE:
+            return true;
+        case CLEARLINE:
+        case STOPPUMP:
+        case CLOSEVALVE:
+        case NEXTLINE:
+        case IDLE:
+        default:
+            return false;
+    }
+}
+
 static feeder_recovery_plan_t feeder_build_recovery_plan(const recovery_t *rd, const profile_t *profile)
 {
     feeder_recovery_plan_t plan = { false, -1 };
     if (!rd || !profile) {
+        MESP_LOGW(TAG, "%sRecovery not needed: invalid recovery/profile input", DBG_SCH);
         return plan;
     }
 
     // No recovery when there is no saved state timestamp.
     if (rd->stateTS == 0) {
+        MESP_LOGI(TAG, "%sRecovery not needed: no saved state timestamp", DBG_SCH);
         return plan;
     }
 
     // No recovery when the saved timestamp is from a previous day.
     const time_t today_midnight = feeder_get_today_midnight();
     if (rd->stateTS < today_midnight) {
+        MESP_LOGI(TAG, "%sRecovery not needed: saved state timestamp is from a previous day", DBG_SCH);
+        return plan;
+    }
+
+    if (!feeder_state_requires_recovery(rd->state)) {
+        MESP_LOGI(TAG,
+                  "%sRecovery not needed: saved state %s does not require recovery",
+                  DBG_SCH,
+                  state_name(rd->state));
         return plan;
     }
 
     if (rd->cycle < 0 || rd->cycle >= profile->numCycles) {
+        MESP_LOGW(TAG,
+                  "%sRecovery not needed: saved cycle %d out of range for profile cycles=%d",
+                  DBG_SCH,
+                  rd->cycle,
+                  profile->numCycles);
         return plan;
     }
 
     const ciclo_t *cycle = &profile->cycle[rd->cycle];
     if (cycle->numHorarios <= 0) {
+        MESP_LOGW(TAG, "%sRecovery not needed: cycle %d has no horarios", DBG_SCH, rd->cycle);
         return plan;
     }
 
-    struct tm rec_tm;
-    localtime_r(&rd->stateTS, &rec_tm);
-    const int rec_minutes = (rec_tm.tm_hour * 60) + rec_tm.tm_min;
-
     int best_idx = -1;
-    int best_minutes = -1;
-    for (int h = 0; h < cycle->numHorarios && h < MAXHORARIOS; h++) {
-        const horario_t *hr = &cycle->horarios[h];
-        const int schedule_minutes = ((int)hr->hourStart * 60) + (int)hr->minutesStart;
-        if (schedule_minutes < rec_minutes && schedule_minutes > best_minutes) {
-            best_minutes = schedule_minutes;
-            best_idx = h;
+
+    // Prefer saved horario from recovery record when valid.
+    if (rd->hour >= 0 && rd->hour < cycle->numHorarios && rd->hour < MAXHORARIOS) {
+        best_idx = rd->hour;
+    } else {
+        struct tm rec_tm;
+        localtime_r(&rd->stateTS, &rec_tm);
+        const int rec_minutes = (rec_tm.tm_hour * 60) + rec_tm.tm_min;
+
+        int best_minutes = -1;
+        for (int h = 0; h < cycle->numHorarios && h < MAXHORARIOS; h++) {
+            const horario_t *hr = &cycle->horarios[h];
+            const int schedule_minutes = ((int)hr->hourStart * 60) + (int)hr->minutesStart;
+            if (schedule_minutes <= rec_minutes && schedule_minutes > best_minutes) {
+                best_minutes = schedule_minutes;
+                best_idx = h;
+            }
         }
     }
 
@@ -185,6 +226,12 @@ static feeder_recovery_plan_t feeder_build_recovery_plan(const recovery_t *rd, c
         plan.closest_horario_idx = best_idx;
     }
 
+    MESP_LOGI(TAG,
+              "%sRecovery plan: state=%s needs_recovery=%s closest_horario_idx=%d",
+              DBG_SCH,
+              state_name(rd->state),
+              plan.needs_recovery ? "Y" : "N",
+              plan.closest_horario_idx);
     return plan;
 }
 
@@ -432,6 +479,28 @@ static bool start_feeder_timer_for_horario(time_t midnight, time_t now, int hora
     return true;
 }
 
+static void clear_line(int linenum)
+{
+    // we must clear the line of food to avoid that in case of recovery we will try to feed again the same line with the remaining food, so we will clear the line and reset the recovery state to IDLE, so if recovery is needed again it will be for the next scheduled feed
+    if (linenum < 0 || linenum >= theConf.feederData.numlines) {
+        MESP_LOGW(TAG, "clear_line skipped: invalid line number %d", linenum);
+        return; 
+    }
+    // start the Cycle: OpenLine, Start Pump, wiat cleartime, stop pump, close line valve for the line to clear it, 
+    line_valves[linenum].open();
+    // start_vfd_blower(true);  // Dummy feeder VFD start call for now
+    const uint32_t line_clear_ms = (uint32_t)theConf.feederData.lines[linenum].l_c_t * 100U;
+    if (line_clear_ms > 0) {
+        MESP_LOGI(TAG, "Clear line %d for %lu ms", linenum, (unsigned long)line_clear_ms);
+        vTaskDelay(pdMS_TO_TICKS(line_clear_ms));
+    }
+    // start_vfd_blower(false);  // Dummy feeder VFD stop call for now
+    line_valves[linenum].close(); 
+    bzero(&recoveryData, sizeof(recoveryData));
+    theBlower.saveRecovery(&recoveryData); // reset recovery record after clearing the line
+    MESP_LOGI(TAG,"Recovery completed for line # %d\n", linenum);
+}
+
 static void start_feeder_schedule_timers(void *pArg)
 {
     (void)pArg;
@@ -465,8 +534,12 @@ static void start_feeder_schedule_timers(void *pArg)
 
         const feeder_recovery_plan_t recovery_plan = feeder_build_recovery_plan(&recoveryData, activeFeedProfile);
         if (recovery_plan.needs_recovery && ((theConf.debug_flags >> dSCH) & 1U)) {
-            MESP_LOGI(TAG, "%sRecovery candidate: cycle=%d day=%d closest_horario=%d",
-                      DBG_SCH, recoveryData.cycle, recoveryData.day, recovery_plan.closest_horario_idx);
+            MESP_LOGI(TAG, "%sRecovery candidate: cycle=%d day=%d closest_horario=%d line=%d state=%s",
+                      DBG_SCH, recoveryData.cycle, recoveryData.day, recovery_plan.closest_horario_idx,
+                      recoveryData.line, state_name(recoveryData.state));
+            clear_line(recoveryData.line);  // it will clear the line of food and reset the recovery state to IDLE, so if recovery is needed again it will be for the next scheduled feed
+             // start feeding immediately for the closest horario to recovery record
+
         }
         else if ((theConf.debug_flags >> dSCH) & 1U) {
             MESP_LOGI(TAG, "%sNo recovery needed for today", DBG_SCH);

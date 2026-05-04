@@ -137,7 +137,8 @@ static void log_doex_update(const DOEXFields *f)
 
 int cmdDOEX(void *argument)
 {
-    MESP_LOGI(MESH_TAG, "DOEX Cmd");
+    if (((theConf.debug_flags >> dMQTT) & 1U))
+        MESP_LOGI(MESH_TAG, "DOEX Cmd");
 
     cJSON *doexCommand = (cJSON *)argument;
     if (doexCommand == NULL)
