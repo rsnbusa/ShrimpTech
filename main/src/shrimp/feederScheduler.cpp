@@ -250,6 +250,74 @@ static void cleanup_feeder_timers(int howmany)
     }
 }
 
+// ============================================================================
+// Shared feeder primitives
+// ============================================================================
+
+static uint32_t feeder_calc_dispense_ms(uint8_t weight, int grams_per_liter, int feeder_flow, int num_lines_cfg)
+{
+    if (num_lines_cfg <= 0 || grams_per_liter <= 0 || feeder_flow <= 0) {
+        return 0;
+    }
+    const uint32_t denom = (uint32_t)grams_per_liter * (uint32_t)feeder_flow * (uint32_t)num_lines_cfg;
+    return ((uint32_t)weight * 1000U * 60U) / denom * 1000U;
+}
+
+static void feeder_feed_line(int x, uint32_t dispense_ms)
+{
+    const uint32_t line_clear_ms = (uint32_t)theConf.feederData.lines[x].l_c_t * 100U;
+
+    recoveryData.line  = x;
+    recoveryData.state = OPENVALVE;
+    time(&recoveryData.stateTS);
+    theBlower.saveRecovery(&recoveryData);
+    line_valves[x].open();
+
+    recoveryData.state = STARTPUMP;
+    time(&recoveryData.stateTS);
+    theBlower.saveRecovery(&recoveryData);
+    // start_vfd_blower(true);
+
+    recoveryData.state = FEEDERVALVEOPEN;
+    time(&recoveryData.stateTS);
+    theBlower.saveRecovery(&recoveryData);
+    feeder_valve.open();
+
+    if (dispense_ms > 0) {
+        vTaskDelay(pdMS_TO_TICKS(dispense_ms));
+    } else {
+        MESP_LOGW(TAG, "%sfeed line %d: dispense_ms=0, using default 3s", DBG_SCH, x);
+        vTaskDelay(pdMS_TO_TICKS(3000));
+    }
+
+    recoveryData.state = FEEDERVALVECLOSE;
+    time(&recoveryData.stateTS);
+    theBlower.saveRecovery(&recoveryData);
+    feeder_valve.close();
+
+    recoveryData.state = CLEARLINE;
+    time(&recoveryData.stateTS);
+    theBlower.saveRecovery(&recoveryData);
+    if (line_clear_ms > 0) {
+        MESP_LOGI(TAG, "%sClear line %d for %lu ms", DBG_SCH, x, (unsigned long)line_clear_ms);
+        vTaskDelay(pdMS_TO_TICKS(line_clear_ms));
+    }
+
+    recoveryData.state = STOPPUMP;
+    time(&recoveryData.stateTS);
+    theBlower.saveRecovery(&recoveryData);
+    // start_vfd_blower(false);
+
+    recoveryData.state = CLOSEVALVE;
+    time(&recoveryData.stateTS);
+    theBlower.saveRecovery(&recoveryData);
+    line_valves[x].close();
+
+    recoveryData.state = NEXTLINE;
+    time(&recoveryData.stateTS);
+    theBlower.saveRecovery(&recoveryData);
+}
+
 static void feed_now(const feeder_timer_ctx_t *ctx)
 {
     if (!ctx) {
@@ -257,98 +325,34 @@ static void feed_now(const feeder_timer_ctx_t *ctx)
         return;
     }
 
-    const int num_lines_cfg = (int)ctx->num_lines_cfg;
-    const int grams_per_liter = (int)ctx->grams_per_liter;
-    const int feeder_flow = (int)ctx->feeder_flow;
-    const uint8_t weight = ctx->weight;
+    const int     num_lines_cfg   = (int)ctx->num_lines_cfg;
+    const int     grams_per_liter  = (int)ctx->grams_per_liter;
+    const int     feeder_flow      = (int)ctx->feeder_flow;
+    const uint8_t weight           = ctx->weight;
 
     if (num_lines_cfg <= 0 || grams_per_liter <= 0 || feeder_flow <= 0) {
-        MESP_LOGW(TAG,
-                 "feed_now skipped: invalid feeder config numlines=%d gramsliter=%d feederFlow=%d",
-                 num_lines_cfg, grams_per_liter, feeder_flow);
+        MESP_LOGW(TAG, "feed_now skipped: invalid feeder config numlines=%d gramsliter=%d feederFlow=%d",
+                  num_lines_cfg, grams_per_liter, feeder_flow);
         return;
     }
 
-    const uint32_t denominator = (uint32_t)grams_per_liter * (uint32_t)feeder_flow * (uint32_t)num_lines_cfg;
-    const uint32_t dispense_ms = ((uint32_t)weight * 1000U * 60U) / denominator*1000U;  // Convert to ms
-    const int num_lines = (num_lines_cfg > 4) ? 4 : num_lines_cfg;
+    const uint32_t dispense_ms     = feeder_calc_dispense_ms(weight, grams_per_liter, feeder_flow, num_lines_cfg);
+    const int      num_lines       = (num_lines_cfg > 4) ? 4 : num_lines_cfg;
+    const float    hopper_weight_start = hxweight;
 
-    if ((theConf.debug_flags >> dSCH) & 1U) {
-        MESP_LOGI(TAG,
-                 "%sfeed_now start weight=%u dispenseMs=%lu lines=%d",
-                 DBG_SCH, weight, (unsigned long)dispense_ms, num_lines);
-    }
+    MESP_LOGI(TAG, "%sfeed_now start weight=%u dispenseMs=%lu lines=%d",
+              DBG_SCH, weight, (unsigned long)dispense_ms, num_lines);
 
-    // get current wight of the Hopper
-    float hopper_weight_start = hxweight;
-    float hooper_weight_end=0.0f;
-// cycle is Open Valve, Start Pump, Open Feeder (feeding), Close Feeder, Clear Line, Close Valve, Shut down Pump
     for (int x = 0; x < num_lines; x++) {
-        const uint32_t line_clear_ms = (uint32_t)theConf.feederData.lines[x].l_c_t * 100U;
-
-        recoveryData.line=x;
-        recoveryData.state=OPENVALVE; 
-        time(&recoveryData.stateTS);
-        theBlower.saveRecovery(&recoveryData);
-        line_valves[x].open();
-
-        MESP_LOGW(TAG, "%sStarting Pump", DBG_SCH);
-
-        recoveryData.state=STARTPUMP; 
-        time(&recoveryData.stateTS);
-        theBlower.saveRecovery(&recoveryData);
-        // start_vfd_blower(true);  // Dummy feeder VFD start call for now
-
-
-        recoveryData.state=FEEDERVALVEOPEN; 
-        time(&recoveryData.stateTS);
-        theBlower.saveRecovery(&recoveryData);
-        feeder_valve.open();
-
-        if (dispense_ms > 0) {
-            vTaskDelay(pdMS_TO_TICKS(dispense_ms));
-        }
-        else {
-            MESP_LOGW(TAG, "%sfeed_now calculated dispense_ms is 0, skipping delay", DBG_SCH);
-            vTaskDelay(pdMS_TO_TICKS(3000));  // Default to 3 seconds if calculation is invalid
-        }
-
-        recoveryData.state=FEEDERVALVECLOSE; 
-        time(&recoveryData.stateTS);
-        theBlower.saveRecovery(&recoveryData);
-        feeder_valve.close();
-
-        recoveryData.state=CLEARLINE; 
-        time(&recoveryData.stateTS);
-        theBlower.saveRecovery(&recoveryData);
-
-        if (line_clear_ms > 0) {
-            MESP_LOGI(TAG, "Clear line %d for %lu ms", x, (unsigned long)line_clear_ms);
-            vTaskDelay(pdMS_TO_TICKS(line_clear_ms));
-        }
-        MESP_LOGW(TAG, "%sStopping Pump", DBG_SCH);
-
-        recoveryData.state=STOPPUMP; 
-        time(&recoveryData.stateTS);
-        theBlower.saveRecovery(&recoveryData);
-        // start_vfd_blower(false);  // Dummy feeder VFD stop call for now
-
-        recoveryData.state=CLOSEVALVE; 
-        time(&recoveryData.stateTS);
-        theBlower.saveRecovery(&recoveryData);
-        line_valves[x].close();
-
-        recoveryData.state=NEXTLINE; 
-        time(&recoveryData.stateTS);    
-        theBlower.saveRecovery(&recoveryData);
+        feeder_feed_line(x, dispense_ms);
+        MESP_LOGI(TAG, "%sfeed_now line %d done", DBG_SCH, x);
     }
-        printf("\n");
-        vTaskDelay(pdMS_TO_TICKS(1000));
 
-    MESP_LOGI(TAG, "%sfeed_now completed weight=%u dispenseMs=%lu lines=%dn starting weight=%.2f ending weight=%.2f",
-             DBG_SCH, weight, (unsigned long)dispense_ms, num_lines, hopper_weight_start, hooper_weight_end);
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    MESP_LOGI(TAG, "%sfeed_now completed weight=%u dispenseMs=%lu lines=%d starting weight=%.2f",
+              DBG_SCH, weight, (unsigned long)dispense_ms, num_lines, hopper_weight_start);
 
-    bzero(&recoveryData, sizeof(recoveryData));    
+    bzero(&recoveryData, sizeof(recoveryData));
     theBlower.saveRecovery(&recoveryData);
 }
 
@@ -411,8 +415,6 @@ static bool make_feeder_timers(uint8_t cycle, uint8_t day, int cuantos)
     }
 
     for (int i = 0; i < cuantos; i++) {
-
-        
         feeder_ctx_timers[i] = create_feeder_timer_context(cycle, day, i);
         if (!feeder_ctx_timers[i]) {
             cleanup_feeder_timers(i);
@@ -503,68 +505,17 @@ static void feeder_finish_session(const profile_t *profile, int recovered_line,
     const uint8_t weight          = profile->cycle[recovered_cycle]
                                         .horarios[recovered_horario].weight;
 
-    if (num_lines_cfg <= 0 || grams_per_liter <= 0 || feeder_flow <= 0) {
+    const uint32_t dispense_ms = feeder_calc_dispense_ms(weight, grams_per_liter, feeder_flow, num_lines_cfg);
+    if (dispense_ms == 0 && (grams_per_liter <= 0 || feeder_flow <= 0 || num_lines_cfg <= 0)) {
         MESP_LOGW(TAG, "%sfinish_session: invalid feeder config, skipping", DBG_SCH);
         return;
     }
-
-    const uint32_t denom       = (uint32_t)grams_per_liter * (uint32_t)feeder_flow * (uint32_t)num_lines_cfg;
-    const uint32_t dispense_ms = ((uint32_t)weight * 1000U * 60U) / denom * 1000U;
 
     MESP_LOGI(TAG, "%sfinish_session: feeding lines %d..%d weight=%u dispense=%lu ms",
               DBG_SCH, first_line, num_lines - 1, weight, (unsigned long)dispense_ms);
 
     for (int x = first_line; x < num_lines; x++) {
-        const uint32_t line_clear_ms = (uint32_t)theConf.feederData.lines[x].l_c_t * 100U;
-
-        recoveryData.line  = x;
-        recoveryData.state = OPENVALVE;
-        time(&recoveryData.stateTS);
-        theBlower.saveRecovery(&recoveryData);
-        line_valves[x].open();
-
-        recoveryData.state = STARTPUMP;
-        time(&recoveryData.stateTS);
-        theBlower.saveRecovery(&recoveryData);
-
-        recoveryData.state = FEEDERVALVEOPEN;
-        time(&recoveryData.stateTS);
-        theBlower.saveRecovery(&recoveryData);
-        feeder_valve.open();
-
-        if (dispense_ms > 0) {
-            vTaskDelay(pdMS_TO_TICKS(dispense_ms));
-        } else {
-            MESP_LOGW(TAG, "%sfinish_session: dispense_ms=0, using default 3s", DBG_SCH);
-            vTaskDelay(pdMS_TO_TICKS(3000));
-        }
-
-        recoveryData.state = FEEDERVALVECLOSE;
-        time(&recoveryData.stateTS);
-        theBlower.saveRecovery(&recoveryData);
-        feeder_valve.close();
-
-        recoveryData.state = CLEARLINE;
-        time(&recoveryData.stateTS);
-        theBlower.saveRecovery(&recoveryData);
-        if (line_clear_ms > 0) {
-            MESP_LOGI(TAG, "%sfinish_session: clear line %d for %lu ms", DBG_SCH, x, (unsigned long)line_clear_ms);
-            vTaskDelay(pdMS_TO_TICKS(line_clear_ms));
-        }
-
-        recoveryData.state = STOPPUMP;
-        time(&recoveryData.stateTS);
-        theBlower.saveRecovery(&recoveryData);
-
-        recoveryData.state = CLOSEVALVE;
-        time(&recoveryData.stateTS);
-        theBlower.saveRecovery(&recoveryData);
-        line_valves[x].close();
-
-        recoveryData.state = NEXTLINE;
-        time(&recoveryData.stateTS);
-        theBlower.saveRecovery(&recoveryData);
-
+        feeder_feed_line(x, dispense_ms);
         MESP_LOGI(TAG, "%sfinish_session: line %d done", DBG_SCH, x);
     }
 
@@ -640,8 +591,10 @@ static void feeder_log_remaining_line_time(const profile_t *profile, int recover
         const time_t     next_fire = midnight +
                                      ((time_t)next_hr->hourStart * 3600) +
                                      ((time_t)next_hr->minutesStart * 60);
-        const int64_t secs_until = (int64_t)next_fire - (int64_t)now;
-        const int64_t margin_ms  = (secs_until * 1000LL) - (int64_t)total_remaining_ms;
+        const int64_t secs_until      = (int64_t)next_fire - (int64_t)now;
+        const int64_t secs_until_ms   = secs_until * 1000LL;
+        const int64_t margin_ms       = secs_until_ms - (int64_t)total_remaining_ms;
+        const int64_t required_window = (int64_t)total_remaining_ms * 2LL;
         char next_fire_str[32] = {0};
         struct tm next_tm;
         localtime_r(&next_fire, &next_tm);
@@ -653,14 +606,15 @@ static void feeder_log_remaining_line_time(const profile_t *profile, int recover
                   (long long)margin_ms,
                   margin_ms >= 0 ? "OK" : "OVERRUN");
 
-        // If margin is at least 2x the remaining feed time, it is safe to finish the session now.
-        if (margin_ms >= (int64_t)total_remaining_ms * 2LL) {
-            MESP_LOGI(TAG, "%sMargin sufficient (margin=%lld ms >= 2x %lu ms) — finishing session",
-                      DBG_SCH, (long long)margin_ms, (unsigned long)total_remaining_ms);
+        // If available time until next horario is at least 2x the remaining feed time,
+        // it is safe to finish the session now.
+        if (secs_until_ms >= required_window) {
+            MESP_LOGI(TAG, "%sWindow sufficient (next in %lld ms >= 2x %lu ms) — finishing session",
+                      DBG_SCH, (long long)secs_until_ms, (unsigned long)total_remaining_ms);
             feeder_finish_session(profile, recovered_line, recovered_cycle, recovered_horario);
         } else {
-            MESP_LOGW(TAG, "%sMargin insufficient (margin=%lld ms < 2x %lu ms) — session NOT finished",
-                      DBG_SCH, (long long)margin_ms, (unsigned long)total_remaining_ms);
+            MESP_LOGW(TAG, "%sWindow insufficient (next in %lld ms < 2x %lu ms) — session NOT finished",
+                      DBG_SCH, (long long)secs_until_ms, (unsigned long)total_remaining_ms);
         }
     } else {
         MESP_LOGI(TAG, "%sNo next horario after horario[%d] in this cycle", DBG_SCH, recovered_horario);
@@ -721,7 +675,7 @@ static void start_feeder_schedule_timers(void *pArg)
         }
 
         const feeder_recovery_plan_t recovery_plan = feeder_build_recovery_plan(&recoveryData, activeFeedProfile);
-        if (recovery_plan.needs_recovery && ((theConf.debug_flags >> dSCH) & 1U)) {
+        if (recovery_plan.needs_recovery) {
             MESP_LOGI(TAG, "%sRecovery candidate: cycle=%d day=%d closest_horario=%d line=%d state=%s",
                       DBG_SCH, recoveryData.cycle, recoveryData.day, recovery_plan.closest_horario_idx,
                       recoveryData.line, state_name(recoveryData.state));
@@ -733,8 +687,7 @@ static void start_feeder_schedule_timers(void *pArg)
 
             clear_line(recovered_line);
             feeder_log_remaining_line_time(activeFeedProfile, recovered_line, recovered_cycle, recovered_horario);
-        }
-        else if ((theConf.debug_flags >> dSCH) & 1U) {
+        } else {
             MESP_LOGI(TAG, "%sNo recovery needed for today", DBG_SCH);
         }
 
