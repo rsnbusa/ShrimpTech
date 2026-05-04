@@ -159,6 +159,8 @@ static bool feeder_state_requires_recovery(state_t state)
 static feeder_recovery_plan_t feeder_build_recovery_plan(const recovery_t *rd, const profile_t *profile)
 {
     feeder_recovery_plan_t plan = { false, -1 };
+    const bool sch_debug = ((theConf.debug_flags >> dSCH) & 1U) != 0;
+
     if (!rd || !profile) {
         MESP_LOGW(TAG, "%sRecovery not needed: invalid recovery/profile input", DBG_SCH);
         return plan;
@@ -166,22 +168,28 @@ static feeder_recovery_plan_t feeder_build_recovery_plan(const recovery_t *rd, c
 
     // No recovery when there is no saved state timestamp.
     if (rd->stateTS == 0) {
-        MESP_LOGI(TAG, "%sRecovery not needed: no saved state timestamp", DBG_SCH);
+        if (sch_debug) {
+            MESP_LOGI(TAG, "%sRecovery not needed: no saved state timestamp", DBG_SCH);
+        }
         return plan;
     }
 
     // No recovery when the saved timestamp is from a previous day.
     const time_t today_midnight = feeder_get_today_midnight();
     if (rd->stateTS < today_midnight) {
-        MESP_LOGI(TAG, "%sRecovery not needed: saved state timestamp is from a previous day", DBG_SCH);
+        if (sch_debug) {
+            MESP_LOGI(TAG, "%sRecovery not needed: saved state timestamp is from a previous day", DBG_SCH);
+        }
         return plan;
     }
 
     if (!feeder_state_requires_recovery(rd->state)) {
-        MESP_LOGI(TAG,
-                  "%sRecovery not needed: saved state %s does not require recovery",
-                  DBG_SCH,
-                  state_name(rd->state));
+        if (sch_debug) {
+            MESP_LOGI(TAG,
+                      "%sRecovery not needed: saved state %s does not require recovery",
+                      DBG_SCH,
+                      state_name(rd->state));
+        }
         return plan;
     }
 
@@ -226,12 +234,14 @@ static feeder_recovery_plan_t feeder_build_recovery_plan(const recovery_t *rd, c
         plan.closest_horario_idx = best_idx;
     }
 
-    MESP_LOGI(TAG,
-              "%sRecovery plan: state=%s needs_recovery=%s closest_horario_idx=%d",
-              DBG_SCH,
-              state_name(rd->state),
-              plan.needs_recovery ? "Y" : "N",
-              plan.closest_horario_idx);
+    if (sch_debug) {
+        MESP_LOGI(TAG,
+                  "%sRecovery plan: state=%s needs_recovery=%s closest_horario_idx=%d",
+                  DBG_SCH,
+                  state_name(rd->state),
+                  plan.needs_recovery ? "Y" : "N",
+                  plan.closest_horario_idx);
+    }
     return plan;
 }
 
@@ -654,7 +664,9 @@ static void start_feeder_schedule_timers(void *pArg)
     while (true) {
         // check recovery data
         theBlower.readRecovery(&recoveryData);
-        dump_recovery_data(&recoveryData);
+        if ((theConf.debug_flags >> dSCH) & 1U) {
+            dump_recovery_data(&recoveryData);
+        }
         // call check recoverry procedure if needed
 
         if (!feedWorkTaskSem || !feedDaySem) {
@@ -691,7 +703,7 @@ static void start_feeder_schedule_timers(void *pArg)
 
             clear_line(recovered_line);
             feeder_log_remaining_line_time(activeFeedProfile, recovered_line, recovered_cycle, recovered_horario);
-        } else {
+        } else if ((theConf.debug_flags >> dSCH) & 1U) {
             MESP_LOGI(TAG, "%sNo recovery needed for today", DBG_SCH);
         }
 
