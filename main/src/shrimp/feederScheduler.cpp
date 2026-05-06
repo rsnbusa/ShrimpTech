@@ -21,6 +21,97 @@ static esp_timer_handle_t feeder_timers[MAXHORARIOS];
 static feeder_timer_ctx_t *feeder_ctx_timers[MAXHORARIOS];
 static char feeder_mqtt_topic[] = "shrimp/feeder";
 
+static void feeder_build_feed_status_topic(char *topic, size_t topic_len)
+{
+    if (!topic || topic_len == 0) {
+        return;
+    }
+
+    snprintf(topic,
+             topic_len,
+             "shrimp/%u/%u/feedstatus",
+             (unsigned int)theConf.poolid,
+             (unsigned int)theConf.unitid);
+}
+
+static void feeder_publish_retained_feed_status(int cycle,
+                                                int day,
+                                                int hour,
+                                                uint32_t expected_total_weight_g)
+{
+    if (!clientCloud) {
+        MESP_LOGW(TAG, "%sFeed status retained publish skipped: MQTT client not ready", DBG_SCH);
+        return;
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    if (!root) {
+        MESP_LOGE(TAG, "%sFeed status retained publish failed: no RAM for JSON", DBG_SCH);
+        return;
+    }
+
+    cJSON_AddNumberToObject(root, "cycle", cycle);
+    cJSON_AddNumberToObject(root, "day", day);
+    cJSON_AddNumberToObject(root, "hour", hour);
+    cJSON_AddNumberToObject(root, "expected_total_weight_g", expected_total_weight_g);
+
+    char *payload = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    if (!payload) {
+        MESP_LOGE(TAG, "%sFeed status retained publish failed: JSON encode error", DBG_SCH);
+        return;
+    }
+
+    char topic[80] = {0};
+    feeder_build_feed_status_topic(topic, sizeof(topic));
+
+    const int msgid = esp_mqtt_client_publish(clientCloud,
+                                              topic,
+                                              payload,
+                                              strlen(payload),
+                                              QOS1,
+                                              RETAIN);
+    if (msgid < 0) {
+        MESP_LOGE(TAG, "%sFeed status retained publish failed topic=%s", DBG_SCH, topic);
+    } else {
+        MESP_LOGI(TAG,
+                  "%sFeed status retained publish ok topic=%s msgid=%d cycle=%d day=%d hour=%d expected_total_weight_g=%lu",
+                  DBG_SCH,
+                  topic,
+                  msgid,
+                  cycle,
+                  day,
+                  hour,
+                  (unsigned long)expected_total_weight_g);
+    }
+
+    free(payload);
+}
+
+static void feeder_clear_retained_feed_status(void)
+{
+    return;
+
+    if (!clientCloud) {
+        MESP_LOGW(TAG, "%sFeed status retained clear skipped: MQTT client not ready", DBG_SCH);
+        return;
+    }
+
+    char topic[80] = {0};
+    feeder_build_feed_status_topic(topic, sizeof(topic));
+    const int msgid = esp_mqtt_client_publish(clientCloud,
+                                              topic,
+                                              "",
+                                              0,
+                                              QOS1,
+                                              RETAIN);
+    if (msgid < 0) {
+        MESP_LOGE(TAG, "%sFeed status retained clear failed topic=%s", DBG_SCH, topic);
+    } else {
+        MESP_LOGI(TAG, "%sFeed status retained cleared topic=%s msgid=%d", DBG_SCH, topic, msgid);
+    }
+}
+
 static uint32_t feeder_calc_total_feed_g(uint8_t weight, int num_lines_cfg, int lines_fed)
 {
     if (num_lines_cfg <= 0 || lines_fed <= 0) {
@@ -471,14 +562,22 @@ static void feed_now(const feeder_timer_ctx_t *ctx)
     const int      num_lines       = (num_lines_cfg > 4) ? 4 : num_lines_cfg;
     const float    hopper_weight_start = hxweight;
     const int64_t  feed_start_us   = esp_timer_get_time();
+    const uint32_t expected_total_feed_g = (uint32_t)weight;
 
     MESP_LOGI(TAG, "%sfeed_now start weight=%u dispenseMs=%lu lines=%d",
               DBG_SCH, weight, (unsigned long)dispense_ms, num_lines);
+
+    feeder_publish_retained_feed_status((int)ctx->cycle,
+                                        (int)ctx->day,
+                                        (int)ctx->horario,
+                                        expected_total_feed_g);
 
     for (int x = 0; x < num_lines; x++) {
         feeder_feed_line(x, dispense_ms);
         MESP_LOGI(TAG, "%sfeed_now line %d done", DBG_SCH, x);
     }
+
+    feeder_clear_retained_feed_status();
 
     vTaskDelay(pdMS_TO_TICKS(1000));
     const int64_t feed_end_us = esp_timer_get_time();
@@ -486,7 +585,7 @@ static void feed_now(const feeder_timer_ctx_t *ctx)
         ? (uint32_t)((feed_end_us - feed_start_us) / 1000LL)
         : 0U;
     const float hopper_weight_end = hxweight;
-    const uint32_t total_feed_g = feeder_calc_total_feed_g(weight, num_lines_cfg, num_lines);
+    const uint32_t total_feed_g = expected_total_feed_g;
     const uint32_t hour_session_duration_s = theConf.feedprofiles[theConf.activeProfile]
                                                  .cycle[ctx->cycle]
                                                  .horarios[ctx->horario]
@@ -666,21 +765,29 @@ static void feeder_finish_session(const profile_t *profile, int recovered_line,
         return;
     }
 
+    const uint32_t expected_total_feed_g = (uint32_t)weight;
+
     MESP_LOGI(TAG, "%sfinish_session: feeding lines %d..%d weight=%u dispense=%lu ms",
               DBG_SCH, first_line, num_lines - 1, weight, (unsigned long)dispense_ms);
+
+    feeder_publish_retained_feed_status(recovered_cycle,
+                                        (int)profile->cycle[recovered_cycle].day,
+                                        recovered_horario,
+                                        expected_total_feed_g);
 
     for (int x = first_line; x < num_lines; x++) {
         feeder_feed_line(x, dispense_ms);
         MESP_LOGI(TAG, "%sfinish_session: line %d done", DBG_SCH, x);
     }
 
+    feeder_clear_retained_feed_status();
+
     const int64_t feed_end_us = esp_timer_get_time();
     const uint32_t session_duration_ms = (feed_end_us > feed_start_us)
         ? (uint32_t)((feed_end_us - feed_start_us) / 1000LL)
         : 0U;
     const float hopper_weight_end = hxweight;
-    const int lines_fed = num_lines - first_line;
-    const uint32_t total_feed_g = feeder_calc_total_feed_g(weight, num_lines_cfg, lines_fed);
+    const uint32_t total_feed_g = expected_total_feed_g;
     const uint32_t hour_session_duration_s = profile->cycle[recovered_cycle]
                                                  .horarios[recovered_horario]
                                                  .horarioLen;
