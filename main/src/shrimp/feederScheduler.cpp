@@ -90,8 +90,6 @@ static void feeder_publish_retained_feed_status(int cycle,
 
 static void feeder_clear_retained_feed_status(void)
 {
-    return;
-
     if (!clientCloud) {
         MESP_LOGW(TAG, "%sFeed status retained clear skipped: MQTT client not ready", DBG_SCH);
         return;
@@ -396,13 +394,35 @@ static feeder_recovery_plan_t feeder_build_recovery_plan(const recovery_t *rd, c
     }
 
     if (!feeder_state_requires_recovery(rd->state)) {
+        // CLOSEVALVE / STOPPUMP / CLEARLINE / NEXTLINE don't require recovery
+        // when they occur on the last line (feed already finished).
+        // But if the saved line is NOT the last line, the remaining lines
+        // still need to be dispensed.
+        const bool between_lines = (rd->state == CLOSEVALVE ||
+                                    rd->state == STOPPUMP    ||
+                                    rd->state == CLEARLINE   ||
+                                    rd->state == NEXTLINE);
+        const int num_lines_cfg = theConf.feederData.numlines;
+        const int num_lines     = (num_lines_cfg > 4) ? 4 : num_lines_cfg;
+        if (!between_lines || rd->line >= (num_lines - 1)) {
+            if (sch_debug) {
+                MESP_LOGI(TAG,
+                          "%sRecovery not needed: state=%s line=%d last_line=%d",
+                          DBG_SCH,
+                          state_name(rd->state),
+                          rd->line,
+                          num_lines - 1);
+            }
+            return plan;
+        }
         if (sch_debug) {
             MESP_LOGI(TAG,
-                      "%sRecovery not needed: saved state %s does not require recovery",
+                      "%sRecovery needed: state=%s line=%d (not last, last=%d) — remaining lines to feed",
                       DBG_SCH,
-                      state_name(rd->state));
+                      state_name(rd->state),
+                      rd->line,
+                      num_lines - 1);
         }
-        return plan;
     }
 
     if (rd->cycle < 0 || rd->cycle >= profile->numCycles) {
@@ -487,7 +507,7 @@ static uint32_t feeder_calc_dispense_ms(uint8_t weight, int grams_per_liter, int
 
 static void feeder_feed_line(int x, uint32_t dispense_ms)
 {
-    const uint32_t line_clear_ms = (uint32_t)theConf.feederData.lines[x].l_c_t * 100U;
+    const uint32_t line_clear_ms = (uint32_t)theConf.feederData.lines[x].l_c_t * 10000U;
 
     recoveryData.line  = x;
     recoveryData.state = OPENVALVE;
@@ -840,7 +860,7 @@ static void feeder_log_remaining_line_time(const profile_t *profile, int recover
     uint32_t total_remaining_ms = 0;
     for (int rl = recovered_line + 1; rl < num_lines; rl++) {
         const uint32_t lc_ms       = (rl < num_lines_cfg)
-            ? (uint32_t)theConf.feederData.lines[rl].l_c_t * 100U : 0U;
+            ? (uint32_t)theConf.feederData.lines[rl].l_c_t * 10000U : 0U;
         const uint32_t lv_open_ms  = (rl < 4) ? (uint32_t)line_valves[rl].getOpenDelay()  : 0U;
         const uint32_t lv_close_ms = (rl < 4) ? (uint32_t)line_valves[rl].getCloseDelay() : 0U;
         const uint32_t line_total  = lv_open_ms + fv_open_ms + dispense_ms + fv_close_ms + lc_ms + lv_close_ms;
@@ -918,7 +938,7 @@ static void clear_line(int linenum)
     // start the Cycle: OpenLine, Start Pump, wiat cleartime, stop pump, close line valve for the line to clear it, 
     line_valves[linenum].open();
     // start_vfd_blower(true);  // Dummy feeder VFD start call for now
-    const uint32_t line_clear_ms = (uint32_t)theConf.feederData.lines[linenum].l_c_t * 100U;
+    const uint32_t line_clear_ms = (uint32_t)theConf.feederData.lines[linenum].l_c_t * 10000U;
     if (line_clear_ms > 0) {
         MESP_LOGI(TAG, "Clear line %d for %lu ms", linenum, (unsigned long)line_clear_ms);
         vTaskDelay(pdMS_TO_TICKS(line_clear_ms));
@@ -976,8 +996,11 @@ static void start_feeder_schedule_timers(void *pArg)
 
             clear_line(recovered_line);
             feeder_log_remaining_line_time(activeFeedProfile, recovered_line, recovered_cycle, recovered_horario);
-        } else if ((theConf.debug_flags >> dSCH) & 1U) {
-            MESP_LOGI(TAG, "%sNo recovery needed for today", DBG_SCH);
+        } else {
+            if ((theConf.debug_flags >> dSCH) & 1U) {
+                MESP_LOGI(TAG, "%sNo recovery needed for today", DBG_SCH);
+            }
+            feeder_clear_retained_feed_status();
         }
 
         if ((theConf.debug_flags >> dSCH) & 1U) {
