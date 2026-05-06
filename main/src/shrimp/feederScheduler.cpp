@@ -19,6 +19,127 @@ static SemaphoreHandle_t feedDaySem = NULL;
 static TaskHandle_t feedScheduleHandle = NULL;
 static esp_timer_handle_t feeder_timers[MAXHORARIOS];
 static feeder_timer_ctx_t *feeder_ctx_timers[MAXHORARIOS];
+static char feeder_mqtt_topic[] = "shrimp/feeder";
+
+static uint32_t feeder_calc_total_feed_g(uint8_t weight, int num_lines_cfg, int lines_fed)
+{
+    if (num_lines_cfg <= 0 || lines_fed <= 0) {
+        return 0;
+    }
+
+    // Each line receives an equal portion of the scheduled weight.
+    return ((uint32_t)weight * 1000U * (uint32_t)lines_fed) / (uint32_t)num_lines_cfg;
+}
+
+static void feeder_publish_session_summary(const char *session_type,
+                                           int cycle,
+                                           int day,
+                                           int hour,
+                                           uint32_t hour_session_duration_s,
+                                           uint32_t total_feed_g,
+                                           uint32_t duration_ms,
+                                           float hopper_start_g,
+                                           float hopper_end_g)
+{
+    cJSON *root = cJSON_CreateObject();
+    if (!root) {
+        MESP_LOGE(TAG, "%sFeeder summary not sent: failed to create JSON root", DBG_SCH);
+        return;
+    }
+
+    cJSON_AddStringToObject(root, "event", "feeder_session_end");
+    cJSON_AddStringToObject(root, "session_type", session_type ? session_type : "unknown");
+    cJSON_AddNumberToObject(root, "cycle", cycle);
+    cJSON_AddNumberToObject(root, "day", day);
+    cJSON_AddNumberToObject(root, "hour", hour);
+    cJSON_AddNumberToObject(root, "hour_session_duration_s", hour_session_duration_s);
+    cJSON_AddNumberToObject(root, "poolid", theConf.poolid);
+    cJSON_AddNumberToObject(root, "unitid", theConf.unitid);
+    cJSON_AddNumberToObject(root, "total_feed_g", total_feed_g);
+    cJSON_AddNumberToObject(root, "duration_ms", duration_ms);
+    cJSON_AddNumberToObject(root, "hopper_initial_g", (double)hopper_start_g);
+    cJSON_AddNumberToObject(root, "hopper_final_g", (double)hopper_end_g);
+
+    char *payload = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    if (!payload) {
+        MESP_LOGE(TAG, "%sFeeder summary not sent: failed to encode JSON", DBG_SCH);
+        return;
+    }
+
+    // Follow existing strategy in this codebase: direct publish in WiFi mode,
+    // queue-based publish for mesh/other modes.
+    if (theConf.wifi_mode == 0 && clientCloud) {
+        const int msgid = esp_mqtt_client_publish(clientCloud,
+                                                  feeder_mqtt_topic,
+                                                  payload,
+                                                  strlen(payload),
+                                                  QOS1,
+                                                  NORETAIN);
+        if (msgid >= 0) {
+            MESP_LOGI(TAG,
+                      "%sFeeder summary published direct topic=%s msgid=%d cycle=%d day=%d hour=%d hour_session_duration_s=%lu poolid=%u unitid=%u total_feed_g=%lu duration_ms=%lu hopper_start=%.2f hopper_end=%.2f",
+                      DBG_SCH,
+                      feeder_mqtt_topic,
+                      msgid,
+                      cycle,
+                      day,
+                      hour,
+                      (unsigned long)hour_session_duration_s,
+                      (unsigned int)theConf.poolid,
+                      (unsigned int)theConf.unitid,
+                      (unsigned long)total_feed_g,
+                      (unsigned long)duration_ms,
+                      hopper_start_g,
+                      hopper_end_g);
+            free(payload);
+            return;
+        }
+
+        MESP_LOGW(TAG,
+                  "%sFeeder direct publish failed, falling back to mqttSender queue",
+                  DBG_SCH);
+    }
+
+    if (!mqttSender) {
+        MESP_LOGW(TAG, "%sFeeder summary not sent: mqttSender queue not ready", DBG_SCH);
+        free(payload);
+        return;
+    }
+
+    mqttSender_t mqttMsg = {};
+    mqttMsg.queue  = feeder_mqtt_topic;
+    mqttMsg.msg    = payload; // freed by mqtt sender task
+    mqttMsg.lenMsg = strlen(payload);
+    mqttMsg.code   = NULL;
+    mqttMsg.param  = NULL;
+    mqttMsg.addr   = NULL;
+
+    if (xQueueSend(mqttSender, &mqttMsg, 0) != pdTRUE) {
+        MESP_LOGE(TAG, "%sFeeder summary not sent: queue full", DBG_SCH);
+        free(payload);
+        return;
+    }
+
+    if (wifi_event_group) {
+        xEventGroupSetBits(wifi_event_group, SENDMQTT_BIT);
+    }
+
+    MESP_LOGI(TAG,
+              "%sFeeder summary queued topic=%s cycle=%d day=%d hour=%d hour_session_duration_s=%lu poolid=%u unitid=%u total_feed_g=%lu duration_ms=%lu hopper_start=%.2f hopper_end=%.2f",
+              DBG_SCH,
+              feeder_mqtt_topic,
+              cycle,
+              day,
+              hour,
+              (unsigned long)hour_session_duration_s,
+              (unsigned int)theConf.poolid,
+              (unsigned int)theConf.unitid,
+              (unsigned long)total_feed_g,
+              (unsigned long)duration_ms,
+              hopper_start_g,
+              hopper_end_g);
+}
 
 static void dump_active_feed_profile(void)
 {
@@ -349,6 +470,7 @@ static void feed_now(const feeder_timer_ctx_t *ctx)
     const uint32_t dispense_ms     = feeder_calc_dispense_ms(weight, grams_per_liter, feeder_flow, num_lines_cfg);
     const int      num_lines       = (num_lines_cfg > 4) ? 4 : num_lines_cfg;
     const float    hopper_weight_start = hxweight;
+    const int64_t  feed_start_us   = esp_timer_get_time();
 
     MESP_LOGI(TAG, "%sfeed_now start weight=%u dispenseMs=%lu lines=%d",
               DBG_SCH, weight, (unsigned long)dispense_ms, num_lines);
@@ -359,6 +481,27 @@ static void feed_now(const feeder_timer_ctx_t *ctx)
     }
 
     vTaskDelay(pdMS_TO_TICKS(1000));
+    const int64_t feed_end_us = esp_timer_get_time();
+    const uint32_t session_duration_ms = (feed_end_us > feed_start_us)
+        ? (uint32_t)((feed_end_us - feed_start_us) / 1000LL)
+        : 0U;
+    const float hopper_weight_end = hxweight;
+    const uint32_t total_feed_g = feeder_calc_total_feed_g(weight, num_lines_cfg, num_lines);
+    const uint32_t hour_session_duration_s = theConf.feedprofiles[theConf.activeProfile]
+                                                 .cycle[ctx->cycle]
+                                                 .horarios[ctx->horario]
+                                                 .horarioLen;
+
+    feeder_publish_session_summary("scheduled",
+                                   (int)ctx->cycle,
+                                   (int)ctx->day,
+                                   (int)ctx->horario,
+                                   hour_session_duration_s,
+                                   total_feed_g,
+                                   session_duration_ms,
+                                   hopper_weight_start,
+                                   hopper_weight_end);
+
     MESP_LOGI(TAG, "%sfeed_now completed weight=%u dispenseMs=%lu lines=%d starting weight=%.2f",
               DBG_SCH, weight, (unsigned long)dispense_ms, num_lines, hopper_weight_start);
 
@@ -514,6 +657,8 @@ static void feeder_finish_session(const profile_t *profile, int recovered_line,
     const int     feeder_flow     = (int)theConf.feederFlow;
     const uint8_t weight          = profile->cycle[recovered_cycle]
                                         .horarios[recovered_horario].weight;
+    const float   hopper_weight_start = hxweight;
+    const int64_t feed_start_us       = esp_timer_get_time();
 
     const uint32_t dispense_ms = feeder_calc_dispense_ms(weight, grams_per_liter, feeder_flow, num_lines_cfg);
     if (dispense_ms == 0 && (grams_per_liter <= 0 || feeder_flow <= 0 || num_lines_cfg <= 0)) {
@@ -528,6 +673,27 @@ static void feeder_finish_session(const profile_t *profile, int recovered_line,
         feeder_feed_line(x, dispense_ms);
         MESP_LOGI(TAG, "%sfinish_session: line %d done", DBG_SCH, x);
     }
+
+    const int64_t feed_end_us = esp_timer_get_time();
+    const uint32_t session_duration_ms = (feed_end_us > feed_start_us)
+        ? (uint32_t)((feed_end_us - feed_start_us) / 1000LL)
+        : 0U;
+    const float hopper_weight_end = hxweight;
+    const int lines_fed = num_lines - first_line;
+    const uint32_t total_feed_g = feeder_calc_total_feed_g(weight, num_lines_cfg, lines_fed);
+    const uint32_t hour_session_duration_s = profile->cycle[recovered_cycle]
+                                                 .horarios[recovered_horario]
+                                                 .horarioLen;
+
+    feeder_publish_session_summary("recovery_finish",
+                                   recovered_cycle,
+                                   (int)profile->cycle[recovered_cycle].day,
+                                   recovered_horario,
+                                   hour_session_duration_s,
+                                   total_feed_g,
+                                   session_duration_ms,
+                                   hopper_weight_start,
+                                   hopper_weight_end);
 
     bzero(&recoveryData, sizeof(recoveryData));
     theBlower.saveRecovery(&recoveryData);
