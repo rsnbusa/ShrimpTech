@@ -245,6 +245,9 @@ int cmdFeedProfile(void *argument)
     }
     write_to_flash();
     writeLog("Feed profile updated via mqtt command, rebooting to apply changes");
+    // erase recoverry record to avoid recovery attempts with old config after reboot, as the schedule may be completely different and could cause unintended feeding if recovery is attempted with stale data
+    bzero(&recoveryData, sizeof(recoveryData));
+    theBlower.saveRecovery(&recoveryData);
     vTaskDelay(pdMS_TO_TICKS(1000));
 
     int *p = NULL;
