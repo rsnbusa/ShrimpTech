@@ -57,6 +57,7 @@ static void registerAllCommands()
     ESP_ERROR_CHECK(esp_console_cmd_register(&node_cmd));
     ESP_ERROR_CHECK(esp_console_cmd_register(&debug_cmd));
     ESP_ERROR_CHECK(esp_console_cmd_register(&blow_cmd));
+    ESP_ERROR_CHECK(esp_console_cmd_register(&tasks_cmd));
 }
 
 /**
@@ -221,6 +222,7 @@ void kbd(void *pArg)
   init_console_cmd(app_cmd, "app", "Set app SSID", NULL, &cmdApp, &appSSID);
   init_console_cmd(node_cmd, "node", "Set node Id", NULL, &cmdNode, &appNode);
   init_console_cmd(log_cmd, "log", "Log options", NULL, &cmdLog, &logArgs);
+  init_console_cmd(tasks_cmd, "tasks", "Show FreeRTOS tasks", NULL, &cmdTasks, NULL);
 
   // ===================================================================
   // Initialize Prompt and Register Commands

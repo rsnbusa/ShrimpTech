@@ -3314,6 +3314,7 @@ void register_external_mqtt_commands(void)
     set_cmd("prod", "PROD", cmdProd);
     set_cmd("update", "UPDT", cmdUpdate);
     set_cmd("erase", "ERAS", cmdEraseMetrics);
+    set_cmd("eraserec", "EREC", cmdEraseRec);
     set_cmd("mqttmetrics", "METR", cmdSendMetrics);
     set_cmd("display", "DISP", cmdDisplay);
     set_cmd("log", "LOGG", cmdLogs);

@@ -301,6 +301,7 @@ EXTERN esp_console_cmd_t adc_cmd;
 EXTERN esp_console_cmd_t findunit_cmd;
 EXTERN esp_console_cmd_t meshreset_cmd;
 EXTERN esp_console_cmd_t debug_cmd;
+EXTERN esp_console_cmd_t tasks_cmd;
 
 // ============================================================================
 // CONSOLE REPL

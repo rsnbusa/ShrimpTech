@@ -108,6 +108,7 @@ void writeLog(const char *que);
 
 int cmdDisplay(void *argument);
 int cmdEraseMetrics(void *argument);
+int cmdEraseRec(void *argument);
 int cmdFormat(void *argument);
 int cmdLock(void *argument);
 int cmdLogs(void *argument);
@@ -155,6 +156,7 @@ int cmdPrepaid(int argc, char **argv);
 int cmdResetConf(int argc, char **argv);
 int cmdSecurity(int argc, char **argv);
 int cmdSkip(int argc, char **argv);
+int cmdTasks(int argc, char **argv);
 int cmdZeroMeter(int argc, char **argv);
 void start_vfd_blower(uint8_t que);
 void start_vfd_feeder(uint8_t que);

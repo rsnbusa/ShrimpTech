@@ -19,6 +19,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMD_SOURCES
     src/cmdMqtt/cmdDisplay.cpp
     src/cmdMqtt/cmdEraseMetrics.cpp
+    src/cmdMqtt/cmdEraseRec.cpp
     src/cmdMqtt/cmdFormat.cpp
     src/cmdMqtt/cmdLock.cpp
     src/cmdMqtt/cmdLogs.cpp
@@ -60,6 +61,7 @@ set(KBD_SOURCES
     src/kbd/cmdNode.cpp
     src/kbd/cmdResetConf.cpp
     src/kbd/cmdSecurity.cpp
+    src/kbd/cmdTasks.cpp
 )
 
 # Core application sources

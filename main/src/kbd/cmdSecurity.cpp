@@ -43,6 +43,7 @@ void registerSecureCommands()
     registerSecureCommand(&node_cmd);
     registerSecureCommand(&debug_cmd);
     registerSecureCommand(&blow_cmd);
+    registerSecureCommand(&tasks_cmd);
 }
 
 /**

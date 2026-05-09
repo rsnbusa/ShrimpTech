@@ -116,7 +116,7 @@ static uint32_t feeder_calc_total_feed_g(uint8_t weight, int num_lines_cfg, int 
         return 0;
     }
 
-    // Each line receives an equal portion of the scheduled weight.
+    // Feed profile weight is stored in kg; convert to grams and distribute by lines fed.
     return ((uint32_t)weight * 1000U * (uint32_t)lines_fed) / (uint32_t)num_lines_cfg;
 }
 
@@ -582,7 +582,7 @@ static void feed_now(const feeder_timer_ctx_t *ctx)
     const int      num_lines       = (num_lines_cfg > 4) ? 4 : num_lines_cfg;
     const float    hopper_weight_start = hxweight;
     const int64_t  feed_start_us   = esp_timer_get_time();
-    const uint32_t expected_total_feed_g = (uint32_t)weight;
+    const uint32_t expected_total_feed_g = feeder_calc_total_feed_g(weight, num_lines_cfg, num_lines);
 
     MESP_LOGI(TAG, "%sfeed_now start weight=%u dispenseMs=%lu lines=%d",
               DBG_SCH, weight, (unsigned long)dispense_ms, num_lines);
@@ -785,7 +785,8 @@ static void feeder_finish_session(const profile_t *profile, int recovered_line,
         return;
     }
 
-    const uint32_t expected_total_feed_g = (uint32_t)weight;
+    const int lines_to_feed = num_lines - first_line;
+    const uint32_t expected_total_feed_g = feeder_calc_total_feed_g(weight, num_lines_cfg, lines_to_feed);
 
     MESP_LOGI(TAG, "%sfinish_session: feeding lines %d..%d weight=%u dispense=%lu ms",
               DBG_SCH, first_line, num_lines - 1, weight, (unsigned long)dispense_ms);
