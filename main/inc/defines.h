@@ -131,7 +131,7 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 
 #define MAXHORARIOS                     (10)
 #define MAXCICLOS                       (10)
-#define MAXPROFILES                     (2)
+#define MAXPROFILES                     (3)
 #define MAXDAYCYCLE                     (100)
 
 #define PROFILE_FILE                    "/spiffs/profilejson.txt"

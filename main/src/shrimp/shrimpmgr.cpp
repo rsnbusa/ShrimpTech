@@ -375,100 +375,6 @@ void print_blower(const char * title,solarSystem_t *msolar,bool dumphex)
 }
 
 
-void show_lvgl(void *showLVGL)
-{
-    show_lvgl_t                  *msg=(show_lvgl_t *)showLVGL;
-	_lock_t               lvgl_api_lock;
-    if(msg)
-    {
-        // printf("lvgl clean\n");
-        lv_obj_clean(lv_scr_act());     //must be first call...not documented unreliable api
-        // printf("lvgl show\n");
-        lv_obj_t *scr = lv_display_get_screen_active(disp);
-        lv_obj_t *label = lv_label_create(scr);
-        lv_style_t style;
-        esp_lcd_panel_disp_on_off(panel_handle, true);     //show display
-        if(scr && label)
-        {
-            _lock_acquire(&lvgl_api_lock);
-            delay(10);
-            lv_style_init(&style);
-            if (msg->bigf)
-                lv_style_set_text_font(&style, &lv_font_montserrat_14);
-            else
-                lv_style_set_text_font(&style, &lv_font_montserrat_14);
-
-            lv_label_cut_text(label,0,20);
-            lv_obj_add_style(label, &style, 0); 
-            char *tmp=(char*)calloc(1,100);
-            if(tmp)
-            {
-                sprintf(tmp,"%s",msg->msg);
-                lv_label_set_text(label,tmp);
-                free(tmp);
-            }
-            else
-            {
-                MESP_LOGE("LVGL","Failed to allocate memory for label text");
-            }
-            lv_obj_align(label,LV_ALIGN_CENTER,0,0);
-            _lock_release(&lvgl_api_lock);
-            delay(msg->wait);
-            if(msg->msg)
-                free(msg->msg);
-            free(msg);
-            esp_lcd_panel_disp_on_off(panel_handle, false);
-
-        }
-        else
-            printf("Scr or Label failed\n");
-    }
-
-    oledDisp=NULL;
-    vTaskDelete(NULL);
-}
-
-void showLVGL(char *que, uint32_t cuanto,uint8_t bigf)
-{
-    show_lvgl_t                  *themsg;
-    if(gdispf)
-    {
-        if(oledDisp)
-        {
-            vTaskDelete(oledDisp);
-            oledDisp=NULL;
-        }
-
-        if( que)
-        {
-            char * text=(char*)calloc(1,strlen(que)+10);
-            if(text)
-            {
-                themsg=(show_lvgl_t*)calloc(1,sizeof(show_lvgl_t));
-                if(themsg)
-                {
-                    strcpy(text,que);
-                    themsg->msg=text;
-                    themsg->wait=cuanto;
-                    themsg->bigf=bigf;
-                    xTaskCreate(&show_lvgl,"sdata",1024*20,(void*)themsg, 10, &oledDisp); 
-                }
-                else
-                {
-                    MESP_LOGE("LVGL","Failed to allocate show_lvgl_t structure");
-                    free(text);  // Free text if themsg allocation fails
-                }
-            }
-            else
-            {
-                MESP_LOGE("LVGL","Failed to allocate memory for text");
-            }
-        } 
-    }
-    // else
-    //     MESP_LOGI(MESH_TAG,"Showlvgl no disp\n");
-}
-
 // AES encryption/decryption functions moved to crypto_utils.c
 // delay() and xmillis() functions moved to time_utils.c
 // blinkRoot() and blinkConf() functions moved to led_utils.cpp
@@ -755,58 +661,12 @@ int turn_display(char *cmd)
         cJSON *ltime = cJSON_GetObjectItem(elcmd, "time");
         if (!cJSON_IsNumber(ltime)) {
             MESP_LOGE(MESH_TAG, "Display cmd missing time");
-            esp_lcd_panel_disp_on_off(panel_handle, false);
             cJSON_Delete(elcmd);
             return ESP_ERR_INVALID_ARG;
         }
 
         const int duration_ms = ltime->valueint * 1000;
         MESP_LOGW(MESH_TAG, "Display MId [%s me] Time [%d]", cualm->valuestring, ltime->valueint);
-
-        if (!showHandle && duration_ms > 0) {
-            esp_lcd_panel_disp_on_off(panel_handle, true);
-
-            const BaseType_t task_ok = xTaskCreate(&showData, "sdata", 1024 * 3, NULL, 5, &showHandle);
-            if (task_ok != pdPASS) {
-                MESP_LOGE(MESH_TAG, "Failed to create display task");
-                esp_lcd_panel_disp_on_off(panel_handle, false);
-                cJSON_Delete(elcmd);
-                return ESP_FAIL;
-            }
-
-            dispTimer = xTimerCreate("DispT", pdMS_TO_TICKS(duration_ms), pdFALSE, NULL, [](TimerHandle_t /*xTimer*/) {
-                vTaskDelete(showHandle);
-                showHandle = NULL;
-                esp_lcd_panel_disp_on_off(panel_handle, false);
-            });
-
-            if (!dispTimer) {
-                MESP_LOGE(MESH_TAG, "Failed to create display timer");
-                vTaskDelete(showHandle);
-                showHandle = NULL;
-                esp_lcd_panel_disp_on_off(panel_handle, false);
-                cJSON_Delete(elcmd);
-                return ESP_FAIL;
-            }
-
-            if (xTimerStart(dispTimer, 0) != pdPASS) {
-                MESP_LOGE(MESH_TAG, "Failed to start display timer");
-                xTimerDelete(dispTimer, 0);
-                dispTimer = NULL;
-                vTaskDelete(showHandle);
-                showHandle = NULL;
-                esp_lcd_panel_disp_on_off(panel_handle, false);
-                cJSON_Delete(elcmd);
-                return ESP_FAIL;
-            }
-        } else if (duration_ms == 0) {
-            esp_lcd_panel_disp_on_off(panel_handle, false);
-            if (showHandle)
-                vTaskDelete(showHandle);
-            showHandle = NULL;
-            if (dispTimer)
-                xTimerStop(dispTimer, 0);
-        }
     }
 
     cJSON_Delete(elcmd);
@@ -4680,13 +4540,6 @@ esp_err_t wifi_connect_external_ap(void)
     MESP_LOGI(MESH_TAG, "WiFi APSTA initialization complete. AP SSID: %s, STA connecting to: %s", thename, theConf.thessid);
     return ESP_OK;
 }
-/**
- * @brief Display configuration status on LVGL display
- */
-void display_config_status(void)
-{
-    showLVGL((char*)"CONF", 600000, 1);
-}
 
 /**
  * @brief Wait for webserver configuration completion or timeout
@@ -4710,13 +4563,6 @@ void wait_for_webserver_config(void)
 void meter_configure(void)
 {
     wifi_init_network();
-    
-    if (theConf.meterconf == 0) {
-        // New meter path reserved for future onboarding flow.
-    } else {
-        // Already configured: show status
-        display_config_status();
-    }
     
     // Block until webserver completes configuration
     wait_for_webserver_config();
@@ -6085,14 +5931,6 @@ void app_main(void)
     init_process(); 
     app_spiffs_log();
     // gdispf=false;
-    // #ifdef DISPLAY
-    //     ret=init_lcd();
-    //     if(ret==ESP_OK)
-    //     {
-    //         xTaskCreate(&displayManager,"dMgr",1024*4,NULL, 5, &dispHandle); 	       
-    //         gdispf=true;
-    //     } 
-    // #endif
     //log boot
 
     //load the blower driver object and initialize it, this will load the schedule from flash and set the blower status according to 

@@ -31,10 +31,8 @@ void start_schedule_timers(void *pArg);
 // DISPLAY FUNCTIONS
 // ============================================================================
 
-void displayManager(void *pArg);
 esp_err_t init_lcd();
 void oled_disp(lv_disp_t *disp);
-void showData(void *pArg);
 
 // ============================================================================
 // MESH NETWORK FUNCTIONS

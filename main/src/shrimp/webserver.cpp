@@ -49,9 +49,9 @@
 #define MSG_RETRY               "Retry"
 
 // Profile constants
-#define MAX_PROFILES            2
+#define MAX_PROFILES            MAXPROFILES
 #define MIN_PROFILES            1
-#define MAX_PROFILES_ALLOWED    3
+#define MAX_PROFILES_ALLOWED    (MAXPROFILES + 1)
 
 // Safe string copy helper
 #define SAFE_STRCPY(dest, src, size) do { \

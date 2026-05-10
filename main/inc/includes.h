@@ -23,10 +23,7 @@
 // ============================================================================
 #include "AutoPID-for-ESP-IDF.h"  // C++ compatible, must be outside extern "C"
 
-// ============================================================================
-// C++ COMPATIBLE ESP HEADERS (Must be outside extern "C")
-// ============================================================================
-#include "esp_lcd_panel_io.h"  // C++ compatible, must be outside extern "C"
+
 
 // ============================================================================
 // BLE/NIMBLE HEADERS (C++ compatible)
@@ -105,12 +102,7 @@ extern "C" {
 #include "onewire_bus.h"
 #include "ds18b20.h"
 #include "hx711.h"
-// ============================================================================
-// ESP-IDF LCD
-// ============================================================================
 
-#include "esp_lcd_panel_ops.h"
-#include "esp_lcd_panel_vendor.h"
 
 // ============================================================================
 // ESP-IDF STORAGE

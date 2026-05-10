@@ -321,8 +321,6 @@ EXTERN gpio_config_t io_conf;
 // ============================================================================
 
 EXTERN BlowerClass theBlower;
-EXTERN lv_disp_t *disp;
-EXTERN esp_lcd_panel_handle_t panel_handle;
 
 // ============================================================================
 // MODBUS
