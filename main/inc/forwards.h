@@ -161,6 +161,6 @@ void start_vfd_feeder(uint8_t que);
 
 void gps_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
 
-void show_first_feed_profile(void);  // Display first feeder profile from cmdConfig.cpp
+void show_all_feed_profiles(void);  // Display all feeder profiles from cmdConfig.cpp
 
 #endif // FORWARDS_H

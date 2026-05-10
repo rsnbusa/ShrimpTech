@@ -82,7 +82,7 @@ extern uint64_t s_action_timeout_reboot;  	// Reboot button
 #include "crypto_utils.h"
 #include "time_utils.h"
 extern void write_to_flash();
-extern void show_first_feed_profile(void);  // Forward declaration from cmdConfig.cpp
+extern void show_all_feed_profiles(void);  // Forward declaration from cmdConfig.cpp
 extern char levels[6][10];			// log levels external in cmdConfig.cpp
 static bool restartf = false;
 extern 	int findLevel(char * cual);

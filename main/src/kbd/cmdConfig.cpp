@@ -621,136 +621,177 @@ void show_blower_feeder_settings()
 }
 
 /**
- * @brief Display detailed information for the first profile
+ * @brief Display detailed information for all configured blower profiles
  * 
  * Shows complete profile structure including:
- * - Profile name and version
+ * - Profile index, name and version
  * - Issue and expiration dates
  * - Number of cycles
  * - For each cycle: day, duration, number of schedules (horarios)
  * - For each horario: start hour, duration, PWM duty cycle
  */
-void show_first_profile()
+void show_all_profiles()
 {
-    profile_t *profile = &theConf.profiles[0];
-    
-//     printf("%s\n", MAGENTA);
-    printf("┌──────────────────────────────────────────────────────────────────┐\n");
-    printf("│%s%s                     BLOWER PROFILE SCHEDULE                      %s│\n",RESETC,BK_MAGENTA,RESETC);
-    printf("├──────────────────────────────────────────────────────────────────┤\n");
-       //  printf("%s", RESETC);
-    printf("│ Name:            %-47s │\n", profile->name);
-    printf("│ Version:         %-47s │\n", profile->version);
-    
-    char date_buf[30];
-    struct tm timeinfo;
-    
-    if (profile->issued > 0) {
-        localtime_r(&profile->issued, &timeinfo);
-        strftime(date_buf, sizeof(date_buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
-        printf("│ Issued:          %-47s │\n", date_buf);
-    } else {
-        printf("│ Issued:          %-47s │\n", "Not Set");
-    }
-    
-    if (profile->expires > 0) {
-        localtime_r(&profile->expires, &timeinfo);
-        strftime(date_buf, sizeof(date_buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
-        printf("│ Expires:         %-47s │\n", date_buf);
-    } else {
-        printf("│ Expires:         %-47s │\n", "Not Set");
-    }
-    
-    printf("│ Number of Cycles: %-46d │\n", profile->numCycles);
-    printf("└──────────────────────────────────────────────────────────────────┘\n\n");
-    
-    // Display each cycle
-    for (int i = 0; i < profile->numCycles && i < MAXCICLOS; i++) {
-        ciclo_t *cycle = &profile->cycle[i];
-        
-        printf("  ┌─ %sCycle %1d%s ───────────────────────────────────────────────────┐\n", BK_GRAY, i, RESETC);
-        printf("  │ Day:             %-42d │\n", cycle->day);
-        printf("  │ Duration:        %-42lu │\n", (unsigned long)cycle->duration);
-        printf("  │ Num Schedules:   %-42d │\n", cycle->numHorarios);
-        printf("  └─────────────────────────────────────────────────────────────┘\n");
-        
-        if (cycle->numHorarios > 0) {
-            printf("    ┌───────────────────────────────────────────────────────────────┐\n");
-            printf("    │%s %-10s │ %-8s │ %-8s │ %-15s │ %-8s %s│\n",BK_BLUE, "Schedule", "Hour", "Minutes", "Duration", "PWM Duty",RESETC);
-            printf("    ├────────────┼──────────┼──────────┼─────────────────┼──────────┤\n");
-            
-            for (int j = 0; j < cycle->numHorarios && j < MAXHORARIOS; j++) {
-                horario_t *horario = &cycle->horarios[j];
-                printf("    │ %-10d │ %-8d │ %-8d │ %-15d │ %-8d │\n", 
-                       j, (int)horario->hourStart, (int)horario->minutesStart, (int)horario->horarioLen, horario->pwmDuty);
-            }
-            
-            printf("    └────────────┴──────────┴──────────┴─────────────────┴──────────┘\n");
+    int shown_profiles = 0;
+
+    for (int p = 0; p < MAXPROFILES; p++) {
+        profile_t *profile = &theConf.profiles[p];
+        const bool has_data = (profile->numCycles > 0) ||
+                              (profile->name[0] != '\0') ||
+                              (profile->version[0] != '\0') ||
+                              (profile->issued > 0) ||
+                              (profile->expires > 0);
+        if (!has_data) {
+            continue;
         }
-        printf("\n");
+
+        shown_profiles++;
+        printf("┌──────────────────────────────────────────────────────────────────┐\n");
+        printf("│%s%s                     BLOWER PROFILE SCHEDULE                      %s│\n", RESETC, BK_MAGENTA, RESETC);
+        printf("├──────────────────────────────────────────────────────────────────┤\n");
+        printf("│ Profile Index:   %-47d │\n", p);
+        printf("│ Name:            %-47s │\n", profile->name);
+        printf("│ Version:         %-47s │\n", profile->version);
+
+        char date_buf[30];
+        struct tm timeinfo;
+
+        if (profile->issued > 0) {
+            localtime_r(&profile->issued, &timeinfo);
+            strftime(date_buf, sizeof(date_buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
+            printf("│ Issued:          %-47s │\n", date_buf);
+        } else {
+            printf("│ Issued:          %-47s │\n", "Not Set");
+        }
+
+        if (profile->expires > 0) {
+            localtime_r(&profile->expires, &timeinfo);
+            strftime(date_buf, sizeof(date_buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
+            printf("│ Expires:         %-47s │\n", date_buf);
+        } else {
+            printf("│ Expires:         %-47s │\n", "Not Set");
+        }
+
+        printf("│ Number of Cycles: %-46d │\n", profile->numCycles);
+        printf("└──────────────────────────────────────────────────────────────────┘\n\n");
+
+        for (int i = 0; i < profile->numCycles && i < MAXCICLOS; i++) {
+            ciclo_t *cycle = &profile->cycle[i];
+
+            printf("  ┌─ %sProfile %1d Cycle %1d%s ──────────────────────────────────────┐\n", BK_GRAY, p, i, RESETC);
+            printf("  │ Day:             %-42d │\n", cycle->day);
+            printf("  │ Duration:        %-42lu │\n", (unsigned long)cycle->duration);
+            printf("  │ Num Schedules:   %-42d │\n", cycle->numHorarios);
+            printf("  └─────────────────────────────────────────────────────────────┘\n");
+
+            if (cycle->numHorarios > 0) {
+                printf("    ┌───────────────────────────────────────────────────────────────┐\n");
+                printf("    │%s %-10s │ %-8s │ %-8s │ %-15s │ %-8s %s│\n", BK_BLUE, "Schedule", "Hour", "Minutes", "Duration", "PWM Duty", RESETC);
+                printf("    ├────────────┼──────────┼──────────┼─────────────────┼──────────┤\n");
+
+                for (int j = 0; j < cycle->numHorarios && j < MAXHORARIOS; j++) {
+                    horario_t *horario = &cycle->horarios[j];
+                    printf("    │ %-10d │ %-8d │ %-8d │ %-15d │ %-8d │\n",
+                           j, (int)horario->hourStart, (int)horario->minutesStart, (int)horario->horarioLen, horario->pwmDuty);
+                }
+
+                printf("    └────────────┴──────────┴──────────┴─────────────────┴──────────┘\n");
+            }
+            printf("\n");
+        }
+    }
+
+    if (shown_profiles == 0) {
+        printf("┌──────────────────────────────────────────────────────────────────┐\n");
+        printf("│%s%s                     BLOWER PROFILE SCHEDULE                      %s│\n", RESETC, BK_MAGENTA, RESETC);
+        printf("├──────────────────────────────────────────────────────────────────┤\n");
+        printf("│ No configured blower profiles found.                             │\n");
+        printf("└──────────────────────────────────────────────────────────────────┘\n\n");
     }
 }
 
 /**
- * @brief Display detailed information for the first feeder profile
+ * @brief Display detailed information for all configured feeder profiles
  *
- * Mirrors show_first_profile() output but reads from theConf.feedprofiles.
+ * Mirrors show_all_profiles() output but reads from theConf.feedprofiles.
  */
-void show_first_feed_profile()
+void show_all_feed_profiles()
 {
-    feedprofile_t *profile = &theConf.feedprofiles[0];
+    int shown_profiles = 0;
 
-    printf("┌──────────────────────────────────────────────────────────────────┐\n");
-    printf("│%s%s                     FEEDER PROFILE SCHEDULE                      %s│\n", RESETC, BK_MAGENTA, RESETC);
-    printf("├──────────────────────────────────────────────────────────────────┤\n");
-    printf("│ Name:            %-47s │\n", profile->name);
-    printf("│ Version:         %-47s │\n", profile->version);
-
-    char date_buf[30];
-    struct tm timeinfo;
-
-    if (profile->issued > 0) {
-        localtime_r(&profile->issued, &timeinfo);
-        strftime(date_buf, sizeof(date_buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
-        printf("│ Issued:          %-47s │\n", date_buf);
-    } else {
-        printf("│ Issued:          %-47s │\n", "Not Set");
-    }
-
-    if (profile->expires > 0) {
-        localtime_r(&profile->expires, &timeinfo);
-        strftime(date_buf, sizeof(date_buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
-        printf("│ Expires:         %-47s │\n", date_buf);
-    } else {
-        printf("│ Expires:         %-47s │\n", "Not Set");
-    }
-
-    printf("│ Number of Cycles: %-46d │\n", profile->numCycles);
-    printf("└──────────────────────────────────────────────────────────────────┘\n\n");
-
-    for (int i = 0; i < profile->numCycles && i < MAXCICLOS; i++) {
-        ciclo_t *cycle = &profile->cycle[i];
-
-        printf("  ┌─ %sFeed Cycle %1d%s ──────────────────────────────────────────────┐\n", BK_GRAY, i, RESETC);
-        printf("  │ Day:             %-42d │\n", cycle->day);
-        printf("  │ Duration:        %-42lu │\n", (unsigned long)cycle->duration);
-        printf("  │ Num Schedules:   %-42d │\n", cycle->numHorarios);
-        printf("  └─────────────────────────────────────────────────────────────┘\n");
-
-        if (cycle->numHorarios > 0) {
-            printf("    ┌───────────────────────────────────────────────────────────────┐\n");
-            printf("    │%s %-10s │ %-8s │ %-8s │ %-15s │ %-8s %s│\n", BK_BLUE, "Schedule", "Hour", "Minutes", "Duration", "Weight", RESETC);
-            printf("    ├────────────┼──────────┼──────────┼─────────────────┼──────────┤\n");
-
-            for (int j = 0; j < cycle->numHorarios && j < MAXHORARIOS; j++) {
-                horario_t *horario = &cycle->horarios[j];
-                printf("    │ %-10d │ %-8d │ %-8d │ %-15d │ %-8d │\n",
-                       j, (int)horario->hourStart, (int)horario->minutesStart, (int)horario->horarioLen, horario->weight);
-            }
-
-            printf("    └────────────┴──────────┴──────────┴─────────────────┴──────────┘\n");
+    for (int p = 0; p < MAXPROFILES; p++) {
+        feedprofile_t *profile = &theConf.feedprofiles[p];
+        const bool has_data = (profile->numCycles > 0) ||
+                              (profile->name[0] != '\0') ||
+                              (profile->version[0] != '\0') ||
+                              (profile->issued > 0) ||
+                              (profile->expires > 0);
+        if (!has_data) {
+            continue;
         }
-        printf("\n");
+
+        shown_profiles++;
+        printf("┌──────────────────────────────────────────────────────────────────┐\n");
+        printf("│%s%s                     FEEDER PROFILE SCHEDULE                      %s│\n", RESETC, BK_MAGENTA, RESETC);
+        printf("├──────────────────────────────────────────────────────────────────┤\n");
+        printf("│ Profile Index:   %-47d │\n", p);
+        printf("│ Name:            %-47s │\n", profile->name);
+        printf("│ Version:         %-47s │\n", profile->version);
+
+        char date_buf[30];
+        struct tm timeinfo;
+
+        if (profile->issued > 0) {
+            localtime_r(&profile->issued, &timeinfo);
+            strftime(date_buf, sizeof(date_buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
+            printf("│ Issued:          %-47s │\n", date_buf);
+        } else {
+            printf("│ Issued:          %-47s │\n", "Not Set");
+        }
+
+        if (profile->expires > 0) {
+            localtime_r(&profile->expires, &timeinfo);
+            strftime(date_buf, sizeof(date_buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
+            printf("│ Expires:         %-47s │\n", date_buf);
+        } else {
+            printf("│ Expires:         %-47s │\n", "Not Set");
+        }
+
+        printf("│ Number of Cycles: %-46d │\n", profile->numCycles);
+        printf("└──────────────────────────────────────────────────────────────────┘\n\n");
+
+        for (int i = 0; i < profile->numCycles && i < MAXCICLOS; i++) {
+            ciclo_t *cycle = &profile->cycle[i];
+
+            printf("  ┌─ %sFeed Profile %1d Cycle %1d%s ───────────────────────────────┐\n", BK_GRAY, p, i, RESETC);
+            printf("  │ Day:             %-42d │\n", cycle->day);
+            printf("  │ Duration:        %-42lu │\n", (unsigned long)cycle->duration);
+            printf("  │ Num Schedules:   %-42d │\n", cycle->numHorarios);
+            printf("  └─────────────────────────────────────────────────────────────┘\n");
+
+            if (cycle->numHorarios > 0) {
+                printf("    ┌───────────────────────────────────────────────────────────────┐\n");
+                printf("    │%s %-10s │ %-8s │ %-8s │ %-15s │ %-8s %s│\n", BK_BLUE, "Schedule", "Hour", "Minutes", "Duration", "Weight", RESETC);
+                printf("    ├────────────┼──────────┼──────────┼─────────────────┼──────────┤\n");
+
+                for (int j = 0; j < cycle->numHorarios && j < MAXHORARIOS; j++) {
+                    horario_t *horario = &cycle->horarios[j];
+                    printf("    │ %-10d │ %-8d │ %-8d │ %-15d │ %-8d │\n",
+                           j, (int)horario->hourStart, (int)horario->minutesStart, (int)horario->horarioLen, horario->weight);
+                }
+
+                printf("    └────────────┴──────────┴──────────┴─────────────────┴──────────┘\n");
+            }
+            printf("\n");
+        }
+    }
+
+    if (shown_profiles == 0) {
+        printf("┌──────────────────────────────────────────────────────────────────┐\n");
+        printf("│%s%s                     FEEDER PROFILE SCHEDULE                      %s│\n", RESETC, BK_MAGENTA, RESETC);
+        printf("├──────────────────────────────────────────────────────────────────┤\n");
+        printf("│ No configured feeder profiles found.                             │\n");
+        printf("└──────────────────────────────────────────────────────────────────┘\n\n");
     }
 }
 
@@ -938,9 +979,9 @@ int cmdConfig(int argc, char **argv)
     if (configArgs.all->count || configArgs.sch->count)         
        show_schedule_info();
     if (configArgs.all->count || configArgs.profile->count)
-        show_first_profile();
+        show_all_profiles();
     if (configArgs.all->count || configArgs.feedprofile->count)
-        show_first_feed_profile();
+        show_all_feed_profiles();
     if (configArgs.all->count || configArgs.modbus->count)         
            show_modbus();
     if (configArgs.all->count || configArgs.DO->count)         
