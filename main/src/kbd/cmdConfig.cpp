@@ -678,7 +678,7 @@ void show_all_profiles()
         for (int i = 0; i < profile->numCycles && i < MAXCICLOS; i++) {
             ciclo_t *cycle = &profile->cycle[i];
 
-            printf("  ┌─ %sProfile %1d Cycle %1d%s ──────────────────────────────────────┐\n", BK_GRAY, p, i, RESETC);
+            printf("  ┌─ %sProfile %1d Cycle %1d%s ─────────────────────────────────────────┐\n", BK_GRAY, p, i, RESETC);
             printf("  │ Day:             %-42d │\n", cycle->day);
             printf("  │ Duration:        %-42lu │\n", (unsigned long)cycle->duration);
             printf("  │ Num Schedules:   %-42d │\n", cycle->numHorarios);
