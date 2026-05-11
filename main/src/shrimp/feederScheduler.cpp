@@ -109,14 +109,14 @@ static void feeder_clear_retained_feed_status(void)
     }
 }
 
-static uint32_t feeder_calc_total_feed_g(uint8_t weight, int num_lines_cfg, int lines_fed)
+static uint32_t feeder_calc_total_feed_g(uint8_t weight, int lines_fed)
 {
-    if (num_lines_cfg <= 0 || lines_fed <= 0) {
+    if (lines_fed <= 0) {
         return 0;
     }
 
-    // Feed profile weight is stored in kg; convert to grams and distribute by lines fed.
-    return ((uint32_t)weight * 1000U * (uint32_t)lines_fed) / (uint32_t)num_lines_cfg;
+    // Feed profile weight is stored in kg; convert total hourly target to grams.
+    return (uint32_t)weight * 1000U;
 }
 
 static void feeder_publish_session_summary(const char *session_type,
@@ -495,12 +495,12 @@ static void cleanup_feeder_timers(int howmany)
 // Shared feeder primitives
 // ============================================================================
 
-static uint32_t feeder_calc_dispense_ms(uint8_t weight, int grams_per_liter, int feeder_flow, int num_lines_cfg)
+static uint32_t feeder_calc_dispense_ms(uint8_t weight, int grams_per_liter, int feeder_flow, int lines_fed)
 {
-    if (num_lines_cfg <= 0 || grams_per_liter <= 0 || feeder_flow <= 0) {
+    if (lines_fed <= 0 || grams_per_liter <= 0 || feeder_flow <= 0) {
         return 0;
     }
-    const uint32_t denom = (uint32_t)grams_per_liter * (uint32_t)feeder_flow * (uint32_t)num_lines_cfg;
+    const uint32_t denom = (uint32_t)grams_per_liter * (uint32_t)feeder_flow * (uint32_t)lines_fed;
     return ((uint32_t)weight * 1000U * 60U) / denom * 1000U;
 }
 
@@ -577,11 +577,11 @@ static void feed_now(const feeder_timer_ctx_t *ctx)
         return;
     }
 
-    const uint32_t dispense_ms     = feeder_calc_dispense_ms(weight, grams_per_liter, feeder_flow, num_lines_cfg);
     const int      num_lines       = (num_lines_cfg > 4) ? 4 : num_lines_cfg;
+    const uint32_t dispense_ms     = feeder_calc_dispense_ms(weight, grams_per_liter, feeder_flow, num_lines);
     const float    hopper_weight_start = hxweight;
     const int64_t  feed_start_us   = esp_timer_get_time();
-    const uint32_t expected_total_feed_g = feeder_calc_total_feed_g(weight, num_lines_cfg, num_lines);
+    const uint32_t expected_total_feed_g = feeder_calc_total_feed_g(weight, num_lines);
 
     MESP_LOGI(TAG, "%sfeed_now start weight=%u dispenseMs=%lu lines=%d",
               DBG_SCH, weight, (unsigned long)dispense_ms, num_lines);
@@ -778,14 +778,14 @@ static void feeder_finish_session(const profile_t *profile, int recovered_line,
     const float   hopper_weight_start = hxweight;
     const int64_t feed_start_us       = esp_timer_get_time();
 
-    const uint32_t dispense_ms = feeder_calc_dispense_ms(weight, grams_per_liter, feeder_flow, num_lines_cfg);
+    const int lines_to_feed = num_lines - first_line;
+    const uint32_t dispense_ms = feeder_calc_dispense_ms(weight, grams_per_liter, feeder_flow, lines_to_feed);
     if (dispense_ms == 0 && (grams_per_liter <= 0 || feeder_flow <= 0 || num_lines_cfg <= 0)) {
         MESP_LOGW(TAG, "%sfinish_session: invalid feeder config, skipping", DBG_SCH);
         return;
     }
 
-    const int lines_to_feed = num_lines - first_line;
-    const uint32_t expected_total_feed_g = feeder_calc_total_feed_g(weight, num_lines_cfg, lines_to_feed);
+    const uint32_t expected_total_feed_g = feeder_calc_total_feed_g(weight, lines_to_feed);
 
     MESP_LOGI(TAG, "%sfinish_session: feeding lines %d..%d weight=%u dispense=%lu ms",
               DBG_SCH, first_line, num_lines - 1, weight, (unsigned long)dispense_ms);

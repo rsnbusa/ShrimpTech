@@ -40,6 +40,7 @@ set(CMD_SOURCES
     src/cmdMqtt/cmdInvertStatus.cpp
     src/cmdMqtt/cmdProfile.cpp
     src/cmdMqtt/cmdFeedProfile.cpp
+    src/cmdMqtt/cmdFeedProd.cpp
     src/cmdMqtt/cmdPID.cpp
     src/cmdMqtt/cmdDOEX.cpp
 )

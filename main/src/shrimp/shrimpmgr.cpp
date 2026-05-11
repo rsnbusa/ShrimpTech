@@ -3193,6 +3193,7 @@ void register_external_mqtt_commands(void)
     set_cmd("FeedVFDMon", "FVDM", cmdFeedVFDMon);
     set_cmd("profile", "PROF", cmdProfile);
     set_cmd("feeder", "FDPR", cmdFeedProfile);
+    set_cmd("feedprod", "FDPD", cmdFeedProd);
     set_cmd("PID", "PID", cmdPID);
     set_cmd("DOEX", "DOEX", cmdDOEX);
 }

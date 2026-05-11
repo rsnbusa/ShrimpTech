@@ -123,6 +123,7 @@ int cmdInverter(void *argument);
 int cmdInvertStatus(void *argument);
 int cmdProfile(void *argument);
 int cmdFeedProfile(void *argument);
+int cmdFeedProd(void *argument);
 int cmdVFDCmd(void *argument);
 int cmdVFDMon(void *argument);
 int cmdFeedVFDCmd(void *argument);
