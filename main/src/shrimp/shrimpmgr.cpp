@@ -5213,6 +5213,82 @@ void stop_all_timers()
     }
 }
 
+void show_blower_timers(void)
+{
+    printf("\n%s====== Blower Timers ======%s\n", CYAN, RESETC);
+
+    if (theConf.activeProfile >= MAXPROFILES) {
+        printf("Invalid active blower profile: %u\n", (unsigned int)theConf.activeProfile);
+        return;
+    }
+
+    printf("Active blower profile: %u\n", (unsigned int)theConf.activeProfile);
+    printf("%sIdx  Cycle Day Hour  Start  Dur(s)   Status   Remaining(ms)%s\n", CYAN, RESETC);
+    printf("%s================================================================%s\n", CYAN, RESETC);
+
+    bool any = false;
+    const int64_t now_us = esp_timer_get_time();
+
+    for (int i = 0; i < MAXHORARIOS; i++) {
+        const start_timer_ctx_t *ctx = ctx_timers[i];
+        if (!ctx) {
+            continue;
+        }
+
+        const int timer_index = (int)ctx->timerNum;
+        if (timer_index < 0 || timer_index >= MAXHORARIOS) {
+            continue;
+        }
+
+        esp_timer_handle_t start_timer = start_timers[timer_index];
+        esp_timer_handle_t end_timer = end_timers[timer_index];
+        if (!start_timer || !end_timer) {
+            continue;
+        }
+
+        any = true;
+
+        const bool waiting_start = esp_timer_is_active(start_timer);
+        const bool running = !waiting_start && esp_timer_is_active(end_timer);
+        const char *status = waiting_start ? "waiting" : (running ? "running" : "done");
+
+        uint64_t expiry_us = 0;
+        int64_t remaining_ms = 0;
+
+        if (waiting_start && esp_timer_get_expiry_time(start_timer, &expiry_us) == ESP_OK && expiry_us > (uint64_t)now_us) {
+            remaining_ms = (int64_t)((expiry_us - (uint64_t)now_us) / 1000ULL);
+        } else if (running && esp_timer_get_expiry_time(end_timer, &expiry_us) == ESP_OK && expiry_us > (uint64_t)now_us) {
+            remaining_ms = (int64_t)((expiry_us - (uint64_t)now_us) / 1000ULL);
+        }
+
+        uint8_t hour = 0;
+        uint8_t minute = 0;
+        if (ctx->cycle < MAXCICLOS &&
+            ctx->horario < theConf.profiles[theConf.activeProfile].cycle[ctx->cycle].numHorarios) {
+            const horario_t *hor = &theConf.profiles[theConf.activeProfile].cycle[ctx->cycle].horarios[ctx->horario];
+            hour = hor->hourStart;
+            minute = hor->minutesStart;
+        }
+
+        printf("%-4d %-5u %-3u %-4u  %02u:%02u  %-7lu  %-7s  %-13lld\n",
+               i,
+               (unsigned int)ctx->cycle,
+               (unsigned int)ctx->day,
+               (unsigned int)ctx->horario,
+               (unsigned int)hour,
+               (unsigned int)minute,
+               (unsigned long)ctx->horaslen,
+               status,
+               (long long)remaining_ms);
+    }
+
+    if (!any) {
+        printf("No blower timers currently created.\n");
+    }
+
+    printf("%s================================================================%s\n\n", CYAN, RESETC);
+}
+
 /**
  * @brief Handle end-of-day transition and cleanup
  * 

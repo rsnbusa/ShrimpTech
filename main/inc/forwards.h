@@ -143,7 +143,7 @@ int cmdConfig(int argc, char **argv);
 int cmdDebug(int argc, char **argv);
 int cmdErase(int argc, char **argv);
 int cmdFindUnit(int argc, char **argv);
-int cmdFeedTimers(int argc, char **argv);
+int cmdTimers(int argc, char **argv);
 int cmdFram(int argc, char **argv);
 int cmdLog(int argc, char **argv);
 int cmdLogLevel(int argc, char **argv);
@@ -160,6 +160,8 @@ int cmdTasks(int argc, char **argv);
 int cmdZeroMeter(int argc, char **argv);
 void start_vfd_blower(uint8_t que);
 void start_vfd_feeder(uint8_t que);
+void show_timers(void);
+void show_blower_timers(void);
 
 void gps_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
 

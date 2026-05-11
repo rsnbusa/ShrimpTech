@@ -303,7 +303,7 @@ EXTERN esp_console_cmd_t findunit_cmd;
 EXTERN esp_console_cmd_t meshreset_cmd;
 EXTERN esp_console_cmd_t debug_cmd;
 EXTERN esp_console_cmd_t tasks_cmd;
-EXTERN esp_console_cmd_t feedtimers_cmd;
+EXTERN esp_console_cmd_t timers_cmd;
 
 // ============================================================================
 // CONSOLE REPL
