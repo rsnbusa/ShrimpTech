@@ -16,7 +16,6 @@ typedef struct {
 
 static SemaphoreHandle_t feedWorkTaskSem = NULL;
 static SemaphoreHandle_t feedDaySem = NULL;
-static TaskHandle_t feedScheduleHandle = NULL;
 static esp_timer_handle_t feeder_timers[MAXHORARIOS];
 static feeder_timer_ctx_t *feeder_ctx_timers[MAXHORARIOS];
 static char feeder_mqtt_topic[] = "shrimp/feeder";

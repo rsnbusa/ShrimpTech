@@ -616,7 +616,6 @@ void show_blower_feeder_settings()
     printf("│ Volts:                 %-35u  │\n", theConf.FMOTORVOLTS);
     printf("│ Blower Flow:           %-35u  │\n", theConf.blowerFlow);
     printf("│ Feeder Flow:           %-35u  │\n", theConf.feederFlow);
-    printf("│ Schedules in Sync:     %-35s  │\n", theConf.blowerFeedSync ? "Enabled" : "Disabled");
     printf("└─────────────────────────────────────────────────────────────┘\n\n");
 }
 
@@ -734,6 +733,7 @@ void show_all_feed_profiles()
         printf("┌──────────────────────────────────────────────────────────────────┐\n");
         printf("│%s%s                     FEEDER PROFILE SCHEDULE                      %s│\n", RESETC, BK_MAGENTA, RESETC);
         printf("├──────────────────────────────────────────────────────────────────┤\n");
+        printf("│ Feeder Active:   %-47s │\n", theConf.feederConf?"YES":"NO");
         printf("│ Profile Index:   %-47d │\n", p);
         printf("│ Name:            %-47s │\n", profile->name);
         printf("│ Version:         %-47s │\n", profile->version);
@@ -763,7 +763,7 @@ void show_all_feed_profiles()
         for (int i = 0; i < profile->numCycles && i < MAXCICLOS; i++) {
             ciclo_t *cycle = &profile->cycle[i];
 
-            printf("  ┌─ %sFeed Profile %1d Cycle %1d%s ───────────────────────────────┐\n", BK_GRAY, p, i, RESETC);
+            printf("  ┌─ %sFeed Profile %1d Cycle %1d%s ───────────────────────────────────┐\n", BK_GRAY, p, i, RESETC);
             printf("  │ Day:             %-42d │\n", cycle->day);
             printf("  │ Duration:        %-42lu │\n", (unsigned long)cycle->duration);
             printf("  │ Num Schedules:   %-42d │\n", cycle->numHorarios);
@@ -945,8 +945,6 @@ int cmdConfig(int argc, char **argv)
     if(mip)
         printf("\t\t Mesh Configuration Date %s ", ctime(&now));
 
-    if(!theConf.ptch)
-        printf("Virgin Chip\n");
     printf("%s", RESETC);
 
     uint32_t nada = theBlower.getLastUpdate();

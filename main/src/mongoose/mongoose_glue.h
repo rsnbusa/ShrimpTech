@@ -455,7 +455,7 @@ struct system {
   int bvolts;
   double fkw;
   int fvolts;
-  bool syncsch;
+  bool feederConf;
   bool externDOMqtt;
   bool externDO;
   bool retain;

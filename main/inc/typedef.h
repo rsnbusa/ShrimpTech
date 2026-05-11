@@ -386,7 +386,6 @@ typedef struct config {
 
     uint32_t bootcount;
     uint32_t lastResetCode;
-    // uint8_t minutes;
     uint8_t masternode;
     uint8_t unitid;
     uint32_t downtime;     // Downtime accumulator
@@ -394,7 +393,7 @@ typedef struct config {
     uint8_t loglevel;
     uint8_t modbuson;
     uint8_t meterconf;
-    uint8_t ptch;
+    uint8_t free;
 
     uint32_t lastRebootTime;
     uint32_t meterconfdate;
@@ -450,7 +449,7 @@ typedef struct config {
     uint16_t FMOTORVOLTS;
     uint16_t blowerFlow;
     uint16_t feederFlow;
-    bool blowerFeedSync;    // blower and feeder schedules are synced
+    bool feederConf;    // blower and feeder schedules are synced
 
     feeder_t    feederData;      // Feeder specific data structure
     struct modbInverter modbus_inverter;

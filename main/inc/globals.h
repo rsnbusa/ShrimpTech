@@ -64,6 +64,7 @@ EXTERN TaskHandle_t timeKeeperHandle;
 EXTERN TaskHandle_t gpsH;
 EXTERN TaskHandle_t vfdHandle,vfdHandle2;
 EXTERN TaskHandle_t vfdcmdHandle,vfdcmdHandle2;
+EXTERN TaskHandle_t feedScheduleHandle;
 
 // gps
 

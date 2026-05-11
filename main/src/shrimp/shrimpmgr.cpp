@@ -1537,7 +1537,7 @@ void handle_production_stop(uint8_t prof,uint8_t pday,uint8_t  pmux)
     if (scheduleHandle) {
         vTaskDelete(scheduleHandle);
     }
-    xTaskCreate(&start_schedule_timers, "sched", 1024 * 10, NULL, 5, &scheduleHandle);
+    xTaskCreate(&start_schedule_timers, "bsched", 1024 * 10, NULL, 5, &scheduleHandle);
     feeder_scheduler_reset_task();
     schedulef = false;
 }
@@ -2081,12 +2081,15 @@ void root_sntpget(void *pArg)
         update_system_time_tracking(now);
       
         if(!theConf.doParms.docontrol)  //either Schedule Manager or DO control not both
-              xTaskCreate(&start_schedule_timers,"sched",1024*10,NULL, 5, &scheduleHandle); 	       
+              xTaskCreate(&start_schedule_timers,"bsched",1024*10,NULL, 5, &scheduleHandle); 	       
         else
             xTaskCreate(&PIDController,"PID",1024*10,NULL, 5, NULL); 	            // start the {PID} task  
-        feeder_scheduler_start_task();
+       
+        if(theConf.feederConf)                  // is this a dual Blower-Feeder Controller?
+            feeder_scheduler_start_task();      // yes, start the feeder scheduler task
 
-        start_blower_if_ready();
+        start_blower_if_ready();                //start the Blower Task and data collection timers if not parked
+
         vTaskDelete(timeKeeperHandle);
     }
     vTaskDelete(NULL);
@@ -2698,7 +2701,7 @@ esp_mqtt_client_handle_t root_setupMqtt(void)
 
 bool launch_mqtt_manager_task(void)
 {
-    if (xTaskCreate(&root_mqttMgr, "mqtt", 1024*10, NULL, 10, &mqttMgrHandle) != pdPASS)
+    if (xTaskCreate(&root_mqttMgr, "mqttmgr", 1024*10, NULL, 10, &mqttMgrHandle) != pdPASS)
     {
         MESP_LOGE(MESH_TAG, "Failed to launch MQTT manager task");
         return false;
@@ -4045,7 +4048,7 @@ void init_root_node(void)
     root_mqtt_app_start();
     xTaskCreate(&root_sntpget,"sntp",1024*4,NULL, 10, NULL); 	        // get real time
     xTaskCreate(&root_emergencyTask, "e911", 2048, NULL, 5, NULL);
-    xTaskCreate(&blinkRoot, "root", 1024, (void*)400, 5, &blinkHandle);
+    xTaskCreate(&blinkRoot, "blink", 1024, (void*)400, 5, &blinkHandle);
     
     if (theConf.totalnodes > 0) {
         xTimerStart(loginTimer, 0);
@@ -4100,7 +4103,7 @@ void handle_ip_got_ip(ip_event_got_ip_t *event)
     }
     
     // Start mesh send task to process queued messages
-    xTaskCreate(&meshSendTask, "msend", 1024*5, NULL, 10, NULL);
+    xTaskCreate(&meshSendTask, "mshsend", 1024*5, NULL, 10, NULL);
 }
 
 /**
@@ -4298,7 +4301,7 @@ void wifi_init_network(void)
     ESP_ERROR_CHECK(esp_wifi_start());
     
     // Start web server for configuration
-    xTaskCreate(&start_webserver, "webs", 1024 * 15, NULL, 5, NULL);
+    xTaskCreate(&start_webserver, "websrv", 1024 * 15, NULL, 5, NULL);
     MESP_LOGI(TAG, "WiFi AP initialized and web server started");
 }
 // WiFi STA connection state variables
@@ -4375,9 +4378,9 @@ void ip_sta_got_ip_handler(void* arg, esp_event_base_t event_base,
         // THE MOST IMPORTATN TIMER, the collect timer is started iused to send the HeartBeat to the Main Broker Controller App
         xTaskCreate(&root_sntpget,"sntp",1024*4,NULL, 10, NULL); 	        // get real time
         xTaskCreate(&root_emergencyTask,"e911",1024*2,NULL, 5, NULL);
-        xTaskCreate(&blinkRoot,"root",1024*1,(void*)400, 5, &blinkHandle);
+        xTaskCreate(&blinkRoot,"blink",1024*1,(void*)400, 5, &blinkHandle);
         launch_sensors();
-        if( xTaskCreate(&root_mqttMgr,"mqtt",1024*10,NULL, 10, &mqttMgrHandle)!=pdPASS)      //receiving commands
+        if( xTaskCreate(&root_mqttMgr,"mqttmgr",1024*10,NULL, 10, &mqttMgrHandle)!=pdPASS)      //receiving commands
             MESP_LOGE(MESH_TAG,"Fail to launch Mgr Wifi");
         clientCloud=root_setupMqtt();
         if(clientCloud)
@@ -5957,7 +5960,7 @@ void app_main(void)
     // we use the first option as the Last Fucing Option of Time, better than nothing. It shouldnt be too far away from reality
 
     if(!theConf.wifi_mode) // if wifi mode start the timekeeper
-        xTaskCreate(&time_keeper_task,"tkeeep",1024*4,NULL, 5, &timeKeeperHandle); 	           
+        xTaskCreate(&time_keeper_task,"twifi",1024*4,NULL, 5, &timeKeeperHandle); 	           
 
     char *msg=(char*)calloc(1,100);
     if(msg)
@@ -6029,7 +6032,7 @@ void app_main(void)
     {
         wifi_connect_external_ap(); //start wifi which will start many ither tasks from got ip event wiht SNTP starting the scheduler
         webserverf=true;
-        xTaskCreate(&start_webserver, "webs", 1024 * 15, NULL, 5, NULL);
+        xTaskCreate(&start_webserver, "websrv", 1024 * 15, NULL, 5, NULL);
     }
     else  
     {

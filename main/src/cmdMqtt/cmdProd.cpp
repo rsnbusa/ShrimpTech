@@ -43,7 +43,14 @@ static bool ensure_schedule_task_ready(void)
 
     if (xTaskCreate(&start_schedule_timers, "sched", 1024 * 10, NULL, 5, &scheduleHandle) != pdPASS)
     {
-        MESP_LOGE(MESH_TAG, "Failed to create start_schedule_timers task");
+        const uint32_t free_heap = esp_get_free_heap_size();
+        const uint32_t min_heap = esp_get_minimum_free_heap_size();
+        const uint32_t largest_block = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+        MESP_LOGE(MESH_TAG,
+                  "Failed to create start_schedule_timers task (free=%lu min=%lu largest=%lu)",
+                  (unsigned long)free_heap,
+                  (unsigned long)min_heap,
+                  (unsigned long)largest_block);
         scheduleHandle = NULL;
         return false;
     }
@@ -52,7 +59,7 @@ static bool ensure_schedule_task_ready(void)
     return true;
 }
 
-static bool validate_synced_profile_cycles(uint8_t profileIndex)
+[[maybe_unused]] static bool validate_synced_profile_cycles(uint8_t profileIndex)
 {
     const profile_t *blowerProfile = &theConf.profiles[profileIndex];
     const feedprofile_t *feederProfile = &theConf.feedprofiles[profileIndex];
@@ -230,11 +237,11 @@ static int handle_production_start(const ProductionCommandFields *fields, char *
         MESP_LOGI(MESH_TAG, "%sCMd Prod Start %s", DBG_XCMDS, fields->orderCommand);
     writeLog(logBuffer);
 
-    if (theConf.blowerFeedSync && !validate_synced_profile_cycles(fields->profileIndex))
-    {
-        MESP_LOGE(MESH_TAG, "Production start aborted: blower/feeder cycle sync sanity check failed");
-        return ESP_FAIL;
-    }
+    // if (theConf.blowerFeedSync && !validate_synced_profile_cycles(fields->profileIndex))
+    // {
+    //     MESP_LOGE(MESH_TAG, "Production start aborted: blower/feeder cycle sync sanity check failed");
+    //     return ESP_FAIL;
+    // }
 
     if (theConf.doParms.docontrol)
     {
@@ -287,8 +294,11 @@ static int handle_production_stop(const ProductionCommandFields *fields, char *l
     if((theConf.debug_flags >> dXCMDS) & 1U)  
         MESP_LOGI(MESH_TAG, "%sCMd Prod Stop %s %d", DBG_XCMDS, fields->orderCommand,POOLPARK);
 
-    vTaskDelete(scheduleHandle);
-    xTaskCreate(&start_schedule_timers, "sched", 1024*10, NULL, 5, &scheduleHandle);
+    if (scheduleHandle != NULL)
+    {
+        vTaskDelete(scheduleHandle);
+        scheduleHandle = NULL;
+    }
 
     if(theConf.wifi_mode)
         send_start_production(fields->profileIndex, fields->dayIndex, 
@@ -404,6 +414,8 @@ static int handle_production_park(const ProductionCommandFields *fields, char *l
 
 int cmdProd(void *argument)
 {
+    (void)validate_synced_profile_cycles;
+
     /*
      * Expected JSON format:
      * {"cmd":"prod","prof":1,"day":1,"mux":30,"order":"start"}

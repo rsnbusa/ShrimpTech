@@ -11,6 +11,7 @@
 extern void write_to_flash();
 extern void writeLog(const char* que);
 extern err_t make_profile(char * prof);
+extern void feeder_scheduler_start_task();
 
 static bool key_matches(const char *key, const char *k1, const char *k2, const char *k3)
 {
@@ -250,7 +251,11 @@ int cmdFeedProfile(void *argument)
     theBlower.saveRecovery(&recoveryData);
     vTaskDelay(pdMS_TO_TICKS(1000));
 
-    int *p = NULL;
-    *p = 0;   // crash the system to trigger a reboot, as esp_restart is not functioning correctly in this context
+    if(feedScheduleHandle)
+        vTaskDelete(feedScheduleHandle);  // kill existing feeder schedule task to stop any running timers before rebooting with new config
+    feeder_scheduler_start_task();  // start a temporary feeder scheduler task to handle any imminent feed timers with the new config until reboot, as esp_restart is not functioning correctly in this context
+    // xTaskDelete(feedScheduleHandle);        // kill existing task
+    // int *p = NULL;
+    // *p = 0;   // crash the system to trigger a reboot, as esp_restart is not functioning correctly in this context
     return ESP_OK;
 }

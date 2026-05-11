@@ -165,7 +165,6 @@ static void apply_settings_to_config(struct settings *data)
 	
 	// Update configuration state
 	theConf.meterconf = CONF_STATE_CONFIGURED;
-	theConf.ptch = 1;  // Pop that Cherry :)
 	theConf.meterconfdate = now;
 	theConf.bornDate = theConf.meterconfdate;
 	theConf.cid = 0;  // Reset Challenge ID, we are configured now
@@ -376,7 +375,7 @@ void my_set_system(struct system *data) {
 	{
 		theConf.meterconf = CONF_STATE_PENDING;
 	}
-	theConf.blowerFeedSync=s_system.syncsch;
+	theConf.feederConf=s_system.feederConf;
 	theConf.BMOTORKW=s_system.bkw;
 	theConf.BMOTORVOLTS=s_system.bvolts;
 	theConf.FMOTORKW=s_system.fkw;
@@ -408,7 +407,7 @@ void my_get_system(struct system *data)
 	s_system.tempsensor=theConf.temp_sensor; 
 	s_system.modbussensor=theConf.modbuson;
 	s_system.retain=theConf.retain;
-	s_system.syncsch=theConf.blowerFeedSync;
+	s_system.feederConf=theConf.feederConf;
 	s_system.bkw=theConf.BMOTORKW;
 	s_system.bvolts=theConf.BMOTORVOLTS;
 	s_system.fkw=theConf.FMOTORKW;
