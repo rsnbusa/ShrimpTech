@@ -752,6 +752,70 @@ static bool start_feeder_timer_for_horario(time_t midnight, time_t now, int hora
     return true;
 }
 
+void show_feeder_timers(void)
+{
+    printf("\n%s====== Feeder Timers ======%s\n", CYAN, RESETC);
+
+    if (theConf.activeProfile >= MAXPROFILES) {
+        printf("Invalid active feeder profile: %u\n", (unsigned int)theConf.activeProfile);
+        return;
+    }
+
+    printf("Active feeder profile: %u\n", (unsigned int)theConf.activeProfile);
+    printf("%sIdx  Cycle Day Hour  Start  Disp(ms)  Status   Remaining(ms)%s\n", CYAN, RESETC);
+    printf("%s================================================================%s\n", CYAN, RESETC);
+
+    bool any = false;
+    const int64_t now_us = esp_timer_get_time();
+
+    for (int i = 0; i < MAXHORARIOS; i++) {
+        const feeder_timer_ctx_t *ctx = feeder_ctx_timers[i];
+        esp_timer_handle_t timer = feeder_timers[i];
+
+        if (!ctx || !timer) {
+            continue;
+        }
+
+        any = true;
+        const int lines_fed = (ctx->num_lines_cfg > 4) ? 4 : (int)ctx->num_lines_cfg;
+        const uint32_t dispense_ms = feeder_calc_dispense_ms(ctx->weight,
+                                                             (int)ctx->grams_per_liter,
+                                                             (int)ctx->feeder_flow,
+                                                             lines_fed);
+
+        const horario_t *feedHorario = &theConf.feedprofiles[theConf.activeProfile]
+                                            .cycle[ctx->cycle]
+                                            .horarios[ctx->horario];
+
+        const bool waiting = esp_timer_is_active(timer);
+        const char *status = waiting ? "waiting" : "done";
+        unsigned long long expiry_us = 0;
+        uint64_t *expiry_ptr = (uint64_t *)&expiry_us;
+        int64_t remaining_ms = 0;
+
+        if (waiting && esp_timer_get_expiry_time(timer, expiry_ptr) == ESP_OK && expiry_us > (unsigned long long)now_us) {
+            remaining_ms = (int64_t)((expiry_us - (unsigned long long)now_us) / 1000ULL);
+        }
+
+        printf("%-4d %-5u %-3u %-4u  %02u:%02u  %-8lu  %-7s  %-13lld\n",
+               i,
+               (unsigned int)ctx->cycle,
+               (unsigned int)ctx->day,
+               (unsigned int)ctx->horario,
+               (unsigned int)feedHorario->hourStart,
+               (unsigned int)feedHorario->minutesStart,
+               (unsigned long)dispense_ms,
+               status,
+               (long long)remaining_ms);
+    }
+
+    if (!any) {
+        printf("No feeder timers currently created.\n");
+    }
+
+    printf("%s================================================================%s\n\n", CYAN, RESETC);
+}
+
 static void feeder_finish_session(const profile_t *profile, int recovered_line,
                                   int recovered_cycle, int recovered_horario)
 {

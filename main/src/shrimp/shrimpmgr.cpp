@@ -665,7 +665,7 @@ int turn_display(char *cmd)
             return ESP_ERR_INVALID_ARG;
         }
 
-        const int duration_ms = ltime->valueint * 1000;
+        // const int duration_ms = ltime->valueint * 1000;
         MESP_LOGW(MESH_TAG, "Display MId [%s me] Time [%d]", cualm->valuestring, ltime->valueint);
     }
 

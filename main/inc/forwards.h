@@ -143,6 +143,7 @@ int cmdConfig(int argc, char **argv);
 int cmdDebug(int argc, char **argv);
 int cmdErase(int argc, char **argv);
 int cmdFindUnit(int argc, char **argv);
+int cmdFeedTimers(int argc, char **argv);
 int cmdFram(int argc, char **argv);
 int cmdLog(int argc, char **argv);
 int cmdLogLevel(int argc, char **argv);

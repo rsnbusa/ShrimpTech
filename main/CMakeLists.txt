@@ -53,6 +53,7 @@ set(KBD_SOURCES
     src/kbd/cmdDebug.cpp
     # src/kbd/cmdEnDecrypt.cpp
     src/kbd/cmdErase.cpp
+    src/kbd/cmdFeedTimers.cpp
     src/kbd/cmdFindUnit.cpp
     src/kbd/cmdFram.cpp
     src/kbd/cmdLog.cpp
