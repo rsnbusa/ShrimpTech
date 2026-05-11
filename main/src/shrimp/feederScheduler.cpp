@@ -314,6 +314,28 @@ static void feeder_find_cycle_day(const profile_t *profile, uint8_t *cycleOut, u
     *dayOut = 0;
 }
 
+static int feeder_get_last_feed_day(const profile_t *profile)
+{
+    if (!profile || profile->numCycles <= 0) {
+        return 0;
+    }
+
+    int last_day = 0;
+    for (int i = 0; i < profile->numCycles && i < MAXCICLOS; i++) {
+        const ciclo_t *cycle = &profile->cycle[i];
+        if (cycle->duration <= 0) {
+            continue;
+        }
+
+        const int cycle_last_day = (int)cycle->day + (int)cycle->duration - 1;
+        if (cycle_last_day > last_day) {
+            last_day = cycle_last_day;
+        }
+    }
+
+    return last_day;
+}
+
 static const char *state_name(state_t s)
 {
     switch(s)
@@ -810,7 +832,80 @@ void show_feeder_timers(void)
     }
 
     if (!any) {
-        printf("No feeder timers currently created.\n");
+        const profile_t *activeFeedProfile = (const profile_t *)&theConf.feedprofiles[theConf.activeProfile];
+        const int current_day = (int)theConf.dayCycle;
+        const int last_feed_day = feeder_get_last_feed_day(activeFeedProfile);
+
+        if (last_feed_day > 0 && current_day < last_feed_day) {
+            int next_cycle = -1;
+            int next_local_day = -1;
+            int next_abs_day = 0;
+
+            for (int c = 0; c < activeFeedProfile->numCycles && c < MAXCICLOS; c++) {
+                const ciclo_t *cycle = &activeFeedProfile->cycle[c];
+                if (cycle->duration <= 0 || cycle->numHorarios <= 0) {
+                    continue;
+                }
+
+                for (int d = 0; d < cycle->duration; d++) {
+                    const int abs_day = (int)cycle->day + d;
+                    if (abs_day <= current_day) {
+                        continue;
+                    }
+
+                    if (next_abs_day == 0 || abs_day < next_abs_day) {
+                        next_abs_day = abs_day;
+                        next_cycle = c;
+                        next_local_day = d + 1;
+                    }
+                }
+            }
+
+            if (next_cycle >= 0) {
+                const time_t now = time(NULL);
+                const time_t midnight = feeder_get_today_midnight();
+                int row_idx = 0;
+                const ciclo_t *cycle = &activeFeedProfile->cycle[next_cycle];
+                const int days_ahead = next_abs_day - current_day;
+
+                for (int h = 0; h < cycle->numHorarios && h < MAXHORARIOS; h++) {
+                    const horario_t *feedHorario = &cycle->horarios[h];
+                    const int lines_fed = (theConf.feederData.numlines > 4) ? 4 : (int)theConf.feederData.numlines;
+                    const uint32_t dispense_ms = feeder_calc_dispense_ms(feedHorario->weight,
+                                                                         (int)theConf.feederData.gramsliter,
+                                                                         (int)theConf.feederFlow,
+                                                                         lines_fed);
+
+                    const time_t starttime = midnight +
+                                             (time_t)days_ahead * 24 * 3600 +
+                                             (time_t)feedHorario->hourStart * 3600 +
+                                             (time_t)feedHorario->minutesStart * 60;
+                    int64_t remaining_ms = 0;
+                    if (starttime > now) {
+                        remaining_ms = (int64_t)(starttime - now) * 1000LL;
+                    }
+
+                    printf("%-4d %-5u %-3u %-4u  %02u:%02u  %-8lu  %-7s  %-13lld\n",
+                           row_idx++,
+                           (unsigned int)next_cycle,
+                           (unsigned int)next_local_day,
+                           (unsigned int)h,
+                           (unsigned int)feedHorario->hourStart,
+                           (unsigned int)feedHorario->minutesStart,
+                           (unsigned long)dispense_ms,
+                           "waitDay",
+                           (long long)remaining_ms);
+                }
+            } else {
+                printf("No feeder timers: no future horarios found in active profile.\n");
+            }
+        } else if (last_feed_day <= 0) {
+            printf("No feeder timers: active profile has no valid feed days configured.\n");
+        } else {
+            printf("No feeder timers: last feed day reached (current day %d, last configured day %d).\n",
+                   current_day,
+                   last_feed_day);
+        }
     }
 
     printf("%s================================================================%s\n\n", CYAN, RESETC);
