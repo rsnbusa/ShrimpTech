@@ -3115,13 +3115,20 @@ void init_global_state_flags(void)
  * 
  * Constructs the MQTT topic strings based on pool ID and configuration
  */
+static const char *mqtt_queue_prefix(void)
+{
+    return (theConf.farmname[0] != '\0') ? theConf.farmname : APPNAME;
+}
+
 void init_mqtt_queue_names(void)
 {
-    snprintf(cmdQueue, sizeof(cmdQueue), "%s/%lu/%s", QUEUE, (unsigned long)theConf.poolid, MQTTCMD);
-    snprintf(metricQueue, sizeof(metricQueue), "%s/%lu/%s", QUEUE, (unsigned long)theConf.poolid, MQTTINFO);
-    snprintf(alarmQueue, sizeof(alarmQueue), "%s/%lu/%s", QUEUE, (unsigned long)theConf.poolid, MQTTALARM);
-    snprintf(controlQueue, sizeof(controlQueue), "%s/%lu/%s", QUEUE, (unsigned long)theConf.poolid, MQTTCONTROL);
-    snprintf(externDOQueue, sizeof(externDOQueue), "%s/%lu/%u", "shrimpDO", (unsigned long)theConf.poolid, (unsigned int)theConf.unitid);
+    const char *queue_prefix = mqtt_queue_prefix();
+
+    snprintf(cmdQueue, sizeof(cmdQueue), "%s/%lu/%s", queue_prefix, (unsigned long)theConf.poolid, MQTTCMD);
+    snprintf(metricQueue, sizeof(metricQueue), "%s/%lu/%s", queue_prefix, (unsigned long)theConf.poolid, MQTTINFO);
+    snprintf(alarmQueue, sizeof(alarmQueue), "%s/%lu/%s", queue_prefix, (unsigned long)theConf.poolid, MQTTALARM);
+    snprintf(controlQueue, sizeof(controlQueue), "%s/%lu/%s", queue_prefix, (unsigned long)theConf.poolid, MQTTCONTROL);
+    snprintf(externDOQueue, sizeof(externDOQueue), "%sDO/%lu/%u", queue_prefix, (unsigned long)theConf.poolid, (unsigned int)theConf.unitid);
 }
 /**
  * @brief Initialize internal mesh command strings

@@ -407,6 +407,7 @@ typedef struct config {
     char mqttPass[50];
     char thessid[40];
     char thepass[20];
+    char farmname[20];
     uint32_t totalnodes;   // Exact number of nodes in this pool
     uint16_t conns;        // Time to wait before sending metrics in ms
     uint16_t collectimer;

@@ -151,7 +151,7 @@ void glue_start_reboot(struct mg_str params) {
 }
 
 // Do not edit! See https://mongoose.ws/docs/guides/web-ui-builder/#custom-api-handlers
-struct settings s_settings = {false, false, false, 0, 0, 0, "", "", false, 0, ""};
+struct settings s_settings = {"", false, false, false, 0, 0, 0, "", "", false, 0, ""};
 void glue_get_settings(struct settings *data) {
   *data = s_settings;  // Sync with your device
 }

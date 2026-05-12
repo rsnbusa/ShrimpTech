@@ -450,6 +450,7 @@ struct attribute s_modbPanels_attributes[] = {
   {NULL, NULL, NULL, 0, 0, false}
 };
 struct attribute s_settings_attributes[] = {
+  {"farmname", "string", NULL, offsetof(struct settings, farmname), 20, false},
   {"meshwifi_val", "bool", NULL, offsetof(struct settings, meshwifi_val), 0, false},
   {"wifi_val", "bool", NULL, offsetof(struct settings, wifi_val), 0, false},
   {"delay_val", "bool", NULL, offsetof(struct settings, delay_val), 0, false},

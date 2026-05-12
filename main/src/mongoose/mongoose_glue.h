@@ -433,6 +433,7 @@ void glue_start_reboot(struct mg_str);  // Start an action
 bool glue_check_reboot(void);  // Check if action is still in progress
 
 struct settings {
+  char farmname[20];
   bool meshwifi_val;
   bool wifi_val;
   bool delay_val;

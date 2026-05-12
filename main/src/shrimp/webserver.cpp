@@ -142,6 +142,7 @@ static void populate_settings_data(void)
 		s_settings.pool_val = theConf.poolid;
 		s_settings.wifi_val = theConf.wifi_mode;
 		s_settings.meshwifi_val = theConf.mesh_wifi;
+		strcpy(s_settings.farmname,theConf.farmname);
 	}
 }
 
@@ -162,7 +163,8 @@ static void apply_settings_to_config(struct settings *data)
 	theConf.delay_mesh = data->delay_val;
 	theConf.wifi_mode = data->wifi_val;
 	theConf.mesh_wifi = data->meshwifi_val;
-	
+	strcpy(theConf.farmname,s_settings.farmname);
+
 	// Update configuration state
 	theConf.meterconf = CONF_STATE_CONFIGURED;
 	theConf.meterconfdate = now;
