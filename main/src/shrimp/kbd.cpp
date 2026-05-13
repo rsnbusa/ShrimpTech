@@ -2,7 +2,7 @@
  * @file kbd.cpp
  * @brief Console/keyboard interface task for ESP32 debugging and configuration
  * 
- * This module implements an interactive UART-based console using ESP-IDF's REPL
+ * This module implements an interactive USB CDC console using ESP-IDF's REPL
  * (Read-Eval-Print Loop) component. Provides command-line access to system
  * configuration, debugging, and diagnostics.
  * 
@@ -57,8 +57,6 @@ static void registerAllCommands()
     ESP_ERROR_CHECK(esp_console_cmd_register(&node_cmd));
     ESP_ERROR_CHECK(esp_console_cmd_register(&debug_cmd));
     ESP_ERROR_CHECK(esp_console_cmd_register(&blow_cmd));
-    ESP_ERROR_CHECK(esp_console_cmd_register(&tasks_cmd));
-    ESP_ERROR_CHECK(esp_console_cmd_register(&timers_cmd));
 }
 
 /**
@@ -76,7 +74,7 @@ static bool createPrompt(char *buffer, uint8_t poolId, uint8_t unitId)
         return false;
     }
     
-    int written = snprintf(buffer, PROMPT_BUFFER_SIZE, "Meter%02d-%02d>", poolId, unitId);
+    int written = snprintf(buffer, PROMPT_BUFFER_SIZE, "[%s]%02d-%02d>",theConf.farmname,poolId, unitId);
     if(written < 0 || written >= PROMPT_BUFFER_SIZE)
     {
         MESP_LOGE("KBD", "Failed to create prompt string");
@@ -95,7 +93,13 @@ void kbd(void *pArg)
   repl = NULL;
   repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
   repl_config.prompt = (char*)"Login>";
-  esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
+#if CONFIG_ESP_CONSOLE_USB_CDC
+  esp_console_dev_usb_cdc_config_t hw_config = ESP_CONSOLE_DEV_CDC_CONFIG_DEFAULT();
+#elif CONFIG_ESP_CONSOLE_UART_DEFAULT || CONFIG_ESP_CONSOLE_UART_CUSTOM
+  esp_console_dev_uart_config_t hw_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
+#else
+#error "Unsupported console backend: enable USB CDC or UART console in sdkconfig"
+#endif
 
   // ===================================================================
   // Define Command Arguments - FRAM Management
@@ -223,8 +227,6 @@ void kbd(void *pArg)
   init_console_cmd(app_cmd, "app", "Set app SSID", NULL, &cmdApp, &appSSID);
   init_console_cmd(node_cmd, "node", "Set node Id", NULL, &cmdNode, &appNode);
   init_console_cmd(log_cmd, "log", "Log options", NULL, &cmdLog, &logArgs);
-  init_console_cmd(tasks_cmd, "tasks", "Show FreeRTOS tasks", NULL, &cmdTasks, NULL);
-  init_console_cmd(timers_cmd, "timers", "Show all timers (feeder and blower)", NULL, &cmdTimers, NULL);
 
   // ===================================================================
   // Initialize Prompt and Register Commands
@@ -268,8 +270,12 @@ void kbd(void *pArg)
         prompt = NULL;
     }
     
-  // Start REPL console
-  ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &repl));
+  // Start REPL console according to configured transport
+#if CONFIG_ESP_CONSOLE_USB_CDC
+  ESP_ERROR_CHECK(esp_console_new_repl_usb_cdc(&hw_config, &repl_config, &repl));
+#elif CONFIG_ESP_CONSOLE_UART_DEFAULT || CONFIG_ESP_CONSOLE_UART_CUSTOM
+  ESP_ERROR_CHECK(esp_console_new_repl_uart(&hw_config, &repl_config, &repl));
+#endif
   ESP_ERROR_CHECK(esp_console_start_repl(repl));
   
   // Cleanup allocated resources

@@ -401,6 +401,8 @@ void show_device_info(time_t bootdate, time_t guardDate)
     printf("│%s%s               DEVICE INFORMATION POOL %-3lu UNIT %-2u            %s│\n",RESETC,BK_YELLOW,(unsigned long)theConf.poolid, (unsigned int)theConf.unitid,RESETC);
     printf("├─────────────────────────────────────────────────────────────┤\n");
        //  printf("%s", RESETC);
+    printf("│ %sFarm Identification %s                                        │\n",BK_RED,RESETC);
+    printf("│   Farm Name:%s                                          │\n", theConf.farmname);
     printf("│ %sBoot Count: %s                                                │\n",BK_GRAY,RESETC);
     printf("│   %-57lu │\n", (unsigned long)theConf.bootcount);
     printf("│ %sLast Reset & Reason:%s                                        │\n",BK_GRAY,RESETC);

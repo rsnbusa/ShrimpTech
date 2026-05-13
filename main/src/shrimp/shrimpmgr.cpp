@@ -9,6 +9,7 @@
 #include "display_utils.h"
 
     // Meter collection timer (based on WiFi mode)-> send Mqtt Broker  data/cmd search to0 change frequency. now in 10000 should be 60000 for minutes
+    // uint32_t collection_period = theConf.collectimer * 60000; look for this
 /**
  * ? que sera
  * ! warning
@@ -1987,9 +1988,11 @@ void write_to_flash()
  */
 bool sntp_sync_with_fallback(timeval *localtime)
 {
-    esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    esp_sntp_setservername(0, "pool.ntp.org");
-    esp_sntp_init();
+    if (!esp_sntp_enabled()) {
+        esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+        esp_sntp_setservername(0, "pool.ntp.org");
+        esp_sntp_init();
+    }
 
     int retry = 0;
     while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && ++retry <= SNTPTRY)
@@ -2662,19 +2665,71 @@ void root_mqttMgr(void *pArg)
 
 void setup_mqtt_config(void)
 {
-    char who[20];
+    static char who[80];
+    static char normalized_uri[sizeof(theConf.mqttServer)] = {0};
+    const char *configured_uri = theConf.mqttServer;
+    const char *farm_prefix = (theConf.farmname[0] != '\0') ? theConf.farmname : APPNAME;
+    size_t suffix_len = 0;
+    uint8_t sta_mac[6] = {0};
+    esp_err_t mac_err = ESP_OK;
     
     memset(who, 0, sizeof(who));
     memset(&mqtt_cfg, 0, sizeof(mqtt_cfg));
+
+    mac_err = esp_read_mac(sta_mac, ESP_MAC_WIFI_STA);
+    if (mac_err != ESP_OK)
+    {
+        esp_efuse_mac_get_default(sta_mac);
+        MESP_LOGW(MESH_TAG, "Failed to read STA MAC (%s), using eFuse MAC fallback", esp_err_to_name(mac_err));
+    }
+// critical to have a different mqtt client id per unit, else ionly one will have acces to the broker
+    snprintf(who, sizeof(who), "%s-%lu-%u-%02X%02X%02X%02X%02X%02X",
+             farm_prefix,
+             (unsigned long)theConf.poolid,
+             (unsigned int)theConf.unitid,
+             sta_mac[0], sta_mac[1], sta_mac[2], sta_mac[3], sta_mac[4], sta_mac[5]);
     
-    snprintf(who, sizeof(who), "Meterserver%lu-%u", (unsigned long)theConf.poolid,(unsigned int)theConf.unitid);
-    
-    mqtt_cfg.broker.address.uri = theConf.mqttServer;
+    // Normalize legacy web-config schemes to MQTT-compatible schemes.
+    if (strncmp(configured_uri, "http://", 7) == 0)
+    {
+        suffix_len = strnlen(configured_uri + 7, sizeof(theConf.mqttServer));
+        if ((7 + suffix_len + 1) < sizeof(normalized_uri))
+        {
+            memcpy(normalized_uri, "mqtt://", 7);
+            memcpy(normalized_uri + 7, configured_uri + 7, suffix_len);
+            normalized_uri[7 + suffix_len] = '\0';
+            configured_uri = normalized_uri;
+            MESP_LOGW(MESH_TAG, "MQTT URI normalized from http:// to mqtt://");
+        }
+        else
+        {
+            MESP_LOGE(MESH_TAG, "MQTT URI too long after http->mqtt normalization");
+        }
+    }
+    else if (strncmp(configured_uri, "https://", 8) == 0)
+    {
+        suffix_len = strnlen(configured_uri + 8, sizeof(theConf.mqttServer));
+        if ((8 + suffix_len + 1) < sizeof(normalized_uri))
+        {
+            memcpy(normalized_uri, "mqtts://", 8);
+            memcpy(normalized_uri + 8, configured_uri + 8, suffix_len);
+            normalized_uri[8 + suffix_len] = '\0';
+            configured_uri = normalized_uri;
+            MESP_LOGW(MESH_TAG, "MQTT URI normalized from https:// to mqtts://");
+        }
+        else
+        {
+            MESP_LOGE(MESH_TAG, "MQTT URI too long after https->mqtts normalization");
+        }
+    }
+
+    mqtt_cfg.broker.address.uri = configured_uri;
     mqtt_cfg.credentials.client_id = who;
     mqtt_cfg.credentials.username = theConf.mqttUser;
     mqtt_cfg.credentials.authentication.password = theConf.mqttPass;
     mqtt_cfg.network.disable_auto_reconnect = true;  // we will manage this in recoTask
     mqtt_cfg.buffer.size = MQTTBIG;
+    MESP_LOGI(MESH_TAG, "MQTT client_id: %s", who);
     
     // Configure certificate if present
     if (strlen(theConf.mqttcert) > 0)
@@ -4494,8 +4549,8 @@ esp_err_t wifi_connect_external_ap(void)
     // Configure WiFi AP with SSID "shrimp"-PoolId-UnitId and password "csttpstt"
     wifi_config_t ap_config = {};
     memset(&ap_config, 0, sizeof(wifi_config_t));
-    char thename[20];
-    sprintf(thename,"%s-p-%03lu-u-%02u","shrimp",(unsigned long)theConf.poolid,(unsigned int)theConf.unitid);
+    char thename[60];
+    sprintf(thename,"%s-p-%03lu-u-%02u",theConf.farmname,(unsigned long)theConf.poolid,(unsigned int)theConf.unitid);
     strncpy((char*)ap_config.ap.ssid, thename,strlen(thename));
     strncpy((char*)ap_config.ap.password, "csttpstt", sizeof(ap_config.ap.password) - 1);
     ap_config.ap.ssid_len = strlen(thename);
