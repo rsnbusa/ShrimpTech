@@ -4,10 +4,19 @@
 // #include "hal/hal-SCH-ShrimpPcb.h"
 #include "hal/hal-Shrimp-602-2L-1MB-TVL-V2.h" // new pcb version for only Blower controller
 extern void my_log(const char * color,const char* tag, const char* format, ...);
-#define MESP_LOGI(tag, format, ...) my_log(GRAY,tag, format, ##__VA_ARGS__)
-#define MESP_LOGW(tag, format, ...) my_log(BK_YELLOW,tag, format, ##__VA_ARGS__)
-#define MESP_LOGE(tag, format, ...) my_log(BK_RED,tag, format, ##__VA_ARGS__)
-#define MESP_LOGD(tag, format, ...) my_log(BLUE,tag, format, ##__VA_ARGS__)
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+const char* mesp_log_tag_runtime(void);
+#ifdef __cplusplus
+}
+#endif
+
+#define MESP_LOGI(tag, format, ...) my_log(GRAY, mesp_log_tag_runtime(), format, ##__VA_ARGS__)
+#define MESP_LOGW(tag, format, ...) my_log(BK_YELLOW, mesp_log_tag_runtime(), format, ##__VA_ARGS__)
+#define MESP_LOGE(tag, format, ...) my_log(BK_RED, mesp_log_tag_runtime(), format, ##__VA_ARGS__)
+#define MESP_LOGD(tag, format, ...) my_log(BLUE, mesp_log_tag_runtime(), format, ##__VA_ARGS__)
 
 // GPS Sensor
 #define YEAR_BASE                       (2000)  //date in GPS starts from 2000
@@ -68,7 +77,7 @@ extern void my_log(const char * color,const char* tag, const char* format, ...);
 #define QUEUE                           APPNAME
 #define MAXMQTTERRS                     (10)
 #define NUMDUPS                         (500)
-#define TAG                             APPNAME
+#define TAG                             mesp_log_tag_runtime()
 #define EXPECTED_NODES                  (2500000)
 #define EXPECTED_CONNS                  (10000)
 #define EXPECTED_DELIVERY_TIME          (2)

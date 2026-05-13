@@ -31,6 +31,11 @@ static hx711_t s_hx711 = {
     .gain = HX711_GAIN_A_128,
 };
 
+extern "C" const char* mesp_log_tag_runtime(void)
+{
+    return (theConf.farmname[0] != '\0') ? theConf.farmname : APPNAME;
+}
+
 // Custom logging function with custom timestamp
 void my_log(const char *color,const char* tag, const char* format, ...) {
     // Generate custom timestamp
