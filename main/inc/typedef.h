@@ -218,6 +218,7 @@ typedef struct fram {
     struct arg_str *midw;    // Read working meter ID
     struct arg_int *midr;    // Write working meter ID
     struct arg_int *seed;    // Write working meter kWh start
+    struct arg_int *test;    // Write/read-back FRAM verification
     struct arg_int *rstart;  // Read working meter kWh start
     struct arg_int *mtime;   // Write working meter datetime
     struct arg_int *mbeat;   // Write working meter beatstart aka beat

@@ -129,6 +129,11 @@ const solarSystem_t* BlowerClass::getSolarSystem() const
  */
 void BlowerClass::loadBlower()
 {
+    if (!framFlag || framSem == NULL)
+    {
+        return;
+    }
+
     if (xSemaphoreTake(framSem, portMAX_DELAY / portTICK_PERIOD_MS))
     {
         fram.read_Blower((uint8_t*)&framConfig, sizeof(framConfig));
@@ -149,6 +154,14 @@ void BlowerClass::loadBlower()
 void BlowerClass::saveBlower()
 {
     framWrites();
+
+    // Keep runtime values in RAM even when FRAM is not initialized.
+    if (!framFlag || framSem == NULL)
+    {
+        framConfig.lastUpdate = time(NULL);
+        return;
+    }
+
     if (xSemaphoreTake(framSem, portMAX_DELAY / portTICK_PERIOD_MS))
     {
         // Update timestamp every time we save to FRAM

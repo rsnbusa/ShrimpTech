@@ -109,6 +109,7 @@ void kbd(void *pArg)
   framArg.midw    = arg_str0(NULL, "wmid",    "id",                               "Set id of working meter");
   framArg.midr    = arg_int0(NULL, "rmid",    "dummy",                            "Read id of working meter");
   framArg.seed    = arg_int0(NULL, "seed",    "any value",                        "Seed values to fram for testing");
+  framArg.test    = arg_int0(NULL, "test",    "any value",                        "Write and read-back FRAM verification");
   framArg.rstart  = arg_int0(NULL, "rkwh",    "dummy",                            "Read kwh start of working meter");
   framArg.mtime   = arg_int0(NULL, "metert",  "1 write 0 read",                   "Write/read working meter date");
   framArg.mbeat   = arg_int0(NULL, "beat",    "value",                            "Write beat of working meter");

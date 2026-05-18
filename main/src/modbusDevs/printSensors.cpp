@@ -88,6 +88,12 @@ void cb_vfd_data(void *vfdd, int *errors,char *color,int numerrs,int devAddr,Tas
 
     globalErrors &= ~(1U << VFD_LIMIT_ERROR_BIT); // clear the limit error bit
         
+    // save data to frame blower sensors
+    if(framFlag)
+    {
+        theBlower.setVFD(data->mcurrent,data->mvolts,data->mpower,data->mrpm);
+    }
+
     if (!((theConf.debug_flags >> dMODBUS) & 1U))
         return;
 
@@ -96,13 +102,6 @@ void cb_vfd_data(void *vfdd, int *errors,char *color,int numerrs,int devAddr,Tas
              data->mcurrent,
              data->mvolts,
              data->mpower,data->mrpm,RESETC);
-
-
-    // save data to frame blower sensors
-    if(framFlag)
-    {
-        theBlower.setVFD(data->mcurrent,data->mvolts,data->mpower,data->mrpm);
-    }
 }
 
 /**
@@ -138,7 +137,7 @@ void cb_sensor_data(void *sensors, int *errors,char *color,int numerrs,int devAd
     if (hasErrors)
     {
         // In external DO mode, keep last external values instead of zeroing all sensors.
-        if(framFlag && !externalDOActive)
+        if(!externalDOActive)
             theBlower.setSensors(0.0, 0.0, 0.0, 0.0, 0.0);
 
         globalErrors|= (1U << SENSOR_ERROR_BIT); // set sensor error bit
@@ -154,18 +153,15 @@ void cb_sensor_data(void *sensors, int *errors,char *color,int numerrs,int devAd
     globalErrors &= ~(1U << SENSOR_LIMIT_ERROR_BIT); // clear the limit error bit
 
     // Persist latest sensor values even when debug logging is disabled.
-    if(framFlag)
+    if(externalDOActive)
     {
-        if(externalDOActive)
-        {
-            float doValue = 0.0f, phValue = 0.0f, wTemp = 0.0f, aTemp = 0.0f, aHum = 0.0f;
-            theBlower.getSensors(&doValue, &phValue, &wTemp, &aTemp, &aHum);
-            theBlower.setSensors(doValue, phValue, data->WTemp, temperature, 0);
-        }
-        else
-        {
-            theBlower.setSensors(data->DO, 0, data->WTemp, temperature, 0);
-        }
+        float doValue = 0.0f, phValue = 0.0f, wTemp = 0.0f, aTemp = 0.0f, aHum = 0.0f;
+        theBlower.getSensors(&doValue, &phValue, &wTemp, &aTemp, &aHum);
+        theBlower.setSensors(doValue, phValue, data->WTemp, temperature, 0);
+    }
+    else
+    {
+        theBlower.setSensors(data->DO, 0, data->WTemp, temperature, 0);
     }
         
     if (!((theConf.debug_flags >> dMODBUS) & 1U))
@@ -205,7 +201,6 @@ void cb_energy_data(void *energy, int *errors,char * color,int numerrs,int devAd
             if (((theConf.debug_flags >> dMODBUS) & 1U))
                 MESP_LOGE(TAG,"%s[%3d] EnergyError CID %d=0x%x %s ",color,devAddr,a,errors[a],esp_err_to_name(errors[a]));
             hasErrors=true;
-                theBlower.setEnergy(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);  // has to save 0 because sender will read from FRAM which has old values probably valid
         }
     }
 
@@ -224,6 +219,13 @@ void cb_energy_data(void *energy, int *errors,char * color,int numerrs,int devAd
     energy_t *data = (energy_t*)energy;
 
     globalErrors &= ~(1U << ENERGY_LIMIT_ERROR_BIT); // clear the limit error bit
+
+    // save data to frame blower Energy
+    theBlower.setEnergy(data->batChgAHToday, data->batDischgAHToday,
+                       data->batChgAHTotal, data->batDischgAHTotal,
+                       data->generateEnergyToday, data->usedEnergyToday,
+                       data->gLoadConsumLineTotal, data->batChgkWhToday,
+                       data->batDischgkWhToday, data->genLoadConsumToday);
 
     if (!((theConf.debug_flags >> dMODBUS) & 1U))
         return;
@@ -246,16 +248,6 @@ void cb_energy_data(void *energy, int *errors,char * color,int numerrs,int devAd
                  data->gLoadConsumLineTotal,
                  data->batDischgkWhToday,
                  data->genLoadConsumToday);   
-    }
-
-    // save data to frame blower Energy
-    if(framFlag)
-    {
-        theBlower.setEnergy(data->batChgAHToday, data->batDischgAHToday, 
-                           data->batChgAHTotal, data->batDischgAHTotal, 
-                           data->generateEnergyToday, data->usedEnergyToday, 
-                           data->gLoadConsumLineTotal, data->batChgkWhToday, 
-                           data->batDischgkWhToday, data->genLoadConsumToday);
     }
 }
 
@@ -287,9 +279,6 @@ void cb_battery_data(void *batteryData, int *errors,char *color,int numerrs,int 
             if (((theConf.debug_flags >> dMODBUS) & 1U))
                 MESP_LOGE(TAG,"%s[%3d] Battery Error CID %d=0x%x %s ",color,devAddr,a,errors[a],esp_err_to_name(errors[a]));
             hasErrors=true;
-            if(framFlag)
-                theBlower.setBattery(0, 0,0, 0);
-
         }
     }
 
@@ -308,6 +297,9 @@ void cb_battery_data(void *batteryData, int *errors,char *color,int numerrs,int 
 
     globalErrors &= ~(1U << BATTERY_LIMIT_ERROR_BIT); // clear the limit error bit                
 
+    // save data to frame blower battery
+    theBlower.setBattery(data->batSOC, data->batSOH, data->batteryCycleCount, data->batBmsTemp);
+
     if (!((theConf.debug_flags >> dMODBUS) & 1U))
         return;
 
@@ -316,10 +308,6 @@ void cb_battery_data(void *batteryData, int *errors,char *color,int numerrs,int 
              data->batSOH,
              data->batteryCycleCount,
              data->batBmsTemp);
-
-    // save data to frame blower battery
-    if(framFlag)
-        theBlower.setBattery(data->batSOC, data->batSOH, data->batteryCycleCount, data->batBmsTemp);
 }
 
 // ============================================================================
@@ -350,9 +338,6 @@ void cb_panel_data(void *pvPanel, int *errors,char * color,int numerrs,int devAd
             if (((theConf.debug_flags >> dMODBUS) & 1U))
                 MESP_LOGE(TAG,"%s[%3d] Panels Error CID %d=0x%x %s ",color,devAddr,a,errors[a],esp_err_to_name(errors[a]));
             hasErrors=true;
-            // here the logic to ERROR MANAGEMNET reporting
-            if(framFlag)
-                theBlower.setPVPanel(0, 0, 0, 0, 0);
         }
     }
 
@@ -370,6 +355,9 @@ void cb_panel_data(void *pvPanel, int *errors,char * color,int numerrs,int devAd
 
     globalErrors &= ~(1U << PANELS_LIMIT_ERROR_BIT); // clear the limit error bit 
 
+    // save data to frame blower Panels
+    theBlower.setPVPanel(data->chargeCurr, data->pv1Volts, data->pv2Volts,data->pv1Amp, data->pv2Amp);
+
     if (!((theConf.debug_flags >> dMODBUS) & 1U))
         return;
 
@@ -380,10 +368,6 @@ void cb_panel_data(void *pvPanel, int *errors,char * color,int numerrs,int devAd
              data->pv1Amp,
              data->pv2Volts,
              data->pv2Amp);
-
-    // save data to frame blower Panels
-    if(framFlag)
-        theBlower.setPVPanel(data->chargeCurr, data->pv1Volts, data->pv2Volts,data->pv1Amp, data->pv2Amp);  
 }
 
 // ============================================================================

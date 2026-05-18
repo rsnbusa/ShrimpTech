@@ -13,7 +13,6 @@
  * - Complete solar system readings
  * 
  * @note The returned mesh union structure must be freed by the caller
- * @warning This module includes simulation code (seed_blower) for testing
  */
 
 #define GLOBAL
@@ -26,9 +25,6 @@
 
 #define SENDDATA_TAG            "SENDDATA"
 
-// Simulation control - set to 0 for production builds
-#define ENABLE_SIMULATION       1
-
 // ===================================================================
 // External Dependencies
 // ===================================================================
@@ -36,7 +32,6 @@
 // External dependencies for solar blower system
 #include "time_utils.h"
 extern void print_blower(char *title, solarSystem_t *solarData);
-extern void seed_blower();
 
 /**
  * @brief Creates a mesh data packet with current solar system readings
@@ -55,7 +50,6 @@ extern void seed_blower();
  * 
  * @note Caller is responsible for freeing the returned structure
  * @note Increments message counter for non-root nodes only
- * @warning Contains seed_blower() call for simulation - remove in production
  */
 meshunion_t *sendData(bool forced)
 {
@@ -87,14 +81,6 @@ meshunion_t *sendData(bool forced)
     nodeDataPacket->nodedata.msgnum = theBlower.getStatsMsgOut();
     nodeDataPacket->nodedata.nodeid = theConf.poolid;
     nodeDataPacket->nodedata.subnode = theConf.unitid;
-    
-#if ENABLE_SIMULATION
-    // ===================================================================
-    // SIMULATION: Seed test data
-    // NOTE: Set ENABLE_SIMULATION to 0 for production builds
-    // ===================================================================
-    seed_blower();
-#endif
     
     // ===================================================================
     // Retrieve and copy solar system data

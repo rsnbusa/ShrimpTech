@@ -1306,8 +1306,8 @@ void wifi_send_meter_data(TimerHandle_t algo)
     // if ((theConf.debug_flags >> dMQTT) & 1U)
     // {
     //     printf("=== poolAvgMetrics ===\n");
-    //     printf("PV: chargeCurr %u pv1V %.02f pv2V %.02f pv1Amp %.02f pv2Amp %.02f\n",
-    //         shmsg->poolAvgMetrics.pvPanel.chargeCurr, shmsg->poolAvgMetrics.pvPanel.pv1Volts,
+    //     printf("PV: chargeCurr %lu pv1V %.02f pv2V %.02f pv1Amp %.02f pv2Amp %.02f\n",
+    //         (unsigned long)shmsg->poolAvgMetrics.pvPanel.chargeCurr, shmsg->poolAvgMetrics.pvPanel.pv1Volts,
     //         shmsg->poolAvgMetrics.pvPanel.pv2Volts, shmsg->poolAvgMetrics.pvPanel.pv1Amp,
     //         shmsg->poolAvgMetrics.pvPanel.pv2Amp);
     //     printf("Bat: SOC %u SOH %u Cycles %u Temp %.02f\n",
@@ -1320,10 +1320,11 @@ void wifi_send_meter_data(TimerHandle_t algo)
     //         shmsg->poolAvgMetrics.energy.generateEnergyToday, shmsg->poolAvgMetrics.energy.usedEnergyToday,
     //         shmsg->poolAvgMetrics.energy.gLoadConsumLineTotal, shmsg->poolAvgMetrics.energy.batChgkWhToday,
     //         shmsg->poolAvgMetrics.energy.batDischgkWhToday, shmsg->poolAvgMetrics.energy.genLoadConsumToday);
-        // printf("Sensors: WTemp %.02f percentDO %.02f DO %.02f PH %.02f ATemp %.02f AHum %.02f\n",
-        //     shmsg->poolAvgMetrics.sensors.WTemp, shmsg->poolAvgMetrics.sensors.percentDO,
-        //     shmsg->poolAvgMetrics.sensors.DO, shmsg->poolAvgMetrics.sensors.PH,
-        //     shmsg->poolAvgMetrics.sensors.ATemp, shmsg->poolAvgMetrics.sensors.AHum); 
+    //     printf("Sensors: WTemp %.02f percentDO %.02f DO %.02f PH %.02f ATemp %.02f AHum %.02f\n",
+    //         shmsg->poolAvgMetrics.sensors.WTemp, shmsg->poolAvgMetrics.sensors.percentDO,
+    //         shmsg->poolAvgMetrics.sensors.DO, shmsg->poolAvgMetrics.sensors.PH,
+    //         shmsg->poolAvgMetrics.sensors.ATemp, shmsg->poolAvgMetrics.sensors.AHum); 
+    //     printf("Schedule: day %u horario %u start %u end %u pwm %u status %u\n",
     //         shmsg->poolAvgMetrics.wschedule.currentDay, shmsg->poolAvgMetrics.wschedule.currentHorario,
     //         shmsg->poolAvgMetrics.wschedule.currentStartHour, shmsg->poolAvgMetrics.wschedule.currentEndHour,
     //         shmsg->poolAvgMetrics.wschedule.currentPwmDuty, shmsg->poolAvgMetrics.wschedule.status);
@@ -3446,7 +3447,7 @@ void init_system_timers(void)
     );
     
     // Meter collection timer (based on WiFi mode)-> send Mqtt Broker  data/cmd 
-    uint32_t collection_period = theConf.collectimer * 60000;        //  minutes to ms
+    uint32_t collection_period = theConf.collectimer * 10000;        //  minutes to ms
     TimerCallbackFunction_t collection_callback = 
         (theConf.wifi_mode > 0) ? root_collect_meter_data : wifi_send_meter_data;
     BaseType_t collection_autoreload = 
